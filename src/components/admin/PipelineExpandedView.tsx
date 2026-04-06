@@ -36,12 +36,12 @@ import {
   formatPhoneNumber,
 } from './InlineEditableFields';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
+type Lead = Database['public']['Tables']['pipeline']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 interface LeadEmail {
   id: string;
-  lead_id: string;
+  entity_id: string;
   email: string;
   email_type: string;
   is_primary: boolean;
@@ -49,7 +49,7 @@ interface LeadEmail {
 
 interface LeadPhone {
   id: string;
-  lead_id: string;
+  entity_id: string;
   phone_number: string;
   phone_type: string;
   is_primary: boolean;
@@ -57,7 +57,7 @@ interface LeadPhone {
 
 interface LeadAddress {
   id: string;
-  lead_id: string;
+  entity_id: string;
   address_type: string;
   address_line_1: string | null;
   address_line_2: string | null;
@@ -70,7 +70,7 @@ interface LeadAddress {
 
 interface LeadFile {
   id: string;
-  lead_id: string;
+  entity_id: string;
   file_name: string;
   file_url: string;
   file_type: string | null;
@@ -195,7 +195,7 @@ function useCrmInlineSave(
     const previousValue = currentValue;
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -206,7 +206,7 @@ function useCrmInlineSave(
     registerUndo({
       label: `Updated ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('pipeline').update({ [field]: previousValue || null }).eq('id', leadId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
@@ -317,7 +317,7 @@ function CrmEditableRichTextField({
     const previousValue = value;
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -325,7 +325,7 @@ function CrmEditableRichTextField({
     registerUndoRich({
       label: `Updated ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('pipeline').update({ [field]: previousValue || null }).eq('id', leadId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
@@ -402,7 +402,7 @@ function CrmEditableTags({
     const previousTags = [...tags];
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', leadId);
     setSaving(false);
@@ -413,7 +413,7 @@ function CrmEditableTags({
     registerUndoTags({
       label: 'Updated tags',
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
+        const { error: e } = await supabase.from('pipeline').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
         if (e) throw e;
         onSaved('tags', previousTags.join(','));
       },
@@ -663,10 +663,10 @@ export default function PipelineExpandedView() {
   // ── Stage change handler ──
   const handleStageChange = useCallback(async (newStatus: LeadStatus) => {
     if (!leadId) return;
-    const { data: current } = await supabase.from('leads').select('status').eq('id', leadId).single();
+    const { data: current } = await supabase.from('pipeline').select('status').eq('id', leadId).single();
     const previousStatus = current?.status as LeadStatus | null;
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ status: newStatus })
       .eq('id', leadId);
     if (error) {
@@ -676,39 +676,39 @@ export default function PipelineExpandedView() {
     registerUndo({
       label: `Stage changed to ${pipelineStageConfig[newStatus]?.title ?? newStatus}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
+        const { error: e } = await supabase.from('pipeline').update({ status: previousStatus }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-        queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+        queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
       },
     });
     toast.success('Stage updated');
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
   }, [leadId, queryClient, registerUndo]);
 
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
     if (!isUndoingRef.current) toast.success('Updated');
   }, [leadId, queryClient, isUndoingRef]);
 
   const handleBooleanToggle = useCallback(async (field: string, currentVal: boolean) => {
     if (!leadId) return;
-    const { error } = await supabase.from('leads').update({ [field]: !currentVal }).eq('id', leadId);
+    const { error } = await supabase.from('pipeline').update({ [field]: !currentVal }).eq('id', leadId);
     if (error) { toast.error('Failed to save'); return; }
     registerUndo({
       label: `Toggled ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ [field]: currentVal }).eq('id', leadId);
+        const { error: e } = await supabase.from('pipeline').update({ [field]: currentVal }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-        queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+        queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
       },
     });
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
     toast.success('Updated');
   }, [leadId, queryClient, registerUndo]);
 
@@ -723,8 +723,9 @@ export default function PipelineExpandedView() {
       return;
     }
     setSavingActivity(true);
-    const { error } = await supabase.from('lead_activities').insert({
-      lead_id: leadId,
+    const { error } = await supabase.from('activities').insert({
+      entity_id: leadId,
+      entity_type: 'pipeline',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -735,7 +736,7 @@ export default function PipelineExpandedView() {
       return;
     }
     // Reset inactive days timer
-    await supabase.from('leads').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
+    await supabase.from('pipeline').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote('');
     else setNoteContent('');
@@ -788,8 +789,9 @@ export default function PipelineExpandedView() {
   const handleSaveContact = useCallback(async () => {
     if (!leadId || !newContactName.trim()) return;
     setSavingContact(true);
-    const { error } = await supabase.from('lead_contacts').insert({
-      lead_id: leadId,
+    const { error } = await supabase.from('entity_contacts').insert({
+      entity_id: leadId,
+      entity_type: 'pipeline',
       name: newContactName.trim(),
       title: newContactTitle.trim() || null,
     });
@@ -810,7 +812,7 @@ export default function PipelineExpandedView() {
     if (!leadId || !newCompanyName.trim()) return;
     setSavingCompany(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ company_name: newCompanyName.trim() })
       .eq('id', leadId);
     setSavingCompany(false);
@@ -822,7 +824,7 @@ export default function PipelineExpandedView() {
     setNewCompanyName('');
     setAddingCompany(false);
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
   }, [leadId, newCompanyName, queryClient]);
 
   // ── Save milestone (Related sidebar) ──
@@ -895,8 +897,9 @@ export default function PipelineExpandedView() {
       return;
     }
 
-    const { error: dbError } = await supabase.from('lead_files').insert({
-      lead_id: leadId,
+    const { error: dbError } = await supabase.from('entity_files').insert({
+      entity_id: leadId,
+      entity_type: 'pipeline',
       file_name: file.name,
       file_url: filePath,
       file_type: file.type || null,
@@ -921,7 +924,7 @@ export default function PipelineExpandedView() {
   // ── File delete ──
   const handleDeleteFile = useCallback(async (file: LeadFile) => {
     await supabase.storage.from('lead-files').remove([file.file_url]);
-    const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
+    const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
     if (error) {
       toast.error('Failed to delete file');
       return;
@@ -953,7 +956,7 @@ export default function PipelineExpandedView() {
     queryKey: ['pipeline-lead-expanded', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*')
         .eq('id', leadId!)
         .single();
@@ -1009,7 +1012,7 @@ export default function PipelineExpandedView() {
   const { data: contacts = [] } = useQuery({
     queryKey: ['pipeline-lead-contacts', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_contacts').select('*').eq('lead_id', leadId!);
+      const { data } = await supabase.from('entity_contacts').select('*').eq('entity_id', leadId!).eq('entity_type', 'pipeline');
       return data ?? [];
     },
     enabled: !!leadId,
@@ -1045,9 +1048,10 @@ export default function PipelineExpandedView() {
     queryKey: ['pipeline-lead-files', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_files')
+        .from('entity_files')
         .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('lead_id', leadId!)
+        .eq('entity_id', leadId!)
+        .eq('entity_type', 'pipeline')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as LeadFile[];
@@ -1059,9 +1063,10 @@ export default function PipelineExpandedView() {
     queryKey: ['pipeline-lead-activities', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_activities')
+        .from('activities')
         .select('*')
-        .eq('lead_id', leadId!)
+        .eq('entity_id', leadId!)
+        .eq('entity_type', 'pipeline')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -1095,7 +1100,7 @@ export default function PipelineExpandedView() {
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['pipeline-lead-emails', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_emails').select('*').eq('lead_id', leadId!);
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadId!).eq('entity_type', 'pipeline');
       return (data || []) as LeadEmail[];
     },
     enabled: !!leadId,
@@ -1104,7 +1109,7 @@ export default function PipelineExpandedView() {
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['pipeline-lead-phones', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_phones').select('*').eq('lead_id', leadId!);
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadId!).eq('entity_type', 'pipeline');
       return (data || []) as LeadPhone[];
     },
     enabled: !!leadId,
@@ -1113,7 +1118,7 @@ export default function PipelineExpandedView() {
   const { data: leadAddresses = [] } = useQuery({
     queryKey: ['pipeline-lead-addresses', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_addresses').select('*').eq('lead_id', leadId!);
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadId!).eq('entity_type', 'pipeline');
       return (data || []) as LeadAddress[];
     },
     enabled: !!leadId,
@@ -1215,7 +1220,7 @@ export default function PipelineExpandedView() {
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
       if (!leadId) return;
-      const { error } = await supabase.from('lead_emails').insert({ lead_id: leadId, email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'pipeline', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1228,7 +1233,7 @@ export default function PipelineExpandedView() {
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('lead_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('entity_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1240,7 +1245,7 @@ export default function PipelineExpandedView() {
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
       if (!leadId) return;
-      const { error } = await supabase.from('lead_phones').insert({ lead_id: leadId, phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'pipeline', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1253,7 +1258,7 @@ export default function PipelineExpandedView() {
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('lead_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('entity_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1265,8 +1270,9 @@ export default function PipelineExpandedView() {
   const addAddressMutation = useMutation({
     mutationFn: async () => {
       if (!leadId || !newAddressLine1.trim()) return;
-      const { error } = await supabase.from('lead_addresses').insert({
-        lead_id: leadId,
+      const { error } = await supabase.from('entity_addresses').insert({
+        entity_id: leadId,
+        entity_type: 'pipeline',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -1289,7 +1295,7 @@ export default function PipelineExpandedView() {
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('lead_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('entity_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1404,12 +1410,12 @@ export default function PipelineExpandedView() {
                   <span className="text-xs font-medium text-muted-foreground block mb-1">Contact Type</span>
                   <Select value={lead.contact_type ?? ''} onValueChange={async (v) => {
                     const previousType = lead.contact_type;
-                    const { error } = await supabase.from('leads').update({ contact_type: v || null }).eq('id', lead.id);
+                    const { error } = await supabase.from('pipeline').update({ contact_type: v || null }).eq('id', lead.id);
                     if (error) { toast.error('Failed to save'); return; }
                     registerUndo({
                       label: `Contact type changed to ${v}`,
                       execute: async () => {
-                        const { error: e } = await supabase.from('leads').update({ contact_type: previousType || null }).eq('id', lead.id);
+                        const { error: e } = await supabase.from('pipeline').update({ contact_type: previousType || null }).eq('id', lead.id);
                         if (e) throw e;
                         handleFieldSaved('contact_type', previousType ?? '');
                       },
@@ -1438,12 +1444,12 @@ export default function PipelineExpandedView() {
                       <button
                         onClick={async () => {
                           const previousOwner = lead.assigned_to;
-                          const { error } = await supabase.from('leads').update({ assigned_to: null }).eq('id', lead.id);
+                          const { error } = await supabase.from('pipeline').update({ assigned_to: null }).eq('id', lead.id);
                           if (error) { toast.error('Failed to save'); return; }
                           registerUndo({
                             label: 'Owner cleared',
                             execute: async () => {
-                              const { error: e } = await supabase.from('leads').update({ assigned_to: previousOwner }).eq('id', lead.id);
+                              const { error: e } = await supabase.from('pipeline').update({ assigned_to: previousOwner }).eq('id', lead.id);
                               if (e) throw e;
                               handleFieldSaved('assigned_to', previousOwner ?? '');
                             },
@@ -1458,12 +1464,12 @@ export default function PipelineExpandedView() {
                   ) : ownerOptions.length > 0 ? (
                     <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
                       const previousOwner = lead.assigned_to;
-                      const { error } = await supabase.from('leads').update({ assigned_to: v || null }).eq('id', lead.id);
+                      const { error } = await supabase.from('pipeline').update({ assigned_to: v || null }).eq('id', lead.id);
                       if (error) { toast.error('Failed to save'); return; }
                       registerUndo({
                         label: `Owner changed`,
                         execute: async () => {
-                          const { error: e } = await supabase.from('leads').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
+                          const { error: e } = await supabase.from('pipeline').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
                           if (e) throw e;
                           handleFieldSaved('assigned_to', previousOwner ?? '');
                         },

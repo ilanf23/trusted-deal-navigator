@@ -46,7 +46,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
   const senderFirstName = senderName.split(' ')[0];
   const senderEmail = teamMember?.email || 'info@commerciallendingx.com';
   const senderSignature = teamMember
-    ? getSignatureHtml(senderName, senderEmail, teamMember.role || 'Associate')
+    ? getSignatureHtml(senderName, senderEmail, teamMember.position || 'Associate')
     : EVAN_SIGNATURE_HTML;
 
   // Shared Gmail connection & email data
@@ -726,8 +726,8 @@ export function useGmailLogic(config?: CRMGmailConfig) {
           await supabase.from('tasks').update({
             status: 'done', is_completed: true, completed_at: new Date().toISOString(), updated_at: new Date().toISOString()
           }).eq('id', originatingTaskId);
-          queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
-          queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
           toast.success('Task marked complete', { duration: 2000 });
         } catch (taskError) {
           console.error('Failed to mark task complete:', taskError);
@@ -852,8 +852,8 @@ export function useGmailLogic(config?: CRMGmailConfig) {
 
       if (originatingTaskId) {
         await supabase.from('tasks').update({ status: 'done', is_completed: true, completed_at: new Date().toISOString() }).eq('id', originatingTaskId);
-        queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
-        queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
         setOriginatingTaskId(null);
       }
 

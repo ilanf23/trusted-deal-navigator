@@ -22,11 +22,13 @@ export type Database = {
           created_at: string
           direction: string
           ended_at: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           from_number: string
           frontend_ack_at: string | null
           id: string
           lead_id: string | null
           status: string
+          team_member_id: string | null
           to_number: string
           updated_at: string
           webhook_timestamp: string | null
@@ -38,11 +40,13 @@ export type Database = {
           created_at?: string
           direction?: string
           ended_at?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           from_number: string
           frontend_ack_at?: string | null
           id?: string
           lead_id?: string | null
           status?: string
+          team_member_id?: string | null
           to_number: string
           updated_at?: string
           webhook_timestamp?: string | null
@@ -54,24 +58,59 @@ export type Database = {
           created_at?: string
           direction?: string
           ended_at?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           from_number?: string
           frontend_ack_at?: string | null
           id?: string
           lead_id?: string | null
           status?: string
+          team_member_id?: string | null
           to_number?: string
           updated_at?: string
           webhook_timestamp?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "active_calls_lead_id_fkey"
-            columns: ["lead_id"]
+            foreignKeyName: "active_calls_team_member_id_fkey"
+            columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "leads"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
+      }
+      activities: {
+        Row: {
+          activity_type: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+          title: string | null
+        }
+        Insert: {
+          activity_type: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          title?: string | null
+        }
+        Update: {
+          activity_type?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          title?: string | null
+        }
+        Relationships: []
       }
       activity_comments: {
         Row: {
@@ -79,6 +118,7 @@ export type Database = {
           content: string
           created_at: string
           created_by: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           lead_id: string
         }
@@ -87,6 +127,7 @@ export type Database = {
           content: string
           created_at?: string
           created_by?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id: string
         }
@@ -95,6 +136,7 @@ export type Database = {
           content?: string
           created_at?: string
           created_by?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string
         }
@@ -103,14 +145,7 @@ export type Database = {
             foreignKeyName: "activity_comments_activity_id_fkey"
             columns: ["activity_id"]
             isOneToOne: false
-            referencedRelation: "lead_activities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "activity_comments_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
+            referencedRelation: "activities"
             referencedColumns: ["id"]
           },
         ]
@@ -315,6 +350,7 @@ export type Database = {
           created_at: string
           description: string | null
           end_time: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           google_calendar_id: string | null
           google_event_id: string | null
           id: string
@@ -332,6 +368,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_time?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           google_calendar_id?: string | null
           google_event_id?: string | null
           id?: string
@@ -349,6 +386,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_time?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           google_calendar_id?: string | null
           google_event_id?: string | null
           id?: string
@@ -367,13 +405,6 @@ export type Database = {
             columns: ["team_member_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "evan_appointments_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -539,6 +570,7 @@ export type Database = {
           created_at: string
           db_inserted: boolean | null
           device_ready: boolean | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           event_type: string
           from_number: string | null
           frontend_acknowledged_at: string | null
@@ -559,6 +591,7 @@ export type Database = {
           created_at?: string
           db_inserted?: boolean | null
           device_ready?: boolean | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           event_type: string
           from_number?: string | null
           frontend_acknowledged_at?: string | null
@@ -579,6 +612,7 @@ export type Database = {
           created_at?: string
           db_inserted?: boolean | null
           device_ready?: boolean | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           event_type?: string
           from_number?: string | null
           frontend_acknowledged_at?: string | null
@@ -593,15 +627,7 @@ export type Database = {
           user_session_active?: boolean | null
           webhook_received?: boolean | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "call_events_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       call_rating_notifications: {
         Row: {
@@ -610,6 +636,7 @@ export type Database = {
           call_rating: number
           communication_id: string | null
           created_at: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           lead_id: string | null
           rating_reasoning: string | null
@@ -622,6 +649,7 @@ export type Database = {
           call_rating: number
           communication_id?: string | null
           created_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string | null
           rating_reasoning?: string | null
@@ -634,6 +662,7 @@ export type Database = {
           call_rating?: number
           communication_id?: string | null
           created_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string | null
           rating_reasoning?: string | null
@@ -646,13 +675,6 @@ export type Database = {
             columns: ["communication_id"]
             isOneToOne: false
             referencedRelation: "communications"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "call_rating_notifications_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -724,6 +746,7 @@ export type Database = {
           created_at: string
           direction: string
           duration_seconds: number | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           lead_id: string | null
           phone_number: string | null
@@ -740,6 +763,7 @@ export type Database = {
           created_at?: string
           direction: string
           duration_seconds?: number | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string | null
           phone_number?: string | null
@@ -756,6 +780,7 @@ export type Database = {
           created_at?: string
           direction?: string
           duration_seconds?: number | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string | null
           phone_number?: string | null
@@ -773,11 +798,102 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      companies: {
+        Row: {
+          about: string | null
+          assigned_to: string | null
+          company_name: string
+          contact_type: string | null
+          created_at: string
+          description: string | null
+          id: string
+          last_activity_at: string | null
+          notes: string | null
+          source: string | null
+          tags: string[] | null
+          updated_at: string
+          website: string | null
+          work_website: string | null
+        }
+        Insert: {
+          about?: string | null
+          assigned_to?: string | null
+          company_name: string
+          contact_type?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_activity_at?: string | null
+          notes?: string | null
+          source?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          website?: string | null
+          work_website?: string | null
+        }
+        Update: {
+          about?: string | null
+          assigned_to?: string | null
+          company_name?: string
+          contact_type?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_activity_at?: string | null
+          notes?: string | null
+          source?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          website?: string | null
+          work_website?: string | null
+        }
+        Relationships: [
           {
-            foreignKeyName: "evan_communications_lead_id_fkey"
-            columns: ["lead_id"]
+            foreignKeyName: "companies_assigned_to_fkey"
+            columns: ["assigned_to"]
             isOneToOne: false
-            referencedRelation: "leads"
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_people: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          person_id: string
+          role: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          person_id: string
+          role?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          person_id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_people_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_people_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -955,12 +1071,54 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_lender_programs: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+          notes: string | null
+          program_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          notes?: string | null
+          program_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          notes?: string | null
+          program_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_lender_programs_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "lender_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_milestones: {
         Row: {
           completed: boolean
           completed_at: string | null
           completed_by: string | null
           created_at: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           lead_id: string
           milestone_name: string
@@ -973,6 +1131,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id: string
           milestone_name: string
@@ -985,6 +1144,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string
           milestone_name?: string
@@ -992,21 +1152,212 @@ export type Database = {
           position?: number
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "deal_milestones_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      deal_responses: {
+        Row: {
+          additional_information: string | null
+          address_line_1: string | null
+          address_line_2: string | null
+          annual_revenue: string | null
+          borrower_bankruptcy: string | null
+          borrower_credit_score: string | null
+          borrower_current_employer: string | null
+          borrower_occupation: string | null
+          borrower_year_started: string | null
+          business_description: string | null
+          business_type: string | null
+          cash_out: string | null
+          cash_out_amount: number | null
+          city: string | null
+          co_borrower_bankruptcy: string | null
+          co_borrower_credit_score: string | null
+          co_borrower_current_employer: string | null
+          co_borrower_occupation: string | null
+          co_borrower_year_started: string | null
+          co_borrowers: string | null
+          collateral_description: string | null
+          collateral_value: number | null
+          contact_method: string | null
+          country: string | null
+          created_at: string
+          current_estimated_value: number | null
+          current_lender: string | null
+          current_loan_balance: number | null
+          current_loan_in_default: string | null
+          current_loan_maturity_date: string | null
+          current_loan_rate: string | null
+          desired_amortization: string | null
+          desired_interest_rate: string | null
+          desired_term: string | null
+          email: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          first_name: string | null
+          funding_amount: string | null
+          funding_purpose: string | null
+          funding_timeline: string | null
+          guarantors: string | null
+          how_did_you_hear: string | null
+          id: string
+          last_name: string | null
+          loan_amount: number | null
+          loan_type: string | null
+          loan_type_other: string | null
+          newsletter_signup: boolean | null
+          number_of_units: string | null
+          phone: string | null
+          principal_name: string | null
+          property_owner_occupied: string | null
+          purchase_price: number | null
+          purpose_of_loan: string | null
+          referred_by: string | null
+          self_employed_business_type: string | null
+          square_footage: string | null
+          state: string | null
+          submitted_at: string
+          year_acquired: string | null
+          year_business_founded: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          additional_information?: string | null
+          address_line_1?: string | null
+          address_line_2?: string | null
+          annual_revenue?: string | null
+          borrower_bankruptcy?: string | null
+          borrower_credit_score?: string | null
+          borrower_current_employer?: string | null
+          borrower_occupation?: string | null
+          borrower_year_started?: string | null
+          business_description?: string | null
+          business_type?: string | null
+          cash_out?: string | null
+          cash_out_amount?: number | null
+          city?: string | null
+          co_borrower_bankruptcy?: string | null
+          co_borrower_credit_score?: string | null
+          co_borrower_current_employer?: string | null
+          co_borrower_occupation?: string | null
+          co_borrower_year_started?: string | null
+          co_borrowers?: string | null
+          collateral_description?: string | null
+          collateral_value?: number | null
+          contact_method?: string | null
+          country?: string | null
+          created_at?: string
+          current_estimated_value?: number | null
+          current_lender?: string | null
+          current_loan_balance?: number | null
+          current_loan_in_default?: string | null
+          current_loan_maturity_date?: string | null
+          current_loan_rate?: string | null
+          desired_amortization?: string | null
+          desired_interest_rate?: string | null
+          desired_term?: string | null
+          email?: string | null
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          first_name?: string | null
+          funding_amount?: string | null
+          funding_purpose?: string | null
+          funding_timeline?: string | null
+          guarantors?: string | null
+          how_did_you_hear?: string | null
+          id?: string
+          last_name?: string | null
+          loan_amount?: number | null
+          loan_type?: string | null
+          loan_type_other?: string | null
+          newsletter_signup?: boolean | null
+          number_of_units?: string | null
+          phone?: string | null
+          principal_name?: string | null
+          property_owner_occupied?: string | null
+          purchase_price?: number | null
+          purpose_of_loan?: string | null
+          referred_by?: string | null
+          self_employed_business_type?: string | null
+          square_footage?: string | null
+          state?: string | null
+          submitted_at?: string
+          year_acquired?: string | null
+          year_business_founded?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          additional_information?: string | null
+          address_line_1?: string | null
+          address_line_2?: string | null
+          annual_revenue?: string | null
+          borrower_bankruptcy?: string | null
+          borrower_credit_score?: string | null
+          borrower_current_employer?: string | null
+          borrower_occupation?: string | null
+          borrower_year_started?: string | null
+          business_description?: string | null
+          business_type?: string | null
+          cash_out?: string | null
+          cash_out_amount?: number | null
+          city?: string | null
+          co_borrower_bankruptcy?: string | null
+          co_borrower_credit_score?: string | null
+          co_borrower_current_employer?: string | null
+          co_borrower_occupation?: string | null
+          co_borrower_year_started?: string | null
+          co_borrowers?: string | null
+          collateral_description?: string | null
+          collateral_value?: number | null
+          contact_method?: string | null
+          country?: string | null
+          created_at?: string
+          current_estimated_value?: number | null
+          current_lender?: string | null
+          current_loan_balance?: number | null
+          current_loan_in_default?: string | null
+          current_loan_maturity_date?: string | null
+          current_loan_rate?: string | null
+          desired_amortization?: string | null
+          desired_interest_rate?: string | null
+          desired_term?: string | null
+          email?: string | null
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          first_name?: string | null
+          funding_amount?: string | null
+          funding_purpose?: string | null
+          funding_timeline?: string | null
+          guarantors?: string | null
+          how_did_you_hear?: string | null
+          id?: string
+          last_name?: string | null
+          loan_amount?: number | null
+          loan_type?: string | null
+          loan_type_other?: string | null
+          newsletter_signup?: boolean | null
+          number_of_units?: string | null
+          phone?: string | null
+          principal_name?: string | null
+          property_owner_occupied?: string | null
+          purchase_price?: number | null
+          purpose_of_loan?: string | null
+          referred_by?: string | null
+          self_employed_business_type?: string | null
+          square_footage?: string | null
+          state?: string | null
+          submitted_at?: string
+          year_acquired?: string | null
+          year_business_founded?: string | null
+          zip_code?: string | null
+        }
+        Relationships: []
       }
       deal_waiting_on: {
         Row: {
           created_at: string
           description: string | null
           due_date: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           lead_id: string
           owner: string
@@ -1018,6 +1369,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id: string
           owner: string
@@ -1029,6 +1381,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string
           owner?: string
@@ -1036,15 +1389,7 @@ export type Database = {
           resolved_by?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "deal_waiting_on_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       dropbox_connections: {
         Row: {
@@ -1099,6 +1444,7 @@ export type Database = {
           dropbox_path: string
           dropbox_path_display: string
           dropbox_rev: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           extracted_at: string | null
           extracted_text: string | null
           extraction_error: string | null
@@ -1120,6 +1466,7 @@ export type Database = {
           dropbox_path: string
           dropbox_path_display: string
           dropbox_rev?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           extracted_at?: string | null
           extracted_text?: string | null
           extraction_error?: string | null
@@ -1141,6 +1488,7 @@ export type Database = {
           dropbox_path?: string
           dropbox_path_display?: string
           dropbox_rev?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           extracted_at?: string | null
           extracted_text?: string | null
           extraction_error?: string | null
@@ -1155,19 +1503,12 @@ export type Database = {
           synced_at?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "dropbox_files_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       email_metadata: {
         Row: {
           created_at: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           gmail_message_id: string
           gmail_thread_id: string | null
           id: string
@@ -1183,6 +1524,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           gmail_message_id: string
           gmail_thread_id?: string | null
           id?: string
@@ -1198,6 +1540,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           gmail_message_id?: string
           gmail_thread_id?: string | null
           id?: string
@@ -1211,15 +1554,7 @@ export type Database = {
           user_id?: string
           waiting_on?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "email_metadata_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       email_templates: {
         Row: {
@@ -1266,6 +1601,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           created_at: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           is_triaged: boolean | null
           last_message_date: string | null
@@ -1281,6 +1617,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           created_at?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           is_triaged?: boolean | null
           last_message_date?: string | null
@@ -1296,6 +1633,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           created_at?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           is_triaged?: boolean | null
           last_message_date?: string | null
@@ -1316,11 +1654,293 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      entity_addresses: {
+        Row: {
+          address_line_1: string | null
+          address_line_2: string | null
+          address_type: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+          is_primary: boolean | null
+          state: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          address_type?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          is_primary?: boolean | null
+          state?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          address_type?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          is_primary?: boolean | null
+          state?: string | null
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
+      entity_contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+          is_primary: boolean | null
+          name: string
+          notes: string | null
+          phone: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          is_primary?: boolean | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          is_primary?: boolean | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      entity_emails: {
+        Row: {
+          created_at: string
+          email: string
+          email_type: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+          is_primary: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          email_type?: string | null
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          is_primary?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          email_type?: string | null
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          is_primary?: boolean | null
+        }
+        Relationships: []
+      }
+      entity_files: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      entity_followers: {
+        Row: {
+          created_at: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+          team_member_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          team_member_id: string
+        }
+        Update: {
+          created_at?: string | null
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          team_member_id?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "email_threads_lead_id_fkey"
-            columns: ["lead_id"]
+            foreignKeyName: "lead_followers_team_member_id_fkey"
+            columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "leads"
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entity_phones: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+          is_primary: boolean | null
+          phone_number: string
+          phone_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          is_primary?: boolean | null
+          phone_number: string
+          phone_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          is_primary?: boolean | null
+          phone_number?: string
+          phone_type?: string | null
+        }
+        Relationships: []
+      }
+      entity_projects: {
+        Row: {
+          bank_relationships: string | null
+          clx_file_name: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+          name: string
+          owner: string | null
+          priority: string | null
+          project_stage: string | null
+          related_to: string | null
+          status: string | null
+          tags: string[] | null
+          updated_at: string
+          visibility: string | null
+          waiting_on: string | null
+        }
+        Insert: {
+          bank_relationships?: string | null
+          clx_file_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          name: string
+          owner?: string | null
+          priority?: string | null
+          project_stage?: string | null
+          related_to?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          visibility?: string | null
+          waiting_on?: string | null
+        }
+        Update: {
+          bank_relationships?: string | null
+          clx_file_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          name?: string
+          owner?: string | null
+          priority?: string | null
+          project_stage?: string | null
+          related_to?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          visibility?: string | null
+          waiting_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_projects_owner_fkey"
+            columns: ["owner"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1331,6 +1951,7 @@ export type Database = {
           content: string
           created_at: string
           created_by: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           lead_id: string | null
         }
@@ -1339,6 +1960,7 @@ export type Database = {
           content: string
           created_at?: string
           created_by?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string | null
         }
@@ -1347,18 +1969,11 @@ export type Database = {
           content?: string
           created_at?: string
           created_by?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "feed_comments_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       feed_reactions: {
         Row: {
@@ -1540,821 +2155,6 @@ export type Database = {
           viewed_at?: string | null
         }
         Relationships: []
-      }
-      lead_activities: {
-        Row: {
-          activity_type: string
-          content: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          lead_id: string
-          title: string | null
-        }
-        Insert: {
-          activity_type: string
-          content?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          lead_id: string
-          title?: string | null
-        }
-        Update: {
-          activity_type?: string
-          content?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          lead_id?: string
-          title?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_activities_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_addresses: {
-        Row: {
-          address_line_1: string | null
-          address_line_2: string | null
-          address_type: string | null
-          city: string | null
-          country: string | null
-          created_at: string
-          id: string
-          is_primary: boolean | null
-          lead_id: string
-          state: string | null
-          zip_code: string | null
-        }
-        Insert: {
-          address_line_1?: string | null
-          address_line_2?: string | null
-          address_type?: string | null
-          city?: string | null
-          country?: string | null
-          created_at?: string
-          id?: string
-          is_primary?: boolean | null
-          lead_id: string
-          state?: string | null
-          zip_code?: string | null
-        }
-        Update: {
-          address_line_1?: string | null
-          address_line_2?: string | null
-          address_type?: string | null
-          city?: string | null
-          country?: string | null
-          created_at?: string
-          id?: string
-          is_primary?: boolean | null
-          lead_id?: string
-          state?: string | null
-          zip_code?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_addresses_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_checklist_items: {
-        Row: {
-          assigned_to: string | null
-          checklist_id: string
-          created_at: string
-          due_date: string | null
-          id: string
-          is_checked: boolean
-          position: number
-          text: string
-        }
-        Insert: {
-          assigned_to?: string | null
-          checklist_id: string
-          created_at?: string
-          due_date?: string | null
-          id?: string
-          is_checked?: boolean
-          position?: number
-          text: string
-        }
-        Update: {
-          assigned_to?: string | null
-          checklist_id?: string
-          created_at?: string
-          due_date?: string | null
-          id?: string
-          is_checked?: boolean
-          position?: number
-          text?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_checklist_items_checklist_id_fkey"
-            columns: ["checklist_id"]
-            isOneToOne: false
-            referencedRelation: "lead_checklists"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_checklists: {
-        Row: {
-          activity_id: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          lead_id: string
-          title: string
-        }
-        Insert: {
-          activity_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          lead_id: string
-          title?: string
-        }
-        Update: {
-          activity_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          lead_id?: string
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_checklists_activity_id_fkey"
-            columns: ["activity_id"]
-            isOneToOne: false
-            referencedRelation: "lead_activities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_checklists_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_connections: {
-        Row: {
-          connected_company: string | null
-          connected_lead_id: string | null
-          connected_name: string | null
-          created_at: string
-          id: string
-          lead_id: string
-          notes: string | null
-          relationship_type: string | null
-        }
-        Insert: {
-          connected_company?: string | null
-          connected_lead_id?: string | null
-          connected_name?: string | null
-          created_at?: string
-          id?: string
-          lead_id: string
-          notes?: string | null
-          relationship_type?: string | null
-        }
-        Update: {
-          connected_company?: string | null
-          connected_lead_id?: string | null
-          connected_name?: string | null
-          created_at?: string
-          id?: string
-          lead_id?: string
-          notes?: string | null
-          relationship_type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_connections_connected_lead_id_fkey"
-            columns: ["connected_lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_connections_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_contacts: {
-        Row: {
-          created_at: string
-          email: string | null
-          id: string
-          is_primary: boolean | null
-          lead_id: string
-          name: string
-          notes: string | null
-          phone: string | null
-          title: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email?: string | null
-          id?: string
-          is_primary?: boolean | null
-          lead_id: string
-          name: string
-          notes?: string | null
-          phone?: string | null
-          title?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string | null
-          id?: string
-          is_primary?: boolean | null
-          lead_id?: string
-          name?: string
-          notes?: string | null
-          phone?: string | null
-          title?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_contacts_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_emails: {
-        Row: {
-          created_at: string
-          email: string
-          email_type: string | null
-          id: string
-          is_primary: boolean | null
-          lead_id: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          email_type?: string | null
-          id?: string
-          is_primary?: boolean | null
-          lead_id: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          email_type?: string | null
-          id?: string
-          is_primary?: boolean | null
-          lead_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_emails_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_files: {
-        Row: {
-          created_at: string
-          file_name: string
-          file_size: number | null
-          file_type: string | null
-          file_url: string
-          id: string
-          lead_id: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          file_name: string
-          file_size?: number | null
-          file_type?: string | null
-          file_url: string
-          id?: string
-          lead_id: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          file_name?: string
-          file_size?: number | null
-          file_type?: string | null
-          file_url?: string
-          id?: string
-          lead_id?: string
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_files_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_followers: {
-        Row: {
-          created_at: string | null
-          id: string
-          lead_id: string
-          team_member_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          lead_id: string
-          team_member_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          lead_id?: string
-          team_member_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_followers_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_followers_team_member_id_fkey"
-            columns: ["team_member_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_lender_programs: {
-        Row: {
-          created_at: string
-          id: string
-          lead_id: string
-          notes: string | null
-          program_id: string
-          status: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          lead_id: string
-          notes?: string | null
-          program_id: string
-          status?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          lead_id?: string
-          notes?: string | null
-          program_id?: string
-          status?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_lender_programs_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_lender_programs_program_id_fkey"
-            columns: ["program_id"]
-            isOneToOne: false
-            referencedRelation: "lender_programs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_other_contacts: {
-        Row: {
-          contact_type: string
-          contact_value: string
-          created_at: string
-          id: string
-          lead_id: string
-        }
-        Insert: {
-          contact_type: string
-          contact_value: string
-          created_at?: string
-          id?: string
-          lead_id: string
-        }
-        Update: {
-          contact_type?: string
-          contact_value?: string
-          created_at?: string
-          id?: string
-          lead_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_other_contacts_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_phones: {
-        Row: {
-          created_at: string
-          id: string
-          is_primary: boolean | null
-          lead_id: string
-          phone_number: string
-          phone_type: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_primary?: boolean | null
-          lead_id: string
-          phone_number: string
-          phone_type?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_primary?: boolean | null
-          lead_id?: string
-          phone_number?: string
-          phone_type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_phones_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_projects: {
-        Row: {
-          bank_relationships: string | null
-          clx_file_name: string | null
-          created_at: string
-          created_by: string | null
-          description: string | null
-          due_date: string | null
-          id: string
-          lead_id: string
-          name: string
-          owner: string | null
-          priority: string | null
-          project_stage: string | null
-          related_to: string | null
-          status: string | null
-          tags: string[] | null
-          updated_at: string
-          visibility: string | null
-          waiting_on: string | null
-        }
-        Insert: {
-          bank_relationships?: string | null
-          clx_file_name?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          lead_id: string
-          name: string
-          owner?: string | null
-          priority?: string | null
-          project_stage?: string | null
-          related_to?: string | null
-          status?: string | null
-          tags?: string[] | null
-          updated_at?: string
-          visibility?: string | null
-          waiting_on?: string | null
-        }
-        Update: {
-          bank_relationships?: string | null
-          clx_file_name?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          lead_id?: string
-          name?: string
-          owner?: string | null
-          priority?: string | null
-          project_stage?: string | null
-          related_to?: string | null
-          status?: string | null
-          tags?: string[] | null
-          updated_at?: string
-          visibility?: string | null
-          waiting_on?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_projects_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_projects_owner_fkey"
-            columns: ["owner"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_responses: {
-        Row: {
-          additional_information: string | null
-          address_line_1: string | null
-          address_line_2: string | null
-          annual_revenue: string | null
-          borrower_bankruptcy: string | null
-          borrower_credit_score: string | null
-          borrower_current_employer: string | null
-          borrower_occupation: string | null
-          borrower_year_started: string | null
-          business_description: string | null
-          business_type: string | null
-          cash_out: string | null
-          cash_out_amount: number | null
-          city: string | null
-          co_borrower_bankruptcy: string | null
-          co_borrower_credit_score: string | null
-          co_borrower_current_employer: string | null
-          co_borrower_occupation: string | null
-          co_borrower_year_started: string | null
-          co_borrowers: string | null
-          collateral_description: string | null
-          collateral_value: number | null
-          contact_method: string | null
-          country: string | null
-          created_at: string
-          current_estimated_value: number | null
-          current_lender: string | null
-          current_loan_balance: number | null
-          current_loan_in_default: string | null
-          current_loan_maturity_date: string | null
-          current_loan_rate: string | null
-          desired_amortization: string | null
-          desired_interest_rate: string | null
-          desired_term: string | null
-          email: string | null
-          first_name: string | null
-          funding_amount: string | null
-          funding_purpose: string | null
-          funding_timeline: string | null
-          guarantors: string | null
-          how_did_you_hear: string | null
-          id: string
-          last_name: string | null
-          lead_id: string
-          loan_amount: number | null
-          loan_type: string | null
-          loan_type_other: string | null
-          newsletter_signup: boolean | null
-          number_of_units: string | null
-          phone: string | null
-          principal_name: string | null
-          property_owner_occupied: string | null
-          purchase_price: number | null
-          purpose_of_loan: string | null
-          referred_by: string | null
-          self_employed_business_type: string | null
-          square_footage: string | null
-          state: string | null
-          submitted_at: string
-          year_acquired: string | null
-          year_business_founded: string | null
-          zip_code: string | null
-        }
-        Insert: {
-          additional_information?: string | null
-          address_line_1?: string | null
-          address_line_2?: string | null
-          annual_revenue?: string | null
-          borrower_bankruptcy?: string | null
-          borrower_credit_score?: string | null
-          borrower_current_employer?: string | null
-          borrower_occupation?: string | null
-          borrower_year_started?: string | null
-          business_description?: string | null
-          business_type?: string | null
-          cash_out?: string | null
-          cash_out_amount?: number | null
-          city?: string | null
-          co_borrower_bankruptcy?: string | null
-          co_borrower_credit_score?: string | null
-          co_borrower_current_employer?: string | null
-          co_borrower_occupation?: string | null
-          co_borrower_year_started?: string | null
-          co_borrowers?: string | null
-          collateral_description?: string | null
-          collateral_value?: number | null
-          contact_method?: string | null
-          country?: string | null
-          created_at?: string
-          current_estimated_value?: number | null
-          current_lender?: string | null
-          current_loan_balance?: number | null
-          current_loan_in_default?: string | null
-          current_loan_maturity_date?: string | null
-          current_loan_rate?: string | null
-          desired_amortization?: string | null
-          desired_interest_rate?: string | null
-          desired_term?: string | null
-          email?: string | null
-          first_name?: string | null
-          funding_amount?: string | null
-          funding_purpose?: string | null
-          funding_timeline?: string | null
-          guarantors?: string | null
-          how_did_you_hear?: string | null
-          id?: string
-          last_name?: string | null
-          lead_id: string
-          loan_amount?: number | null
-          loan_type?: string | null
-          loan_type_other?: string | null
-          newsletter_signup?: boolean | null
-          number_of_units?: string | null
-          phone?: string | null
-          principal_name?: string | null
-          property_owner_occupied?: string | null
-          purchase_price?: number | null
-          purpose_of_loan?: string | null
-          referred_by?: string | null
-          self_employed_business_type?: string | null
-          square_footage?: string | null
-          state?: string | null
-          submitted_at?: string
-          year_acquired?: string | null
-          year_business_founded?: string | null
-          zip_code?: string | null
-        }
-        Update: {
-          additional_information?: string | null
-          address_line_1?: string | null
-          address_line_2?: string | null
-          annual_revenue?: string | null
-          borrower_bankruptcy?: string | null
-          borrower_credit_score?: string | null
-          borrower_current_employer?: string | null
-          borrower_occupation?: string | null
-          borrower_year_started?: string | null
-          business_description?: string | null
-          business_type?: string | null
-          cash_out?: string | null
-          cash_out_amount?: number | null
-          city?: string | null
-          co_borrower_bankruptcy?: string | null
-          co_borrower_credit_score?: string | null
-          co_borrower_current_employer?: string | null
-          co_borrower_occupation?: string | null
-          co_borrower_year_started?: string | null
-          co_borrowers?: string | null
-          collateral_description?: string | null
-          collateral_value?: number | null
-          contact_method?: string | null
-          country?: string | null
-          created_at?: string
-          current_estimated_value?: number | null
-          current_lender?: string | null
-          current_loan_balance?: number | null
-          current_loan_in_default?: string | null
-          current_loan_maturity_date?: string | null
-          current_loan_rate?: string | null
-          desired_amortization?: string | null
-          desired_interest_rate?: string | null
-          desired_term?: string | null
-          email?: string | null
-          first_name?: string | null
-          funding_amount?: string | null
-          funding_purpose?: string | null
-          funding_timeline?: string | null
-          guarantors?: string | null
-          how_did_you_hear?: string | null
-          id?: string
-          last_name?: string | null
-          lead_id?: string
-          loan_amount?: number | null
-          loan_type?: string | null
-          loan_type_other?: string | null
-          newsletter_signup?: boolean | null
-          number_of_units?: string | null
-          phone?: string | null
-          principal_name?: string | null
-          property_owner_occupied?: string | null
-          purchase_price?: number | null
-          purpose_of_loan?: string | null
-          referred_by?: string | null
-          self_employed_business_type?: string | null
-          square_footage?: string | null
-          state?: string | null
-          submitted_at?: string
-          year_acquired?: string | null
-          year_business_founded?: string | null
-          zip_code?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_responses_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_signals: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          id: string
-          lead_id: string
-          resolved_at: string | null
-          severity: string
-          signal_type: string
-          title: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          lead_id: string
-          resolved_at?: string | null
-          severity?: string
-          signal_type: string
-          title: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          lead_id?: string
-          resolved_at?: string | null
-          severity?: string
-          signal_type?: string
-          title?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_signals_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       leads: {
         Row: {
@@ -2576,6 +2376,259 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lender_management: {
+        Row: {
+          about: string | null
+          actual_net_revenue: number | null
+          assigned_to: string | null
+          bank_relationships: string | null
+          client_other_lenders: boolean
+          close_date: string | null
+          clx_agreement: boolean | null
+          clx_file_name: string | null
+          cohort_year: number | null
+          company_name: string | null
+          contact_type: string | null
+          converted_at: string | null
+          converted_to_client_id: string | null
+          created_at: string
+          deal_value: number | null
+          description: string | null
+          email: string | null
+          fee_percent: number | null
+          flagged_for_weekly: boolean
+          history: string | null
+          id: string
+          initial_nudge_created_at: string | null
+          invoice_amount: number | null
+          known_as: string | null
+          last_activity_at: string | null
+          last_contacted: string | null
+          lender_name: string | null
+          lender_type: string | null
+          loan_category: string | null
+          loan_stage: string | null
+          loss_reason: string | null
+          name: string
+          net_revenue: number | null
+          next_action: string | null
+          notes: string | null
+          opportunity_name: string | null
+          origin_pipeline_id: string | null
+          phone: string | null
+          potential_revenue: number | null
+          priority: string | null
+          qualified_at: string | null
+          referral_source: string | null
+          rs_fee_percent: number | null
+          rs_revenue: number | null
+          sheets_last_synced_at: string | null
+          sheets_row_index: number | null
+          sla_threshold_days: number | null
+          source: string | null
+          stage_id: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          tags: string[] | null
+          target_closing_date: string | null
+          title: string | null
+          updated_at: string
+          uw_number: string | null
+          visibility: string | null
+          volume_log_status: string | null
+          waiting_on: string | null
+          win_percentage: number | null
+          won: boolean | null
+          wu_date: string | null
+        }
+        Insert: {
+          about?: string | null
+          actual_net_revenue?: number | null
+          assigned_to?: string | null
+          bank_relationships?: string | null
+          client_other_lenders?: boolean
+          close_date?: string | null
+          clx_agreement?: boolean | null
+          clx_file_name?: string | null
+          cohort_year?: number | null
+          company_name?: string | null
+          contact_type?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          created_at?: string
+          deal_value?: number | null
+          description?: string | null
+          email?: string | null
+          fee_percent?: number | null
+          flagged_for_weekly?: boolean
+          history?: string | null
+          id?: string
+          initial_nudge_created_at?: string | null
+          invoice_amount?: number | null
+          known_as?: string | null
+          last_activity_at?: string | null
+          last_contacted?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
+          name: string
+          net_revenue?: number | null
+          next_action?: string | null
+          notes?: string | null
+          opportunity_name?: string | null
+          origin_pipeline_id?: string | null
+          phone?: string | null
+          potential_revenue?: number | null
+          priority?: string | null
+          qualified_at?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
+          sla_threshold_days?: number | null
+          source?: string | null
+          stage_id?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          target_closing_date?: string | null
+          title?: string | null
+          updated_at?: string
+          uw_number?: string | null
+          visibility?: string | null
+          volume_log_status?: string | null
+          waiting_on?: string | null
+          win_percentage?: number | null
+          won?: boolean | null
+          wu_date?: string | null
+        }
+        Update: {
+          about?: string | null
+          actual_net_revenue?: number | null
+          assigned_to?: string | null
+          bank_relationships?: string | null
+          client_other_lenders?: boolean
+          close_date?: string | null
+          clx_agreement?: boolean | null
+          clx_file_name?: string | null
+          cohort_year?: number | null
+          company_name?: string | null
+          contact_type?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          created_at?: string
+          deal_value?: number | null
+          description?: string | null
+          email?: string | null
+          fee_percent?: number | null
+          flagged_for_weekly?: boolean
+          history?: string | null
+          id?: string
+          initial_nudge_created_at?: string | null
+          invoice_amount?: number | null
+          known_as?: string | null
+          last_activity_at?: string | null
+          last_contacted?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
+          name?: string
+          net_revenue?: number | null
+          next_action?: string | null
+          notes?: string | null
+          opportunity_name?: string | null
+          origin_pipeline_id?: string | null
+          phone?: string | null
+          potential_revenue?: number | null
+          priority?: string | null
+          qualified_at?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
+          sla_threshold_days?: number | null
+          source?: string | null
+          stage_id?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          target_closing_date?: string | null
+          title?: string | null
+          updated_at?: string
+          uw_number?: string | null
+          visibility?: string | null
+          volume_log_status?: string | null
+          waiting_on?: string | null
+          win_percentage?: number | null
+          won?: boolean | null
+          wu_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_management_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_management_origin_pipeline_fkey"
+            columns: ["origin_pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_management_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lender_management_people: {
+        Row: {
+          created_at: string
+          id: string
+          lender_management_id: string
+          person_id: string
+          role: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lender_management_id: string
+          person_id: string
+          role?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lender_management_id?: string
+          person_id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_management_people_lender_management_id_fkey"
+            columns: ["lender_management_id"]
+            isOneToOne: false
+            referencedRelation: "lender_management"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_management_people_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -3037,6 +3090,7 @@ export type Database = {
           body_plain: string
           cc_emails: string | null
           created_at: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           error: string | null
           flow_id: string
           gmail_message_id: string | null
@@ -3058,6 +3112,7 @@ export type Database = {
           body_plain?: string
           cc_emails?: string | null
           created_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           error?: string | null
           flow_id: string
           gmail_message_id?: string | null
@@ -3079,6 +3134,7 @@ export type Database = {
           body_plain?: string
           cc_emails?: string | null
           created_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           error?: string | null
           flow_id?: string
           gmail_message_id?: string | null
@@ -3095,15 +3151,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "outbound_emails_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       partner_commissions: {
         Row: {
@@ -3186,6 +3234,7 @@ export type Database = {
           company_name: string | null
           created_at: string
           email: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           lead_id: string | null
           loan_amount: number | null
@@ -3203,6 +3252,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           email?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string | null
           loan_amount?: number | null
@@ -3220,6 +3270,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           email?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string | null
           loan_amount?: number | null
@@ -3233,15 +3284,7 @@ export type Database = {
           updated_at?: string
           urgency?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "partner_referrals_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       partner_tracking: {
         Row: {
@@ -3290,6 +3333,402 @@ export type Database = {
           },
         ]
       }
+      people: {
+        Row: {
+          about: string | null
+          assigned_to: string | null
+          company_id: string | null
+          company_name: string | null
+          contact_type: string | null
+          created_at: string
+          description: string | null
+          email: string | null
+          history: string | null
+          id: string
+          known_as: string | null
+          last_activity_at: string | null
+          last_contacted: string | null
+          linkedin: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          referral_source: string | null
+          source: string | null
+          tags: string[] | null
+          title: string | null
+          twitter: string | null
+          updated_at: string
+          website: string | null
+          work_website: string | null
+        }
+        Insert: {
+          about?: string | null
+          assigned_to?: string | null
+          company_id?: string | null
+          company_name?: string | null
+          contact_type?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          history?: string | null
+          id?: string
+          known_as?: string | null
+          last_activity_at?: string | null
+          last_contacted?: string | null
+          linkedin?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          referral_source?: string | null
+          source?: string | null
+          tags?: string[] | null
+          title?: string | null
+          twitter?: string | null
+          updated_at?: string
+          website?: string | null
+          work_website?: string | null
+        }
+        Update: {
+          about?: string | null
+          assigned_to?: string | null
+          company_id?: string | null
+          company_name?: string | null
+          contact_type?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          history?: string | null
+          id?: string
+          known_as?: string | null
+          last_activity_at?: string | null
+          last_contacted?: string | null
+          linkedin?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          referral_source?: string | null
+          source?: string | null
+          tags?: string[] | null
+          title?: string | null
+          twitter?: string | null
+          updated_at?: string
+          website?: string | null
+          work_website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_connections: {
+        Row: {
+          connected_company: string | null
+          connected_lead_id: string | null
+          connected_name: string | null
+          created_at: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+          notes: string | null
+          relationship_type: string | null
+        }
+        Insert: {
+          connected_company?: string | null
+          connected_lead_id?: string | null
+          connected_name?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          notes?: string | null
+          relationship_type?: string | null
+        }
+        Update: {
+          connected_company?: string | null
+          connected_lead_id?: string | null
+          connected_name?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          notes?: string | null
+          relationship_type?: string | null
+        }
+        Relationships: []
+      }
+      person_other_contacts: {
+        Row: {
+          contact_type: string
+          contact_value: string
+          created_at: string
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+        }
+        Insert: {
+          contact_type: string
+          contact_value: string
+          created_at?: string
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+        }
+        Update: {
+          contact_type?: string
+          contact_value?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+        }
+        Relationships: []
+      }
+      pipeline: {
+        Row: {
+          about: string | null
+          actual_net_revenue: number | null
+          assigned_to: string | null
+          bank_relationships: string | null
+          client_other_lenders: boolean
+          close_date: string | null
+          clx_agreement: boolean | null
+          clx_file_name: string | null
+          cohort_year: number | null
+          company_name: string | null
+          contact_type: string | null
+          converted_at: string | null
+          converted_to_client_id: string | null
+          created_at: string
+          deal_value: number | null
+          description: string | null
+          email: string | null
+          fee_percent: number | null
+          flagged_for_weekly: boolean
+          history: string | null
+          id: string
+          initial_nudge_created_at: string | null
+          invoice_amount: number | null
+          known_as: string | null
+          last_activity_at: string | null
+          last_contacted: string | null
+          lender_name: string | null
+          lender_type: string | null
+          linkedin: string | null
+          loan_category: string | null
+          loan_stage: string | null
+          loss_reason: string | null
+          name: string
+          net_revenue: number | null
+          next_action: string | null
+          notes: string | null
+          opportunity_name: string | null
+          phone: string | null
+          potential_revenue: number | null
+          priority: string | null
+          qualified_at: string | null
+          questionnaire_completed_at: string | null
+          questionnaire_sent_at: string | null
+          questionnaire_token: string | null
+          ratewatch_questionnaire_completed_at: string | null
+          ratewatch_questionnaire_sent_at: string | null
+          ratewatch_questionnaire_token: string | null
+          referral_source: string | null
+          rs_fee_percent: number | null
+          rs_revenue: number | null
+          sheets_last_synced_at: string | null
+          sheets_row_index: number | null
+          sla_threshold_days: number | null
+          source: string | null
+          stage_id: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          tags: string[] | null
+          target_closing_date: string | null
+          title: string | null
+          twitter: string | null
+          updated_at: string
+          uw_number: string | null
+          visibility: string | null
+          volume_log_status: string | null
+          waiting_on: string | null
+          website: string | null
+          win_percentage: number | null
+          won: boolean | null
+          work_website: string | null
+          wu_date: string | null
+        }
+        Insert: {
+          about?: string | null
+          actual_net_revenue?: number | null
+          assigned_to?: string | null
+          bank_relationships?: string | null
+          client_other_lenders?: boolean
+          close_date?: string | null
+          clx_agreement?: boolean | null
+          clx_file_name?: string | null
+          cohort_year?: number | null
+          company_name?: string | null
+          contact_type?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          created_at?: string
+          deal_value?: number | null
+          description?: string | null
+          email?: string | null
+          fee_percent?: number | null
+          flagged_for_weekly?: boolean
+          history?: string | null
+          id?: string
+          initial_nudge_created_at?: string | null
+          invoice_amount?: number | null
+          known_as?: string | null
+          last_activity_at?: string | null
+          last_contacted?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
+          linkedin?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
+          name: string
+          net_revenue?: number | null
+          next_action?: string | null
+          notes?: string | null
+          opportunity_name?: string | null
+          phone?: string | null
+          potential_revenue?: number | null
+          priority?: string | null
+          qualified_at?: string | null
+          questionnaire_completed_at?: string | null
+          questionnaire_sent_at?: string | null
+          questionnaire_token?: string | null
+          ratewatch_questionnaire_completed_at?: string | null
+          ratewatch_questionnaire_sent_at?: string | null
+          ratewatch_questionnaire_token?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
+          sla_threshold_days?: number | null
+          source?: string | null
+          stage_id?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          target_closing_date?: string | null
+          title?: string | null
+          twitter?: string | null
+          updated_at?: string
+          uw_number?: string | null
+          visibility?: string | null
+          volume_log_status?: string | null
+          waiting_on?: string | null
+          website?: string | null
+          win_percentage?: number | null
+          won?: boolean | null
+          work_website?: string | null
+          wu_date?: string | null
+        }
+        Update: {
+          about?: string | null
+          actual_net_revenue?: number | null
+          assigned_to?: string | null
+          bank_relationships?: string | null
+          client_other_lenders?: boolean
+          close_date?: string | null
+          clx_agreement?: boolean | null
+          clx_file_name?: string | null
+          cohort_year?: number | null
+          company_name?: string | null
+          contact_type?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          created_at?: string
+          deal_value?: number | null
+          description?: string | null
+          email?: string | null
+          fee_percent?: number | null
+          flagged_for_weekly?: boolean
+          history?: string | null
+          id?: string
+          initial_nudge_created_at?: string | null
+          invoice_amount?: number | null
+          known_as?: string | null
+          last_activity_at?: string | null
+          last_contacted?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
+          linkedin?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
+          name?: string
+          net_revenue?: number | null
+          next_action?: string | null
+          notes?: string | null
+          opportunity_name?: string | null
+          phone?: string | null
+          potential_revenue?: number | null
+          priority?: string | null
+          qualified_at?: string | null
+          questionnaire_completed_at?: string | null
+          questionnaire_sent_at?: string | null
+          questionnaire_token?: string | null
+          ratewatch_questionnaire_completed_at?: string | null
+          ratewatch_questionnaire_sent_at?: string | null
+          ratewatch_questionnaire_token?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
+          sla_threshold_days?: number | null
+          source?: string | null
+          stage_id?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          target_closing_date?: string | null
+          title?: string | null
+          twitter?: string | null
+          updated_at?: string
+          uw_number?: string | null
+          visibility?: string | null
+          volume_log_status?: string | null
+          waiting_on?: string | null
+          website?: string | null
+          win_percentage?: number | null
+          won?: boolean | null
+          work_website?: string | null
+          wu_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_column_values: {
         Row: {
           assigned_to_id: string | null
@@ -3299,6 +3738,7 @@ export type Database = {
           created_at: string
           date_value: string | null
           dropdown_value: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           lead_id: string
           number_value: number | null
@@ -3314,6 +3754,7 @@ export type Database = {
           created_at?: string
           date_value?: string | null
           dropdown_value?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id: string
           number_value?: number | null
@@ -3329,6 +3770,7 @@ export type Database = {
           created_at?: string
           date_value?: string | null
           dropdown_value?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string
           number_value?: number | null
@@ -3349,13 +3791,6 @@ export type Database = {
             columns: ["column_id"]
             isOneToOne: false
             referencedRelation: "pipeline_columns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pipeline_column_values_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -3458,6 +3893,45 @@ export type Database = {
             columns: ["stage_id"]
             isOneToOne: false
             referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_people: {
+        Row: {
+          created_at: string
+          id: string
+          person_id: string
+          pipeline_id: string
+          role: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          person_id: string
+          pipeline_id: string
+          role?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          person_id?: string
+          pipeline_id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_people_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_people_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline"
             referencedColumns: ["id"]
           },
         ]
@@ -3605,6 +4079,7 @@ export type Database = {
       project_people: {
         Row: {
           created_at: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           lead_id: string
           project_id: string
@@ -3612,6 +4087,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id: string
           project_id: string
@@ -3619,6 +4095,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           lead_id?: string
           project_id?: string
@@ -3626,17 +4103,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "project_people_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "project_people_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "lead_projects"
+            referencedRelation: "entity_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -3674,6 +4144,7 @@ export type Database = {
           created_at: string
           current_rate: number
           enrolled_at: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_cf: number | null
           id: string
           initial_review: string | null
@@ -3704,6 +4175,7 @@ export type Database = {
           created_at?: string
           current_rate: number
           enrolled_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_cf?: number | null
           id?: string
           initial_review?: string | null
@@ -3734,6 +4206,7 @@ export type Database = {
           created_at?: string
           current_rate?: number
           enrolled_at?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_cf?: number | null
           id?: string
           initial_review?: string | null
@@ -3756,15 +4229,7 @@ export type Database = {
           updated_at?: string
           variable_index_spread?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "rate_watch_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: true
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       ratewatch_questionnaire_responses: {
         Row: {
@@ -3778,6 +4243,7 @@ export type Database = {
           current_lender: string | null
           current_rate: number | null
           email: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_cash_flow: number | null
           first_name: string | null
           id: string
@@ -3810,6 +4276,7 @@ export type Database = {
           current_lender?: string | null
           current_rate?: number | null
           email?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_cash_flow?: number | null
           first_name?: string | null
           id?: string
@@ -3842,6 +4309,7 @@ export type Database = {
           current_lender?: string | null
           current_rate?: number | null
           email?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_cash_flow?: number | null
           first_name?: string | null
           id?: string
@@ -3863,15 +4331,7 @@ export type Database = {
           target_rate?: number | null
           variable_index_spread?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "ratewatch_questionnaire_responses_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       revenue_targets: {
         Row: {
@@ -4057,6 +4517,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           due_date: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_hours: number | null
           group_name: string | null
           id: string
@@ -4077,6 +4538,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_hours?: number | null
           group_name?: string | null
           id?: string
@@ -4097,6 +4559,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_hours?: number | null
           group_name?: string | null
           id?: string
@@ -4113,13 +4576,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "evan_tasks_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "tasks_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
@@ -4132,6 +4588,7 @@ export type Database = {
         Row: {
           created_at: string
           days_in_pipeline: number
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           fee_earned: number
           funded_at: string
           id: string
@@ -4144,6 +4601,7 @@ export type Database = {
         Insert: {
           created_at?: string
           days_in_pipeline?: number
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           fee_earned?: number
           funded_at?: string
           id?: string
@@ -4156,6 +4614,7 @@ export type Database = {
         Update: {
           created_at?: string
           days_in_pipeline?: number
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           fee_earned?: number
           funded_at?: string
           id?: string
@@ -4166,13 +4625,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "team_funded_deals_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "team_funded_deals_team_member_id_fkey"
             columns: ["team_member_id"]
@@ -4220,6 +4672,338 @@ export type Database = {
           },
         ]
       }
+      underwriting: {
+        Row: {
+          about: string | null
+          actual_net_revenue: number | null
+          assigned_to: string | null
+          bank_relationships: string | null
+          client_other_lenders: boolean
+          close_date: string | null
+          clx_agreement: boolean | null
+          clx_file_name: string | null
+          cohort_year: number | null
+          company_name: string | null
+          contact_type: string | null
+          converted_at: string | null
+          converted_to_client_id: string | null
+          created_at: string
+          deal_value: number | null
+          description: string | null
+          email: string | null
+          fee_percent: number | null
+          flagged_for_weekly: boolean
+          history: string | null
+          id: string
+          initial_nudge_created_at: string | null
+          invoice_amount: number | null
+          known_as: string | null
+          last_activity_at: string | null
+          last_contacted: string | null
+          lender_name: string | null
+          lender_type: string | null
+          loan_category: string | null
+          loan_stage: string | null
+          loss_reason: string | null
+          name: string
+          net_revenue: number | null
+          next_action: string | null
+          notes: string | null
+          opportunity_name: string | null
+          origin_pipeline_id: string | null
+          phone: string | null
+          potential_revenue: number | null
+          priority: string | null
+          qualified_at: string | null
+          referral_source: string | null
+          rs_fee_percent: number | null
+          rs_revenue: number | null
+          sheets_last_synced_at: string | null
+          sheets_row_index: number | null
+          sla_threshold_days: number | null
+          source: string | null
+          stage_id: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          tags: string[] | null
+          target_closing_date: string | null
+          title: string | null
+          updated_at: string
+          uw_number: string | null
+          visibility: string | null
+          volume_log_status: string | null
+          waiting_on: string | null
+          win_percentage: number | null
+          won: boolean | null
+          wu_date: string | null
+        }
+        Insert: {
+          about?: string | null
+          actual_net_revenue?: number | null
+          assigned_to?: string | null
+          bank_relationships?: string | null
+          client_other_lenders?: boolean
+          close_date?: string | null
+          clx_agreement?: boolean | null
+          clx_file_name?: string | null
+          cohort_year?: number | null
+          company_name?: string | null
+          contact_type?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          created_at?: string
+          deal_value?: number | null
+          description?: string | null
+          email?: string | null
+          fee_percent?: number | null
+          flagged_for_weekly?: boolean
+          history?: string | null
+          id?: string
+          initial_nudge_created_at?: string | null
+          invoice_amount?: number | null
+          known_as?: string | null
+          last_activity_at?: string | null
+          last_contacted?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
+          name: string
+          net_revenue?: number | null
+          next_action?: string | null
+          notes?: string | null
+          opportunity_name?: string | null
+          origin_pipeline_id?: string | null
+          phone?: string | null
+          potential_revenue?: number | null
+          priority?: string | null
+          qualified_at?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
+          sla_threshold_days?: number | null
+          source?: string | null
+          stage_id?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          target_closing_date?: string | null
+          title?: string | null
+          updated_at?: string
+          uw_number?: string | null
+          visibility?: string | null
+          volume_log_status?: string | null
+          waiting_on?: string | null
+          win_percentage?: number | null
+          won?: boolean | null
+          wu_date?: string | null
+        }
+        Update: {
+          about?: string | null
+          actual_net_revenue?: number | null
+          assigned_to?: string | null
+          bank_relationships?: string | null
+          client_other_lenders?: boolean
+          close_date?: string | null
+          clx_agreement?: boolean | null
+          clx_file_name?: string | null
+          cohort_year?: number | null
+          company_name?: string | null
+          contact_type?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          created_at?: string
+          deal_value?: number | null
+          description?: string | null
+          email?: string | null
+          fee_percent?: number | null
+          flagged_for_weekly?: boolean
+          history?: string | null
+          id?: string
+          initial_nudge_created_at?: string | null
+          invoice_amount?: number | null
+          known_as?: string | null
+          last_activity_at?: string | null
+          last_contacted?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
+          name?: string
+          net_revenue?: number | null
+          next_action?: string | null
+          notes?: string | null
+          opportunity_name?: string | null
+          origin_pipeline_id?: string | null
+          phone?: string | null
+          potential_revenue?: number | null
+          priority?: string | null
+          qualified_at?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
+          sla_threshold_days?: number | null
+          source?: string | null
+          stage_id?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          target_closing_date?: string | null
+          title?: string | null
+          updated_at?: string
+          uw_number?: string | null
+          visibility?: string | null
+          volume_log_status?: string | null
+          waiting_on?: string | null
+          win_percentage?: number | null
+          won?: boolean | null
+          wu_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "underwriting_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "underwriting_origin_pipeline_fkey"
+            columns: ["origin_pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "underwriting_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      underwriting_checklist_items: {
+        Row: {
+          assigned_to: string | null
+          checklist_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          is_checked: boolean
+          position: number
+          text: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          checklist_id: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          is_checked?: boolean
+          position?: number
+          text: string
+        }
+        Update: {
+          assigned_to?: string | null
+          checklist_id?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          is_checked?: boolean
+          position?: number
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_checklist_items_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "underwriting_checklists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      underwriting_checklists: {
+        Row: {
+          activity_id: string | null
+          created_at: string
+          created_by: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+          title: string
+        }
+        Insert: {
+          activity_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          title?: string
+        }
+        Update: {
+          activity_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_checklists_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      underwriting_people: {
+        Row: {
+          created_at: string
+          id: string
+          person_id: string
+          role: string | null
+          underwriting_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          person_id: string
+          role?: string | null
+          underwriting_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          person_id?: string
+          role?: string | null
+          underwriting_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "underwriting_people_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "underwriting_people_underwriting_id_fkey"
+            columns: ["underwriting_id"]
+            isOneToOne: false
+            referencedRelation: "underwriting"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           address: string | null
@@ -4235,11 +5019,10 @@ export type Database = {
           is_owner: boolean | null
           name: string
           phone: string | null
-          role: string | null
+          position: string | null
           state: string | null
           updated_at: string
           user_id: string | null
-          user_type: string
           zip_code: string | null
         }
         Insert: {
@@ -4256,11 +5039,10 @@ export type Database = {
           is_owner?: boolean | null
           name: string
           phone?: string | null
-          role?: string | null
+          position?: string | null
           state?: string | null
           updated_at?: string
           user_id?: string | null
-          user_type?: string
           zip_code?: string | null
         }
         Update: {
@@ -4277,11 +5059,10 @@ export type Database = {
           is_owner?: boolean | null
           name?: string
           phone?: string | null
-          role?: string | null
+          position?: string | null
           state?: string | null
           updated_at?: string
           user_id?: string | null
-          user_type?: string
           zip_code?: string | null
         }
         Relationships: []
@@ -4395,7 +5176,7 @@ export type Database = {
           id: string
           is_owner: boolean
           name: string
-          role: string
+          position: string
         }[]
       }
       has_role: {
@@ -4416,6 +5197,12 @@ export type Database = {
         | "signed"
         | "expired"
         | "cancelled"
+      entity_type_enum:
+        | "pipeline"
+        | "underwriting"
+        | "lender_management"
+        | "people"
+        | "companies"
       invoice_status:
         | "draft"
         | "sent"
@@ -4594,6 +5381,13 @@ export const Constants = {
         "expired",
         "cancelled",
       ],
+      entity_type_enum: [
+        "pipeline",
+        "underwriting",
+        "lender_management",
+        "people",
+        "companies",
+      ],
       invoice_status: [
         "draft",
         "sent",
@@ -4642,3 +5436,36 @@ export const Constants = {
     },
   },
 } as const
+
+// ==========================================
+// Type aliases for the 5 CRM tables
+// ==========================================
+export type PipelineDeal = Database['public']['Tables']['pipeline']['Row']
+export type PipelineDealInsert = Database['public']['Tables']['pipeline']['Insert']
+export type PipelineDealUpdate = Database['public']['Tables']['pipeline']['Update']
+
+export type UnderwritingDeal = Database['public']['Tables']['underwriting']['Row']
+export type UnderwritingDealInsert = Database['public']['Tables']['underwriting']['Insert']
+export type UnderwritingDealUpdate = Database['public']['Tables']['underwriting']['Update']
+
+export type LenderManagementDeal = Database['public']['Tables']['lender_management']['Row']
+export type LenderManagementDealInsert = Database['public']['Tables']['lender_management']['Insert']
+export type LenderManagementDealUpdate = Database['public']['Tables']['lender_management']['Update']
+
+export type Person = Database['public']['Tables']['people']['Row']
+export type PersonInsert = Database['public']['Tables']['people']['Insert']
+export type PersonUpdate = Database['public']['Tables']['people']['Update']
+
+export type Company = Database['public']['Tables']['companies']['Row']
+export type CompanyInsert = Database['public']['Tables']['companies']['Insert']
+export type CompanyUpdate = Database['public']['Tables']['companies']['Update']
+
+// Junction table types
+export type PipelinePerson = Database['public']['Tables']['pipeline_people']['Row']
+export type UnderwritingPerson = Database['public']['Tables']['underwriting_people']['Row']
+export type LenderManagementPerson = Database['public']['Tables']['lender_management_people']['Row']
+export type CompanyPerson = Database['public']['Tables']['company_people']['Row']
+
+// Entity type enum
+export type EntityType = Database['public']['Enums']['entity_type_enum']
+

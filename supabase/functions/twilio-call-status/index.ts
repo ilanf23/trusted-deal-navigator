@@ -224,6 +224,7 @@ Deno.serve(async (req) => {
               status: effectiveStatus,
               content: `${activeCall.direction === 'inbound' ? 'Incoming' : 'Outgoing'} call - ${effectiveStatus}`,
               call_sid: callSid,
+              team_member_id: activeCall.team_member_id || null,
             });
           console.log('Communication logged with call_sid');
         } else {

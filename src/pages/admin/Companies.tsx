@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { useUndo } from '@/contexts/UndoContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useAllPipelineLeads, DerivedCompany } from '@/hooks/useAllPipelineLeads';
+import { useCompanies } from '@/hooks/useAllPipelineLeads';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -397,25 +397,24 @@ const Companies = () => {
   // ── Contact type update mutation for Kanban drag ──
   const contactTypeMutation = useMutation({
     mutationFn: async ({ companyId, newType, oldType }: { companyId: string; newType: string; oldType: string }) => {
-      // companyId is the first lead's ID; get company_name from it
       const company = companies.find(c => c.id === companyId);
       if (!company) throw new Error('Company not found');
       const { error } = await supabase
-        .from('leads')
+        .from('companies')
         .update({ contact_type: newType })
-        .eq('company_name', company.company_name);
+        .eq('id', companyId);
       if (error) throw error;
-      return { companyName: company.company_name, oldType, newType };
+      return { companyName: company.company_name, companyId, oldType, newType };
     },
-    onSuccess: ({ companyName, oldType, newType }) => {
-      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+    onSuccess: ({ companyName, companyId, oldType, newType }) => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
       toast.success('Contact type updated');
       registerUndo({
         label: `Changed "${companyName}" type to "${newType}"`,
         execute: async () => {
-          const { error } = await supabase.from('leads').update({ contact_type: oldType }).eq('company_name', companyName);
+          const { error } = await supabase.from('companies').update({ contact_type: oldType }).eq('id', companyId);
           if (error) throw error;
-          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          queryClient.invalidateQueries({ queryKey: ['companies'] });
         },
       });
     },
@@ -431,68 +430,40 @@ const Companies = () => {
 
   const createCompanyMutation = useMutation({
     mutationFn: async (data: typeof newCompany) => {
-      // Insert as a lead
-      const { data: lead, error } = await supabase
-        .from('leads')
+      const { data: company, error } = await supabase
+        .from('companies')
         .insert({
-          name: data.contact_name || data.company_name,
           company_name: data.company_name,
-          phone: data.phone || null,
           website: data.website || null,
-          email: data.email_domain ? `contact@${data.email_domain}` : null,
           contact_type: data.contact_type,
-          status: 'initial_review',
         })
         .select()
         .single();
       if (error) throw error;
 
-      // Add to default (Potential) pipeline
-      const { data: pipeline } = await supabase
-        .from('pipelines')
-        .select('id')
-        .eq('is_main', true)
-        .maybeSingle();
-      if (pipeline) {
-        const { data: stage } = await supabase
-          .from('pipeline_stages')
-          .select('id')
-          .eq('pipeline_id', pipeline.id)
-          .order('position', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (stage) {
-          await supabase.from('pipeline_leads').insert({
-            lead_id: lead.id,
-            pipeline_id: pipeline.id,
-            stage_id: stage.id,
-          });
-        }
-      }
-
       return {
-        id: lead.id,
-        company_name: data.company_name,
+        id: company.id,
+        company_name: company.company_name,
         contact_name: data.contact_name || null,
         phone: data.phone || null,
-        website: data.website || null,
+        website: company.website,
         email_domain: data.email_domain || null,
-        contact_type: data.contact_type,
-        tags: null,
-        assigned_to: null,
-        notes: null,
-        source: null,
-        last_activity_at: null,
+        contact_type: company.contact_type,
+        tags: company.tags,
+        assigned_to: company.assigned_to,
+        notes: company.notes,
+        source: company.source,
+        last_activity_at: company.last_activity_at,
         known_as: null,
         clx_file_name: null,
         bank_relationships: null,
-        created_at: lead.created_at,
-        updated_at: lead.updated_at,
-        deals_count: 1,
+        created_at: company.created_at,
+        updated_at: company.updated_at,
+        deals_count: 0,
       } as Company;
     },
     onSuccess: (company) => {
-      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
       setAddCompanyOpen(false);
       setNewCompany({ company_name: '', contact_name: '', phone: '', website: '', email_domain: '', contact_type: 'Prospect' });
       toast.success(`"${company.company_name}" added as ${company.contact_type}`);
@@ -500,10 +471,10 @@ const Companies = () => {
       registerUndo({
         label: `Created "${company.company_name}"`,
         execute: async () => {
-          const { error } = await supabase.from('leads').delete().eq('id', company.id);
+          const { error } = await supabase.from('companies').delete().eq('id', company.id);
           if (error) throw error;
           setSelectedCompany(null);
-          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          queryClient.invalidateQueries({ queryKey: ['companies'] });
         },
       });
     },
@@ -548,8 +519,8 @@ const Companies = () => {
   }
 
   // ── Queries ──
-  const { companies: rawCompanies, isLoading } = useAllPipelineLeads();
-  const companies = rawCompanies as Company[];
+  const { data: rawCompanies = [], isLoading } = useCompanies();
+  const companies = rawCompanies as unknown as Company[];
 
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members-companies'],
@@ -1337,7 +1308,7 @@ const Companies = () => {
               }}
               onCompanyUpdate={(updatedCompany) => {
                 setSelectedCompany(updatedCompany as any);
-                queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+                queryClient.invalidateQueries({ queryKey: ['companies'] });
               }}
             />
           )}

@@ -54,12 +54,13 @@ import {
   formatPhoneNumber,
 } from './InlineEditableFields';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
+type Lead = Database['public']['Tables']['underwriting']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 interface LeadEmail {
   id: string;
-  lead_id: string;
+  entity_id: string;
+  entity_type: string;
   email: string;
   email_type: string;
   is_primary: boolean;
@@ -67,7 +68,8 @@ interface LeadEmail {
 
 interface LeadPhone {
   id: string;
-  lead_id: string;
+  entity_id: string;
+  entity_type: string;
   phone_number: string;
   phone_type: string;
   is_primary: boolean;
@@ -75,7 +77,8 @@ interface LeadPhone {
 
 interface LeadAddress {
   id: string;
-  lead_id: string;
+  entity_id: string;
+  entity_type: string;
   address_type: string;
   address_line_1: string | null;
   address_line_2: string | null;
@@ -88,7 +91,8 @@ interface LeadAddress {
 
 interface LeadFile {
   id: string;
-  lead_id: string;
+  entity_id: string;
+  entity_type: string;
   file_name: string;
   file_url: string;
   file_type: string | null;
@@ -384,10 +388,10 @@ export default function UnderwritingExpandedView() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const teamMemberId = teamMember?.id;
   const { data: isFollowing = false } = useQuery({
-    queryKey: ['lead-follow', leadId, teamMemberId],
+    queryKey: ['entity-follow', leadId, teamMemberId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_followers').select('id')
-        .eq('lead_id', leadId!).eq('team_member_id', teamMemberId!).maybeSingle();
+      const { data } = await supabase.from('entity_followers').select('id')
+        .eq('entity_id', leadId!).eq('entity_type', 'underwriting').eq('team_member_id', teamMemberId!).maybeSingle();
       return !!data;
     },
     enabled: !!leadId && !!teamMemberId,
@@ -395,26 +399,25 @@ export default function UnderwritingExpandedView() {
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
       if (isFollowing) {
-        await supabase.from('lead_followers').delete().eq('lead_id', leadId!).eq('team_member_id', teamMemberId!);
+        await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('entity_type', 'underwriting').eq('team_member_id', teamMemberId!);
       } else {
-        await supabase.from('lead_followers').insert({ lead_id: leadId!, team_member_id: teamMemberId! });
+        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'underwriting', team_member_id: teamMemberId! });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-follow', leadId, teamMemberId] });
+      queryClient.invalidateQueries({ queryKey: ['entity-follow', leadId, teamMemberId] });
       toast.success(isFollowing ? 'Unfollowed' : 'Following');
     },
   });
   const handleDeleteLead = useCallback(async () => {
     if (!leadId) return;
-    await supabase.from('pipeline_leads').delete().eq('lead_id', leadId);
-    await supabase.from('lead_files').delete().eq('lead_id', leadId);
-    await supabase.from('lead_activities').delete().eq('lead_id', leadId);
+    await supabase.from('entity_files').delete().eq('entity_id', leadId).eq('entity_type', 'underwriting');
+    await supabase.from('activities').delete().eq('entity_id', leadId).eq('entity_type', 'underwriting');
     await supabase.from('tasks').delete().eq('lead_id', leadId);
-    const { error } = await supabase.from('leads').delete().eq('id', leadId);
+    const { error } = await supabase.from('underwriting').delete().eq('id', leadId);
     if (error) { toast.error('Failed to delete'); return; }
     toast.success('Deleted');
-    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
     navigate(-1);
   }, [leadId, queryClient, navigate]);
 
@@ -466,10 +469,10 @@ export default function UnderwritingExpandedView() {
   // ── Stage change handler ──
   const handleStageChange = useCallback(async (newStatus: LeadStatus) => {
     if (!leadId) return;
-    const { data: current } = await supabase.from('leads').select('status').eq('id', leadId).single();
+    const { data: current } = await supabase.from('underwriting').select('status').eq('id', leadId).single();
     const previousStatus = current?.status as LeadStatus | null;
     const { error } = await supabase
-      .from('leads')
+      .from('underwriting')
       .update({ status: newStatus })
       .eq('id', leadId);
     if (error) {
@@ -479,40 +482,39 @@ export default function UnderwritingExpandedView() {
     registerUndo({
       label: `Stage changed to ${canonicalStageConfig[newStatus]?.title ?? newStatus}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
+        const { error: e } = await supabase.from('underwriting').update({ status: previousStatus }).eq('id', leadId);
         if (e) throw e;
-        queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
-        queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+        queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
       },
     });
     toast.success('Stage updated');
-    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
   }, [leadId, queryClient, registerUndo]);
 
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
-    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
-    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
     if (!isUndoingRef.current) toast.success('Updated');
   }, [leadId, queryClient, isUndoingRef]);
 
   const handleBooleanToggle = useCallback(async (field: string, currentVal: boolean) => {
     if (!leadId) return;
-    const { error } = await supabase.from('leads').update({ [field]: !currentVal }).eq('id', leadId);
+    const { error } = await supabase.from('underwriting').update({ [field]: !currentVal }).eq('id', leadId);
     if (error) { toast.error('Failed to save'); return; }
     registerUndo({
       label: `Toggled ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ [field]: currentVal }).eq('id', leadId);
+        const { error: e } = await supabase.from('underwriting').update({ [field]: currentVal }).eq('id', leadId);
         if (e) throw e;
-        queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
-        queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+        queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
       },
     });
-    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
     toast.success('Updated');
   }, [leadId, queryClient, registerUndo]);
 
@@ -527,8 +529,9 @@ export default function UnderwritingExpandedView() {
       return;
     }
     setSavingActivity(true);
-    const { error } = await supabase.from('lead_activities').insert({
-      lead_id: leadId,
+    const { error } = await supabase.from('activities').insert({
+      entity_id: leadId,
+      entity_type: 'underwriting',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -539,12 +542,12 @@ export default function UnderwritingExpandedView() {
       return;
     }
     // Reset inactive days timer
-    await supabase.from('leads').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
+    await supabase.from('underwriting').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote('');
     else setNoteContent('');
-    queryClient.invalidateQueries({ queryKey: ['lead-activities', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-activities', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
   }, [leadId, activityTab, activityType, activityNote, noteContent, queryClient]);
 
   // ── Save checklist ──
@@ -558,11 +561,12 @@ export default function UnderwritingExpandedView() {
     );
     const content = `<strong>${checklistTitle}</strong><br/>${lines.join('<br/>')}`;
 
-    // 1. Insert lead_activities row
+    // 1. Insert activities row
     const { data: actData, error: actErr } = await supabase
-      .from('lead_activities')
+      .from('activities')
       .insert({
-        lead_id: leadId,
+        entity_id: leadId,
+        entity_type: 'underwriting',
         activity_type: 'checklist',
         content,
         title: checklistTitle || 'Checklist',
@@ -576,11 +580,12 @@ export default function UnderwritingExpandedView() {
       return;
     }
 
-    // 2. Insert lead_checklists row
+    // 2. Insert underwriting_checklists row
     const { data: clData, error: clErr } = await supabase
-      .from('lead_checklists')
+      .from('underwriting_checklists')
       .insert({
-        lead_id: leadId,
+        entity_id: leadId,
+        entity_type: 'underwriting',
         title: checklistTitle || 'Checklist',
         created_by: teamMember?.name ?? null,
         activity_id: actData.id,
@@ -601,10 +606,10 @@ export default function UnderwritingExpandedView() {
       is_checked: item.is_checked,
       position: idx,
     }));
-    await supabase.from('lead_checklist_items').insert(itemRows);
+    await supabase.from('underwriting_checklist_items').insert(itemRows);
 
     // 4. Stamp last_activity_at
-    await supabase.from('leads').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
+    await supabase.from('underwriting').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
 
     setSavingChecklist(false);
     toast.success('Checklist saved');
@@ -614,9 +619,9 @@ export default function UnderwritingExpandedView() {
     setNewItemText('');
     setChecklistTabVisible(false);
     setActivityTab('checklist');
-    queryClient.invalidateQueries({ queryKey: ['lead-activities', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['lead-saved-checklists', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-activities', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-saved-checklists', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
   }, [leadId, checklistTitle, checklistItems, teamMember, queryClient]);
 
   // ── Save checklist as template ──
@@ -674,7 +679,7 @@ export default function UnderwritingExpandedView() {
       return;
     }
     setCommentTexts((prev) => ({ ...prev, [activityId]: '' }));
-    queryClient.invalidateQueries({ queryKey: ['activity-comments', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-activity-comments', leadId] });
   }, [leadId, commentTexts, teamMember, queryClient]);
 
   // ── Toggle task completion ──
@@ -717,7 +722,7 @@ export default function UnderwritingExpandedView() {
     setEventEndTime('10:00');
     setEventType('meeting');
     setEventDescription('');
-    queryClient.invalidateQueries({ queryKey: ['lead-appointments', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-appointments', leadId] });
   }, [leadId, eventTitle, eventDate, eventTime, eventEndTime, eventType, eventDescription, queryClient]);
 
   // ── Delete calendar event ──
@@ -734,20 +739,21 @@ export default function UnderwritingExpandedView() {
         execute: async () => {
           const { error: e } = await supabase.from('appointments').insert(eventData);
           if (e) throw e;
-          queryClient.invalidateQueries({ queryKey: ['lead-appointments', leadId] });
+          queryClient.invalidateQueries({ queryKey: ['underwriting-appointments', leadId] });
         },
       });
     }
     toast.success('Event deleted');
-    queryClient.invalidateQueries({ queryKey: ['lead-appointments', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-appointments', leadId] });
   }, [leadId, queryClient, registerUndo]);
 
   const handleInlineCreateProject = useCallback(async () => {
     if (!newProjectName.trim() || !leadId) return;
     setSavingProject(true);
     try {
-      const { error } = await supabase.from('lead_projects').insert({
-        lead_id: leadId,
+      const { error } = await supabase.from('entity_projects').insert({
+        entity_id: leadId,
+        entity_type: 'underwriting',
         name: newProjectName.trim(),
         status: 'open',
         project_stage: 'open',
@@ -756,7 +762,7 @@ export default function UnderwritingExpandedView() {
       });
       if (error) throw error;
       toast.success('Project created');
-      queryClient.invalidateQueries({ queryKey: ['lead-projects', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['underwriting-projects', leadId] });
       setNewProjectName('');
       setShowAddProject(false);
     } catch {
@@ -770,8 +776,9 @@ export default function UnderwritingExpandedView() {
   const handleLinkPerson = useCallback(async (person: { id: string; name: string; title: string | null; email?: string | null }) => {
     if (!leadId) return;
     setSavingContact(true);
-    const { error } = await supabase.from('lead_contacts').insert({
-      lead_id: leadId,
+    const { error } = await supabase.from('entity_contacts').insert({
+      entity_id: leadId,
+      entity_type: 'underwriting',
       name: person.name,
       title: person.title || null,
       email: person.email || null,
@@ -784,17 +791,17 @@ export default function UnderwritingExpandedView() {
     toast.success('Contact added');
     setContactSearchQuery('');
     setAddingContact(false);
-    queryClient.invalidateQueries({ queryKey: ['lead-contacts', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-contacts', leadId] });
   }, [leadId, queryClient]);
 
   // ── Update contact (Related sidebar) ──
   const updateContactMutation = useMutation({
     mutationFn: async ({ contactId, name, title }: { contactId: string; name: string; title: string }) => {
-      const { error } = await supabase.from('lead_contacts').update({ name, title: title || null }).eq('id', contactId);
+      const { error } = await supabase.from('entity_contacts').update({ name, title: title || null }).eq('id', contactId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-contacts', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['underwriting-contacts', leadId] });
       toast.success('Contact updated');
     },
     onError: () => toast.error('Failed to update contact'),
@@ -803,11 +810,11 @@ export default function UnderwritingExpandedView() {
   // ── Delete contact (Related sidebar) ──
   const deleteContactMutation = useMutation({
     mutationFn: async (contactId: string) => {
-      const { error } = await supabase.from('lead_contacts').delete().eq('id', contactId);
+      const { error } = await supabase.from('entity_contacts').delete().eq('id', contactId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-contacts', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['underwriting-contacts', leadId] });
       toast.success('Contact removed');
     },
     onError: () => toast.error('Failed to remove contact'),
@@ -821,7 +828,7 @@ export default function UnderwritingExpandedView() {
 
   const handleOpenPersonPanel = useCallback(async (personName: string) => {
     const { data } = await supabase
-      .from('leads')
+      .from('underwriting')
       .select('*')
       .ilike('name', personName)
       .limit(1)
@@ -852,7 +859,7 @@ export default function UnderwritingExpandedView() {
     if (!leadId || !newCompanyName.trim()) return;
     setSavingCompany(true);
     const { error } = await supabase
-      .from('leads')
+      .from('underwriting')
       .update({ company_name: newCompanyName.trim() })
       .eq('id', leadId);
     setSavingCompany(false);
@@ -863,8 +870,8 @@ export default function UnderwritingExpandedView() {
     toast.success('Company updated');
     setNewCompanyName('');
     setAddingCompany(false);
-    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
   }, [leadId, newCompanyName, queryClient]);
 
   // ── Save milestone (Related sidebar) ──
@@ -884,7 +891,7 @@ export default function UnderwritingExpandedView() {
     toast.success('Milestone added');
     setNewMilestoneName('');
     setAddingMilestone(false);
-    queryClient.invalidateQueries({ queryKey: ['lead-milestones', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-milestones', leadId] });
   }, [leadId, newMilestoneName, queryClient]);
 
   // ── Toggle milestone complete ──
@@ -900,7 +907,7 @@ export default function UnderwritingExpandedView() {
       toast.error('Failed to update milestone');
       return;
     }
-    queryClient.invalidateQueries({ queryKey: ['lead-milestones', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-milestones', leadId] });
   }, [leadId, queryClient]);
 
   // ── Save waiting on (Related sidebar) ──
@@ -921,7 +928,7 @@ export default function UnderwritingExpandedView() {
     setNewWaitingOwner('');
     setNewWaitingDesc('');
     setAddingWaitingOn(false);
-    queryClient.invalidateQueries({ queryKey: ['lead-waiting-on', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-waiting-on', leadId] });
   }, [leadId, newWaitingOwner, newWaitingDesc, queryClient]);
 
   // ── Resolve waiting on ──
@@ -935,7 +942,7 @@ export default function UnderwritingExpandedView() {
       return;
     }
     toast.success('Resolved');
-    queryClient.invalidateQueries({ queryKey: ['lead-waiting-on', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-waiting-on', leadId] });
   }, [leadId, queryClient]);
 
   // ── File upload ──
@@ -974,8 +981,9 @@ export default function UnderwritingExpandedView() {
       return;
     }
 
-    const { error: dbError } = await supabase.from('lead_files').insert({
-      lead_id: leadId,
+    const { error: dbError } = await supabase.from('entity_files').insert({
+      entity_id: leadId,
+      entity_type: 'underwriting',
       file_name: file.name,
       file_url: filePath,
       file_type: file.type || null,
@@ -995,7 +1003,7 @@ export default function UnderwritingExpandedView() {
     }
     console.log('[FileUpload] Underwriting: upload success', { filePath });
     toast.success('File uploaded');
-    queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-files', leadId] });
   }, [leadId, queryClient]);
 
   // ── File delete ──
@@ -1003,21 +1011,21 @@ export default function UnderwritingExpandedView() {
     // file_url stores the storage path directly
     await supabase.storage.from('lead-files').remove([file.file_url]);
 
-    const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
+    const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
     if (error) {
       toast.error('Failed to delete file');
       return;
     }
     toast.success('File deleted');
-    queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-files', leadId] });
   }, [leadId, queryClient]);
 
   // ── Queries ──
   const { data: lead, isLoading } = useQuery({
-    queryKey: ['lead-expanded', leadId],
+    queryKey: ['underwriting-expanded', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('underwriting')
         .select('*')
         .eq('id', leadId!)
         .single();
@@ -1028,9 +1036,9 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: contacts = [] } = useQuery({
-    queryKey: ['lead-contacts', leadId],
+    queryKey: ['underwriting-contacts', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_contacts').select('*').eq('lead_id', leadId!);
+      const { data } = await supabase.from('entity_contacts').select('*').eq('entity_id', leadId!).eq('entity_type', 'underwriting');
       return data ?? [];
     },
     enabled: !!leadId,
@@ -1050,12 +1058,13 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: projects = [] } = useQuery({
-    queryKey: ['lead-projects', leadId],
+    queryKey: ['underwriting-projects', leadId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_projects')
+        .from('entity_projects')
         .select('*')
-        .eq('lead_id', leadId!)
+        .eq('entity_id', leadId!)
+        .eq('entity_type', 'underwriting')
         .order('created_at', { ascending: false });
       return (data ?? []) as LeadProject[];
     },
@@ -1063,7 +1072,7 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: leadAppointments = [] } = useQuery({
-    queryKey: ['lead-appointments', leadId],
+    queryKey: ['underwriting-appointments', leadId],
     queryFn: async () => {
       const { data } = await supabase
         .from('appointments')
@@ -1076,7 +1085,7 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: milestones = [] } = useQuery({
-    queryKey: ['lead-milestones', leadId],
+    queryKey: ['underwriting-milestones', leadId],
     queryFn: async () => {
       const { data } = await supabase
         .from('deal_milestones')
@@ -1089,7 +1098,7 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: waitingOn = [] } = useQuery({
-    queryKey: ['lead-waiting-on', leadId],
+    queryKey: ['underwriting-waiting-on', leadId],
     queryFn: async () => {
       const { data } = await supabase
         .from('deal_waiting_on')
@@ -1103,12 +1112,13 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: leadFiles = [] } = useQuery({
-    queryKey: ['lead-files', leadId],
+    queryKey: ['underwriting-files', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_files')
+        .from('entity_files')
         .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('lead_id', leadId!)
+        .eq('entity_id', leadId!)
+        .eq('entity_type', 'underwriting')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as LeadFile[];
@@ -1117,12 +1127,13 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: activities = [] } = useQuery({
-    queryKey: ['lead-activities', leadId],
+    queryKey: ['underwriting-activities', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_activities')
+        .from('activities')
         .select('*')
-        .eq('lead_id', leadId!)
+        .eq('entity_id', leadId!)
+        .eq('entity_type', 'underwriting')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -1135,7 +1146,7 @@ export default function UnderwritingExpandedView() {
 
   // ── Activity comments query ──
   const { data: activityCommentsMap = {} } = useQuery({
-    queryKey: ['activity-comments', leadId],
+    queryKey: ['underwriting-activity-comments', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('activity_comments')
@@ -1154,17 +1165,18 @@ export default function UnderwritingExpandedView() {
 
   // ── Saved checklists query ──
   const { data: savedChecklists = [] } = useQuery<SavedChecklist[]>({
-    queryKey: ['lead-saved-checklists', leadId],
+    queryKey: ['underwriting-saved-checklists', leadId],
     queryFn: async () => {
       const { data: checklists, error: clErr } = await supabase
-        .from('lead_checklists')
+        .from('underwriting_checklists')
         .select('*')
-        .eq('lead_id', leadId!)
+        .eq('entity_id', leadId!)
+        .eq('entity_type', 'underwriting')
         .order('created_at', { ascending: false });
       if (clErr || !checklists || checklists.length === 0) return [];
       const ids = checklists.map((c) => c.id);
       const { data: items } = await supabase
-        .from('lead_checklist_items')
+        .from('underwriting_checklist_items')
         .select('*')
         .in('checklist_id', ids)
         .order('position');
@@ -1178,9 +1190,9 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: leadEmails = [] } = useQuery({
-    queryKey: ['lead-emails', leadId],
+    queryKey: ['underwriting-emails', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_emails').select('*').eq('lead_id', leadId!);
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadId!).eq('entity_type', 'underwriting');
       return (data || []) as LeadEmail[];
     },
     enabled: !!leadId,
@@ -1190,7 +1202,7 @@ export default function UnderwritingExpandedView() {
 
   // Related people from `people` table — matched by company name or business email domain
   const { data: relatedPeople = [] } = useQuery({
-    queryKey: ['lead-related-people', lead?.company_name, lead?.email, leadEmails],
+    queryKey: ['underwriting-related-people', lead?.company_name, lead?.email, leadEmails],
     queryFn: async () => {
       if (!lead) return [];
       const results: { id: string; name: string; title: string | null; email: string | null; phone: string | null; company_name: string | null }[] = [];
@@ -1198,7 +1210,7 @@ export default function UnderwritingExpandedView() {
       // Match by company name
       if (lead.company_name) {
         const { data } = await supabase
-          .from('leads')
+          .from('underwriting')
           .select('id, name, title, email, phone, company_name')
           .eq('company_name', lead.company_name)
           .order('name')
@@ -1206,7 +1218,7 @@ export default function UnderwritingExpandedView() {
         if (data) results.push(...data);
       }
 
-      // Collect all business email domains from lead email + lead_emails
+      // Collect all business email domains from lead email + entity_emails
       const allEmails = [lead.email, ...leadEmails.map(e => e.email)].filter(Boolean) as string[];
       const domains = new Set<string>();
       for (const email of allEmails) {
@@ -1217,7 +1229,7 @@ export default function UnderwritingExpandedView() {
       // Match by email domain
       for (const domain of domains) {
         const { data } = await supabase
-          .from('leads')
+          .from('underwriting')
           .select('id, name, title, email, phone, company_name')
           .ilike('email', `%@${domain}`)
           .limit(20);
@@ -1254,7 +1266,7 @@ export default function UnderwritingExpandedView() {
       const q = contactSearchQuery.trim();
       if (!q) return [];
       const { data } = await supabase
-        .from('leads')
+        .from('underwriting')
         .select('id, name, title, email, company_name')
         .ilike('name', `%${q}%`)
         .order('name', { ascending: true })
@@ -1273,7 +1285,7 @@ export default function UnderwritingExpandedView() {
   }, [lead, leadEmails]);
 
   const { data: gmailEmails = [], isLoading: gmailEmailsLoading } = useQuery({
-    queryKey: ['lead-gmail-emails', leadId, leadEmailAddresses],
+    queryKey: ['underwriting-gmail-emails', leadId, leadEmailAddresses],
     queryFn: async () => {
       if (!gmailConnection || leadEmailAddresses.length === 0) return [];
       const { data: { session } } = await supabase.auth.getSession();
@@ -1365,18 +1377,18 @@ export default function UnderwritingExpandedView() {
   }, [activities, allEmailThreads, lead]);
 
   const { data: leadPhones = [] } = useQuery({
-    queryKey: ['lead-phones', leadId],
+    queryKey: ['underwriting-phones', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_phones').select('*').eq('lead_id', leadId!);
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadId!).eq('entity_type', 'underwriting');
       return (data || []) as LeadPhone[];
     },
     enabled: !!leadId,
   });
 
   const { data: leadAddresses = [] } = useQuery({
-    queryKey: ['lead-addresses', leadId],
+    queryKey: ['underwriting-addresses', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_addresses').select('*').eq('lead_id', leadId!);
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadId!).eq('entity_type', 'underwriting');
       return (data || []) as LeadAddress[];
     },
     enabled: !!leadId,
@@ -1386,11 +1398,11 @@ export default function UnderwritingExpandedView() {
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
       if (!leadId) return;
-      const { error } = await supabase.from('lead_emails').insert({ lead_id: leadId, email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'underwriting', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-emails', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['underwriting-emails', leadId] });
       setNewEmail('');
       setShowAddEmail(false);
       toast.success('Email added');
@@ -1399,11 +1411,11 @@ export default function UnderwritingExpandedView() {
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('lead_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('entity_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-emails', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['underwriting-emails', leadId] });
       toast.success('Email removed');
     },
   });
@@ -1411,11 +1423,11 @@ export default function UnderwritingExpandedView() {
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
       if (!leadId) return;
-      const { error } = await supabase.from('lead_phones').insert({ lead_id: leadId, phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'underwriting', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-phones', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['underwriting-phones', leadId] });
       setNewPhone('');
       setShowAddPhone(false);
       toast.success('Phone added');
@@ -1424,11 +1436,11 @@ export default function UnderwritingExpandedView() {
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('lead_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('entity_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-phones', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['underwriting-phones', leadId] });
       toast.success('Phone removed');
     },
   });
@@ -1436,8 +1448,9 @@ export default function UnderwritingExpandedView() {
   const addAddressMutation = useMutation({
     mutationFn: async () => {
       if (!leadId || !newAddressLine1.trim()) return;
-      const { error } = await supabase.from('lead_addresses').insert({
-        lead_id: leadId,
+      const { error } = await supabase.from('entity_addresses').insert({
+        entity_id: leadId,
+        entity_type: 'underwriting',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -1447,7 +1460,7 @@ export default function UnderwritingExpandedView() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-addresses', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['underwriting-addresses', leadId] });
       setNewAddressLine1('');
       setNewAddressCity('');
       setNewAddressState('');
@@ -1460,11 +1473,11 @@ export default function UnderwritingExpandedView() {
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('lead_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('entity_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-addresses', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['underwriting-addresses', leadId] });
       toast.success('Address removed');
     },
   });
@@ -1630,12 +1643,12 @@ export default function UnderwritingExpandedView() {
                 {ownerOptions.length > 0 ? (
                   <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
                     const previousOwner = lead.assigned_to;
-                    const { error } = await supabase.from('leads').update({ assigned_to: v || null }).eq('id', lead.id);
+                    const { error } = await supabase.from('underwriting').update({ assigned_to: v || null }).eq('id', lead.id);
                     if (error) { toast.error('Failed to save'); return; }
                     registerUndo({
                       label: 'Owner changed',
                       execute: async () => {
-                        const { error: e } = await supabase.from('leads').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
+                        const { error: e } = await supabase.from('underwriting').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
                         if (e) throw e;
                         handleFieldSaved('assigned_to', previousOwner ?? '');
                       },

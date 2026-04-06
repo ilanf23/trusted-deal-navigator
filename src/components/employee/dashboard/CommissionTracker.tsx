@@ -16,7 +16,7 @@ export const CommissionTracker = ({ evanId }: CommissionTrackerProps) => {
   const yearStart = startOfYear(today);
 
   const { data: commission } = useQuery({
-    queryKey: ['evan-commission-tracker', evanId],
+    queryKey: ['commission-tracker', evanId],
     queryFn: async () => {
       if (!evanId) return null;
 

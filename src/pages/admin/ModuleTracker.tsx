@@ -22,7 +22,7 @@ import ModuleDetailDialog from '@/components/admin/modules/ModuleDetailDialog';
 import RequirementsTable, { type BusinessRequirement } from '@/components/admin/modules/RequirementsTable';
 import ModulePipelineBoard from '@/components/admin/modules/ModulePipelineBoard';
 
-const PORTALS = ['evan', 'brad', 'adam', 'maura', 'wendy', 'shared', 'partner', 'client'];
+const PORTALS = ['evan', 'brad', 'adam', 'maura', 'wendy', 'shared', 'partner'];
 
 const moduleSchema = z.object({
   name: z.string().min(1, 'Name required'),

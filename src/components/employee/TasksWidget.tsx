@@ -25,7 +25,7 @@ export const TasksWidget = () => {
   const queryClient = useQueryClient();
 
   const { data: tasks = [], isLoading } = useQuery({
-    queryKey: ['evan-tasks'],
+    queryKey: ['tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
@@ -45,7 +45,7 @@ export const TasksWidget = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setNewTask('');
       toast.success('Task added');
     },
@@ -60,7 +60,7 @@ export const TasksWidget = () => {
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['evan-tasks'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   });
 
   const deleteTask = useMutation({
@@ -72,7 +72,7 @@ export const TasksWidget = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Task deleted');
     },
   });

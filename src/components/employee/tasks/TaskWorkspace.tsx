@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTasksData } from '@/hooks/useTasksData';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { Task, ViewMode, TaskSource, sourceConfig, statusConfig, priorityConfig, statusPickerOptions } from './types';
 import { TaskTableView } from './TaskTableView';
 import { TaskKanbanView } from './TaskKanbanView';
@@ -60,7 +61,8 @@ const TASKS_DEFAULTS: TasksPageState = {
 
 export const TaskWorkspace = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { tasks, isLoading, addTask, updateTask, deleteTask, addComment } = useTasksData();
+  const { teamMember } = useTeamMember();
+  const { tasks, isLoading, addTask, updateTask, deleteTask, addComment } = useTasksData(teamMember?.id);
   const { sendMessage } = useGmail();
   const { getPageState, setPageState } = useEmployeeUIState();
 

@@ -6,10 +6,9 @@ import LoadingScreen from '@/components/ui/loading-screen';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
-  clientOnly?: boolean;
 }
 
-const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
   const { user, loading, isAdmin, userRole } = useAuth();
   const { teamMember, loading: teamLoading } = useTeamMember();
   const location = useLocation();
@@ -22,7 +21,7 @@ const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: 
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Redirect partners away from admin and client routes
+  // Redirect partners away from admin routes
   if (userRole === 'partner') {
     return <Navigate to="/partner" replace />;
   }
@@ -37,13 +36,8 @@ const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: 
     }
   }
 
-  // Redirect admins away from client portal
-  if (clientOnly && isAdmin) {
-    return <Navigate to="/superadmin" replace />;
-  }
-
   if (requireAdmin && !isAdmin) {
-    return <Navigate to="/user" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   return <>{children}</>;

@@ -12,7 +12,7 @@ export const MetricsWidget = () => {
   const weekEnd = endOfWeek(today);
 
   const { data: metrics } = useQuery({
-    queryKey: ['evan-metrics'],
+    queryKey: ['workspace-metrics'],
     queryFn: async () => {
       // Get communications this month
       const { data: monthlyComms } = await supabase

@@ -23,8 +23,7 @@ import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
-type LeadStatus = Database['public']['Enums']['lead_status'];
+type Lead = Database['public']['Tables']['pipeline']['Row'];
 
 interface StageConfigEntry {
   title: string;
@@ -39,9 +38,9 @@ interface TeamMember {
   avatar_url: string | null;
 }
 
-interface LeadEmail { id: string; lead_id: string; email: string; email_type: string; is_primary: boolean; }
-interface LeadPhone { id: string; lead_id: string; phone_number: string; phone_type: string; is_primary: boolean; }
-interface LeadAddress { id: string; lead_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean; }
+interface EntityEmail { id: string; entity_id: string; entity_type: string; email: string; email_type: string; is_primary: boolean; }
+interface EntityPhone { id: string; entity_id: string; entity_type: string; phone_number: string; phone_type: string; is_primary: boolean; }
+interface EntityAddress { id: string; entity_id: string; entity_type: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean; }
 
 interface PipelineDetailPanelProps {
   lead: Lead;
@@ -98,7 +97,7 @@ function useInlineSave(
     }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -187,7 +186,7 @@ function EditableSelectField({
     if (newValue === value) return;
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ [field]: newValue || null })
       .eq('id', leadId);
     setSaving(false);
@@ -299,7 +298,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', leadId);
     setSaving(false);
@@ -374,7 +373,7 @@ function EditableRichTextField({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -433,7 +432,7 @@ function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: s
 }
 
 // ── Contact Email Row ──
-function ContactEmailRow({ entry, onDelete }: { entry: LeadEmail; onDelete: (id: string) => void }) {
+function ContactEmailRow({ entry, onDelete }: { entry: EntityEmail; onDelete: (id: string) => void }) {
   const navigate = useNavigate();
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
@@ -455,7 +454,7 @@ function ContactEmailRow({ entry, onDelete }: { entry: LeadEmail; onDelete: (id:
 }
 
 // ── Contact Phone Row ──
-function ContactPhoneRow({ entry, onDelete, onCall }: { entry: LeadPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
+function ContactPhoneRow({ entry, onDelete, onCall }: { entry: EntityPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -476,7 +475,7 @@ function ContactPhoneRow({ entry, onDelete, onCall }: { entry: LeadPhone; onDele
 }
 
 // ── Address Block ──
-function AddressBlock({ entry, onDelete }: { entry: LeadAddress; onDelete: (id: string) => void }) {
+function AddressBlock({ entry, onDelete }: { entry: EntityAddress; onDelete: (id: string) => void }) {
   const parts = [entry.address_line_1, entry.address_line_2].filter(Boolean);
   const cityLine = [entry.city, entry.state, entry.zip_code].filter(Boolean).join(', ');
   return (
@@ -534,7 +533,7 @@ function RelatedSection({ icon, label, count, iconColor, children }: {
 // ── Activity Tab Content ──
 function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Record<string, StageConfigEntry> }) {
   const { data: communications = [], isLoading: loadingComms } = useQuery({
-    queryKey: ['lead-activity-timeline', 'communications', lead.id],
+    queryKey: ['pipeline-activity-timeline', 'communications', lead.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('communications')
@@ -550,12 +549,13 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
   });
 
   const { data: activities = [], isLoading: loadingActivities } = useQuery({
-    queryKey: ['lead-activity-timeline', 'activities', lead.id],
+    queryKey: ['pipeline-activity-timeline', 'activities', lead.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_activities')
+        .from('activities')
         .select('id, activity_type, title, content, created_at')
-        .eq('lead_id', lead.id)
+        .eq('entity_id', lead.id)
+        .eq('entity_type', 'pipeline')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -711,19 +711,20 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
 // ── Related Tab Content ──
 function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Record<string, StageConfigEntry> }) {
   const { data: contacts = [], isLoading: loadingContacts } = useQuery({
-    queryKey: ['lead-related', 'contacts', lead.id],
+    queryKey: ['pipeline-related', 'contacts', lead.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_contacts')
+        .from('entity_contacts')
         .select('id, name, title, email, phone, is_primary')
-        .eq('lead_id', lead.id)
+        .eq('entity_id', lead.id)
+        .eq('entity_type', 'pipeline')
         .order('is_primary', { ascending: false });
       return data || [];
     },
   });
 
   const { data: tasks = [], isLoading: loadingTasks } = useQuery({
-    queryKey: ['lead-related', 'tasks', lead.id],
+    queryKey: ['pipeline-related', 'tasks', lead.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('tasks')
@@ -736,7 +737,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
   });
 
   const { data: milestones = [], isLoading: loadingMilestones } = useQuery({
-    queryKey: ['lead-related', 'milestones', lead.id],
+    queryKey: ['pipeline-related', 'milestones', lead.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('deal_milestones')
@@ -748,7 +749,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
   });
 
   const { data: waitingOn = [], isLoading: loadingWaiting } = useQuery({
-    queryKey: ['lead-related', 'waiting_on', lead.id],
+    queryKey: ['pipeline-related', 'waiting_on', lead.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('deal_waiting_on')
@@ -760,12 +761,13 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
   });
 
   const { data: files = [] } = useQuery({
-    queryKey: ['lead-files-count', lead.id],
+    queryKey: ['pipeline-files-count', lead.id],
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('lead_files')
+      const { data } = await supabase
+        .from('entity_files')
         .select('id')
-        .eq('lead_id', lead.id);
+        .eq('entity_id', lead.id)
+        .eq('entity_type', 'pipeline');
       return data || [];
     },
   });
@@ -950,7 +952,7 @@ export default function PipelineDetailPanel({
   const currentStageIdx = stageKeys.indexOf(activeStageKey);
 
   const handleFieldSaved = useCallback((field: string, newValue: string) => {
-    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
     if (onLeadUpdate) {
       if (field === 'tags') {
         // newValue is JSON-encoded
@@ -984,28 +986,28 @@ export default function PipelineDetailPanel({
 
   // ── Satellite table queries ──
   const { data: leadEmails = [] } = useQuery({
-    queryKey: ['lead-emails', lead?.id],
+    queryKey: ['entity-emails', 'pipeline', lead?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_emails').select('*').eq('lead_id', lead.id);
-      return (data || []) as LeadEmail[];
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', lead.id).eq('entity_type', 'pipeline');
+      return (data || []) as EntityEmail[];
     },
     enabled: !!lead,
   });
 
   const { data: leadPhones = [] } = useQuery({
-    queryKey: ['lead-phones', lead?.id],
+    queryKey: ['entity-phones', 'pipeline', lead?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_phones').select('*').eq('lead_id', lead.id);
-      return (data || []) as LeadPhone[];
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', lead.id).eq('entity_type', 'pipeline');
+      return (data || []) as EntityPhone[];
     },
     enabled: !!lead,
   });
 
   const { data: leadAddresses = [] } = useQuery({
-    queryKey: ['lead-addresses', lead?.id],
+    queryKey: ['entity-addresses', 'pipeline', lead?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_addresses').select('*').eq('lead_id', lead.id);
-      return (data || []) as LeadAddress[];
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', lead.id).eq('entity_type', 'pipeline');
+      return (data || []) as EntityAddress[];
     },
     enabled: !!lead,
   });
@@ -1013,11 +1015,11 @@ export default function PipelineDetailPanel({
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('lead_emails').insert({ lead_id: lead.id, email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: lead.id, entity_type: 'pipeline', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-emails', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-emails', 'pipeline', lead?.id] });
       setNewEmail('');
       setShowAddEmail(false);
       toast.success('Email added');
@@ -1027,22 +1029,22 @@ export default function PipelineDetailPanel({
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('lead_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('entity_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-emails', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-emails', 'pipeline', lead?.id] });
       toast.success('Email removed');
     },
   });
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('lead_phones').insert({ lead_id: lead.id, phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: lead.id, entity_type: 'pipeline', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-phones', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-phones', 'pipeline', lead?.id] });
       setNewPhone('');
       setShowAddPhone(false);
       toast.success('Phone added');
@@ -1052,11 +1054,11 @@ export default function PipelineDetailPanel({
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('lead_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('entity_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-phones', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-phones', 'pipeline', lead?.id] });
       toast.success('Phone removed');
     },
   });
@@ -1064,8 +1066,9 @@ export default function PipelineDetailPanel({
   const addAddressMutation = useMutation({
     mutationFn: async () => {
       if (!newAddressLine1.trim()) return;
-      const { error } = await supabase.from('lead_addresses').insert({
-        lead_id: lead.id,
+      const { error } = await supabase.from('entity_addresses').insert({
+        entity_id: lead.id,
+        entity_type: 'pipeline',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -1075,7 +1078,7 @@ export default function PipelineDetailPanel({
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-addresses', 'pipeline', lead?.id] });
       setNewAddressLine1('');
       setNewAddressCity('');
       setNewAddressState('');
@@ -1088,11 +1091,11 @@ export default function PipelineDetailPanel({
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('lead_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('entity_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-addresses', 'pipeline', lead?.id] });
       toast.success('Address removed');
     },
   });

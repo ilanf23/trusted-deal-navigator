@@ -13,6 +13,7 @@ import { Plus, ChevronDown, Star, Trash2, MessageSquare, Search, Filter, Sliders
 import { toast } from 'sonner';
 import { format, addDays, isToday, isTomorrow, parseISO, isSameDay } from 'date-fns';
 import { useUndo } from '@/contexts/UndoContext';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 interface Task {
   id: string;
@@ -47,6 +48,7 @@ const getStatusBorderStyle = (status: string | null): React.CSSProperties => {
 };
 
 export const TaskBoard = () => {
+  const { teamMember } = useTeamMember();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [addingToDay, setAddingToDay] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({
@@ -58,16 +60,21 @@ export const TaskBoard = () => {
   const { registerUndo } = useUndo();
 
   const { data: tasks = [], isLoading } = useQuery({
-    queryKey: ['evan-tasks-board'],
+    queryKey: ['tasks-board', teamMember?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('tasks')
         .select('*')
         .order('due_date', { ascending: true })
         .order('created_at', { ascending: false });
+      if (teamMember?.id) {
+        query = query.eq('team_member_id', teamMember.id);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data as Task[];
     },
+    enabled: !!teamMember?.id,
   });
 
   const addTask = useMutation({
@@ -77,12 +84,12 @@ export const TaskBoard = () => {
         due_date: dueDate,
         status: 'todo',
         priority: '3',
-        team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
+        team_member_id: teamMember?.id,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-tasks-board'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks-board', teamMember?.id] });
       setNewTaskTitle('');
       setAddingToDay(null);
       toast.success('Task added');
@@ -95,7 +102,7 @@ export const TaskBoard = () => {
       const { error } = await supabase.from('tasks').update(updates).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['evan-tasks-board'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks-board', teamMember?.id] }),
     onError: () => toast.error('Failed to update task'),
   });
 
@@ -114,8 +121,8 @@ export const TaskBoard = () => {
       return taskToDelete;
     },
     onSuccess: (deletedTask) => {
-      queryClient.invalidateQueries({ queryKey: ['evan-tasks-board'] });
-      queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks-board', teamMember?.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Task deleted');
       
       // Register undo for task deletion
@@ -134,8 +141,8 @@ export const TaskBoard = () => {
               is_completed: deletedTask.is_completed,
             });
             if (error) throw error;
-            queryClient.invalidateQueries({ queryKey: ['evan-tasks-board'] });
-            queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+            queryClient.invalidateQueries({ queryKey: ['tasks-board', teamMember?.id] });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
           },
         });
       }

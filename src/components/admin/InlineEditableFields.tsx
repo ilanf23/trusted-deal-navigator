@@ -165,7 +165,7 @@ export function useInlineSave(
     setSaving(true);
     const saveValue = transform ? transform(trimmed) : (trimmed || null);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ [field]: saveValue })
       .eq('id', leadId);
     setSaving(false);
@@ -178,7 +178,7 @@ export function useInlineSave(
       label: `Updated ${field}`,
       execute: async () => {
         const restoreValue = transform ? transform(previousValue) : (previousValue || null);
-        const { error: e } = await supabase.from('leads').update({ [field]: restoreValue }).eq('id', leadId);
+        const { error: e } = await supabase.from('pipeline').update({ [field]: restoreValue }).eq('id', leadId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
@@ -267,7 +267,7 @@ export function EditableSelectField({
     const previousValue = value;
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ [field]: newValue || null })
       .eq('id', leadId);
     setSaving(false);
@@ -278,7 +278,7 @@ export function EditableSelectField({
     registerUndo({
       label: `Updated ${label}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('pipeline').update({ [field]: previousValue || null }).eq('id', leadId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
@@ -379,7 +379,7 @@ export function EditableTags({
   const { data: allExistingTags = [] } = useQuery({
     queryKey: ['all-lead-tags'],
     queryFn: async () => {
-      const { data } = await supabase.from('leads').select('tags').not('tags', 'is', null);
+      const { data } = await supabase.from('pipeline').select('tags').not('tags', 'is', null);
       const tagSet = new Set<string>();
       (data ?? []).forEach((row: any) => {
         (row.tags ?? []).forEach((t: string) => tagSet.add(t));
@@ -426,7 +426,7 @@ export function EditableTags({
     const previousTags = [...tags];
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', leadId);
     setSaving(false);
@@ -437,7 +437,7 @@ export function EditableTags({
     registerUndoTags({
       label: 'Updated tags',
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
+        const { error: e } = await supabase.from('pipeline').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
         if (e) throw e;
         onSaved('tags', JSON.stringify(previousTags.length > 0 ? previousTags : null));
       },
@@ -611,7 +611,7 @@ export function EditableNotes({
     const previousValue = value;
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ notes: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -619,7 +619,7 @@ export function EditableNotes({
     registerUndoNotes({
       label: 'Updated notes',
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ notes: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('pipeline').update({ notes: previousValue || null }).eq('id', leadId);
         if (e) throw e;
         onSaved('notes', previousValue);
       },
@@ -688,7 +688,7 @@ export function EditableNotesField({
     const previousValue = value;
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -696,7 +696,7 @@ export function EditableNotesField({
     registerUndoField({
       label: `Updated ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('pipeline').update({ [field]: previousValue || null }).eq('id', leadId);
         if (e) throw e;
         onSaved(field, previousValue);
       },

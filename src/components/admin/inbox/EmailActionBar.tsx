@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { 
   Link2, 
   Plus, 
@@ -59,6 +60,7 @@ export function EmailActionBar({
   allLeads,
   onNavigate,
 }: EmailActionBarProps) {
+  const { teamMember } = useTeamMember();
   const queryClient = useQueryClient();
   const [actionState, setActionState] = useState<Record<string, ActionState>>({});
   const [linkDealOpen, setLinkDealOpen] = useState(false);
@@ -187,13 +189,13 @@ export function EmailActionBar({
           group_name: 'To Do',
           due_date: dueDate.toISOString(),
           lead_id: leadId || linkedDeal?.id,
-          team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
+          team_member_id: teamMember?.id,
           tags: ['inbox-action'],
         });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 

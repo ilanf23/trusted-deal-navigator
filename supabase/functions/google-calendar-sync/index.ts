@@ -201,6 +201,17 @@ Deno.serve(async (req) => {
       let totalImported = 0;
       let totalUpdated = 0;
 
+      // Resolve team_member_id for each connection's user
+      const userIds = connections.map(c => c.user_id).filter(Boolean);
+      const { data: usersMap } = await supabase
+        .from('users')
+        .select('id, user_id')
+        .in('user_id', userIds);
+      const userIdToTeamMemberId: Record<string, string> = {};
+      for (const u of usersMap || []) {
+        if (u.user_id) userIdToTeamMemberId[u.user_id] = u.id;
+      }
+
       for (const connection of connections) {
         try {
           const accessToken = await getValidAccessToken(connection, supabase);
@@ -251,6 +262,7 @@ Deno.serve(async (req) => {
                   sync_status: 'synced',
                   appointment_type: 'imported',
                   team_member_name: connection.team_member_name || null,
+                  team_member_id: userIdToTeamMemberId[connection.user_id] || null,
                 });
               totalImported++;
             }
@@ -291,6 +303,14 @@ Deno.serve(async (req) => {
     }
 
     const userId = userData.user.id;
+
+    // Resolve team_member_id from auth user
+    const { data: teamMemberRow } = await supabase
+      .from('users')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+    const teamMemberId = teamMemberRow?.id || null;
 
     const { data: connection, error: connError } = await supabase
       .from('calendar_connections')
@@ -443,6 +463,7 @@ Deno.serve(async (req) => {
               sync_status: 'synced',
               appointment_type: 'imported',
               team_member_name: connection.team_member_name || null,
+              team_member_id: teamMemberId,
             });
           imported++;
         }

@@ -87,11 +87,6 @@ import DropboxCallback from "./pages/admin/DropboxCallback";
 import AIChanges from "./pages/admin/AIChanges";
 import LoanVolumeLog from "./pages/admin/LoanVolumeLog";
 import VolumeLogExpandedView from "./components/admin/VolumeLogExpandedView";
-import PortalDashboard from "./pages/portal/Dashboard";
-import PortalContracts from "./pages/portal/Contracts";
-import PortalInvoices from "./pages/portal/Invoices";
-import PortalMessages from "./pages/portal/Messages";
-import PortalProfile from "./pages/portal/Profile";
 import PartnerRouteLayout from "./components/partner/PartnerRouteLayout";
 import PartnerDashboard from "./pages/partner/Dashboard";
 import PartnerReferrals from "./pages/partner/Referrals";
@@ -226,8 +221,6 @@ const App = () => (
                 {/* Legacy redirects */}
                 <Route path="/admin/evan" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/admin/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
-                <Route path="/user/evan" element={<Navigate to="/admin/dashboard" replace />} />
-                <Route path="/user/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/team/evan" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/team/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
                 {/* Catch-all for dynamic employee dashboards (new admins, future team members) */}
@@ -261,12 +254,6 @@ const App = () => (
                 <Route path="/partner/commissions" element={<PartnerCommissions />} />
                 <Route path="/partner/profile" element={<PartnerProfilePage />} />
               </Route>
-              {/* Client Portal Routes */}
-              <Route path="/user" element={<ProtectedRoute clientOnly><PortalDashboard /></ProtectedRoute>} />
-              <Route path="/user/contracts" element={<ProtectedRoute clientOnly><PortalContracts /></ProtectedRoute>} />
-              <Route path="/user/invoices" element={<ProtectedRoute clientOnly><PortalInvoices /></ProtectedRoute>} />
-              <Route path="/user/messages" element={<ProtectedRoute clientOnly><PortalMessages /></ProtectedRoute>} />
-              <Route path="/user/profile" element={<ProtectedRoute clientOnly><PortalProfile /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
               </Routes>
               <IncomingCallPopup />

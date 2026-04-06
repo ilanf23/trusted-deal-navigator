@@ -33,6 +33,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { DbTableBadge } from '@/components/admin/DbTableBadge';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 interface ActiveCall {
   id: string;
@@ -137,6 +138,7 @@ const formatDuration = (seconds: number | null) => {
 };
 
 const Calls = () => {
+  const { teamMember } = useTeamMember();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { outboundCall } = useCall();
@@ -192,26 +194,30 @@ const Calls = () => {
 
   // Fetch active/recent calls
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
-    queryKey: ['evan-active-calls'],
+    queryKey: ['active-calls', teamMember?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('active_calls')
         .select('*')
         .in('status', ['ringing', 'in-progress'])
         .eq('direction', 'inbound')
         .order('created_at', { ascending: false });
-      
+      if (teamMember?.id) {
+        query = query.or(`team_member_id.eq.${teamMember.id},team_member_id.is.null`);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data as ActiveCall[];
     },
     refetchInterval: 30000,
+    enabled: !!teamMember?.id,
   });
 
   // Fetch call history from communications
   const { data: callHistory = [], isLoading: historyLoading } = useQuery({
-    queryKey: ['evan-call-history'],
+    queryKey: ['call-history', teamMember?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('communications')
         .select(`
           *,
@@ -223,10 +229,14 @@ const Calls = () => {
         .eq('communication_type', 'call')
         .order('created_at', { ascending: false })
         .limit(100);
-      
+      if (teamMember?.id) {
+        query = query.eq('team_member_id', teamMember.id);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data as CallLog[];
     },
+    enabled: !!teamMember?.id,
   });
 
   // If the transcript arrives after the dialog is opened, refresh the dialog content
@@ -355,7 +365,7 @@ const Calls = () => {
       
       toast.success(`Lead "${lead.name}" added to Evan's pipeline`);
       
-      queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
+      queryClient.invalidateQueries({ queryKey: ['call-history'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       setAddLeadDialogOpen(false);
       setSelectedCallForLead(null);
@@ -415,7 +425,7 @@ const Calls = () => {
         setTranscriptError(data.error);
       } else {
         // Transcript generated successfully — check if this call has a linked lead
-        await queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
+        await queryClient.invalidateQueries({ queryKey: ['call-history'] });
         
         // Re-fetch the updated call to get fresh data
         const { data: updatedComm } = await supabase
@@ -443,7 +453,7 @@ const Calls = () => {
         }
         return;
       }
-      await queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
+      await queryClient.invalidateQueries({ queryKey: ['call-history'] });
     } catch {
       setTranscriptError('Failed to generate transcript. Please try again later.');
     } finally {
@@ -469,6 +479,7 @@ const Calls = () => {
           transcript: pendingAutomationData.transcript,
           callDirection: pendingAutomationData.direction,
           callDate: pendingAutomationData.callDate,
+          teamMemberId: teamMember?.id,
         },
       });
 
@@ -493,7 +504,7 @@ const Calls = () => {
         if (draftCreated) {
           queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
         }
-        queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
       }
     } catch (err) {
       console.error('Failed to run automation:', err);

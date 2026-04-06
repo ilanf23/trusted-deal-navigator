@@ -59,7 +59,7 @@ export const QuickActions = ({ evanId }: QuickActionsProps) => {
       toast.success('Call logged successfully');
       setShowLogCall(false);
       setCallData({ phoneNumber: '', notes: '' });
-      queryClient.invalidateQueries({ queryKey: ['evan-activity-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-feed'] });
     } catch (error) {
       toast.error('Failed to log call');
     } finally {
@@ -84,7 +84,7 @@ export const QuickActions = ({ evanId }: QuickActionsProps) => {
       toast.success('Note added successfully');
       setShowAddNote(false);
       setNoteContent('');
-      queryClient.invalidateQueries({ queryKey: ['evan-activity-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-feed'] });
     } catch (error) {
       toast.error('Failed to add note');
     } finally {

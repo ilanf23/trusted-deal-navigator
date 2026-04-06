@@ -14,7 +14,7 @@ export const HotDeals = ({ evanId }: HotDealsProps) => {
   const today = new Date();
 
   const { data: deals } = useQuery({
-    queryKey: ['evan-hot-deals', evanId],
+    queryKey: ['hot-deals', evanId],
     queryFn: async () => {
       if (!evanId) return null;
 

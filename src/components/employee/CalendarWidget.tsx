@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar as CalendarIcon, Plus, Phone, Video, Users, Clock, Trash2, RefreshCw, Link2, Unlink, Loader2, Check, ChevronLeft, ChevronRight, List, Grid3X3, CalendarDays, CheckSquare, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { 
   format, 
   isToday, 
@@ -97,6 +98,7 @@ interface CalendarFilter {
 }
 
 export const CalendarWidget = () => {
+  const { teamMember } = useTeamMember();
   const [isOpen, setIsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -150,7 +152,7 @@ export const CalendarWidget = () => {
         setCalendarStatus({ connected: true, email: event.data.email });
         setIsConnecting(false);
         toast.success(`Google Calendar connected: ${event.data.email}`);
-        queryClient.invalidateQueries({ queryKey: ['evan-appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
       } else if (event.data?.type === 'GOOGLE_CALENDAR_ERROR') {
         setIsConnecting(false);
         toast.error('Failed to connect Google Calendar');
@@ -168,7 +170,7 @@ export const CalendarWidget = () => {
               setCalendarStatus({ connected: true, email: result.email });
               setIsConnecting(false);
               toast.success(`Google Calendar connected: ${result.email}`);
-              queryClient.invalidateQueries({ queryKey: ['evan-appointments'] });
+              queryClient.invalidateQueries({ queryKey: ['appointments'] });
             } else if (result.type === 'GOOGLE_CALENDAR_ERROR') {
               setIsConnecting(false);
               toast.error('Failed to connect Google Calendar');
@@ -193,7 +195,7 @@ export const CalendarWidget = () => {
               setCalendarStatus({ connected: true, email: result.email });
               setIsConnecting(false);
               toast.success(`Google Calendar connected: ${result.email}`);
-              queryClient.invalidateQueries({ queryKey: ['evan-appointments'] });
+              queryClient.invalidateQueries({ queryKey: ['appointments'] });
             }
             localStorage.removeItem('google-calendar-auth-result');
           }
@@ -229,37 +231,47 @@ export const CalendarWidget = () => {
   }, [viewMode, currentDate]);
 
   const { data: appointments = [], isLoading: appointmentsLoading } = useQuery({
-    queryKey: ['evan-appointments', viewMode, currentDate.toISOString()],
+    queryKey: ['appointments', teamMember?.id, viewMode, currentDate.toISOString()],
     queryFn: async () => {
       const { start, end } = getDateRange();
-      
-      const { data, error } = await supabase
+
+      let query = supabase
         .from('appointments')
         .select('*')
         .gte('start_time', start.toISOString())
         .lte('start_time', end.toISOString())
         .order('start_time', { ascending: true });
+      if (teamMember?.id) {
+        query = query.eq('team_member_id', teamMember.id);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data as Appointment[];
     },
+    enabled: !!teamMember?.id,
   });
 
   // Fetch tasks with due dates for calendar display
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
-    queryKey: ['evan-tasks-calendar', viewMode, currentDate.toISOString()],
+    queryKey: ['tasks-calendar', teamMember?.id, viewMode, currentDate.toISOString()],
     queryFn: async () => {
       const { start, end } = getDateRange();
-      
-      const { data, error } = await supabase
+
+      let query = supabase
         .from('tasks')
         .select('id, title, due_date, is_completed, priority, status, lead:leads(name, company_name)')
         .not('due_date', 'is', null)
         .gte('due_date', start.toISOString())
         .lte('due_date', end.toISOString())
         .order('due_date', { ascending: true });
+      if (teamMember?.id) {
+        query = query.eq('team_member_id', teamMember.id);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data as TaskItem[];
     },
+    enabled: !!teamMember?.id,
   });
 
   const isLoading = appointmentsLoading || tasksLoading;
@@ -277,11 +289,12 @@ export const CalendarWidget = () => {
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
           appointment_type: newAppointment.appointment_type,
+          team_member_id: teamMember?.id,
         });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
       setNewAppointment({ title: '', start_time: '', appointment_type: 'call', duration: '30' });
       setIsOpen(false);
       toast.success('Appointment added');
@@ -298,7 +311,7 @@ export const CalendarWidget = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
       toast.success('Appointment deleted');
     },
   });
@@ -435,7 +448,7 @@ export const CalendarWidget = () => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['evan-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
       toast.success(`Synced ${data.synced} appointments to Google Calendar`);
     },
     onError: () => toast.error('Failed to sync to Google Calendar'),
@@ -450,7 +463,7 @@ export const CalendarWidget = () => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['evan-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
       toast.success(`Imported ${data.imported} new, updated ${data.updated} appointments`);
     },
     onError: () => toast.error('Failed to import from Google Calendar'),

@@ -17,6 +17,7 @@ interface RequestBody {
   transcript?: string;
   callDirection: string;
   callDate: string;
+  teamMemberId?: string;
 }
 
 async function getEvanGmailAccessToken(supabase: ReturnType<typeof createClient>): Promise<{ accessToken: string; email: string } | null> {
@@ -134,7 +135,7 @@ serve(async (req) => {
     const resend = new Resend(resendApiKey);
 
     const body: RequestBody = await req.json();
-    const { leadId, communicationId, leadName, leadEmail, leadPhone, transcript, callDirection, callDate } = body;
+    const { leadId, communicationId, leadName, leadEmail, leadPhone, transcript, callDirection, callDate, teamMemberId } = body;
 
     console.log("Processing call-to-lead automation for:", leadName);
 
@@ -239,7 +240,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
         status: 'todo',
         due_date: taskDueDate.toISOString(),
         group_name: 'To Do',
-        team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
+        team_member_id: teamMemberId || null,
         tags: ['follow-up', 'new-lead', 'phone-call'],
       })
       .select()

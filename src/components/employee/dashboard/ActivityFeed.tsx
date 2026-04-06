@@ -13,7 +13,7 @@ interface ActivityFeedProps {
 
 export const ActivityFeed = ({ evanId }: ActivityFeedProps) => {
   const { data: activities } = useQuery({
-    queryKey: ['evan-activity-feed', evanId],
+    queryKey: ['activity-feed', evanId],
     queryFn: async () => {
       if (!evanId) return [];
 

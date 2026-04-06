@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Device, Call } from '@twilio/voice-sdk';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 interface ActiveCallData {
   id: string;
@@ -65,6 +66,7 @@ export const useCall = () => {
 
 export const CallProvider = ({ children }: { children: ReactNode }) => {
   const { isAdmin, user } = useAuth();
+  const { teamMember } = useTeamMember();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -236,8 +238,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     setIncomingCall(null);
     setOutboundCall(null);
     queryClient.invalidateQueries({ queryKey: ['active-calls-ringing'] });
-    queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
-    queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
+    queryClient.invalidateQueries({ queryKey: ['communications'] });
+    queryClient.invalidateQueries({ queryKey: ['call-history'] });
   }, [queryClient]);
 
   // Initialize Twilio Device - EAGER initialization
@@ -601,8 +603,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
           }
           
           queryClient.invalidateQueries({ queryKey: ['active-calls-ringing'] });
-          queryClient.invalidateQueries({ queryKey: ['evan-active-calls'] });
-          queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
+          queryClient.invalidateQueries({ queryKey: ['active-calls'] });
+          queryClient.invalidateQueries({ queryKey: ['communications'] });
         }
       )
       .subscribe((status) => {
@@ -630,6 +632,14 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     }
 
     await logCallEvent(incomingCall.call_sid, 'answer_attempted', incomingCall.call_flow_id);
+
+    // Assign this call to the current team member
+    if (teamMember?.id) {
+      supabase.from('active_calls')
+        .update({ team_member_id: teamMember.id })
+        .eq('call_sid', incomingCall.call_sid)
+        .then();
+    }
 
     // Prefer the React-state call object, but also check the SDK's internal call map
     // in case the incoming event fired but React state hasn't propagated yet.
@@ -900,6 +910,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
         phone_number: formattedPhone,
         status: 'ringing',
         call_sid: call.parameters.CallSid,
+        team_member_id: teamMember?.id || null,
       });
 
     } catch (error) {

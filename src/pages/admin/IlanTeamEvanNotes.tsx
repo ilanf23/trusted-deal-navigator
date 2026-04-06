@@ -41,7 +41,7 @@ const IlanTeamEvanNotes = () => {
 
   // Fetch Evan's notes
   const { data: notes = [], isLoading } = useQuery({
-    queryKey: ['evan-notes-ilan-view'],
+    queryKey: ['workspace-notes-ilan-view'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('notes')
@@ -63,7 +63,7 @@ const IlanTeamEvanNotes = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-notes-ilan-view'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-notes-ilan-view'] });
       setNewNote('');
       toast.success('Note created');
     },
@@ -80,7 +80,7 @@ const IlanTeamEvanNotes = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-notes-ilan-view'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-notes-ilan-view'] });
       setEditingNote(null);
       toast.success('Note updated');
     },
@@ -97,7 +97,7 @@ const IlanTeamEvanNotes = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-notes-ilan-view'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-notes-ilan-view'] });
     },
     onError: () => toast.error('Failed to update note'),
   });
@@ -112,7 +112,7 @@ const IlanTeamEvanNotes = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-notes-ilan-view'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-notes-ilan-view'] });
       toast.success('Note deleted');
     },
     onError: () => toast.error('Failed to delete note'),

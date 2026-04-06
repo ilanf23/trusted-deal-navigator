@@ -151,7 +151,7 @@ const AdminLeads = () => {
     try {
       let query = supabase
         .from('leads')
-        .select('*, team_member:users(id, name, email, role)')
+        .select('*, team_member:users(id, name, email, position)')
         .order('created_at', { ascending: false });
       
       if (statusFilter !== 'all') {

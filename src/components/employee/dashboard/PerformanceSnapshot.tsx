@@ -50,7 +50,7 @@ export const PerformanceSnapshot = ({ evanId, timePeriod = 'ytd' }: PerformanceS
   const periodProgress = Math.round((daysIntoPeriod / totalDaysInPeriod) * 100);
 
   const { data: metrics } = useQuery({
-    queryKey: ['evan-performance-snapshot', evanId, timePeriod],
+    queryKey: ['performance-snapshot', evanId, timePeriod],
     queryFn: async () => {
       // Calculate metrics from mock data based on time period
       const stageWeights: Record<string, number> = {

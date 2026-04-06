@@ -105,24 +105,28 @@ const Dashboard = () => {
 
   // Today's scheduled appointments
   const { data: todaysAppointments, isLoading: appointmentsLoading } = useQuery({
-    queryKey: ['evan-todays-appointments'],
+    queryKey: ['todays-appointments', evanId],
     queryFn: async () => {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('appointments')
         .select('*')
         .gte('start_time', todayStart.toISOString())
         .lte('start_time', todayEnd.toISOString())
         .order('start_time', { ascending: true })
         .limit(8);
-
+      if (evanId) {
+        query = query.eq('team_member_id', evanId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
+    enabled: !!evanId,
   });
 
   // Hot deals — closest to closing

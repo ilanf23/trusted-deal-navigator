@@ -89,9 +89,9 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   follow_up: { icon: Users, color: 'text-blue-500' },
 };
 
-/* ─── Inline Save Hook (leads table) ─── */
+/* ─── Inline Save Hook (companies table) ─── */
 
-// Map Company field names to leads table column names
+// Map Company field names to companies table column names
 const FIELD_TO_COLUMN: Record<string, string> = {
   contact_name: 'name',
 };
@@ -120,7 +120,7 @@ function useInlineSave(
     }
     // email_domain is derived from email, not a direct column
     if (field === 'email_domain') {
-      toast.info('Email domain is derived from the lead email');
+      toast.info('Email domain is derived from the company email');
       setEditing(false);
       return;
     }
@@ -129,7 +129,7 @@ function useInlineSave(
     const saveValue = transform ? transform(trimmed) : (trimmed || null);
     const dbField = FIELD_TO_COLUMN[field] ?? field;
     const { error } = await supabase
-      .from('leads')
+      .from('companies')
       .update({ [dbField]: saveValue } as any)
       .eq('id', companyId);
     setSaving(false);
@@ -142,7 +142,7 @@ function useInlineSave(
       label: `Updated ${field}`,
       execute: async () => {
         const restoreValue = transform ? transform(previousValue) : (previousValue || null);
-        const { error: e } = await supabase.from('leads').update({ [dbField]: restoreValue } as any).eq('id', companyId);
+        const { error: e } = await supabase.from('companies').update({ [dbField]: restoreValue } as any).eq('id', companyId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
@@ -296,7 +296,7 @@ function EditableTags({
     const previousTags = [...tags];
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('companies')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', companyId);
     setSaving(false);
@@ -307,7 +307,7 @@ function EditableTags({
     registerUndoTags({
       label: 'Updated tags',
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', companyId);
+        const { error: e } = await supabase.from('companies').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', companyId);
         if (e) throw e;
         onSaved('tags', JSON.stringify(previousTags.length > 0 ? previousTags : null));
       },
@@ -380,7 +380,7 @@ function EditableNotes({
     const previousValue = value;
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('companies')
       .update({ notes: trimmed || null } as any)
       .eq('id', companyId);
     setSaving(false);
@@ -388,7 +388,7 @@ function EditableNotes({
     registerUndoNotes({
       label: 'Updated notes',
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ notes: previousValue || null } as any).eq('id', companyId);
+        const { error: e } = await supabase.from('companies').update({ notes: previousValue || null } as any).eq('id', companyId);
         if (e) throw e;
         onSaved('notes', previousValue);
       },
@@ -545,17 +545,17 @@ export default function CompanyExpandedView() {
   /* ── Field saved handler ── */
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
-    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['companies'] });
     if (!isUndoingRef.current) toast.success('Updated');
   }, [companyId, queryClient, isUndoingRef]);
 
   /* ── Contact type change ── */
   const handleContactTypeChange = useCallback(async (newType: string) => {
     if (!companyId) return;
-    const { data: current } = await supabase.from('leads').select('contact_type').eq('id', companyId).single();
+    const { data: current } = await supabase.from('companies').select('contact_type').eq('id', companyId).single();
     const previousType = current?.contact_type ?? null;
     const { error } = await supabase
-      .from('leads')
+      .from('companies')
       .update({ contact_type: newType })
       .eq('id', companyId);
     if (error) {
@@ -565,24 +565,24 @@ export default function CompanyExpandedView() {
     registerUndo({
       label: `Contact type changed to ${newType}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ contact_type: previousType }).eq('id', companyId);
+        const { error: e } = await supabase.from('companies').update({ contact_type: previousType }).eq('id', companyId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
-        queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+        queryClient.invalidateQueries({ queryKey: ['companies'] });
       },
     });
     toast.success('Contact type updated');
     queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
-    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['companies'] });
   }, [companyId, queryClient, registerUndo]);
 
   /* ── Owner change ── */
   const handleOwnerChange = useCallback(async (newOwner: string) => {
     if (!companyId) return;
-    const { data: current } = await supabase.from('leads').select('assigned_to').eq('id', companyId).single();
+    const { data: current } = await supabase.from('companies').select('assigned_to').eq('id', companyId).single();
     const previousOwner = current?.assigned_to ?? null;
     const { error } = await supabase
-      .from('leads')
+      .from('companies')
       .update({ assigned_to: newOwner || null } as any)
       .eq('id', companyId);
     if (error) {
@@ -592,15 +592,15 @@ export default function CompanyExpandedView() {
     registerUndo({
       label: 'Owner updated',
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ assigned_to: previousOwner } as any).eq('id', companyId);
+        const { error: e } = await supabase.from('companies').update({ assigned_to: previousOwner } as any).eq('id', companyId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
-        queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+        queryClient.invalidateQueries({ queryKey: ['companies'] });
       },
     });
     toast.success('Owner updated');
     queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
-    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['companies'] });
   }, [companyId, queryClient, registerUndo]);
 
   /* ── Save activity ── */
@@ -614,8 +614,9 @@ export default function CompanyExpandedView() {
       return;
     }
     setSavingActivity(true);
-    const { error } = await supabase.from('company_activities').insert({
-      company_id: companyId,
+    const { error } = await supabase.from('activities').insert({
+      entity_id: companyId,
+      entity_type: 'companies',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -626,7 +627,7 @@ export default function CompanyExpandedView() {
       return;
     }
     // Update last_activity_at
-    await supabase.from('leads').update({ last_activity_at: new Date().toISOString() } as any).eq('id', companyId);
+    await supabase.from('companies').update({ last_activity_at: new Date().toISOString() } as any).eq('id', companyId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote('');
     else setNoteContent('');
@@ -680,36 +681,30 @@ export default function CompanyExpandedView() {
   const { data: company, isLoading } = useQuery({
     queryKey: ['company-expanded', companyId],
     queryFn: async () => {
-      const { data: primaryLead, error } = await supabase
-        .from('leads')
+      const { data: companyRow, error } = await supabase
+        .from('companies')
         .select('*')
         .eq('id', companyId!)
         .single();
       if (error) throw error;
 
-      // Get all leads with same company name for aggregate data
-      const { data: allLeads } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('company_name', primaryLead.company_name);
-
       return {
-        id: primaryLead.id,
-        company_name: primaryLead.company_name || primaryLead.name,
-        contact_name: primaryLead.name,
-        phone: primaryLead.phone,
-        website: primaryLead.website,
-        email_domain: primaryLead.email ? primaryLead.email.split('@')[1] || null : null,
-        contact_type: primaryLead.contact_type,
-        tags: primaryLead.tags,
-        assigned_to: primaryLead.assigned_to,
-        notes: primaryLead.notes,
-        source: primaryLead.source,
-        last_activity_at: primaryLead.last_activity_at,
-        last_contacted: primaryLead.last_contacted ?? null,
-        created_at: primaryLead.created_at,
-        updated_at: primaryLead.updated_at,
-        deals_count: allLeads?.length || 1,
+        id: companyRow.id,
+        company_name: companyRow.company_name || companyRow.name,
+        contact_name: companyRow.name,
+        phone: companyRow.phone,
+        website: companyRow.website,
+        email_domain: companyRow.email ? companyRow.email.split('@')[1] || null : null,
+        contact_type: companyRow.contact_type,
+        tags: companyRow.tags,
+        assigned_to: companyRow.assigned_to,
+        notes: companyRow.notes,
+        source: companyRow.source,
+        last_activity_at: companyRow.last_activity_at,
+        last_contacted: companyRow.last_contacted ?? null,
+        created_at: companyRow.created_at,
+        updated_at: companyRow.updated_at,
+        deals_count: companyRow.deals_count ?? 0,
       } as Company;
     },
     enabled: !!companyId,
@@ -729,16 +724,15 @@ export default function CompanyExpandedView() {
     return map;
   }, [teamMembers]);
 
-  // Related people (leads table where company_name matches, excluding current lead)
+  // Related people (people table where company_name matches)
   const { data: relatedPeople = [] } = useQuery({
     queryKey: ['company-related-people', company?.company_name],
     queryFn: async () => {
       if (!company?.company_name) return [];
       const { data } = await supabase
-        .from('leads')
+        .from('people')
         .select('id, name, title, email, phone')
         .eq('company_name', company.company_name)
-        .neq('id', companyId!)
         .order('name');
       return data ?? [];
     },
@@ -765,9 +759,10 @@ export default function CompanyExpandedView() {
     queryKey: ['company-activities', companyId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('company_activities')
+        .from('activities')
         .select('*')
-        .eq('company_id', companyId!)
+        .eq('entity_id', companyId!)
+        .eq('entity_type', 'companies')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];

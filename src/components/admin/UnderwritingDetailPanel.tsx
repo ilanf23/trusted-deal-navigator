@@ -24,12 +24,12 @@ import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
+type Lead = Database['public']['Tables']['underwriting']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
-interface LeadEmail { id: string; lead_id: string; email: string; email_type: string; is_primary: boolean; }
-interface LeadPhone { id: string; lead_id: string; phone_number: string; phone_type: string; is_primary: boolean; }
-interface LeadAddress { id: string; lead_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean; }
+interface LeadEmail { id: string; entity_id: string; entity_type: string; email: string; email_type: string; is_primary: boolean; }
+interface LeadPhone { id: string; entity_id: string; entity_type: string; phone_number: string; phone_type: string; is_primary: boolean; }
+interface LeadAddress { id: string; entity_id: string; entity_type: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean; }
 
 interface StageConfigEntry {
   label: string;
@@ -100,7 +100,7 @@ function useInlineSave(
     }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('underwriting')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -189,7 +189,7 @@ function EditableSelectField({
     if (newValue === value) return;
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('underwriting')
       .update({ [field]: newValue || null })
       .eq('id', leadId);
     setSaving(false);
@@ -345,7 +345,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('underwriting')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', leadId);
     setSaving(false);
@@ -420,7 +420,7 @@ function EditableRichTextField({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('underwriting')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -606,9 +606,10 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
     queryKey: ['lead-activity-timeline', 'activities', lead.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_activities')
+        .from('activities')
         .select('id, activity_type, title, content, created_at')
-        .eq('lead_id', lead.id)
+        .eq('entity_id', lead.id)
+        .eq('entity_type', 'underwriting')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -768,9 +769,10 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
     queryKey: ['lead-related', 'contacts', lead.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_contacts')
+        .from('entity_contacts')
         .select('id, name, title, email, phone, is_primary')
-        .eq('lead_id', lead.id)
+        .eq('entity_id', lead.id)
+        .eq('entity_type', 'underwriting')
         .order('is_primary', { ascending: false });
       return data || [];
     },
@@ -817,9 +819,10 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
     queryKey: ['lead-files-count', lead.id],
     queryFn: async () => {
       const { data } = await (supabase as any)
-        .from('lead_files')
+        .from('entity_files')
         .select('id')
-        .eq('lead_id', lead.id);
+        .eq('entity_id', lead.id)
+        .eq('entity_type', 'underwriting');
       return data || [];
     },
   });
@@ -861,7 +864,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
                       className="text-[12px] font-semibold text-foreground truncate leading-tight hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer"
                       onClick={async () => {
                         const { data } = await supabase
-                          .from('leads')
+                          .from('underwriting')
                           .select('id')
                           .ilike('name', c.name)
                           .limit(1)
@@ -1040,7 +1043,7 @@ export default function UnderwritingDetailPanel({
   const currentStageIdx = stageKeys.indexOf(activeStageKey);
 
   const handleFieldSaved = useCallback((field: string, newValue: string) => {
-    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
     if (onLeadUpdate) {
       if (field === 'tags') {
         // newValue is JSON-encoded
@@ -1074,25 +1077,25 @@ export default function UnderwritingDetailPanel({
 
   // ── Satellite queries ──
   const { data: leadEmails = [] } = useQuery({
-    queryKey: ['lead-emails', lead.id],
+    queryKey: ['entity-emails', lead.id],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_emails').select('*').eq('lead_id', lead.id);
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', lead.id).eq('entity_type', 'underwriting');
       return (data || []) as LeadEmail[];
     },
   });
 
   const { data: leadPhones = [] } = useQuery({
-    queryKey: ['lead-phones', lead.id],
+    queryKey: ['entity-phones', lead.id],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_phones').select('*').eq('lead_id', lead.id);
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', lead.id).eq('entity_type', 'underwriting');
       return (data || []) as LeadPhone[];
     },
   });
 
   const { data: leadAddresses = [] } = useQuery({
-    queryKey: ['lead-addresses', lead.id],
+    queryKey: ['entity-addresses', lead.id],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_addresses').select('*').eq('lead_id', lead.id);
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', lead.id).eq('entity_type', 'underwriting');
       return (data || []) as LeadAddress[];
     },
   });
@@ -1100,11 +1103,11 @@ export default function UnderwritingDetailPanel({
   // ── Satellite mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('lead_emails').insert({ lead_id: lead.id, email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: lead.id, entity_type: 'underwriting', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-emails', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-emails', lead.id] });
       setNewEmail('');
       setShowAddEmail(false);
       toast.success('Email added');
@@ -1113,22 +1116,22 @@ export default function UnderwritingDetailPanel({
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('lead_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('entity_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-emails', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-emails', lead.id] });
       toast.success('Email removed');
     },
   });
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('lead_phones').insert({ lead_id: lead.id, phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: lead.id, entity_type: 'underwriting', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-phones', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-phones', lead.id] });
       setNewPhone('');
       setShowAddPhone(false);
       toast.success('Phone added');
@@ -1137,11 +1140,11 @@ export default function UnderwritingDetailPanel({
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('lead_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('entity_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-phones', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-phones', lead.id] });
       toast.success('Phone removed');
     },
   });
@@ -1149,8 +1152,9 @@ export default function UnderwritingDetailPanel({
   const addAddressMutation = useMutation({
     mutationFn: async () => {
       if (!newAddressLine1.trim()) return;
-      const { error } = await supabase.from('lead_addresses').insert({
-        lead_id: lead.id,
+      const { error } = await supabase.from('entity_addresses').insert({
+        entity_id: lead.id,
+        entity_type: 'underwriting',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -1160,7 +1164,7 @@ export default function UnderwritingDetailPanel({
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-addresses', lead.id] });
       setNewAddressLine1('');
       setNewAddressCity('');
       setNewAddressState('');
@@ -1173,11 +1177,11 @@ export default function UnderwritingDetailPanel({
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('lead_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('entity_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['entity-addresses', lead.id] });
       toast.success('Address removed');
     },
   });
@@ -1369,7 +1373,7 @@ export default function UnderwritingDetailPanel({
               <div className="border-b border-border pb-1">
                 {ownerOptions.length > 0 ? (
                   <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
-                    const { error } = await supabase.from('leads').update({ assigned_to: v || null }).eq('id', lead.id);
+                    const { error } = await supabase.from('underwriting').update({ assigned_to: v || null }).eq('id', lead.id);
                     if (!error) { handleFieldSaved('assigned_to', v); }
                   }}>
                     <SelectTrigger className="h-10 w-full text-base text-foreground border-0 bg-transparent shadow-none px-1 rounded-none">
@@ -1524,7 +1528,7 @@ export default function UnderwritingDetailPanel({
                 <button
                   onClick={async () => {
                     const newVal = !lead.client_other_lenders;
-                    const { error } = await supabase.from('leads').update({ client_other_lenders: newVal }).eq('id', lead.id);
+                    const { error } = await supabase.from('underwriting').update({ client_other_lenders: newVal }).eq('id', lead.id);
                     if (!error) handleFieldSaved('client_other_lenders', String(newVal));
                   }}
                   className="text-base text-foreground py-1.5 px-1 hover:text-blue-600 transition-colors"
@@ -1541,7 +1545,7 @@ export default function UnderwritingDetailPanel({
                 <button
                   onClick={async () => {
                     const newVal = !lead.flagged_for_weekly;
-                    const { error } = await supabase.from('leads').update({ flagged_for_weekly: newVal }).eq('id', lead.id);
+                    const { error } = await supabase.from('underwriting').update({ flagged_for_weekly: newVal }).eq('id', lead.id);
                     if (!error) handleFieldSaved('flagged_for_weekly', String(newVal));
                   }}
                   className="text-base text-foreground py-1.5 px-1 hover:text-blue-600 transition-colors"

@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import { useGmail } from '@/hooks/useGmail';
 import { appendSignature } from '@/lib/email-signature';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 interface Lead {
   id: string;
@@ -44,6 +45,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
+  const { teamMember } = useTeamMember();
   const queryClient = useQueryClient();
   const tasksCreatedRef = useRef<Set<string>>(new Set());
   const { sendMessage } = useGmail();
@@ -61,7 +63,7 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
 
   // Fetch leads needing nudges (no activity in 7+ days, never nudged before)
   const { data: nudgeLeads = [], isLoading } = useQuery({
-    queryKey: ['evan-dashboard-nudges'],
+    queryKey: ['dashboard-nudges'],
     queryFn: async () => {
       const sevenDaysAgo = subDays(new Date(), 7).toISOString();
       
@@ -112,7 +114,7 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
           status: 'todo',
           priority: 'high',
           lead_id: lead.id,
-          team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
+          team_member_id: teamMember?.id,
           group_name: 'To Do',
           source: 'nudge',
           task_type: 'email',
@@ -132,8 +134,8 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
 
       // Invalidate queries to reflect changes
       if (tasksCreatedRef.current.size > 0) {
-        queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
-        queryClient.invalidateQueries({ queryKey: ['evan-dashboard-nudges'] });
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard-nudges'] });
       }
     };
 
@@ -187,7 +189,7 @@ Evan`;
         }
         
         setComposeOpen(false);
-        queryClient.invalidateQueries({ queryKey: ['evan-dashboard-nudges'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard-nudges'] });
         
         // Reset compose state
         setComposeTo('');

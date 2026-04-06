@@ -45,7 +45,7 @@ const RevenueChart = ({ evanId }: RevenueChartProps) => {
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
 
   const { data: revenueData, isLoading } = useQuery({
-    queryKey: ['evan-revenue-chart', evanId],
+    queryKey: ['revenue-chart', evanId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')

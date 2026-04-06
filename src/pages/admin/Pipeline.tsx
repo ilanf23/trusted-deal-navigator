@@ -70,13 +70,13 @@ import { toast } from 'sonner';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
 import { usePipelineStages } from '@/hooks/usePipelineStages';
-import { usePipelineLeads, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
-import { usePipelineMutations } from '@/hooks/usePipelineMutations';
+import { usePipelineDeals, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
+import { useCrmMutations } from '@/hooks/usePipelineMutations';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
+type Lead = Database['public']['Tables']['pipeline']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 
@@ -427,8 +427,8 @@ const Pipeline = () => {
   // Pipeline data from DB
   const { data: pipeline } = useSystemPipelineByName('Potential');
   const { data: stages = [] } = usePipelineStages(pipeline?.id);
-  const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = usePipelineLeads(pipeline?.id);
-  const { moveLeadToStage, addLeadToPipeline, removeLeadFromPipeline, bulkRemoveLeadsFromPipeline } = usePipelineMutations(pipeline?.id);
+  const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = usePipelineDeals();
+  const { moveLeadToStage, addLeadToPipeline, removeLeadFromPipeline, bulkRemoveLeadsFromPipeline } = useCrmMutations('pipeline');
   const dynamicStageConfig = useMemo(() => buildStageConfig(stages), [stages]);
 
   const leads = pipelineLeadsList;
@@ -545,12 +545,10 @@ const Pipeline = () => {
       registerUndo({
         label: `Created opportunity "${lead.name}"`,
         execute: async () => {
-          const { error: e1 } = await supabase.from('pipeline_leads').delete().eq('lead_id', lead.id);
-          if (e1) throw e1;
-          const { error: e2 } = await supabase.from('leads').delete().eq('id', lead.id);
-          if (e2) throw e2;
+          const { error } = await supabase.from('pipeline').delete().eq('id', lead.id);
+          if (error) throw error;
           setDetailDialogLead(null);
-          queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+          queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
         },
       });
     },
@@ -788,21 +786,21 @@ const Pipeline = () => {
 
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
-    mutationFn: async (pipelineLeadIds: string[]) => {
-      // Capture pipeline_leads records before deleting for undo
+    mutationFn: async (dealIds: string[]) => {
+      // Capture pipeline records before deleting for undo
       const { data: deletedRecords } = await supabase
-        .from('pipeline_leads')
+        .from('pipeline')
         .select('*')
-        .in('id', pipelineLeadIds);
+        .in('id', dealIds);
       const { error } = await supabase
-        .from('pipeline_leads')
+        .from('pipeline')
         .delete()
-        .in('id', pipelineLeadIds);
+        .in('id', dealIds);
       if (error) throw error;
-      return { ids: pipelineLeadIds, deletedRecords: deletedRecords ?? [] };
+      return { ids: dealIds, deletedRecords: deletedRecords ?? [] };
     },
     onSuccess: ({ ids, deletedRecords }) => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
       toast.success(`${ids.length} lead(s) removed from pipeline`);
       clearSelection();
       setDeleteConfirmOpen(false);
@@ -810,9 +808,9 @@ const Pipeline = () => {
         registerUndo({
           label: `Removed ${ids.length} lead(s) from pipeline`,
           execute: async () => {
-            const { error: e } = await supabase.from('pipeline_leads').insert(deletedRecords);
+            const { error: e } = await supabase.from('pipeline').insert(deletedRecords);
             if (e) throw e;
-            queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+            queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
           },
         });
       }
@@ -821,12 +819,12 @@ const Pipeline = () => {
   });
 
   const handleBulkDelete = () => {
-    const pipelineLeadIds = filteredAndSorted
+    const dealIds = filteredAndSorted
       .filter(l => selectedLeadIds.has(l.id))
-      .map(l => (l as any)._pipelineLeadId as string)
+      .map(l => l.id)
       .filter(Boolean);
-    if (pipelineLeadIds.length > 0) {
-      bulkDeleteMutation.mutate(pipelineLeadIds);
+    if (dealIds.length > 0) {
+      bulkDeleteMutation.mutate(dealIds);
     }
   };
 
@@ -835,19 +833,19 @@ const Pipeline = () => {
     mutationFn: async ({ leadIds, ownerId }: { leadIds: string[]; ownerId: string }) => {
       // Capture previous owners for undo
       const { data: prevLeads } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, assigned_to')
         .in('id', leadIds);
       const previousOwners = (prevLeads ?? []).map(l => ({ id: l.id, assigned_to: l.assigned_to }));
       const { error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .update({ assigned_to: ownerId })
         .in('id', leadIds);
       if (error) throw error;
       return { leadIds, ownerId, previousOwners };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
       const ownerName = teamMemberMap[result.ownerId] || 'team member';
       toast.success(`${result.leadIds.length} lead(s) assigned to ${ownerName}`);
       clearSelection();
@@ -855,10 +853,10 @@ const Pipeline = () => {
         label: `Assigned ${result.leadIds.length} lead(s) to ${ownerName}`,
         execute: async () => {
           for (const prev of result.previousOwners) {
-            const { error: e } = await supabase.from('leads').update({ assigned_to: prev.assigned_to }).eq('id', prev.id);
+            const { error: e } = await supabase.from('pipeline').update({ assigned_to: prev.assigned_to }).eq('id', prev.id);
             if (e) throw e;
           }
-          queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+          queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
         },
       });
     },
@@ -872,9 +870,9 @@ const Pipeline = () => {
   // Bulk add tags mutation
   const bulkAddTagsMutation = useMutation({
     mutationFn: async ({ leadIds, tags }: { leadIds: string[]; tags: string[] }) => {
-      // Fetch current tags for selected leads
+      // Fetch current tags for selected deals
       const { data: currentLeads, error: fetchError } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, tags')
         .in('id', leadIds);
       if (fetchError) throw fetchError;
@@ -882,12 +880,12 @@ const Pipeline = () => {
       // Capture previous tags for undo
       const previousTags = (currentLeads || []).map(l => ({ id: l.id, tags: (l.tags as string[]) || [] }));
 
-      // Update each lead, merging new tags with existing
+      // Update each deal, merging new tags with existing
       for (const lead of (currentLeads || [])) {
         const existingTags: string[] = (lead.tags as string[]) || [];
         const mergedTags = Array.from(new Set([...existingTags, ...tags]));
         const { error } = await supabase
-          .from('leads')
+          .from('pipeline')
           .update({ tags: mergedTags })
           .eq('id', lead.id);
         if (error) throw error;
@@ -895,7 +893,7 @@ const Pipeline = () => {
       return { count: leadIds.length, tags, previousTags };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
       toast.success(`Added ${result.tags.length} tag(s) to ${result.count} lead(s)`);
       clearSelection();
       setAddTagsDialogOpen(false);
@@ -904,10 +902,10 @@ const Pipeline = () => {
         label: `Added tags to ${result.count} lead(s)`,
         execute: async () => {
           for (const prev of result.previousTags) {
-            const { error: e } = await supabase.from('leads').update({ tags: prev.tags }).eq('id', prev.id);
+            const { error: e } = await supabase.from('pipeline').update({ tags: prev.tags }).eq('id', prev.id);
             if (e) throw e;
           }
-          queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+          queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
         },
       });
     },
@@ -1723,7 +1721,7 @@ const Pipeline = () => {
               }}
               onLeadUpdate={(updatedLead) => {
                 setDetailDialogLead(updatedLead);
-                queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+                queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
               }}
             />
           )}

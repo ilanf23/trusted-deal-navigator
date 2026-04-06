@@ -13,7 +13,7 @@ export const TodaysPriorities = ({ evanId }: TodaysPrioritiesProps) => {
   const today = new Date();
 
   const { data: priorities } = useQuery({
-    queryKey: ['evan-todays-priorities', evanId],
+    queryKey: ['todays-priorities', evanId],
     queryFn: async () => {
       if (!evanId) return null;
 

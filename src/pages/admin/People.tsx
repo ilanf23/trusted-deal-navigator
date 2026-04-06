@@ -83,7 +83,7 @@ import BulkImportDialog from '@/components/admin/BulkImportDialog';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
 
-// ── Person type (mapped from leads table via pipeline_leads) ──
+// ── Person type (from people table) ──
 interface Person {
   id: string;
   name: string;
@@ -379,33 +379,33 @@ const People = () => {
   // Rename public filter (contact type) — updates all leads in DB
   const renameContactTypeMutation = useMutation({
     mutationFn: async ({ oldType, newType }: { oldType: string; newType: string }) => {
-      // Capture affected lead IDs before the rename so undo is scoped to only these records
-      const { data: affectedLeads } = await supabase
-        .from('leads')
+      // Capture affected person IDs before the rename so undo is scoped to only these records
+      const { data: affectedPeople } = await supabase
+        .from('people')
         .select('id')
         .eq('contact_type', oldType);
-      const affectedIds = (affectedLeads ?? []).map(l => l.id);
+      const affectedIds = (affectedPeople ?? []).map(l => l.id);
       const { error } = await supabase
-        .from('leads')
+        .from('people')
         .update({ contact_type: newType })
         .eq('contact_type', oldType);
       if (error) throw error;
       return { oldType, newType, affectedIds };
     },
     onSuccess: ({ oldType, newType, affectedIds }) => {
-      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['people'] });
       registerUndo({
         label: `Renamed contact type "${oldType}" to "${newType}"`,
         execute: async () => {
           if (affectedIds.length === 0) return;
-          const { error } = await supabase.from('leads').update({ contact_type: oldType }).in('id', affectedIds);
+          const { error } = await supabase.from('people').update({ contact_type: oldType }).in('id', affectedIds);
           if (error) throw error;
           // Revert sidebar filter UI state to match reverted DB values
           setFilterOptions(prev => prev.map(o =>
             o.id === newType ? { ...o, id: oldType, label: oldType } : o
           ));
           setActiveFilter(prev => prev === newType ? oldType : prev);
-          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          queryClient.invalidateQueries({ queryKey: ['people'] });
         },
       });
     },
@@ -562,12 +562,13 @@ const People = () => {
   const contactTypeMutation = useMutation({
     mutationFn: async ({ personId, newType, oldType }: { personId: string; newType: string; oldType: string }) => {
       const { error } = await supabase
-        .from('leads')
+        .from('people')
         .update({ contact_type: newType })
         .eq('id', personId);
       if (error) throw error;
-      await supabase.from('lead_activities').insert({
-        lead_id: personId,
+      await supabase.from('activities').insert({
+        entity_id: personId,
+        entity_type: 'people',
         activity_type: 'type_change',
         title: `Changed from ${oldType} to ${newType}`,
         content: JSON.stringify({ from: oldType, to: newType }),
@@ -575,14 +576,14 @@ const People = () => {
       return { personId, oldType, newType };
     },
     onSuccess: ({ personId, oldType, newType }) => {
-      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['people'] });
       toast.success('Contact type updated');
       registerUndo({
         label: `Changed contact type to "${newType}"`,
         execute: async () => {
-          const { error } = await supabase.from('leads').update({ contact_type: oldType }).eq('id', personId);
+          const { error } = await supabase.from('people').update({ contact_type: oldType }).eq('id', personId);
           if (error) throw error;
-          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          queryClient.invalidateQueries({ queryKey: ['people'] });
         },
       });
     },
@@ -601,9 +602,9 @@ const People = () => {
 
   const createPersonMutation = useMutation({
     mutationFn: async (data: { name: string; title: string; company_name: string; email: string; phone: string; contact_type: string; known_as: string; clx_file_name: string; assigned_to: string; direct_phone: string; fax_phone: string }) => {
-      // Insert into leads
-      const { data: lead, error } = await supabase
-        .from('leads')
+      // Insert into people
+      const { data: person, error } = await supabase
+        .from('people')
         .insert({
           name: data.name,
           title: data.title || null,
@@ -620,42 +621,19 @@ const People = () => {
         .single();
       if (error) throw error;
 
-      // Insert extra phone numbers into lead_phones
+      // Insert extra phone numbers into entity_phones
       const phonesToInsert = [
-        data.direct_phone ? { lead_id: lead.id, phone_number: data.direct_phone, phone_type: 'direct' } : null,
-        data.fax_phone ? { lead_id: lead.id, phone_number: data.fax_phone, phone_type: 'fax' } : null,
+        data.direct_phone ? { entity_id: person.id, entity_type: 'people', phone_number: data.direct_phone, phone_type: 'direct' } : null,
+        data.fax_phone ? { entity_id: person.id, entity_type: 'people', phone_number: data.fax_phone, phone_type: 'fax' } : null,
       ].filter(Boolean);
       if (phonesToInsert.length > 0) {
-        await supabase.from('lead_phones').insert(phonesToInsert);
+        await supabase.from('entity_phones').insert(phonesToInsert);
       }
 
-      // Add to default (Potential) pipeline
-      const { data: pipeline } = await supabase
-        .from('pipelines')
-        .select('id')
-        .eq('is_main', true)
-        .maybeSingle();
-      if (pipeline) {
-        const { data: stage } = await supabase
-          .from('pipeline_stages')
-          .select('id')
-          .eq('pipeline_id', pipeline.id)
-          .order('position', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (stage) {
-          await supabase.from('pipeline_leads').insert({
-            lead_id: lead.id,
-            pipeline_id: pipeline.id,
-            stage_id: stage.id,
-          });
-        }
-      }
-
-      return lead as Person;
+      return person as Person;
     },
     onSuccess: (person) => {
-      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['people'] });
       setAddPersonOpen(false);
       setNewPerson({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: 'Prospect', known_as: '', clx_file_name: '', assigned_to: '', direct_phone: '', fax_phone: '' });
       toast.success(`"${person.name}" added as ${person.contact_type}`);
@@ -663,10 +641,10 @@ const People = () => {
       registerUndo({
         label: `Created "${person.name}"`,
         execute: async () => {
-          const { error } = await supabase.from('leads').delete().eq('id', person.id);
+          const { error } = await supabase.from('people').delete().eq('id', person.id);
           if (error) throw error;
           setSelectedPerson(null);
-          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          queryClient.invalidateQueries({ queryKey: ['people'] });
         },
       });
     },
@@ -734,13 +712,14 @@ const People = () => {
     queryKey: ['people-task-counts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_activities')
-        .select('lead_id')
-        .in('lead_id', people.map((p) => p.id));
+        .from('activities')
+        .select('entity_id')
+        .eq('entity_type', 'people')
+        .in('entity_id', people.map((p) => p.id));
       if (error) return {} as Record<string, number>;
       const counts: Record<string, number> = {};
       for (const row of data) {
-        counts[row.lead_id] = (counts[row.lead_id] || 0) + 1;
+        counts[row.entity_id] = (counts[row.entity_id] || 0) + 1;
       }
       return counts;
     },
@@ -751,28 +730,30 @@ const People = () => {
     queryKey: ['people-interaction-counts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_activities')
-        .select('lead_id')
-        .in('lead_id', people.map((p) => p.id));
+        .from('activities')
+        .select('entity_id')
+        .eq('entity_type', 'people')
+        .in('entity_id', people.map((p) => p.id));
       if (error) return {} as Record<string, number>;
       const counts: Record<string, number> = {};
       for (const row of data) {
-        counts[row.lead_id] = (counts[row.lead_id] || 0) + 1;
+        counts[row.entity_id] = (counts[row.entity_id] || 0) + 1;
       }
       return counts;
     },
     enabled: people.length > 0,
   });
 
-  // Query followed leads for "People I'm Following" filter
+  // Query followed people for "People I'm Following" filter
   const { data: followedLeadIds = [] } = useQuery({
-    queryKey: ['followed-leads', teamMember?.id],
+    queryKey: ['followed-people', teamMember?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_followers')
-        .select('lead_id')
+        .from('entity_followers')
+        .select('entity_id')
+        .eq('entity_type', 'people')
         .eq('team_member_id', teamMember!.id);
-      return (data ?? []).map(r => r.lead_id);
+      return (data ?? []).map(r => r.entity_id);
     },
     enabled: !!teamMember?.id,
   });
@@ -876,18 +857,18 @@ const People = () => {
     mutationFn: async ({ personIds, newType }: { personIds: string[]; newType: string }) => {
       // Capture previous contact_types before update
       const { data: prevRecords } = await supabase
-        .from('leads')
+        .from('people')
         .select('id, contact_type')
         .in('id', personIds);
       const { error } = await supabase
-        .from('leads')
+        .from('people')
         .update({ contact_type: newType })
         .in('id', personIds);
       if (error) throw error;
       return { prevRecords: prevRecords ?? [], newType };
     },
     onSuccess: ({ prevRecords, newType }) => {
-      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['people'] });
       clearSelection();
       setBulkEditOpen(false);
       setBulkContactType('');
@@ -896,10 +877,10 @@ const People = () => {
         label: `Bulk changed ${prevRecords.length} contacts to "${newType}"`,
         execute: async () => {
           for (const rec of prevRecords) {
-            const { error: e } = await supabase.from('leads').update({ contact_type: rec.contact_type }).eq('id', rec.id);
+            const { error: e } = await supabase.from('people').update({ contact_type: rec.contact_type }).eq('id', rec.id);
             if (e) throw e;
           }
-          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          queryClient.invalidateQueries({ queryKey: ['people'] });
         },
       });
     },

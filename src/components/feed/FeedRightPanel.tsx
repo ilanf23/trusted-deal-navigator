@@ -70,19 +70,20 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
   });
 
   const { data: upcomingMeetings = [] } = useQuery({
-    queryKey: ['feed-right-meetings'],
+    queryKey: ['feed-right-meetings', teamMember?.id],
     queryFn: async () => {
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('appointments')
         .select('id, title, start_time, end_time, team_member_id, description')
-        .eq('team_member_id', '5e2d8710-7a23-4c33-87a2-4ad9ced4e936')
+        .eq('team_member_id', teamMember!.id)
         .gte('start_time', now)
         .order('start_time', { ascending: true })
         .limit(5);
       if (error) throw error;
       return data || [];
     },
+    enabled: !!teamMember?.id,
   });
 
   // Pipeline pulse: quick counts

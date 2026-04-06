@@ -1,32 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/integrations/supabase/types';
+import type { Person, Company } from '@/integrations/supabase/types';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
-
-interface PipelineLeadJoin {
-  id: string;
-  pipeline_id: string;
-  lead_id: string;
-  stage_id: string;
-  added_at: string;
-  updated_at: string;
-  lead: Lead;
-  stage: { id: string; name: string; position: number; color: string | null; pipeline_id: string };
-  pipeline: { id: string; name: string };
-}
-
-export interface PipelinePerson extends Lead {
+// Re-export types for backward compatibility
+export type PipelinePerson = Person & {
   _pipelineName: string;
   _stageName: string;
   _stageId: string;
   _pipelineId: string;
   _pipelineLeadId: string;
-}
+};
 
 export interface DerivedCompany {
-  id: string; // first lead's ID (used as companyId for routing)
+  id: string;
   company_name: string;
   contact_name: string | null;
   phone: string | null;
@@ -46,116 +32,89 @@ export interface DerivedCompany {
   deals_count: number;
 }
 
-export const useAllPipelineLeads = () => {
-  const query = useQuery({
-    queryKey: ['all-pipeline-leads'],
+/** Fetch all people from the people table */
+export const usePeople = () => {
+  return useQuery({
+    queryKey: ['people'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline_leads')
-        .select('*, lead:leads(*), stage:pipeline_stages(*), pipeline:pipelines(id, name)')
+        .from('people')
+        .select('*')
         .order('updated_at', { ascending: false });
       if (error) throw error;
-      return data as unknown as PipelineLeadJoin[];
+      return data as Person[];
     },
   });
+};
 
-  // Deduplicated people: one row per lead_id, keeping most recent pipeline_lead
-  const people = useMemo<PipelinePerson[]>(() => {
-    if (!query.data) return [];
-    const seen = new Map<string, PipelineLeadJoin>();
-    for (const pl of query.data) {
-      if (!pl.lead) continue;
-      const existing = seen.get(pl.lead_id);
-      if (!existing || new Date(pl.updated_at) > new Date(existing.updated_at)) {
-        seen.set(pl.lead_id, pl);
-      }
-    }
-    return Array.from(seen.values()).map(pl => ({
-      ...pl.lead,
-      _pipelineName: pl.pipeline?.name ?? '',
-      _stageName: pl.stage?.name ?? '',
-      _stageId: pl.stage_id,
-      _pipelineId: pl.pipeline_id,
-      _pipelineLeadId: pl.id,
-    }));
-  }, [query.data]);
+/** Fetch all companies from the companies table */
+export const useCompanies = () => {
+  return useQuery({
+    queryKey: ['companies'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data as Company[];
+    },
+  });
+};
 
-  // Companies: aggregated by company_name
-  const companies = useMemo<DerivedCompany[]>(() => {
-    if (people.length === 0) return [];
-    const grouped = new Map<string, PipelinePerson[]>();
-    for (const p of people) {
-      const cn = p.company_name?.trim();
-      if (!cn) continue;
-      const arr = grouped.get(cn) || [];
-      arr.push(p);
-      grouped.set(cn, arr);
-    }
+/**
+ * Backward-compatible hook that returns people and companies.
+ * People are returned with empty pipeline metadata since they're now standalone.
+ * Companies are mapped to the DerivedCompany shape.
+ */
+export const useAllPipelineLeads = () => {
+  const peopleQuery = usePeople();
+  const companiesQuery = useCompanies();
 
-    return Array.from(grouped.entries()).map(([companyName, leads]) => {
-      // Primary lead = first lead (most recently updated due to sort)
-      const primary = leads[0];
+  const isLoading = peopleQuery.isLoading || companiesQuery.isLoading;
+  const error = peopleQuery.error || companiesQuery.error;
 
-      // Extract email domain from first lead that has an email
-      let emailDomain: string | null = null;
-      for (const l of leads) {
-        if (l.email) {
-          const parts = l.email.split('@');
-          if (parts.length === 2) {
-            emailDomain = parts[1];
-            break;
-          }
-        }
-      }
+  // Map people to PipelinePerson shape for backward compat
+  const people: PipelinePerson[] = (peopleQuery.data ?? []).map(p => ({
+    ...p,
+    _pipelineName: '',
+    _stageName: '',
+    _stageId: '',
+    _pipelineId: '',
+    _pipelineLeadId: p.id,
+  }));
 
-      // Most common contact_type
-      const typeCounts = new Map<string, number>();
-      for (const l of leads) {
-        const t = l.contact_type ?? 'Other';
-        typeCounts.set(t, (typeCounts.get(t) ?? 0) + 1);
-      }
-      let mostCommonType = 'Other';
-      let maxCount = 0;
-      for (const [t, c] of typeCounts) {
-        if (c > maxCount) { mostCommonType = t; maxCount = c; }
-      }
+  // Map companies to DerivedCompany shape for backward compat
+  const companies: DerivedCompany[] = (companiesQuery.data ?? []).map(c => ({
+    id: c.id,
+    company_name: c.company_name,
+    contact_name: null,
+    phone: null,
+    website: c.website,
+    email_domain: null,
+    contact_type: c.contact_type,
+    tags: c.tags,
+    assigned_to: c.assigned_to,
+    notes: c.notes,
+    source: c.source,
+    last_activity_at: c.last_activity_at,
+    known_as: null,
+    clx_file_name: null,
+    bank_relationships: null,
+    created_at: c.created_at,
+    updated_at: c.updated_at,
+    deals_count: 0,
+  }));
 
-      // Union of tags
-      const tagSet = new Set<string>();
-      for (const l of leads) {
-        if (l.tags) for (const t of l.tags) tagSet.add(t);
-      }
-
-      // Max last_activity_at
-      let maxActivity: string | null = null;
-      for (const l of leads) {
-        if (l.last_activity_at && (!maxActivity || l.last_activity_at > maxActivity)) {
-          maxActivity = l.last_activity_at;
-        }
-      }
-
-      return {
-        id: primary.id,
-        company_name: companyName,
-        contact_name: primary.name,
-        phone: primary.phone,
-        website: primary.website,
-        email_domain: emailDomain,
-        contact_type: mostCommonType,
-        tags: tagSet.size > 0 ? Array.from(tagSet) : null,
-        assigned_to: primary.assigned_to,
-        notes: primary.notes,
-        source: primary.source,
-        last_activity_at: maxActivity,
-        known_as: primary.known_as,
-        clx_file_name: primary.clx_file_name,
-        bank_relationships: primary.bank_relationships,
-        created_at: primary.created_at,
-        updated_at: primary.updated_at,
-        deals_count: leads.length,
-      };
-    });
-  }, [people]);
-
-  return { ...query, people, companies };
+  return {
+    isLoading,
+    error,
+    data: null,
+    people,
+    companies,
+    refetch: () => {
+      peopleQuery.refetch();
+      companiesQuery.refetch();
+    },
+  };
 };

@@ -131,7 +131,7 @@ export const CommunicationsWidget = () => {
   };
 
   const { data: communications = [], isLoading } = useQuery({
-    queryKey: ['evan-communications'],
+    queryKey: ['communications'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('communications')
@@ -170,7 +170,7 @@ export const CommunicationsWidget = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
+      queryClient.invalidateQueries({ queryKey: ['communications'] });
       setNewComm({
         lead_id: '',
         communication_type: 'call',
@@ -200,7 +200,7 @@ export const CommunicationsWidget = () => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
+      queryClient.invalidateQueries({ queryKey: ['communications'] });
       setSmsData({ to: '', message: '', leadId: '' });
       setIsSmsOpen(false);
       toast.success(`SMS sent successfully! Status: ${data.status}`);
@@ -224,7 +224,7 @@ export const CommunicationsWidget = () => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
+      queryClient.invalidateQueries({ queryKey: ['communications'] });
       setCallData({ to: '', leadId: '' });
       setIsCallOpen(false);
       toast.success(`Call initiated to ${data.to}! Status: ${data.status}`);
@@ -263,8 +263,8 @@ export const CommunicationsWidget = () => {
       return newLead;
     },
     onSuccess: (newLead) => {
-      queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
-      queryClient.invalidateQueries({ queryKey: ['evan-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['communications'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads-for-comm'] });
       setNewLeadData({ name: '', email: '', company_name: '' });
       setIsAddLeadOpen(false);

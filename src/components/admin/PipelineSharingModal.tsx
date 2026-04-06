@@ -16,7 +16,7 @@ interface TeamMember {
   id: string;
   name: string;
   email: string | null;
-  role: string | null;
+  position: string | null;
   avatar_url: string | null;
 }
 
@@ -49,7 +49,7 @@ const PipelineSharingModal = ({ open, onOpenChange, ownerId, ownerName }: Pipeli
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, role, avatar_url')
+        .select('id, name, email, position, avatar_url')
         .eq('is_active', true)
         .order('name');
       if (error) throw error;
@@ -64,7 +64,7 @@ const PipelineSharingModal = ({ open, onOpenChange, ownerId, ownerName }: Pipeli
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pipeline_shares')
-        .select('*, team_member:users!pipeline_shares_shared_with_id_fkey(id, name, email, role, avatar_url)')
+        .select('*, team_member:users!pipeline_shares_shared_with_id_fkey(id, name, email, position, avatar_url)')
         .eq('owner_id', ownerId);
       if (error) throw error;
       return data as PipelineShare[];
@@ -282,7 +282,7 @@ const PipelineSharingModal = ({ open, onOpenChange, ownerId, ownerName }: Pipeli
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-900 truncate">{member.name}</p>
-                        <p className="text-xs text-slate-500 truncate">{member.role || 'Team Member'}</p>
+                        <p className="text-xs text-slate-500 truncate">{member.position || 'Team Member'}</p>
                       </div>
                       {!isMarkedForRemoval && (
                         <Select
@@ -387,7 +387,7 @@ const PipelineSharingModal = ({ open, onOpenChange, ownerId, ownerName }: Pipeli
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-900 truncate">{member.name}</p>
-                      <p className="text-xs text-slate-500 truncate">{member.email || member.role || 'Team Member'}</p>
+                      <p className="text-xs text-slate-500 truncate">{member.email || member.position || 'Team Member'}</p>
                     </div>
                     <div className="flex items-center gap-1 text-[#0066FF] opacity-0 group-hover:opacity-100 transition-opacity">
                       <UserPlus className="h-4 w-4" />

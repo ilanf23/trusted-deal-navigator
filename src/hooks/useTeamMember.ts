@@ -7,7 +7,7 @@ export interface TeamMember {
   id: string;
   name: string;
   email: string | null;
-  role: string | null;
+  position: string | null;
   is_owner: boolean;
   avatar_url: string | null;
 }

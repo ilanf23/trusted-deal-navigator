@@ -23,7 +23,7 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
 
   // Allow access if user is a team member OR has an admin role
   if (!teamMember && !isAdmin) {
-    return <Navigate to="/user" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   return <>{children}</>;

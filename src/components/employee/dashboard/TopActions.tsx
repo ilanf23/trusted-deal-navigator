@@ -63,7 +63,7 @@ const STAGE_CLOSE_PROXIMITY: Record<string, number> = {
 export const TopActions = ({ evanId }: TopActionsProps) => {
   // Fetch leads with their communications and responses
   const { data: leadsData, isLoading } = useQuery({
-    queryKey: ['evan-top-actions', evanId],
+    queryKey: ['top-actions', evanId],
     queryFn: async () => {
       const { data: leads, error } = await supabase
         .from('leads')
@@ -93,7 +93,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
 
   // Fetch recent communications
   const { data: communications } = useQuery({
-    queryKey: ['evan-lead-communications', evanId],
+    queryKey: ['lead-communications', evanId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('communications')
@@ -109,7 +109,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
 
   // Fetch pending tasks per lead
   const { data: tasks } = useQuery({
-    queryKey: ['evan-lead-tasks'],
+    queryKey: ['lead-tasks-widget'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')

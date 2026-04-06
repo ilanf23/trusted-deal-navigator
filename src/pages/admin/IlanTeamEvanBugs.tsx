@@ -19,7 +19,7 @@ const IlanTeamEvanBugs = () => {
   }, []);
 
   const { data: bugReports, isLoading } = useQuery({
-    queryKey: ['evan-bug-reports'],
+    queryKey: ['bug-reports'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bug_reports')

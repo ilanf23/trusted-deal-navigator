@@ -75,11 +75,11 @@ import { useMutation } from '@tanstack/react-query';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
 import { usePipelineStages } from '@/hooks/usePipelineStages';
-import { usePipelineLeads, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
-import { usePipelineMutations } from '@/hooks/usePipelineMutations';
+import { useUnderwritingDeals, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
+import { useCrmMutations } from '@/hooks/usePipelineMutations';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
+type Lead = Database['public']['Tables']['underwriting']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 
@@ -298,8 +298,8 @@ const Underwriting = () => {
   // Pipeline data from DB
   const { data: pipeline } = useSystemPipelineByName('Underwriting');
   const { data: stages = [] } = usePipelineStages(pipeline?.id);
-  const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = usePipelineLeads(pipeline?.id);
-  const { moveLeadToStage, addLeadToPipeline, bulkRemoveLeadsFromPipeline } = usePipelineMutations(pipeline?.id);
+  const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = useUnderwritingDeals();
+  const { moveLeadToStage, addLeadToPipeline, bulkRemoveLeadsFromPipeline } = useCrmMutations('underwriting');
   const dynamicStageConfig = useMemo(() => buildStageConfig(stages), [stages]);
 
   // ── Core state ──
@@ -761,17 +761,17 @@ const Underwriting = () => {
 
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
-    mutationFn: async (pipelineLeadIds: string[]) => {
+    mutationFn: async (dealIds: string[]) => {
       const { error } = await supabase
-        .from('pipeline_leads')
+        .from('underwriting')
         .delete()
-        .in('id', pipelineLeadIds);
+        .in('id', dealIds);
       if (error) throw error;
-      return pipelineLeadIds;
+      return dealIds;
     },
     onSuccess: (ids) => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
-      toast.success(`${ids.length} lead(s) removed from pipeline`);
+      queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
+      toast.success(`${ids.length} lead(s) removed`);
       clearSelection();
       setDeleteConfirmOpen(false);
     },
@@ -779,12 +779,12 @@ const Underwriting = () => {
   });
 
   const handleBulkDelete = () => {
-    const pipelineLeadIds = filteredAndSorted
+    const dealIds = filteredAndSorted
       .filter(l => selectedLeadIds.has(l.id))
-      .map(l => (l as any)._pipelineLeadId as string)
+      .map(l => l.id)
       .filter(Boolean);
-    if (pipelineLeadIds.length > 0) {
-      bulkDeleteMutation.mutate(pipelineLeadIds);
+    if (dealIds.length > 0) {
+      bulkDeleteMutation.mutate(dealIds);
     }
   };
 
@@ -792,14 +792,14 @@ const Underwriting = () => {
   const bulkAssignOwnerMutation = useMutation({
     mutationFn: async ({ leadIds, ownerId }: { leadIds: string[]; ownerId: string }) => {
       const { error } = await supabase
-        .from('leads')
+        .from('underwriting')
         .update({ assigned_to: ownerId })
         .in('id', leadIds);
       if (error) throw error;
       return { leadIds, ownerId };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+      queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
       const ownerName = teamMemberMap[result.ownerId] || 'team member';
       toast.success(`${result.leadIds.length} lead(s) assigned to ${ownerName}`);
       clearSelection();
@@ -815,7 +815,7 @@ const Underwriting = () => {
   const bulkAddTagsMutation = useMutation({
     mutationFn: async ({ leadIds, tags }: { leadIds: string[]; tags: string[] }) => {
       const { data: currentLeads, error: fetchError } = await supabase
-        .from('leads')
+        .from('underwriting')
         .select('id, tags')
         .in('id', leadIds);
       if (fetchError) throw fetchError;
@@ -824,7 +824,7 @@ const Underwriting = () => {
         const existingTags: string[] = (lead.tags as string[]) || [];
         const mergedTags = Array.from(new Set([...existingTags, ...tags]));
         const { error } = await supabase
-          .from('leads')
+          .from('underwriting')
           .update({ tags: mergedTags })
           .eq('id', lead.id);
         if (error) throw error;
@@ -832,7 +832,7 @@ const Underwriting = () => {
       return { count: leadIds.length, tags };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+      queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
       toast.success(`Added ${result.tags.length} tag(s) to ${result.count} lead(s)`);
       clearSelection();
       setAddTagsDialogOpen(false);
@@ -1650,7 +1650,7 @@ const Underwriting = () => {
               }}
               onLeadUpdate={(updatedLead) => {
                 setSelectedLead(updatedLead);
-                queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+                queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
               }}
             />
           )}

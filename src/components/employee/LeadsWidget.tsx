@@ -40,7 +40,7 @@ const statusConfig: Record<LeadStatus, { label: string; color: string }> = {
 
 export const LeadsWidget = () => {
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['evan-leads'],
+    queryKey: ['workspace-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')

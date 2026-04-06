@@ -77,7 +77,7 @@ const TeamPerformance = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, role, avatar_url, is_owner')
+        .select('id, name, position, avatar_url, is_owner')
         .order('name');
       if (error) throw error;
       return data;
@@ -172,7 +172,7 @@ const TeamPerformance = () => {
 
   // Fetch Evan's tasks
   const { data: tasksData } = useQuery({
-    queryKey: ['evan-tasks-summary'],
+    queryKey: ['tasks-summary'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
@@ -184,7 +184,7 @@ const TeamPerformance = () => {
 
   // Fetch Evan's communications
   const { data: communicationsData } = useQuery({
-    queryKey: ['evan-communications-summary', timePeriod],
+    queryKey: ['communications-summary', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('communications')
@@ -198,7 +198,7 @@ const TeamPerformance = () => {
 
   // Fetch call ratings
   const { data: callRatingsData } = useQuery({
-    queryKey: ['evan-call-ratings', timePeriod],
+    queryKey: ['call-ratings', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('call_rating_notifications')
@@ -412,7 +412,7 @@ const TeamPerformance = () => {
         {/* Employee Selector Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {(allTeamMembers || []).map((tm) => {
-            const emp = { id: tm.name.toLowerCase(), name: tm.name, role: tm.role || 'Team Member', active: true };
+            const emp = { id: tm.name.toLowerCase(), name: tm.name, position: tm.position || 'Team Member', active: true };
             const teamMemberData = tm;
             return (
               <Card
@@ -438,7 +438,7 @@ const TeamPerformance = () => {
                     </Avatar>
                     <div>
                       <p className="font-semibold text-sm">{emp.name}</p>
-                      <p className="text-xs text-muted-foreground">{emp.role}</p>
+                      <p className="text-xs text-muted-foreground">{emp.position}</p>
                     </div>
                   </div>
                   {!emp.active && (

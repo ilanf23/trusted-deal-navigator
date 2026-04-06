@@ -16,10 +16,9 @@ There are no automated tests. Playwright is installed but not actively used.
 
 ## Architecture Overview
 
-**CommercialLendingX** is a multi-role commercial lending platform with four distinct portals:
+**CommercialLendingX** is a multi-role commercial lending platform with three distinct portals:
 - **Superadmin** (`/superadmin`) — Founders (Ilan, Brad, Adam) with full access
 - **Employee** (`/admin/:name`) — Scoped per-employee dashboards (Evan, Maura, Wendy)
-- **Client** (`/user`) — Customer portal (contracts, invoices, messages)
 - **Partner** (`/partner`) — Referral partner portal
 
 Stack: React 18 + TypeScript + Vite, shadcn/ui + Tailwind, Supabase (auth/db/edge functions), Twilio Voice SDK, TanStack Query.
@@ -39,8 +38,7 @@ src/
     gmail/        # Gmail integration components
     feed/         # Activity feed
     partner/      # Partner portal layout + routing
-    portal/       # Client portal layout
-  pages/          # 72 page components (admin 41, portal 5, partner 4, public 11, solutions 3)
+  pages/          # 67 page components (admin 41, partner 4, public 11, solutions 3)
   hooks/          # 35 custom hooks (pipeline, gmail, dropbox, sheets, dashboards, tasks, AI)
   contexts/       # 8 React contexts (auth, call, AI, draft, UI state, undo, split view, top bar)
   integrations/   # Supabase client + auto-generated DB types (~5000 lines)
@@ -55,7 +53,7 @@ email-templates/  # HTML email templates (confirm-signup)
 
 ## Role-Based Access Control
 
-Four roles stored in `users.app_role` column (using `app_role` enum): `admin`, `super_admin`, `client`, `partner`. The `users.user_type` column distinguishes `team_member`, `client`, `partner`, and `contact`.
+Three roles stored in `users.app_role` column (using `app_role` enum): `admin`, `super_admin`, `partner`.
 
 - **Founders** (Ilan/Brad/Adam): full `/superadmin` + personal dashboards at `/superadmin/:name`
 - **Employees**: only their own `/admin/:name` dashboard — enforced by `EmployeeRoute` component

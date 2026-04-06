@@ -69,12 +69,12 @@ import { toast } from 'sonner';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
 import { usePipelineStages } from '@/hooks/usePipelineStages';
-import { usePipelineLeads, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
-import { usePipelineMutations } from '@/hooks/usePipelineMutations';
+import { useLenderManagementDeals, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
+import { useCrmMutations } from '@/hooks/usePipelineMutations';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
+type Lead = Database['public']['Tables']['lender_management']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 
@@ -433,8 +433,8 @@ const LenderManagement = () => {
   // Pipeline data from DB
   const { data: pipeline } = useSystemPipelineByName('Lender Management');
   const { data: stages = [] } = usePipelineStages(pipeline?.id);
-  const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = usePipelineLeads(pipeline?.id);
-  const { moveLeadToStage, addLeadToPipeline } = usePipelineMutations(pipeline?.id);
+  const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = useLenderManagementDeals();
+  const { moveLeadToStage, addLeadToPipeline } = useCrmMutations('lender_management');
   const dynamicStageConfig = useMemo(() => buildStageConfig(stages), [stages]);
 
   const leads = pipelineLeadsList;
@@ -1512,7 +1512,7 @@ const LenderManagement = () => {
               }}
               onLeadUpdate={(updatedLead) => {
                 setDetailDialogLead(updatedLead);
-                queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+                queryClient.invalidateQueries({ queryKey: ['lender-management-deals'] });
               }}
             />
           )}

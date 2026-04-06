@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 interface Appointment {
   id: string;
@@ -26,26 +27,28 @@ export const TaskCalendarView = ({
   onOpenDetail,
   onAddTask,
 }: TaskCalendarViewProps) => {
+  const { teamMember } = useTeamMember();
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  
-  // Fetch Google Calendar appointments - filtered to Evan's calendar only
+
+  // Fetch Google Calendar appointments - filtered to current user's calendar
   const { data: appointments = [] } = useQuery({
-    queryKey: ['evan-appointments-calendar', currentMonth.toISOString()],
+    queryKey: ['appointments-calendar', teamMember?.id, currentMonth.toISOString()],
     queryFn: async () => {
       const monthStart = startOfMonth(currentMonth);
       const monthEnd = endOfMonth(currentMonth);
-      
+
       const { data, error } = await supabase
         .from('appointments')
         .select('id, title, start_time, end_time, appointment_type, google_event_id')
-        .eq('team_member_id', '5e2d8710-7a23-4c33-87a2-4ad9ced4e936')
+        .eq('team_member_id', teamMember!.id)
         .gte('start_time', monthStart.toISOString())
         .lte('start_time', monthEnd.toISOString())
         .order('start_time', { ascending: true });
-      
+
       if (error) throw error;
       return data as Appointment[];
     },
+    enabled: !!teamMember?.id,
   });
   
   const monthStart = startOfMonth(currentMonth);

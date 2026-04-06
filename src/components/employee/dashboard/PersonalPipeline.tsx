@@ -23,7 +23,7 @@ const stageConfig = [
 
 export const PersonalPipeline = ({ evanId }: PersonalPipelineProps) => {
   const { data: pipelineData } = useQuery({
-    queryKey: ['evan-personal-pipeline', evanId],
+    queryKey: ['personal-pipeline', evanId],
     queryFn: async () => {
       if (!evanId) return null;
 

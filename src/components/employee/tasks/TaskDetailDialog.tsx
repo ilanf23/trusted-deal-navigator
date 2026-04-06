@@ -160,7 +160,7 @@ export const TaskDetailDialog = ({
       title: newTaskTitle,
       description: newTaskDescription || undefined,
       status: newTaskStatus,
-      team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
+      team_member_id: teamMember?.id,
       due_date: combineDateAndTime(newTaskDueDate, newTaskDueTime),
       lead_id: newTaskLeadId || undefined,
       estimated_hours: newTaskHours || undefined,

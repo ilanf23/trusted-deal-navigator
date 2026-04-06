@@ -20,7 +20,7 @@ import {
   CalendarDays, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle,
   User, Mail, Phone, PhoneCall, Tag, Briefcase, Loader2,
-  Linkedin, Check, Upload, Download, Trash2, FolderOpen, AtSign, MapPin, Send, X, Copy, Globe, Eye, ChevronsRight,
+  Linkedin, Check, Upload, Download, Trash2, FolderOpen, AtSign, MapPin, Send, X, Copy, Globe, Eye,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -32,7 +32,7 @@ import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { AvatarUpload } from '@/components/admin/AvatarUpload';
 import { useGmailConnection } from '@/hooks/useGmailConnection';
-import { usePipelines } from '@/hooks/usePipelines';
+// usePipelines import removed — people are no longer connected to pipelines
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
 import { type LeadProject } from './ProjectDetailDialog';
 import { differenceInDays, parseISO, format } from 'date-fns';
@@ -40,7 +40,7 @@ import { formatPhoneNumber } from './InlineEditableFields';
 
 interface PersonFile {
   id: string;
-  lead_id: string;
+  entity_id: string;
   file_name: string;
   file_url: string;
   file_type: string | null;
@@ -109,7 +109,7 @@ interface Person {
 
 interface PersonEmail {
   id: string;
-  lead_id: string;
+  entity_id: string;
   email: string;
   email_type: string;
   is_primary: boolean;
@@ -117,7 +117,7 @@ interface PersonEmail {
 
 interface PersonPhone {
   id: string;
-  lead_id: string;
+  entity_id: string;
   phone_number: string;
   phone_type: string;
   is_primary: boolean;
@@ -125,7 +125,7 @@ interface PersonPhone {
 
 interface PersonAddress {
   id: string;
-  lead_id: string;
+  entity_id: string;
   address_type: string;
   address_line_1: string | null;
   address_line_2: string | null;
@@ -266,13 +266,7 @@ function formatShortDate(dateStr: string | null): string {
   try { return format(parseISO(dateStr), 'M/d/yyyy'); } catch { return '\u2014'; }
 }
 
-function getPipelineLeadRoute(pipelineName: string, leadId: string): string {
-  switch (pipelineName) {
-    case 'Underwriting': return `/admin/pipeline/underwriting/expanded-view/${leadId}`;
-    case 'Lender Management': return `/admin/pipeline/lender-management/expanded-view/${leadId}`;
-    default: return `/admin/pipeline/pipeline/expanded-view/${leadId}`;
-  }
-}
+// getPipelineLeadRoute removed — people are no longer connected to pipelines
 
 const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string }> = {
   call: { icon: Phone, color: 'text-blue-500' },
@@ -319,7 +313,7 @@ function useInlineSave(
     const previousValue = currentValue;
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('people')
       .update({ [field]: trimmed || null })
       .eq('id', personId);
     setSaving(false);
@@ -330,7 +324,7 @@ function useInlineSave(
     registerUndo({
       label: `Updated ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', personId);
+        const { error: e } = await supabase.from('people').update({ [field]: previousValue || null }).eq('id', personId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
@@ -435,7 +429,7 @@ function EditableContactRow({
 
   const handleClear = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const { error } = await supabase.from('leads').update({ [field]: null }).eq('id', personId);
+    const { error } = await supabase.from('people').update({ [field]: null }).eq('id', personId);
     if (error) { toast.error('Failed to clear'); return; }
     onSaved(field, '');
   };
@@ -496,9 +490,9 @@ function EditableTags({
 
   // Fetch all existing tags across leads
   const { data: allExistingTags = [] } = useQuery({
-    queryKey: ['all-lead-tags'],
+    queryKey: ['all-people-tags'],
     queryFn: async () => {
-      const { data } = await supabase.from('leads').select('tags').not('tags', 'is', null);
+      const { data } = await supabase.from('people').select('tags').not('tags', 'is', null);
       const tagSet = new Set<string>();
       (data ?? []).forEach((row: any) => {
         (row.tags ?? []).forEach((t: string) => tagSet.add(t));
@@ -545,7 +539,7 @@ function EditableTags({
     const previousTags = [...tags];
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('people')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', personId);
     setSaving(false);
@@ -556,7 +550,7 @@ function EditableTags({
     registerUndoTags({
       label: 'Updated tags',
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', personId);
+        const { error: e } = await supabase.from('people').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', personId);
         if (e) throw e;
         onSaved('tags', JSON.stringify(previousTags.length > 0 ? previousTags : null));
       },
@@ -731,7 +725,7 @@ function EditableRichTextField({
     const previousValue = value;
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('people')
       .update({ [field]: trimmed || null })
       .eq('id', personId);
     setSaving(false);
@@ -739,7 +733,7 @@ function EditableRichTextField({
     registerUndoRich({
       label: `Updated ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', personId);
+        const { error: e } = await supabase.from('people').update({ [field]: previousValue || null }).eq('id', personId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
@@ -1177,8 +1171,7 @@ export default function PeopleExpandedView() {
   const [contactTypeDropdownOpen, setContactTypeDropdownOpen] = useState(false);
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false);
   const [visibilityDropdownOpen, setVisibilityDropdownOpen] = useState(false);
-  const [pipelineSearchText, setPipelineSearchText] = useState('');
-  const [pipelineSearchFocused, setPipelineSearchFocused] = useState(false);
+  // Pipeline state removed — people are no longer connected to pipelines
   const [customContactTypes, setCustomContactTypes] = useState<CustomContactType[]>(loadCustomContactTypes);
   const [showCustomizeDialog, setShowCustomizeDialog] = useState(false);
   const allContactTypes = useMemo(() => getAllContactTypes(customContactTypes), [customContactTypes]);
@@ -1274,7 +1267,7 @@ export default function PeopleExpandedView() {
     queryKey: ['person-expanded', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('people')
         .select('*')
         .eq('id', personId!)
         .single();
@@ -1288,9 +1281,10 @@ export default function PeopleExpandedView() {
     queryKey: ['person-activities', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_activities')
+        .from('activities')
         .select('*')
-        .eq('lead_id', personId!)
+        .eq('entity_id', personId!)
+        .eq('entity_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -1318,7 +1312,7 @@ export default function PeopleExpandedView() {
   const { data: personEmails = [] } = useQuery({
     queryKey: ['person-emails', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_emails').select('*').eq('lead_id', personId!);
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', personId!).eq('entity_type', 'people');
       return (data || []) as PersonEmail[];
     },
     enabled: !!personId,
@@ -1327,7 +1321,7 @@ export default function PeopleExpandedView() {
   const { data: personPhones = [] } = useQuery({
     queryKey: ['person-phones', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_phones').select('*').eq('lead_id', personId!);
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', personId!).eq('entity_type', 'people');
       return (data || []) as PersonPhone[];
     },
     enabled: !!personId,
@@ -1336,7 +1330,7 @@ export default function PeopleExpandedView() {
   const { data: personAddresses = [] } = useQuery({
     queryKey: ['person-addresses', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_addresses').select('*').eq('lead_id', personId!);
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', personId!).eq('entity_type', 'people');
       return (data || []) as PersonAddress[];
     },
     enabled: !!personId,
@@ -1361,7 +1355,7 @@ export default function PeopleExpandedView() {
     if (!personId) return;
     const previousType = person?.contact_type ?? null;
     const { error } = await supabase
-      .from('leads')
+      .from('people')
       .update({ contact_type: newType })
       .eq('id', personId);
     if (error) {
@@ -1371,16 +1365,17 @@ export default function PeopleExpandedView() {
     registerUndo({
       label: `Contact type changed to ${newType}`,
       execute: async () => {
-        const { error: e } = await supabase.from('leads').update({ contact_type: previousType }).eq('id', personId);
+        const { error: e } = await supabase.from('people').update({ contact_type: previousType }).eq('id', personId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
-        queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+        queryClient.invalidateQueries({ queryKey: ['people'] });
       },
     });
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
     // Log an activity for the type change
-    await supabase.from('lead_activities').insert({
-      lead_id: personId,
+    await supabase.from('activities').insert({
+      entity_id: personId,
+      entity_type: 'people',
       activity_type: 'type_change',
       title: 'Contact type changed',
       content: JSON.stringify({ from: previousType, to: newType }),
@@ -1391,7 +1386,7 @@ export default function PeopleExpandedView() {
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
-    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['people'] });
     if (!isUndoingRef.current) toast.success('Updated');
   }, [personId, queryClient, isUndoingRef]);
 
@@ -1406,8 +1401,9 @@ export default function PeopleExpandedView() {
       return;
     }
     setSavingActivity(true);
-    const { error } = await supabase.from('lead_activities').insert({
-      lead_id: personId,
+    const { error } = await supabase.from('activities').insert({
+      entity_id: personId,
+      entity_type: 'people',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -1418,7 +1414,7 @@ export default function PeopleExpandedView() {
       return;
     }
     // Update last_activity_at
-    await supabase.from('leads').update({ last_activity_at: new Date().toISOString() }).eq('id', personId);
+    await supabase.from('people').update({ last_activity_at: new Date().toISOString() }).eq('id', personId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote('');
     else setNoteContent('');
@@ -1447,13 +1443,14 @@ export default function PeopleExpandedView() {
       setEmailBcc('');
       // Log as activity
       if (personId) {
-        await supabase.from('lead_activities').insert({
-          lead_id: personId,
+        await supabase.from('activities').insert({
+          entity_id: personId,
+          entity_type: 'people',
           activity_type: 'email',
           title: `Email: ${emailSubject || '(No Subject)'}`,
           content: emailBody,
         });
-        await supabase.from('leads').update({ last_activity_at: new Date().toISOString() }).eq('id', personId);
+        await supabase.from('people').update({ last_activity_at: new Date().toISOString() }).eq('id', personId);
         queryClient.invalidateQueries({ queryKey: ['person-activities', personId] });
         queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
       }
@@ -1551,8 +1548,9 @@ export default function PeopleExpandedView() {
     }
 
     // Store relative path, NOT public URL
-    const { error: dbError } = await supabase.from('lead_files').insert({
-      lead_id: personId,
+    const { error: dbError } = await supabase.from('entity_files').insert({
+      entity_id: personId,
+      entity_type: 'people',
       file_name: file.name,
       file_url: filePath,
       file_type: file.type || null,
@@ -1579,7 +1577,7 @@ export default function PeopleExpandedView() {
     // file_url stores relative path directly
     await supabase.storage.from('lead-files').remove([file.file_url]);
 
-    const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
+    const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
     if (error) {
       toast.error('Failed to delete file');
       return;
@@ -1611,9 +1609,10 @@ export default function PeopleExpandedView() {
     queryKey: ['person-files', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_files')
-        .select('id, lead_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('lead_id', personId!)
+        .from('entity_files')
+        .select('id, entity_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
+        .eq('entity_id', personId!)
+        .eq('entity_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as PersonFile[];
@@ -1672,8 +1671,9 @@ export default function PeopleExpandedView() {
     if (!newProjectName.trim() || !personId) return;
     setSavingProject(true);
     try {
-      const { error } = await supabase.from('lead_projects').insert({
-        lead_id: personId,
+      const { error } = await supabase.from('entity_projects').insert({
+        entity_id: personId,
+        entity_type: 'people',
         name: newProjectName.trim(),
         status: 'open',
         project_stage: 'open',
@@ -1733,37 +1733,18 @@ export default function PeopleExpandedView() {
     enabled: !!personId,
   });
 
-  // ── Pipeline records for this lead ──
-  const { data: pipelineRecords = [] } = useQuery({
-    queryKey: ['person-pipeline-records', personId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('pipeline_leads')
-        .select('id, pipeline_id, stage_id, added_at, updated_at, pipeline:pipelines(id, name), stage:pipeline_stages(id, name, color)')
-        .eq('lead_id', personId!)
-        .order('updated_at', { ascending: false });
-      if (error) throw error;
-      return data as Array<{
-        id: string;
-        pipeline_id: string;
-        stage_id: string;
-        added_at: string;
-        updated_at: string;
-        pipeline: { id: string; name: string };
-        stage: { id: string; name: string; color: string | null };
-      }>;
-    },
-    enabled: !!personId,
-  });
+  // Pipeline records removed — people are no longer connected to pipelines directly
+  const pipelineRecords: any[] = [];
 
   // Projects for this person
   const { data: personProjects = [] } = useQuery({
     queryKey: ['person-projects', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_projects')
+        .from('entity_projects')
         .select('*')
-        .eq('lead_id', personId!)
+        .eq('entity_id', personId!)
+        .eq('entity_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as LeadProject[];
@@ -1783,45 +1764,14 @@ export default function PeopleExpandedView() {
     return { totalWon, winRate };
   }, [person?.status, person?.loan_amount]);
 
-  const { data: allPipelines = [] } = usePipelines();
+  // usePipelines and filteredPipelines removed — people are no longer connected to pipelines
 
-  const filteredPipelines = useMemo(() => {
-    if (!pipelineSearchText.trim()) return allPipelines;
-    const q = pipelineSearchText.toLowerCase();
-    return allPipelines.filter((p: any) => p.name?.toLowerCase().includes(q));
-  }, [allPipelines, pipelineSearchText]);
-
-  const addToPipelineMutation = useMutation({
-    mutationFn: async (pipelineId: string) => {
-      const { data: stages, error: stagesError } = await (supabase as any)
-        .from('pipeline_stages')
-        .select('id')
-        .eq('pipeline_id', pipelineId)
-        .order('position')
-        .limit(1);
-      if (stagesError) throw stagesError;
-      if (!stages || stages.length === 0) throw new Error('Pipeline has no stages');
-
-      const { error: insertError } = await (supabase as any)
-        .from('pipeline_leads')
-        .insert({ pipeline_id: pipelineId, lead_id: personId!, stage_id: stages[0].id });
-      if (insertError) throw insertError;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['person-pipeline-records', personId] });
-      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
-      toast.success('Added to pipeline');
-      setPipelineSearchText('');
-      setPipelineSearchFocused(false);
-    },
-    onError: () => toast.error('Failed to add to pipeline'),
-  });
+  // addToPipelineMutation removed — people are no longer connected to pipelines directly
 
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('lead_emails').insert({ lead_id: personId!, email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: personId!, entity_type: 'people', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); setNewEmail(''); setShowAddEmail(false); toast.success('Email added'); },
@@ -1830,7 +1780,7 @@ export default function PeopleExpandedView() {
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('lead_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('entity_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); toast.success('Email removed'); },
@@ -1839,7 +1789,7 @@ export default function PeopleExpandedView() {
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('lead_phones').insert({ lead_id: personId!, phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: personId!, entity_type: 'people', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); setNewPhone(''); setShowAddPhone(false); toast.success('Phone added'); },
@@ -1848,7 +1798,7 @@ export default function PeopleExpandedView() {
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('lead_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('entity_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); toast.success('Phone removed'); },
@@ -1857,8 +1807,9 @@ export default function PeopleExpandedView() {
 
   const addAddressMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('lead_addresses').insert({
-        lead_id: personId!,
+      const { error } = await supabase.from('entity_addresses').insert({
+        entity_id: personId!,
+        entity_type: 'people',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -1878,7 +1829,7 @@ export default function PeopleExpandedView() {
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('lead_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('entity_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', personId] }); toast.success('Address removed'); },
@@ -1887,7 +1838,7 @@ export default function PeopleExpandedView() {
 
   const updateEmailMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: { email?: string; email_type?: string } }) => {
-      const { error } = await supabase.from('lead_emails').update(data).eq('id', id);
+      const { error } = await supabase.from('entity_emails').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); toast.success('Email updated'); },
@@ -1896,7 +1847,7 @@ export default function PeopleExpandedView() {
 
   const updatePhoneMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: { phone_number?: string; phone_type?: string } }) => {
-      const { error } = await supabase.from('lead_phones').update(data).eq('id', id);
+      const { error } = await supabase.from('entity_phones').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); toast.success('Phone updated'); },
@@ -1905,7 +1856,7 @@ export default function PeopleExpandedView() {
 
   const updateAddressMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<PersonAddress> }) => {
-      const { error } = await supabase.from('lead_addresses').update(data).eq('id', id);
+      const { error } = await supabase.from('entity_addresses').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', personId] }); toast.success('Address updated'); },
@@ -1957,7 +1908,7 @@ export default function PeopleExpandedView() {
                 currentAvatarUrl={person.image_url}
                 fallbackInitials={person.name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
                 size="lg"
-                tableName="leads"
+                tableName="people"
                 tableIdColumn="id"
                 tableImageColumn="image_url"
                 queryKeysToInvalidate={[['person-expanded', person.id]]}
@@ -2084,7 +2035,7 @@ export default function PeopleExpandedView() {
                             <button
                               key={s}
                               onClick={async () => {
-                                const { error } = await supabase.from('leads').update({ source: s }).eq('id', person.id);
+                                const { error } = await supabase.from('people').update({ source: s }).eq('id', person.id);
                                 if (error) { toast.error('Failed to update source'); return; }
                                 handleFieldSaved('source', s);
                                 setSourceDropdownOpen(false);
@@ -2111,7 +2062,7 @@ export default function PeopleExpandedView() {
                     <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{assignedName}</span>
                     <button
                       onClick={async () => {
-                        await supabase.from('leads').update({ assigned_to: null }).eq('id', person.id);
+                        await supabase.from('people').update({ assigned_to: null }).eq('id', person.id);
                         handleFieldSaved('assigned_to', '');
                       }}
                       className="text-muted-foreground hover:text-foreground"
@@ -2139,7 +2090,7 @@ export default function PeopleExpandedView() {
                       </button>
                       <button
                         onClick={async () => {
-                          const { error } = await supabase.from('leads').update({ email: null }).eq('id', person.id);
+                          const { error } = await supabase.from('people').update({ email: null }).eq('id', person.id);
                           if (error) { toast.error('Failed to clear'); return; }
                           handleFieldSaved('email', '');
                         }}
@@ -2160,7 +2111,7 @@ export default function PeopleExpandedView() {
                     <span className="text-sm font-medium text-foreground">{formatPhoneNumber(person.phone)}</span>
                     <button
                       onClick={async () => {
-                        const { error } = await supabase.from('leads').update({ phone: null }).eq('id', person.id);
+                        const { error } = await supabase.from('people').update({ phone: null }).eq('id', person.id);
                         if (error) { toast.error('Failed to clear'); return; }
                         handleFieldSaved('phone', '');
                       }}
@@ -2180,7 +2131,7 @@ export default function PeopleExpandedView() {
                     <a href={person.linkedin.startsWith('http') ? person.linkedin : `https://${person.linkedin}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate block">{person.linkedin}</a>
                     <button
                       onClick={async () => {
-                        const { error } = await supabase.from('leads').update({ linkedin: null }).eq('id', person.id);
+                        const { error } = await supabase.from('people').update({ linkedin: null }).eq('id', person.id);
                         if (error) { toast.error('Failed to clear'); return; }
                         handleFieldSaved('linkedin', '');
                       }}
@@ -2223,7 +2174,7 @@ export default function PeopleExpandedView() {
                             <button
                               key={opt}
                               onClick={async () => {
-                                const { error } = await supabase.from('leads').update({ visibility: opt }).eq('id', person.id);
+                                const { error } = await supabase.from('people').update({ visibility: opt }).eq('id', person.id);
                                 if (error) { toast.error('Failed to update visibility'); return; }
                                 handleFieldSaved('visibility', opt);
                                 setVisibilityDropdownOpen(false);
@@ -2250,7 +2201,7 @@ export default function PeopleExpandedView() {
                   value={person.last_contacted ? person.last_contacted.slice(0, 10) : ''}
                   onChange={async (e) => {
                     const val = e.target.value ? new Date(e.target.value).toISOString() : null;
-                    const { error } = await supabase.from('leads').update({ last_contacted: val }).eq('id', person.id);
+                    const { error } = await supabase.from('people').update({ last_contacted: val }).eq('id', person.id);
                     if (error) { toast.error('Failed to update'); return; }
                     handleFieldSaved('last_contacted', val ?? '');
                   }}
@@ -2855,60 +2806,7 @@ export default function PeopleExpandedView() {
               )}
             </div>
 
-            {/* Pipeline Records */}
-            <Collapsible defaultOpen>
-              <div className="border-t border-border">
-                <CollapsibleTrigger className="flex items-center w-full px-3 md:px-3.5 xl:px-5 py-3 hover:bg-muted/30 transition-colors">
-                  <span className="text-sm font-medium text-foreground">Pipeline Records ({pipelineRecords.length})</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1.5" />
-                  <Plus className="h-4 w-4 text-muted-foreground ml-2" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
-                  <div className="space-y-2">
-                    {pipelineRecords.map((rec: any) => (
-                      <button
-                        key={rec.id}
-                        onClick={() => navigate(getPipelineLeadRoute(rec.pipeline.name, personId!))}
-                        className="flex items-center gap-2.5 text-sm p-2 rounded-lg hover:bg-muted/40 transition-colors w-full text-left"
-                      >
-                        <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: rec.stage?.color || '#6b7280' }} />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate">{rec.pipeline.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{rec.stage?.name} · {formatShortDate(rec.added_at)}</p>
-                        </div>
-                      </button>
-                    ))}
-                    <div className="relative">
-                      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                          <ChevronsRight className="h-4 w-4 text-muted-foreground/60" />
-                        </div>
-                        <input
-                          value={pipelineSearchText}
-                          onChange={(e) => setPipelineSearchText(e.target.value)}
-                          onFocus={() => setPipelineSearchFocused(true)}
-                          placeholder="Add Pipeline Record"
-                          className="flex-1 text-sm text-foreground bg-transparent border-0 px-0 py-1.5 outline-none placeholder:text-muted-foreground/50"
-                        />
-                      </div>
-                      {pipelineSearchFocused && filteredPipelines.length > 0 && (
-                        <>
-                          <div className="fixed inset-0 z-40" onClick={() => { setPipelineSearchFocused(false); setPipelineSearchText(''); }} />
-                          <div className="absolute z-50 top-full left-0 mt-1 w-full bg-popover border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto">
-                            {filteredPipelines.map((p: any) => (
-                              <button key={p.id} onClick={() => { addToPipelineMutation.mutate(p.id); }}
-                                className="w-full text-left px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
-                                {p.name}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
+            {/* Pipeline Records removed — people are no longer connected to pipelines */}
 
             {/* Tasks */}
             <Collapsible defaultOpen>
@@ -3271,63 +3169,7 @@ export default function PeopleExpandedView() {
               </div>
             </RelatedSection>
 
-            {/* Pipeline Records */}
-            <RelatedSection
-              icon={<Layers className="h-3.5 w-3.5" />}
-              label="Pipeline Records"
-              count={pipelineRecords.length}
-              iconColor="text-purple-500"
-            >
-              <div className="space-y-1.5 py-1">
-                {pipelineRecords.map((rec: any) => (
-                  <button
-                    key={rec.id}
-                    onClick={() => navigate(getPipelineLeadRoute(rec.pipeline.name, personId!))}
-                    className="flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors w-full text-left group"
-                  >
-                    <div
-                      className="h-2 w-2 rounded-full shrink-0"
-                      style={{ backgroundColor: rec.stage?.color || '#6b7280' }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">{rec.pipeline.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {rec.stage?.name} · {formatShortDate(rec.added_at)}
-                      </p>
-                    </div>
-                    <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                  </button>
-                ))}
-
-                <div className="relative mt-1">
-                  <input
-                    value={pipelineSearchText}
-                    onChange={(e) => setPipelineSearchText(e.target.value)}
-                    onFocus={() => setPipelineSearchFocused(true)}
-                    placeholder="Add Pipeline Record"
-                    className="w-full text-sm text-foreground bg-transparent border-0 border-b-2 border-blue-600 px-0 py-1.5 outline-none placeholder:text-muted-foreground/60"
-                  />
-                  {pipelineSearchFocused && filteredPipelines.length > 0 && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => { setPipelineSearchFocused(false); setPipelineSearchText(''); }} />
-                      <div className="absolute z-50 top-full left-0 mt-1 w-full bg-popover border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto">
-                        {filteredPipelines.map((p: any) => (
-                          <button
-                            key={p.id}
-                            onClick={() => {
-                              addToPipelineMutation.mutate(p.id);
-                            }}
-                            className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            {p.name}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </RelatedSection>
+            {/* Pipeline Records removed — people are no longer connected to pipelines */}
 
             {/* Calendar Events */}
             <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0} iconColor="text-amber-500">

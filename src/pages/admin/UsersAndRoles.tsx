@@ -8,7 +8,6 @@ import {
   Shield,
   ShieldCheck,
   Users,
-  UserCog,
   MoreHorizontal,
   ChevronUp,
   ChevronDown,
@@ -53,7 +52,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 
-type AppRole = 'admin' | 'super_admin' | 'client' | 'partner';
+type AppRole = 'admin' | 'super_admin' | 'partner';
 
 interface UserWithRole {
   user_id: string;
@@ -85,12 +84,6 @@ const ROLE_CONFIG: Record<AppRole, { label: string; icon: typeof Shield; color: 
     color: 'text-purple-600 dark:text-purple-400',
     bgColor: 'bg-purple-500/10 border-purple-500/20 text-purple-700 dark:text-purple-300',
   },
-  client: {
-    label: 'Client',
-    icon: UserCog,
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bgColor: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300',
-  },
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -117,7 +110,7 @@ const UsersAndRoles = () => {
     targetUserId: string;
     targetEmail: string;
     newRole: AppRole;
-  }>({ open: false, targetUserId: '', targetEmail: '', newRole: 'client' });
+  }>({ open: false, targetUserId: '', targetEmail: '', newRole: 'admin' });
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -135,7 +128,7 @@ const UsersAndRoles = () => {
       return (members || []).map((m) => ({
         user_id: m.user_id!,
         email: m.email || 'No email',
-        role: (m.app_role as AppRole) || 'client',
+        role: (m.app_role as AppRole) || 'admin',
         created_at: m.created_at,
         status: m.is_active ? ('active' as const) : ('inactive' as const),
       })) as UserWithRole[];
@@ -181,13 +174,12 @@ const UsersAndRoles = () => {
 
   // Stats
   const stats = useMemo(() => {
-    if (!users) return { total: 0, superAdmins: 0, admins: 0, partners: 0, clients: 0 };
+    if (!users) return { total: 0, superAdmins: 0, admins: 0, partners: 0 };
     return {
       total: users.length,
       superAdmins: users.filter((u) => u.role === 'super_admin').length,
       admins: users.filter((u) => u.role === 'admin').length,
       partners: users.filter((u) => u.role === 'partner').length,
-      clients: users.filter((u) => u.role === 'client').length,
     };
   }, [users]);
 
@@ -251,7 +243,7 @@ const UsersAndRoles = () => {
 
       toast({ title: 'Role updated', description: `${confirmDialog.targetEmail} is now ${confirmDialog.newRole}.` });
       queryClient.invalidateQueries({ queryKey: ['users-and-roles'] });
-      setConfirmDialog({ open: false, targetUserId: '', targetEmail: '', newRole: 'client' });
+      setConfirmDialog({ open: false, targetUserId: '', targetEmail: '', newRole: 'admin' });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to update role.', variant: 'destructive' });
     } finally {
@@ -284,13 +276,12 @@ const UsersAndRoles = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Total Users', value: stats.total, icon: Users, color: 'text-foreground' },
           { label: 'Super Admins', value: stats.superAdmins, icon: ShieldCheck, color: 'text-amber-600 dark:text-amber-400' },
           { label: 'Admins', value: stats.admins, icon: Shield, color: 'text-blue-600 dark:text-blue-400' },
           { label: 'Partners', value: stats.partners, icon: Users, color: 'text-purple-600 dark:text-purple-400' },
-          { label: 'Clients', value: stats.clients, icon: UserCog, color: 'text-emerald-600 dark:text-emerald-400' },
         ].map((stat) => (
           <Card key={stat.label} className="border border-border">
             <CardContent className="p-3 md:p-4 flex items-center gap-3">
@@ -314,12 +305,11 @@ const UsersAndRoles = () => {
           }}
           className="w-full sm:w-auto"
         >
-          <TabsList className="w-full sm:w-auto grid grid-cols-5 sm:flex">
+          <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:flex">
             <TabsTrigger value="all" className="text-xs">All ({stats.total})</TabsTrigger>
             <TabsTrigger value="super_admin" className="text-xs">Super ({stats.superAdmins})</TabsTrigger>
             <TabsTrigger value="admin" className="text-xs">Admins ({stats.admins})</TabsTrigger>
             <TabsTrigger value="partner" className="text-xs">Partners ({stats.partners})</TabsTrigger>
-            <TabsTrigger value="client" className="text-xs">Clients ({stats.clients})</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -341,7 +331,7 @@ const UsersAndRoles = () => {
         <div className="flex items-center gap-3 p-3 rounded-lg bg-muted border border-border">
           <span className="text-sm font-medium text-foreground">{selectedUsers.size} selected</span>
           <div className="flex gap-2 ml-auto">
-            {(['super_admin', 'admin', 'partner', 'client'] as AppRole[]).map((role) => {
+            {(['super_admin', 'admin', 'partner'] as AppRole[]).map((role) => {
               const cfg = ROLE_CONFIG[role];
               return (
                 <Button
@@ -479,7 +469,7 @@ const UsersAndRoles = () => {
                           <div className="flex items-center justify-end gap-1">
                             {/* Quick role buttons */}
                             <div className="hidden group-hover:flex items-center gap-1 mr-1">
-                              {(['super_admin', 'admin', 'partner', 'client'] as AppRole[]).map((role) => {
+                              {(['super_admin', 'admin', 'partner'] as AppRole[]).map((role) => {
                                 const cfg = ROLE_CONFIG[role];
                                 const Icon = cfg.icon;
                                 const isCurrent = u.role === role;
@@ -509,7 +499,7 @@ const UsersAndRoles = () => {
                                   <Pencil className="w-3.5 h-3.5 mr-2" /> Edit User
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                {(['super_admin', 'admin', 'partner', 'client'] as AppRole[]).map((role) => {
+                                {(['super_admin', 'admin', 'partner'] as AppRole[]).map((role) => {
                                   const cfg = ROLE_CONFIG[role];
                                   const Icon = cfg.icon;
                                   return (
@@ -579,7 +569,7 @@ const UsersAndRoles = () => {
                             <Pencil className="w-3.5 h-3.5 mr-2" /> Edit User
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          {(['super_admin', 'admin', 'partner', 'client'] as AppRole[]).map((role) => {
+                          {(['super_admin', 'admin', 'partner'] as AppRole[]).map((role) => {
                             const cfg = ROLE_CONFIG[role];
                             const Icon = cfg.icon;
                             return (

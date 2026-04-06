@@ -4,20 +4,25 @@ import { Task, TaskActivity } from '@/components/employee/tasks/types';
 import { toast } from 'sonner';
 import { useUndo } from '@/contexts/UndoContext';
 
-export const useTasksData = () => {
+export const useTasksData = (teamMemberId?: string | null) => {
   const queryClient = useQueryClient();
   const { registerUndo } = useUndo();
 
   const { data: tasks = [], isLoading } = useQuery({
-    queryKey: ['evan-tasks-full'],
+    queryKey: ['tasks', teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('tasks')
         .select('*, lead:leads(id, name, company_name, email, phone)')
         .order('due_date', { ascending: true, nullsFirst: false });
+      if (teamMemberId) {
+        query = query.eq('team_member_id', teamMemberId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data as Task[];
     },
+    enabled: !!teamMemberId,
   });
 
   const addTask = useMutation({
@@ -26,7 +31,7 @@ export const useTasksData = () => {
         title: task.title || 'New Task',
         status: task.status || 'todo',
         priority: task.priority || 'medium',
-        team_member_id: (task as any).team_member_id || '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
+        team_member_id: (task as any).team_member_id || teamMemberId,
         due_date: task.due_date,
         group_name: task.group_name || 'To Do',
         estimated_hours: task.estimated_hours,
@@ -40,7 +45,7 @@ export const useTasksData = () => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', teamMemberId] });
       toast.success('Task added');
       
       // Register undo for task creation
@@ -50,7 +55,7 @@ export const useTasksData = () => {
           execute: async () => {
             const { error } = await supabase.from('tasks').delete().eq('id', data.id);
             if (error) throw error;
-            queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+            queryClient.invalidateQueries({ queryKey: ['tasks', teamMemberId] });
           },
         });
       }
@@ -84,8 +89,8 @@ export const useTasksData = () => {
       return { currentTask, updates, skipUndo };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
-      queryClient.invalidateQueries({ queryKey: ['evan-task-activities'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', teamMemberId] });
+      queryClient.invalidateQueries({ queryKey: ['task-activities'] });
       
       // Register undo for task update
       if (result?.currentTask && !result.skipUndo) {
@@ -107,7 +112,7 @@ export const useTasksData = () => {
               title: result.currentTask.title,
             }).eq('id', result.currentTask.id);
             if (error) throw error;
-            queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+            queryClient.invalidateQueries({ queryKey: ['tasks', teamMemberId] });
           },
         });
       }
@@ -130,7 +135,7 @@ export const useTasksData = () => {
       return taskToDelete;
     },
     onSuccess: (deletedTask) => {
-      queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', teamMemberId] });
       toast.success('Task deleted');
       
       // Register undo for task deletion
@@ -156,7 +161,7 @@ export const useTasksData = () => {
               task_type: deletedTask.task_type,
             });
             if (error) throw error;
-            queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+            queryClient.invalidateQueries({ queryKey: ['tasks', teamMemberId] });
           },
         });
       }
@@ -176,7 +181,7 @@ export const useTasksData = () => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['evan-task-activities'] });
+      queryClient.invalidateQueries({ queryKey: ['task-activities'] });
       toast.success('Comment added');
       
       // Register undo for comment
@@ -186,7 +191,7 @@ export const useTasksData = () => {
           execute: async () => {
             const { error } = await supabase.from('task_activities').delete().eq('id', data.id);
             if (error) throw error;
-            queryClient.invalidateQueries({ queryKey: ['evan-task-activities'] });
+            queryClient.invalidateQueries({ queryKey: ['task-activities'] });
             toast.success('Comment removed');
           },
         });
@@ -207,7 +212,7 @@ export const useTasksData = () => {
 
 export const useTaskActivities = (taskId: string | null) => {
   return useQuery({
-    queryKey: ['evan-task-activities', taskId],
+    queryKey: ['task-activities', taskId],
     queryFn: async () => {
       if (!taskId) return [];
       const { data, error } = await supabase

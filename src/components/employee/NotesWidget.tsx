@@ -21,7 +21,7 @@ export const NotesWidget = () => {
   const queryClient = useQueryClient();
 
   const { data: notes = [], isLoading } = useQuery({
-    queryKey: ['evan-notes'],
+    queryKey: ['workspace-notes'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('notes')
@@ -41,7 +41,7 @@ export const NotesWidget = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-notes'] });
       setNewNote('');
       setIsAdding(false);
       toast.success('Note added');
@@ -57,7 +57,7 @@ export const NotesWidget = () => {
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['evan-notes'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workspace-notes'] }),
   });
 
   const deleteNote = useMutation({
@@ -69,7 +69,7 @@ export const NotesWidget = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evan-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-notes'] });
       toast.success('Note deleted');
     },
   });

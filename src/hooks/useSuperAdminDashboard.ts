@@ -55,7 +55,7 @@ const TEAM_URL_MAP: Record<string, string> = {
 };
 
 // Team role display mapping — UI configuration.
-// TODO: Eventually derive from DB (team_members.role column).
+// TODO: Eventually derive from DB (users.position column).
 const TEAM_ROLE_MAP: Record<string, string> = {
   'Brad': 'Owner',
   'Adam': 'Owner',

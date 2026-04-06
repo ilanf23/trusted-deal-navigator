@@ -23,12 +23,12 @@ import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
+type Lead = Database['public']['Tables']['lender_management']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
-interface LeadEmail { id: string; lead_id: string; email: string; email_type: string; is_primary: boolean; }
-interface LeadPhone { id: string; lead_id: string; phone_number: string; phone_type: string; is_primary: boolean; }
-interface LeadAddress { id: string; lead_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean; }
+interface LeadEmail { id: string; entity_id: string; email: string; email_type: string; is_primary: boolean; }
+interface LeadPhone { id: string; entity_id: string; phone_number: string; phone_type: string; is_primary: boolean; }
+interface LeadAddress { id: string; entity_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean; }
 
 interface StageConfigEntry {
   title: string;
@@ -98,7 +98,7 @@ function useInlineSave(
     }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('lender_management')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -187,7 +187,7 @@ function EditableSelectField({
     if (newValue === value) return;
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('lender_management')
       .update({ [field]: newValue || null })
       .eq('id', leadId);
     setSaving(false);
@@ -299,7 +299,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('lender_management')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', leadId);
     setSaving(false);
@@ -374,7 +374,7 @@ function EditableRichTextField({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('lender_management')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -570,9 +570,10 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
     queryKey: ['lead-activity-timeline', 'activities', lead.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_activities')
+        .from('activities')
         .select('id, activity_type, title, content, created_at')
-        .eq('lead_id', lead.id)
+        .eq('entity_id', lead.id)
+        .eq('entity_type', 'lender_management')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -731,9 +732,10 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
     queryKey: ['lead-related', 'contacts', lead.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_contacts')
+        .from('entity_contacts')
         .select('id, name, title, email, phone, is_primary')
-        .eq('lead_id', lead.id)
+        .eq('entity_id', lead.id)
+        .eq('entity_type', 'lender_management')
         .order('is_primary', { ascending: false });
       return data || [];
     },
@@ -780,9 +782,10 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
     queryKey: ['lead-files-count', lead.id],
     queryFn: async () => {
       const { data } = await (supabase as any)
-        .from('lead_files')
+        .from('entity_files')
         .select('id')
-        .eq('lead_id', lead.id);
+        .eq('entity_id', lead.id)
+        .eq('entity_type', 'lender_management');
       return data || [];
     },
   });
@@ -967,7 +970,7 @@ export default function LenderManagementDetailPanel({
   const currentStageIdx = stageKeys.indexOf(activeStageKey);
 
   const handleFieldSaved = useCallback((field: string, newValue: string) => {
-    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['lender-management-deals'] });
     if (onLeadUpdate) {
       if (field === 'tags') {
         // newValue is JSON-encoded
@@ -1003,7 +1006,7 @@ export default function LenderManagementDetailPanel({
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['lead-emails', lead.id],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_emails').select('id, lead_id, email, email_type, is_primary').eq('lead_id', lead.id).order('is_primary', { ascending: false });
+      const { data } = await supabase.from('entity_emails').select('id, entity_id, email, email_type, is_primary').eq('entity_id', lead.id).eq('entity_type', 'lender_management').order('is_primary', { ascending: false });
       return (data ?? []) as LeadEmail[];
     },
   });
@@ -1011,7 +1014,7 @@ export default function LenderManagementDetailPanel({
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['lead-phones', lead.id],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_phones').select('id, lead_id, phone_number, phone_type, is_primary').eq('lead_id', lead.id).order('is_primary', { ascending: false });
+      const { data } = await supabase.from('entity_phones').select('id, entity_id, phone_number, phone_type, is_primary').eq('entity_id', lead.id).eq('entity_type', 'lender_management').order('is_primary', { ascending: false });
       return (data ?? []) as LeadPhone[];
     },
   });
@@ -1019,7 +1022,7 @@ export default function LenderManagementDetailPanel({
   const { data: leadAddresses = [] } = useQuery({
     queryKey: ['lead-addresses', lead.id],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_addresses').select('id, lead_id, address_type, address_line_1, address_line_2, city, state, zip_code, country, is_primary').eq('lead_id', lead.id).order('is_primary', { ascending: false });
+      const { data } = await supabase.from('entity_addresses').select('id, entity_id, address_type, address_line_1, address_line_2, city, state, zip_code, country, is_primary').eq('entity_id', lead.id).eq('entity_type', 'lender_management').order('is_primary', { ascending: false });
       return (data ?? []) as LeadAddress[];
     },
   });
@@ -1027,7 +1030,7 @@ export default function LenderManagementDetailPanel({
   // ── Add mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('lead_emails').insert({ lead_id: lead.id, email: newEmail.trim(), email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: lead.id, entity_type: 'lender_management', email: newEmail.trim(), email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1040,7 +1043,7 @@ export default function LenderManagementDetailPanel({
 
   const addPhoneMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('lead_phones').insert({ lead_id: lead.id, phone_number: newPhone.trim(), phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: lead.id, entity_type: 'lender_management', phone_number: newPhone.trim(), phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1053,8 +1056,8 @@ export default function LenderManagementDetailPanel({
 
   const addAddressMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('lead_addresses').insert({
-        lead_id: lead.id, address_line_1: newAddrLine1.trim() || null,
+      const { error } = await supabase.from('entity_addresses').insert({
+        entity_id: lead.id, entity_type: 'lender_management', address_line_1: newAddrLine1.trim() || null,
         city: newAddrCity.trim() || null, state: newAddrState.trim() || null,
         zip_code: newAddrZip.trim() || null, address_type: newAddrType,
       });
@@ -1071,7 +1074,7 @@ export default function LenderManagementDetailPanel({
   // ── Delete mutations ──
   const deleteEmailMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('lead_emails').delete().eq('id', id);
+      const { error } = await supabase.from('entity_emails').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lead-emails', lead.id] }); toast.success('Email removed'); },
@@ -1080,7 +1083,7 @@ export default function LenderManagementDetailPanel({
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('lead_phones').delete().eq('id', id);
+      const { error } = await supabase.from('entity_phones').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lead-phones', lead.id] }); toast.success('Phone removed'); },
@@ -1089,7 +1092,7 @@ export default function LenderManagementDetailPanel({
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('lead_addresses').delete().eq('id', id);
+      const { error } = await supabase.from('entity_addresses').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead.id] }); toast.success('Address removed'); },

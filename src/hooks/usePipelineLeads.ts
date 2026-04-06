@@ -1,59 +1,107 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/integrations/supabase/types';
+import type { PipelineDeal, UnderwritingDeal, LenderManagementDeal } from '@/integrations/supabase/types';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
-
-export interface PipelineLeadRow {
+interface StageInfo {
   id: string;
+  name: string;
+  position: number;
+  color: string | null;
   pipeline_id: string;
-  lead_id: string;
-  stage_id: string;
-  added_at: string;
-  updated_at: string;
-  lead: Lead;
-  stage: { id: string; name: string; position: number; color: string | null; pipeline_id: string };
 }
 
-export const usePipelineLeads = (pipelineId: string | undefined) => {
+function flattenDeal<T extends { id: string; stage_id: string | null }>(
+  row: T & { stage: StageInfo | null }
+) {
+  return {
+    ...row,
+    _pipelineLeadId: row.id,
+    _stageId: row.stage_id ?? '',
+    _stageName: row.stage?.name ?? '',
+    _stagePosition: row.stage?.position ?? 0,
+  };
+}
+
+function groupByStage<T extends { _stageId: string }>(items: T[]) {
+  const grouped: Record<string, T[]> = {};
+  for (const item of items) {
+    if (!grouped[item._stageId]) grouped[item._stageId] = [];
+    grouped[item._stageId].push(item);
+  }
+  return grouped;
+}
+
+export const usePipelineDeals = () => {
   const query = useQuery({
-    queryKey: ['pipeline-leads', pipelineId],
+    queryKey: ['pipeline-deals'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline_leads')
-        .select('*, lead:leads(*), stage:pipeline_stages(*)')
-        .eq('pipeline_id', pipelineId!)
+        .from('pipeline')
+        .select('*, stage:pipeline_stages(*)')
         .order('updated_at', { ascending: false });
       if (error) throw error;
-      return data as PipelineLeadRow[];
+      return data;
     },
-    enabled: !!pipelineId,
   });
 
-  // Flattened leads with stage info attached
   const leads = useMemo(() => {
     if (!query.data) return [];
-    return query.data.map(pl => ({
-      ...pl.lead,
-      _pipelineLeadId: pl.id,
-      _stageId: pl.stage_id,
-      _stageName: pl.stage?.name ?? '',
-      _stagePosition: pl.stage?.position ?? 0,
-    }));
+    return query.data.map(row => flattenDeal(row as any));
   }, [query.data]);
 
-  // Grouped by stage ID for kanban view
-  const leadsByStage = useMemo(() => {
-    const grouped: Record<string, typeof leads> = {};
-    for (const lead of leads) {
-      if (!grouped[lead._stageId]) grouped[lead._stageId] = [];
-      grouped[lead._stageId].push(lead);
-    }
-    return grouped;
-  }, [leads]);
+  const leadsByStage = useMemo(() => groupByStage(leads), [leads]);
 
   return { ...query, leads, leadsByStage };
 };
 
-export type FlatPipelineLead = ReturnType<typeof usePipelineLeads>['leads'][number];
+export const useUnderwritingDeals = () => {
+  const query = useQuery({
+    queryKey: ['underwriting-deals'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('underwriting')
+        .select('*, stage:pipeline_stages(*)')
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const leads = useMemo(() => {
+    if (!query.data) return [];
+    return query.data.map(row => flattenDeal(row as any));
+  }, [query.data]);
+
+  const leadsByStage = useMemo(() => groupByStage(leads), [leads]);
+
+  return { ...query, leads, leadsByStage };
+};
+
+export const useLenderManagementDeals = () => {
+  const query = useQuery({
+    queryKey: ['lender-management-deals'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lender_management')
+        .select('*, stage:pipeline_stages(*)')
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const leads = useMemo(() => {
+    if (!query.data) return [];
+    return query.data.map(row => flattenDeal(row as any));
+  }, [query.data]);
+
+  const leadsByStage = useMemo(() => groupByStage(leads), [leads]);
+
+  return { ...query, leads, leadsByStage };
+};
+
+// Backward compat aliases
+export const usePipelineLeads = (_pipelineId?: string) => usePipelineDeals();
+
+export type FlatPipelineLead = ReturnType<typeof usePipelineDeals>['leads'][number];
