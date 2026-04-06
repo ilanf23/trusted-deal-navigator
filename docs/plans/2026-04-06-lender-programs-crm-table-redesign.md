@@ -37,12 +37,12 @@ Rewrite the LenderPrograms page from its current custom spreadsheet-style layout
 **Files:**
 - Create: `src/components/admin/LenderDetailPanel.tsx`
 
-- [ ] Create a right-side detail panel component following PeopleDetailPanel pattern
-- [ ] Include header with lender name, close button (X), and expand button (Maximize2)
-- [ ] Show all lender fields in organized sections: Contact Info (name, email as mailto link, phone as tel link), Program Details (lender type, loan types, loan size, states, location, looking for), Activity (call status, last contact, next call)
-- [ ] Support inline editing of fields via input/textarea with save-on-blur to Supabase
-- [ ] Include "Contact" action buttons: Send Email (opens mailto or compose dialog), Call (tel: link)
-- [ ] Style with purple accent consistent with PeopleDetailPanel
+- [x] Create a right-side detail panel component following PeopleDetailPanel pattern
+- [x] Include header with lender name, close button (X), and expand button (Maximize2)
+- [x] Show all lender fields in organized sections: Contact Info (name, email as mailto link, phone as tel link), Program Details (lender type, loan types, loan size, states, location, looking for), Activity (call status, last contact, next call)
+- [x] Support inline editing of fields via input/textarea with save-on-blur to Supabase
+- [x] Include "Contact" action buttons: Send Email (opens mailto or compose dialog), Call (tel: link)
+- [x] Style with purple accent consistent with PeopleDetailPanel
 
 ### Task 2: Create LenderExpandedView component and route
 
