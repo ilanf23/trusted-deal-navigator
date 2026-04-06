@@ -283,7 +283,13 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to get Twilio token');
+        const msg = error.error || 'Failed to get Twilio token';
+        // Surface permission errors so the user knows their phone won't work
+        if (response.status === 403) {
+          toast.error('Call system: your account could not be verified as admin. Contact support if this persists.');
+          console.error('[CallContext] Permission denied from twilio-token:', msg);
+        }
+        throw new Error(msg);
       }
 
       const { token, identity } = await response.json();
@@ -673,6 +679,10 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[CallContext] twilio-connect-call failed:', response.status, err);
+        if (response.status === 403) {
+          throw new Error('Unable to connect call — your admin permissions could not be verified. Try refreshing the page.');
+        }
         throw new Error(err.error || 'Failed to redirect call to conference');
       }
 
@@ -739,16 +749,18 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       });
     }
 
-    const { error } = await supabase
+    // Update DB status — fire-and-forget so a DB/RLS error never blocks the live call
+    supabase
       .from('active_calls')
       .update({
         status: 'in-progress',
         answered_at: new Date().toISOString(),
       })
-      .eq('call_sid', incomingCall.call_sid);
+      .eq('call_sid', incomingCall.call_sid)
+      .then(({ error: dbErr }) => {
+        if (dbErr) console.error('[CallContext] Failed to update active_calls status (non-fatal):', dbErr);
+      });
 
-    if (error) throw error;
-    
     await logCallEvent(incomingCall.call_sid, 'call_answered', incomingCall.call_flow_id);
     toast.success('Call connected!');
   }, [incomingCall, activeCall, initializeTwilioDevice, logCallEvent, startCallTimer, handleCallEnd]);

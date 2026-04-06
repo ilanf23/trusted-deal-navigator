@@ -38,15 +38,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify admin role
-    const { data: roleData } = await supabase
+    // Verify admin role with diagnostic logging
+    const { data: roleData, error: roleError } = await supabase
       .from('users')
-      .select('app_role')
+      .select('app_role, is_active')
       .eq('user_id', user.id)
-      .in('app_role', ['admin', 'super_admin'])
       .maybeSingle();
 
+    if (roleError) {
+      console.error('[twilio-connect-call] Error querying users table:', roleError.message);
+      return new Response(JSON.stringify({ error: 'Failed to verify admin role' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!roleData) {
+      console.error('[twilio-connect-call] No users row found for user_id:', user.id, 'email:', user.email);
+      return new Response(JSON.stringify({ error: 'Admin access required — no user record found' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const isAdminRole = roleData.app_role === 'admin' || roleData.app_role === 'super_admin';
+    if (!isAdminRole) {
+      console.error('[twilio-connect-call] User', user.id, 'has role', roleData.app_role, '— admin required');
       return new Response(JSON.stringify({ error: 'Admin access required' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

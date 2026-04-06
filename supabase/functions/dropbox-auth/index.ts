@@ -253,11 +253,24 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'getStatus') {
-      const { data, error } = await supabaseAdmin
+      // TEMP TESTING: Try current user first, fall back to Ilan's connection
+      const ILAN_AUTH_ID = '5311dc7d-7f3f-43ef-ae0b-a4cd532b60d3';
+
+      let { data, error } = await supabaseAdmin
         .from('dropbox_connections')
         .select('email, connected_by, last_sync_at')
         .eq('user_id', userId)
         .maybeSingle();
+
+      if ((error || !data) && userId !== ILAN_AUTH_ID) {
+        const fallback = await supabaseAdmin
+          .from('dropbox_connections')
+          .select('email, connected_by, last_sync_at')
+          .eq('user_id', ILAN_AUTH_ID)
+          .maybeSingle();
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       if (error || !data) {
         return new Response(

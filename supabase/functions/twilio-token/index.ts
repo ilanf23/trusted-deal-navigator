@@ -132,18 +132,40 @@ Deno.serve(async (req) => {
     const userId = user.id;
     console.log('[twilio-token] Authenticated user:', userId, 'email:', user.email);
 
-    const { data: roleData } = await supabase
+    // Check admin/super_admin role — also fetch the raw role for diagnostics
+    const { data: roleData, error: roleError } = await supabase
       .from('users')
-      .select('app_role')
+      .select('app_role, is_active')
       .eq('user_id', userId)
-      .in('app_role', ['admin', 'super_admin'])
       .maybeSingle();
 
+    if (roleError) {
+      console.error('[twilio-token] Error querying users table:', roleError.message);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify admin role' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (!roleData) {
+      console.error('[twilio-token] No users row found for user_id:', userId, 'email:', user.email);
+      return new Response(
+        JSON.stringify({ error: 'Admin access required — no user record found' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const isAdminRole = roleData.app_role === 'admin' || roleData.app_role === 'super_admin';
+    if (!isAdminRole) {
+      console.error('[twilio-token] User', userId, 'has role', roleData.app_role, '— admin required');
       return new Response(
         JSON.stringify({ error: 'Admin access required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    if (!roleData.is_active) {
+      console.warn('[twilio-token] User', userId, 'is inactive but has admin role — allowing access');
     }
 
     // Use a stable, well-known identity for Twilio Client registration.
