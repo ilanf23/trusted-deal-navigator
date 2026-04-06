@@ -495,12 +495,24 @@ const LenderPrograms = () => {
     if (!confirmed) return;
 
     try {
-      const { error } = await supabase.from('lender_programs').delete().in('id', ids);
-      if (error) throw error;
+      const newIds = ids.filter(id => id.startsWith('new-'));
+      const dbIds = ids.filter(id => !id.startsWith('new-'));
+
+      if (newIds.length > 0) {
+        setNewRows(prev => prev.filter(r => !newIds.includes(r.id)));
+      }
+
+      if (dbIds.length > 0) {
+        const { error } = await supabase.from('lender_programs').delete().in('id', dbIds);
+        if (error) throw error;
+      }
+
       toast.success(`Deleted ${ids.length} lender${ids.length > 1 ? 's' : ''}`);
       clearSelection();
       setSelectedLender(null);
-      queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
+      if (dbIds.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
+      }
     } catch (error) {
       console.error('Error bulk deleting:', error);
       toast.error('Failed to delete selected lenders');
@@ -557,9 +569,12 @@ const LenderPrograms = () => {
   const hasActiveFilters = Object.values(filters).some(v => v.trim() !== '');
 
   // ── Inline editing ──
-  const handleCellClick = (rowId: string, colKey: string) => {
+  const handleCellClick = (e: React.MouseEvent, rowId: string, colKey: string) => {
     const col = COLUMNS.find(c => c.key === colKey);
     if (!col?.editable) return;
+
+    // Prevent row click (detail panel) when entering inline edit mode
+    e.stopPropagation();
 
     const row = rows.find(r => r.id === rowId);
     if (!row) return;
@@ -696,6 +711,9 @@ const LenderPrograms = () => {
       setNewRows(prev => prev.filter(r => r.id !== row.id));
       return;
     }
+
+    const confirmed = window.confirm(`Delete "${row.lender_name || 'this lender'}"? This action cannot be undone.`);
+    if (!confirmed) return;
 
     try {
       const { error } = await supabase.from('lender_programs').delete().eq('id', row.id);
@@ -1211,7 +1229,7 @@ const LenderPrograms = () => {
                                     border: '1px solid #c8bdd6',
                                     ...(isSticky ? { left: 48, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' } : {}),
                                   }}
-                                  onClick={() => handleCellClick(row.id, col.key)}
+                                  onClick={(e) => handleCellClick(e, row.id, col.key)}
                                 >
                                   {isEditing ? (
                                     isLookingFor ? (
