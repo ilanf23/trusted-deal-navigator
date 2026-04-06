@@ -77,15 +77,15 @@ Rewrite the LenderPrograms page from its current custom spreadsheet-style layout
 **Files:**
 - Modify: `src/pages/admin/LenderPrograms.tsx`
 
-- [ ] Add checkbox column as first column using SelectAllHeader component for header
-- [ ] Add selectedLenderIds state (Set<string>) with toggle and select-all logic
-- [ ] Show PipelineBulkToolbar when items are selected (with delete action)
-- [ ] Add row click handler to open LenderDetailPanel (right overlay)
-- [ ] Add row hover Maximize2 icon in last column to navigate to expanded view
-- [ ] Make email column render as `<a href="mailto:...">` with blue text and hover underline
-- [ ] Make phone column render as `<a href="tel:...">` with blue text and hover underline
-- [ ] Apply row highlight states: selected row = purple bg (#eee6f6), hover = light gray, bulk selected = lighter purple
-- [ ] Keep existing features intact: inline cell editing, dirty row tracking, save button, CSV/Excel upload, filter panel, AI advisor panel
+- [x] Add checkbox column as first column using SelectAllHeader component for header
+- [x] Add selectedLenderIds state (Set<string>) with toggle and select-all logic
+- [x] Show PipelineBulkToolbar when items are selected (with delete action)
+- [x] Add row click handler to open LenderDetailPanel (right overlay)
+- [x] Add row hover Maximize2 icon in last column to navigate to expanded view
+- [x] Make email column render as `<a href="mailto:...">` with blue text and hover underline
+- [x] Make phone column render as `<a href="tel:...">` with blue text and hover underline
+- [x] Apply row highlight states: selected row = purple bg (#eee6f6), hover = light gray, bulk selected = lighter purple
+- [x] Keep existing features intact: inline cell editing, dirty row tracking, save button, CSV/Excel upload, filter panel, AI advisor panel
 
 ### Task 5: Verify and polish
 

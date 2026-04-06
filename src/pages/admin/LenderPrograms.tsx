@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Loader2, Save, Trash2, Upload, Filter, Sparkles, X, Search } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Building2, Loader2, Save, Trash2, Upload, Filter, Sparkles, X, Search, Maximize2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -15,7 +17,8 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import * as XLSX from 'xlsx';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
-import { LenderProgram } from '@/components/admin/LenderDetailPanel';
+import LenderDetailPanel, { LenderProgram } from '@/components/admin/LenderDetailPanel';
+import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 
 // ── Types ──
 
@@ -242,9 +245,35 @@ const createEmptyRow = (): LenderRow => ({
 
 // ── Component ──
 
+const lenderRowToProgram = (row: LenderRow): LenderProgram => ({
+  id: row.id,
+  lender_name: row.lender_name,
+  call_status: row.call_status || null,
+  lender_type: row.lender_type || null,
+  loan_size_text: row.loan_size_text || null,
+  loan_types: row.loan_types || null,
+  states: row.states || null,
+  location: row.location || null,
+  contact_name: row.contact_name || null,
+  phone: row.phone || null,
+  email: row.email || null,
+  looking_for: row.looking_for || null,
+  last_contact: row.last_contact || null,
+  next_call: row.next_call || null,
+  program_name: row.loan_types || 'General',
+  program_type: row.lender_type || 'Other',
+  description: null,
+  interest_range: null,
+  lender_specialty: null,
+  term: null,
+  created_at: '',
+  updated_at: '',
+});
+
 const LenderPrograms = () => {
   const { setPageTitle } = useAdminTopBar();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setPageTitle('Lender Programs');
@@ -316,6 +345,19 @@ const LenderPrograms = () => {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Row selection ──
+  const [selectedLenderIds, setSelectedLenderIds] = useState<Set<string>>(new Set());
+  const [selectedLender, setSelectedLender] = useState<LenderProgram | null>(null);
+
+  const toggleLenderSelection = (lenderId: string) => {
+    setSelectedLenderIds(prev => {
+      const next = new Set(prev);
+      if (next.has(lenderId)) next.delete(lenderId);
+      else next.add(lenderId);
+      return next;
+    });
+  };
+
   // ── Column widths (localStorage-persisted) ──
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     try {
@@ -373,6 +415,34 @@ const LenderPrograms = () => {
 
     return result;
   }, [rows, searchQuery, filters, sortField, sortDir]);
+
+  const isAllSelected = useMemo(() => {
+    return filteredAndSorted.length > 0 && filteredAndSorted.every(r => selectedLenderIds.has(r.id));
+  }, [filteredAndSorted, selectedLenderIds]);
+
+  const selectAll = () => setSelectedLenderIds(new Set(filteredAndSorted.map(r => r.id)));
+  const clearSelection = () => setSelectedLenderIds(new Set());
+
+  const handleRowClick = (row: LenderRow) => {
+    setSelectedLender(lenderRowToProgram(row));
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedLenderIds);
+    if (ids.length === 0) return;
+
+    try {
+      const { error } = await supabase.from('lender_programs').delete().in('id', ids);
+      if (error) throw error;
+      toast.success(`Deleted ${ids.length} lender${ids.length > 1 ? 's' : ''}`);
+      clearSelection();
+      setSelectedLender(null);
+      queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      toast.error('Failed to delete selected lenders');
+    }
+  };
 
   // ── Filter options ──
   const filterOptions = useMemo(() => {
@@ -940,6 +1010,7 @@ const LenderPrograms = () => {
           </div>
 
         {/* Main content grid - table + optional panel */}
+        <div className="relative">
         <div className={`grid gap-4 ${panelMode !== 'list' ? 'grid-cols-1 xl:grid-cols-4' : 'grid-cols-1'}`}>
           {/* Table Section */}
           <div className={panelMode !== 'list' ? 'xl:col-span-3' : ''}>
@@ -954,12 +1025,35 @@ const LenderPrograms = () => {
               />
             </div>
 
+            {/* Bulk Selection Toolbar */}
+            {selectedLenderIds.size > 0 && (
+              <div className="sticky top-0 z-40 px-4 py-2 mb-2 bg-white dark:bg-background border-b border-border">
+                <PipelineBulkToolbar
+                  selectedCount={selectedLenderIds.size}
+                  totalCount={filteredAndSorted.length}
+                  onClearSelection={clearSelection}
+                  onDeleteBoxes={handleBulkDelete}
+                />
+              </div>
+            )}
+
             {/* CRM Table */}
             <div className="bg-white dark:bg-card rounded-md border border-[#c8bdd6] overflow-hidden">
               <ScrollArea className="h-[calc(100vh-320px)]">
                 <table className="w-full text-[13px]" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
+                      {/* Checkbox column header */}
+                      <th
+                        className="w-12 pl-2 pr-4 py-3 text-center sticky top-0 left-0 z-30"
+                        style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }}
+                      >
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                          className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                        />
+                      </th>
                       {COLUMNS.map((col) => {
                         const isSticky = col.key === 'lender_name';
                         return (
@@ -967,13 +1061,13 @@ const LenderPrograms = () => {
                             key={col.key}
                             colKey={col.key}
                             className={isSticky ? 'sticky top-0 z-30 group/hdr' : 'sticky top-0 z-20'}
-                            style={isSticky ? { left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' } : undefined}
+                            style={isSticky ? { left: 48, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' } : undefined}
                           >
                             {col.label}
                           </ColHeader>
                         );
                       })}
-                      {/* Delete action column */}
+                      {/* Action column */}
                       <th
                         className="sticky top-0 z-20 w-12"
                         style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }}
@@ -983,7 +1077,7 @@ const LenderPrograms = () => {
                   <tbody>
                     {filteredAndSorted.length === 0 ? (
                       <tr>
-                        <td colSpan={COLUMNS.length + 1} className="text-center py-16 text-muted-foreground">
+                        <td colSpan={COLUMNS.length + 2} className="text-center py-16 text-muted-foreground">
                           <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
                           <p>No lender programs found</p>
                         </td>
@@ -991,34 +1085,68 @@ const LenderPrograms = () => {
                     ) : (
                       filteredAndSorted.map((row) => {
                         const isDirty = row.isDirty;
+                        const isDetailSelected = selectedLender?.id === row.id;
+                        const isBulkSelected = selectedLenderIds.has(row.id);
+
+                        const rowBg = isDirty
+                          ? 'bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30'
+                          : isDetailSelected
+                            ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
+                            : isBulkSelected
+                              ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
+                              : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30';
+
+                        const checkboxBg = isDirty
+                          ? 'bg-amber-50 dark:bg-amber-950/20 group-hover:bg-amber-100 dark:group-hover:bg-amber-950/30'
+                          : isDetailSelected
+                            ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
+                            : isBulkSelected
+                              ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
+                              : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
+
                         return (
                           <tr
                             key={row.id}
-                            className={`group cursor-pointer transition-colors duration-100 ${
-                              isDirty
-                                ? 'bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30'
-                                : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted'
-                            }`}
+                            onClick={() => handleRowClick(row)}
+                            className={`group cursor-pointer transition-colors duration-200 ${rowBg}`}
                           >
+                            {/* Checkbox cell */}
+                            <td
+                              className={`w-12 pl-2 pr-4 py-2 text-center sticky left-0 z-[5] transition-colors ${checkboxBg}`}
+                              style={{ border: '1px solid #c8bdd6' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Checkbox
+                                checked={isBulkSelected}
+                                onCheckedChange={() => toggleLenderSelection(row.id)}
+                                className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                              />
+                            </td>
                             {COLUMNS.map((col) => {
                               const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key;
                               const value = row[col.key] as string;
                               const isLookingFor = col.key === 'looking_for';
                               const isSticky = col.key === 'lender_name';
+                              const isEmail = col.key === 'email';
+                              const isPhone = col.key === 'phone';
                               const stickyBg = isDirty
                                 ? 'bg-amber-50 dark:bg-amber-950/20 group-hover:bg-amber-100 dark:group-hover:bg-amber-950/30'
-                                : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
+                                : isDetailSelected
+                                  ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
+                                  : isBulkSelected
+                                    ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
+                                    : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
 
                               return (
                                 <td
                                   key={col.key}
                                   className={`px-4 py-2 overflow-hidden ${
-                                    isSticky ? `sticky left-0 z-[5] transition-colors ${stickyBg}` : ''
+                                    isSticky ? `sticky z-[5] transition-colors ${stickyBg}` : ''
                                   }`}
                                   style={{
                                     width: columnWidths[col.key],
                                     border: '1px solid #c8bdd6',
-                                    ...(isSticky ? { boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' } : {}),
+                                    ...(isSticky ? { left: 48, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' } : {}),
                                   }}
                                   onClick={() => handleCellClick(row.id, col.key)}
                                 >
@@ -1047,26 +1175,54 @@ const LenderPrograms = () => {
                                         className="h-8 text-[13px] px-2 border-[#3b2778] focus-visible:ring-1 focus-visible:ring-[#3b2778] bg-background"
                                       />
                                     )
+                                  ) : isSticky ? (
+                                    <div className="relative flex items-center">
+                                      <span className="text-[13px] font-semibold text-foreground truncate flex-1 min-w-0">
+                                        {value || ''}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        title="Open expanded view"
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/lender-programs/expanded-view/${row.id}`); }}
+                                        className="absolute right-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                      >
+                                        <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+                                      </button>
+                                    </div>
+                                  ) : isEmail && value ? (
+                                    <a
+                                      href={`mailto:${value}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="text-[13px] text-blue-600 hover:underline truncate block"
+                                    >
+                                      {value}
+                                    </a>
+                                  ) : isPhone && value ? (
+                                    <a
+                                      href={`tel:${value}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="text-[13px] text-blue-600 hover:underline truncate block"
+                                    >
+                                      {value}
+                                    </a>
                                   ) : (
                                     <span className={`text-[13px] block w-full ${
                                       col.key === 'call_status' && value === 'Y' ? 'text-green-600 font-medium' : 'text-foreground'
-                                    } ${isLookingFor ? 'whitespace-pre-wrap break-words line-clamp-3' : 'truncate'}${
-                                      isSticky ? ' font-semibold' : ''
-                                    }`}>
+                                    } ${isLookingFor ? 'whitespace-pre-wrap break-words line-clamp-3' : 'truncate'}`}>
                                       {value || ''}
                                     </span>
                                   )}
                                 </td>
                               );
                             })}
-                            {/* Delete button */}
+                            {/* Action column: delete + expand */}
                             <td
                               className="w-12 text-center"
                               style={{ border: '1px solid #c8bdd6' }}
                             >
                               {(row.lender_name.trim() || !row.isNew) && (
                                 <button
-                                  onClick={() => handleDeleteRow(row)}
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteRow(row); }}
                                   className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity p-1"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -1232,6 +1388,25 @@ const LenderPrograms = () => {
               </Card>
             </div>
           )}
+        </div>
+
+        {/* Detail Panel overlay */}
+        {selectedLender && panelMode === 'list' && (
+          <div className="absolute right-0 top-0 z-50 h-[calc(100vh-200px)]">
+            <LenderDetailPanel
+              lender={selectedLender}
+              onClose={() => setSelectedLender(null)}
+              onExpand={() => {
+                navigate(`/admin/lender-programs/expanded-view/${selectedLender.id}`);
+                setSelectedLender(null);
+              }}
+              onLenderUpdate={(updated) => {
+                setSelectedLender(updated);
+                queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
+              }}
+            />
+          </div>
+        )}
         </div>
       </div>
     </AdminLayout>
