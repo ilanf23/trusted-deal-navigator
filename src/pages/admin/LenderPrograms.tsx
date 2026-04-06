@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,18 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Loader2, Save, Trash2, Upload, Filter, Sparkles, X } from 'lucide-react';
+import { Building2, Loader2, Save, Trash2, Upload, Filter, Sparkles, X, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { LenderProgramAssistant } from '@/components/admin/LenderProgramAssistant';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import * as XLSX from 'xlsx';
-import { DbTableBadge } from '@/components/admin/DbTableBadge';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import { LenderProgram } from '@/components/admin/LenderDetailPanel';
+
+// ── Types ──
 
 interface LenderRow {
   id: string;
-  rowNum: number;
   lender_name: string;
   call_status: string;
   lender_type: string;
@@ -36,25 +39,190 @@ interface LenderRow {
   [key: string]: string | number | boolean | undefined;
 }
 
-const COLUMNS = [
-  { key: 'rowNum', label: '#', width: 55, editable: false },
-  { key: 'lender_name', label: 'Institution', width: 200, editable: true },
-  { key: 'call_status', label: 'Call Y/N', width: 80, editable: true },
-  { key: 'last_contact', label: 'Last Contact', width: 110, editable: true },
-  { key: 'location', label: 'Location', width: 140, editable: true },
-  { key: 'looking_for', label: 'Looking For', width: 500, editable: true },
-  { key: 'contact_name', label: 'NAME', width: 150, editable: true },
-  { key: 'phone', label: 'PHONE', width: 140, editable: true },
-  { key: 'email', label: 'EMAIL', width: 200, editable: true },
-  { key: 'lender_type', label: 'TYPE OF LENDER', width: 150, editable: true },
-  { key: 'loan_types', label: 'TYPES OF LOANS', width: 180, editable: true },
-  { key: 'loan_size_text', label: 'Loan Size', width: 140, editable: true },
-  { key: 'states', label: 'States', width: 120, editable: true },
+type SortField = 'lender_name' | 'call_status' | 'last_contact' | 'location' | 'looking_for' | 'contact_name' | 'phone' | 'email' | 'lender_type' | 'loan_types' | 'loan_size_text' | 'states';
+type SortDir = 'asc' | 'desc';
+
+type ColumnKey = 'lender_name' | 'call_status' | 'last_contact' | 'location' | 'looking_for' | 'contact_name' | 'phone' | 'email' | 'lender_type' | 'loan_types' | 'loan_size_text' | 'states';
+
+const COLUMNS: { key: ColumnKey; label: string; editable: boolean }[] = [
+  { key: 'lender_name', label: 'Institution', editable: true },
+  { key: 'call_status', label: 'Call Y/N', editable: true },
+  { key: 'last_contact', label: 'Last Contact', editable: true },
+  { key: 'location', label: 'Location', editable: true },
+  { key: 'looking_for', label: 'Looking For', editable: true },
+  { key: 'contact_name', label: 'Name', editable: true },
+  { key: 'phone', label: 'Phone', editable: true },
+  { key: 'email', label: 'Email', editable: true },
+  { key: 'lender_type', label: 'Type of Lender', editable: true },
+  { key: 'loan_types', label: 'Types of Loans', editable: true },
+  { key: 'loan_size_text', label: 'Loan Size', editable: true },
+  { key: 'states', label: 'States', editable: true },
 ];
 
-const createEmptyRow = (rowNum: number): LenderRow => ({
-  id: `new-${rowNum}-${Date.now()}`,
-  rowNum,
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  lender_name: 200,
+  call_status: 80,
+  last_contact: 110,
+  location: 140,
+  looking_for: 400,
+  contact_name: 150,
+  phone: 140,
+  email: 200,
+  lender_type: 150,
+  loan_types: 180,
+  loan_size_text: 140,
+  states: 120,
+};
+
+const COLUMN_SORT_OPTIONS: Record<string, { label: string; field: SortField; dir: SortDir }[]> = {
+  lender_name: [
+    { label: 'Institution ascending', field: 'lender_name', dir: 'asc' },
+    { label: 'Institution descending', field: 'lender_name', dir: 'desc' },
+  ],
+  call_status: [
+    { label: 'Call status ascending', field: 'call_status', dir: 'asc' },
+    { label: 'Call status descending', field: 'call_status', dir: 'desc' },
+  ],
+  last_contact: [
+    { label: 'Last contact ascending', field: 'last_contact', dir: 'asc' },
+    { label: 'Last contact descending', field: 'last_contact', dir: 'desc' },
+  ],
+  location: [
+    { label: 'Location ascending', field: 'location', dir: 'asc' },
+    { label: 'Location descending', field: 'location', dir: 'desc' },
+  ],
+  looking_for: [
+    { label: 'Looking for ascending', field: 'looking_for', dir: 'asc' },
+    { label: 'Looking for descending', field: 'looking_for', dir: 'desc' },
+  ],
+  contact_name: [
+    { label: 'Contact name ascending', field: 'contact_name', dir: 'asc' },
+    { label: 'Contact name descending', field: 'contact_name', dir: 'desc' },
+  ],
+  phone: [
+    { label: 'Phone ascending', field: 'phone', dir: 'asc' },
+    { label: 'Phone descending', field: 'phone', dir: 'desc' },
+  ],
+  email: [
+    { label: 'Email ascending', field: 'email', dir: 'asc' },
+    { label: 'Email descending', field: 'email', dir: 'desc' },
+  ],
+  lender_type: [
+    { label: 'Lender type ascending', field: 'lender_type', dir: 'asc' },
+    { label: 'Lender type descending', field: 'lender_type', dir: 'desc' },
+  ],
+  loan_types: [
+    { label: 'Loan types ascending', field: 'loan_types', dir: 'asc' },
+    { label: 'Loan types descending', field: 'loan_types', dir: 'desc' },
+  ],
+  loan_size_text: [
+    { label: 'Loan size ascending', field: 'loan_size_text', dir: 'asc' },
+    { label: 'Loan size descending', field: 'loan_size_text', dir: 'desc' },
+  ],
+  states: [
+    { label: 'States ascending', field: 'states', dir: 'asc' },
+    { label: 'States descending', field: 'states', dir: 'desc' },
+  ],
+};
+
+// Valid US state abbreviations
+const VALID_STATE_ABBREVS = new Set([
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
+]);
+
+// Standardized loan size categories
+const LOAN_SIZE_CATEGORIES = [
+  { label: 'Under $100K', min: 0, max: 100000 },
+  { label: '$100K - $250K', min: 100000, max: 250000 },
+  { label: '$250K - $500K', min: 250000, max: 500000 },
+  { label: '$500K - $1M', min: 500000, max: 1000000 },
+  { label: '$1M - $2.5M', min: 1000000, max: 2500000 },
+  { label: '$2.5M - $5M', min: 2500000, max: 5000000 },
+  { label: '$5M - $10M', min: 5000000, max: 10000000 },
+  { label: '$10M - $25M', min: 10000000, max: 25000000 },
+  { label: '$25M - $50M', min: 25000000, max: 50000000 },
+  { label: '$50M+', min: 50000000, max: Infinity },
+];
+
+// Parse loan size text to extract numeric values
+const parseLoanSizeText = (text: string | null): { min: number; max: number } | null => {
+  if (!text) return null;
+  const cleaned = text.replace(/[$,]/g, '').toLowerCase().trim();
+
+  const parseNumber = (str: string): number => {
+    const match = str.match(/([\d.]+)\s*(k|m|mm|b|million|mil)?/i);
+    if (!match) return 0;
+    let num = parseFloat(match[1]);
+    const suffix = (match[2] || '').toLowerCase();
+    if (suffix === 'k') num *= 1000;
+    else if (suffix === 'm' || suffix === 'mm' || suffix === 'million' || suffix === 'mil') num *= 1000000;
+    else if (suffix === 'b') num *= 1000000000;
+    else if (num <= 100 && !suffix) {
+      if (cleaned.includes('mm') || cleaned.includes('million') || cleaned.includes('mil')) {
+        num *= 1000000;
+      }
+    }
+    return num;
+  };
+
+  const rangeMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*[-–to]+\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
+  if (rangeMatch) {
+    const min = parseNumber(rangeMatch[1]);
+    const max = parseNumber(rangeMatch[2]);
+    if (min <= 100 && max <= 100 && min > 0) {
+      return { min: min * 1000000, max: max * 1000000 };
+    }
+    return { min, max };
+  }
+
+  const upToMatch = cleaned.match(/up\s*to\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
+  if (upToMatch) {
+    return { min: 0, max: parseNumber(upToMatch[1]) };
+  }
+
+  const minMatch = cleaned.match(/(?:min(?:imum)?)\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i) ||
+                   cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*(?:min(?:imum)?|\+)/i);
+  if (minMatch) {
+    return { min: parseNumber(minMatch[1]), max: Infinity };
+  }
+
+  const plusMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*\+/i);
+  if (plusMatch) {
+    return { min: parseNumber(plusMatch[1]), max: Infinity };
+  }
+
+  const singleMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
+  if (singleMatch) {
+    const val = parseNumber(singleMatch[1]);
+    return { min: val * 0.5, max: val * 2 };
+  }
+
+  return null;
+};
+
+const rowMatchesLoanCategory = (row: LenderRow, categoryLabel: string): boolean => {
+  const category = LOAN_SIZE_CATEGORIES.find(c => c.label === categoryLabel);
+  if (!category) return false;
+
+  const rowRange = parseLoanSizeText(row.loan_size_text);
+  if (!rowRange) return false;
+
+  if (category.max === Infinity) {
+    return rowRange.max >= category.min;
+  }
+
+  const lenderCanDoSmallEnough = rowRange.min <= category.max;
+  const lenderCanDoLargeEnough = rowRange.max >= category.min;
+
+  return lenderCanDoSmallEnough && lenderCanDoLargeEnough;
+};
+
+const createEmptyRow = (): LenderRow => ({
+  id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   lender_name: '',
   call_status: '',
   lender_type: '',
@@ -72,147 +240,28 @@ const createEmptyRow = (rowNum: number): LenderRow => ({
   isDirty: false,
 });
 
+// ── Component ──
+
 const LenderPrograms = () => {
   const { setPageTitle } = useAdminTopBar();
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     setPageTitle('Lender Programs');
     return () => { setPageTitle(null); };
   }, []);
 
-  const [rows, setRows] = useState<LenderRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [editingCell, setEditingCell] = useState<{ rowId: string; colKey: string } | null>(null);
-  const [editValue, setEditValue] = useState('');
-  // Panel mode: 'list' | 'filter' | 'advisor' (matches EvansCalls pattern)
-  const [panelMode, setPanelMode] = useState<'list' | 'filter' | 'advisor'>('list');
-  const [filters, setFilters] = useState({
-    institution: '',
-    lookingFor: '',
-    contact: '',
-    loanSize: '',
-    states: '',
-    lenderType: '',
-    loanTypes: '',
-    callStatus: '',
-  });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Valid US state abbreviations
-  const VALID_STATE_ABBREVS = new Set([
-    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
-  ]);
-
-  // Standardized loan size categories
-  const LOAN_SIZE_CATEGORIES = [
-    { label: 'Under $100K', min: 0, max: 100000 },
-    { label: '$100K - $250K', min: 100000, max: 250000 },
-    { label: '$250K - $500K', min: 250000, max: 500000 },
-    { label: '$500K - $1M', min: 500000, max: 1000000 },
-    { label: '$1M - $2.5M', min: 1000000, max: 2500000 },
-    { label: '$2.5M - $5M', min: 2500000, max: 5000000 },
-    { label: '$5M - $10M', min: 5000000, max: 10000000 },
-    { label: '$10M - $25M', min: 10000000, max: 25000000 },
-    { label: '$25M - $50M', min: 25000000, max: 50000000 },
-    { label: '$50M+', min: 50000000, max: Infinity },
-  ];
-
-  // Parse loan size text to extract numeric values
-  const parseLoanSizeText = (text: string | null): { min: number; max: number } | null => {
-    if (!text) return null;
-    const cleaned = text.replace(/[$,]/g, '').toLowerCase().trim();
-    
-    const parseNumber = (str: string): number => {
-      const match = str.match(/([\d.]+)\s*(k|m|mm|b|million|mil)?/i);
-      if (!match) return 0;
-      let num = parseFloat(match[1]);
-      const suffix = (match[2] || '').toLowerCase();
-      if (suffix === 'k') num *= 1000;
-      else if (suffix === 'm' || suffix === 'mm' || suffix === 'million' || suffix === 'mil') num *= 1000000;
-      else if (suffix === 'b') num *= 1000000000;
-      else if (num <= 100 && !suffix) {
-        if (cleaned.includes('mm') || cleaned.includes('million') || cleaned.includes('mil')) {
-          num *= 1000000;
-        }
-      }
-      return num;
-    };
-
-    const rangeMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*[-–to]+\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
-    if (rangeMatch) {
-      const min = parseNumber(rangeMatch[1]);
-      const max = parseNumber(rangeMatch[2]);
-      if (min <= 100 && max <= 100 && min > 0) {
-        return { min: min * 1000000, max: max * 1000000 };
-      }
-      return { min, max };
-    }
-
-    const upToMatch = cleaned.match(/up\s*to\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
-    if (upToMatch) {
-      return { min: 0, max: parseNumber(upToMatch[1]) };
-    }
-
-    const minMatch = cleaned.match(/(?:min(?:imum)?)\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i) ||
-                     cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*(?:min(?:imum)?|\+)/i);
-    if (minMatch) {
-      return { min: parseNumber(minMatch[1]), max: Infinity };
-    }
-
-    const plusMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*\+/i);
-    if (plusMatch) {
-      return { min: parseNumber(plusMatch[1]), max: Infinity };
-    }
-
-    const singleMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
-    if (singleMatch) {
-      const val = parseNumber(singleMatch[1]);
-      return { min: val * 0.5, max: val * 2 };
-    }
-
-    return null;
-  };
-
-  const rowMatchesLoanCategory = (row: LenderRow, categoryLabel: string): boolean => {
-    const category = LOAN_SIZE_CATEGORIES.find(c => c.label === categoryLabel);
-    if (!category) return false;
-
-    const rowRange = parseLoanSizeText(row.loan_size_text);
-    if (!rowRange) return false;
-
-    if (category.max === Infinity) {
-      return rowRange.max >= category.min;
-    }
-
-    const lenderCanDoSmallEnough = rowRange.min <= category.max;
-    const lenderCanDoLargeEnough = rowRange.max >= category.min;
-    
-    return lenderCanDoSmallEnough && lenderCanDoLargeEnough;
-  };
-
-  useEffect(() => {
-    fetchPrograms();
-  }, []);
-
-  const fetchPrograms = async () => {
-    try {
+  // ── Data fetching via useQuery ──
+  const { data: dbRows = [], isLoading } = useQuery({
+    queryKey: ['lender-programs'],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('lender_programs')
         .select('*')
         .order('created_at', { ascending: true });
-
       if (error) throw error;
-
-      // Map database rows to our format
-      const dbRows: LenderRow[] = (data || []).map((item, idx) => ({
+      return (data || []).map((item): LenderRow => ({
         id: item.id,
-        rowNum: idx + 1,
         lender_name: item.lender_name || '',
         call_status: item.call_status || '',
         lender_type: item.lender_type || '',
@@ -229,28 +278,72 @@ const LenderPrograms = () => {
         isNew: false,
         isDirty: false,
       }));
+    },
+  });
 
-      // Fill up to 900 rows
-      const totalRows = 900;
-      const emptyRows: LenderRow[] = [];
-      for (let i = dbRows.length; i < totalRows; i++) {
-        emptyRows.push(createEmptyRow(i + 1));
+  // Local rows state for inline editing + new rows
+  const [localEdits, setLocalEdits] = useState<Record<string, Partial<LenderRow>>>({});
+  const [newRows, setNewRows] = useState<LenderRow[]>([]);
+
+  const rows = useMemo(() => {
+    const edited = dbRows.map(row => {
+      const edits = localEdits[row.id];
+      if (!edits) return row;
+      return { ...row, ...edits, isDirty: true };
+    });
+    return [...edited, ...newRows];
+  }, [dbRows, localEdits, newRows]);
+
+  // ── State ──
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [editingCell, setEditingCell] = useState<{ rowId: string; colKey: string } | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [panelMode, setPanelMode] = useState<'list' | 'filter' | 'advisor'>('list');
+  const [sortField, setSortField] = useState<SortField>('lender_name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [colMenuOpen, setColMenuOpen] = useState<string | null>(null);
+  const [filters, setFilters] = useState({
+    institution: '',
+    lookingFor: '',
+    contact: '',
+    loanSize: '',
+    states: '',
+    lenderType: '',
+    loanTypes: '',
+    callStatus: '',
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Column widths (localStorage-persisted) ──
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('lender-programs-column-widths');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
       }
+    } catch { /* ignore */ }
+    return DEFAULT_COLUMN_WIDTHS;
+  });
 
-      setRows([...dbRows, ...emptyRows]);
-    } catch (error) {
-      console.error('Error fetching programs:', error);
-      toast.error('Failed to load lender programs');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
+    setColumnWidths(prev => {
+      const next = { ...prev, [columnId]: newWidth };
+      localStorage.setItem('lender-programs-column-widths', JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
-  const filteredRows = rows.filter(row => {
+  // ── Filtering ──
+  const filteredAndSorted = useMemo(() => {
+    let result = rows;
+
     // Text search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      const matchesSearch = (
+      result = result.filter(row =>
         row.lender_name.toLowerCase().includes(query) ||
         row.loan_types?.toLowerCase().includes(query) ||
         row.states?.toLowerCase().includes(query) ||
@@ -258,23 +351,30 @@ const LenderPrograms = () => {
         row.contact_name?.toLowerCase().includes(query) ||
         row.looking_for?.toLowerCase().includes(query)
       );
-      if (!matchesSearch) return false;
     }
-    
-    // Dropdown filters (matching EvansCalls pattern)
-    if (filters.institution && row.lender_name !== filters.institution) return false;
-    if (filters.lookingFor && !row.looking_for?.toLowerCase().includes(filters.lookingFor.toLowerCase())) return false;
-    if (filters.contact && row.contact_name !== filters.contact) return false;
-    if (filters.loanSize && !rowMatchesLoanCategory(row, filters.loanSize)) return false;
-    if (filters.states && !row.states?.toLowerCase().includes(filters.states.toLowerCase())) return false;
-    if (filters.lenderType && row.lender_type !== filters.lenderType) return false;
-    if (filters.loanTypes && !row.loan_types?.toLowerCase().includes(filters.loanTypes.toLowerCase())) return false;
-    if (filters.callStatus && row.call_status?.toLowerCase() !== filters.callStatus.toLowerCase()) return false;
-    
-    return true;
-  });
 
-  // Extract unique values for filter dropdowns (matching EvansCalls pattern)
+    // Dropdown filters
+    if (filters.institution) result = result.filter(row => row.lender_name === filters.institution);
+    if (filters.lookingFor) result = result.filter(row => row.looking_for?.toLowerCase().includes(filters.lookingFor.toLowerCase()));
+    if (filters.contact) result = result.filter(row => row.contact_name === filters.contact);
+    if (filters.loanSize) result = result.filter(row => rowMatchesLoanCategory(row, filters.loanSize));
+    if (filters.states) result = result.filter(row => row.states?.toLowerCase().includes(filters.states.toLowerCase()));
+    if (filters.lenderType) result = result.filter(row => row.lender_type === filters.lenderType);
+    if (filters.loanTypes) result = result.filter(row => row.loan_types?.toLowerCase().includes(filters.loanTypes.toLowerCase()));
+    if (filters.callStatus) result = result.filter(row => row.call_status?.toLowerCase() === filters.callStatus.toLowerCase());
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      const aVal = ((a[sortField] ?? '') as string).toLowerCase();
+      const bVal = ((b[sortField] ?? '') as string).toLowerCase();
+      const cmp = aVal.localeCompare(bVal);
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    return result;
+  }, [rows, searchQuery, filters, sortField, sortDir]);
+
+  // ── Filter options ──
   const filterOptions = useMemo(() => {
     const getUniqueValues = (key: keyof LenderRow) => {
       const values = rows
@@ -306,7 +406,7 @@ const LenderPrograms = () => {
       lenderTypes: getUniqueValues('lender_type'),
       loanTypes: getUniqueLoanTypes(),
     };
-  }, [rows, VALID_STATE_ABBREVS, LOAN_SIZE_CATEGORIES]);
+  }, [rows]);
 
   const clearFilters = () => {
     setFilters({
@@ -323,6 +423,7 @@ const LenderPrograms = () => {
 
   const hasActiveFilters = Object.values(filters).some(v => v.trim() !== '');
 
+  // ── Inline editing ──
   const handleCellClick = (rowId: string, colKey: string) => {
     const col = COLUMNS.find(c => c.key === colKey);
     if (!col?.editable) return;
@@ -338,19 +439,22 @@ const LenderPrograms = () => {
     if (!editingCell) return;
 
     const { rowId, colKey } = editingCell;
-    
-    setRows(prev => prev.map(row => {
-      if (row.id !== rowId) return row;
-      
-      const currentValue = row[colKey] as string || '';
-      if (currentValue === editValue) return row;
-      
-      return {
-        ...row,
-        [colKey]: editValue,
-        isDirty: true,
-      };
-    }));
+    const row = rows.find(r => r.id === rowId);
+    if (!row) { setEditingCell(null); return; }
+
+    const currentValue = row[colKey] as string || '';
+    if (currentValue !== editValue) {
+      if (row.isNew) {
+        setNewRows(prev => prev.map(r =>
+          r.id === rowId ? { ...r, [colKey]: editValue, isDirty: true } : r
+        ));
+      } else {
+        setLocalEdits(prev => ({
+          ...prev,
+          [rowId]: { ...prev[rowId], [colKey]: editValue },
+        }));
+      }
+    }
 
     setEditingCell(null);
     setEditValue('');
@@ -365,23 +469,26 @@ const LenderPrograms = () => {
     }
   };
 
+  // ── Save ──
   const handleSaveAll = async () => {
-    const dirtyRows = rows.filter(r => r.isDirty && r.lender_name.trim());
-    
-    if (dirtyRows.length === 0) {
+    const dirtyExisting = Object.entries(localEdits).map(([id, edits]) => {
+      const original = dbRows.find(r => r.id === id);
+      if (!original) return null;
+      return { ...original, ...edits, isDirty: true };
+    }).filter((r): r is LenderRow => r !== null && r.lender_name.trim() !== '');
+
+    const dirtyNew = newRows.filter(r => r.isDirty && r.lender_name.trim());
+
+    if (dirtyExisting.length === 0 && dirtyNew.length === 0) {
       toast.info('No changes to save');
       return;
     }
 
     setSaving(true);
     try {
-      // Separate new rows from existing rows
-      const newRows = dirtyRows.filter(r => r.isNew);
-      const existingRows = dirtyRows.filter(r => !r.isNew);
-
       // Insert new rows
-      if (newRows.length > 0) {
-        const insertData = newRows.map(r => ({
+      if (dirtyNew.length > 0) {
+        const insertData = dirtyNew.map(r => ({
           lender_name: r.lender_name,
           call_status: r.call_status || 'N',
           lender_type: r.lender_type || null,
@@ -410,7 +517,7 @@ const LenderPrograms = () => {
       }
 
       // Update existing rows
-      for (const row of existingRows) {
+      for (const row of dirtyExisting) {
         const { error } = await supabase
           .from('lender_programs')
           .update({
@@ -435,12 +542,14 @@ const LenderPrograms = () => {
             })() : null,
           })
           .eq('id', row.id);
-        
+
         if (error) throw error;
       }
 
-      toast.success(`Saved ${dirtyRows.length} row${dirtyRows.length > 1 ? 's' : ''}`);
-      fetchPrograms(); // Refresh to get new IDs
+      toast.success(`Saved ${dirtyExisting.length + dirtyNew.length} row${(dirtyExisting.length + dirtyNew.length) > 1 ? 's' : ''}`);
+      setLocalEdits({});
+      setNewRows([]);
+      queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
     } catch (error) {
       console.error('Error saving:', error);
       toast.error('Failed to save changes');
@@ -451,10 +560,7 @@ const LenderPrograms = () => {
 
   const handleDeleteRow = async (row: LenderRow) => {
     if (row.isNew) {
-      // Just clear the row data for new rows
-      setRows(prev => prev.map(r => 
-        r.id === row.id ? createEmptyRow(row.rowNum) : r
-      ));
+      setNewRows(prev => prev.filter(r => r.id !== row.id));
       return;
     }
 
@@ -462,20 +568,24 @@ const LenderPrograms = () => {
       const { error } = await supabase.from('lender_programs').delete().eq('id', row.id);
       if (error) throw error;
       toast.success('Row deleted');
-      fetchPrograms();
+      queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
     } catch (error) {
       console.error('Error deleting:', error);
       toast.error('Failed to delete row');
     }
   };
 
-  // File Upload handler (CSV and Excel)
+  const handleAddRow = () => {
+    setNewRows(prev => [...prev, createEmptyRow()]);
+  };
+
+  // ── File Upload handler (CSV and Excel) ──
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const isCSV = file.name.endsWith('.csv') || file.type === 'text/csv';
-    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || 
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls') ||
                     file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
                     file.type === 'application/vnd.ms-excel';
 
@@ -491,23 +601,19 @@ const LenderPrograms = () => {
     }
   };
 
-  // Parse Excel files
   const parseAndUploadExcel = async (file: File) => {
     setUploading(true);
-    
+
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'array' });
-        
-        // Get first sheet
+
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        
-        // Convert to JSON array (as array of arrays)
         const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
-        
+
         if (jsonData.length < 2) {
           toast.error('Excel file must have a header row and at least one data row');
           setUploading(false);
@@ -515,8 +621,6 @@ const LenderPrograms = () => {
         }
 
         const headers = (jsonData[0] || []).map(h => (h || '').toString().trim().toLowerCase());
-        console.log('Excel Headers:', headers);
-        
         const programs = parseRowsToPrograms(headers, jsonData.slice(1));
 
         if (programs.length === 0) {
@@ -525,13 +629,11 @@ const LenderPrograms = () => {
           return;
         }
 
-        // Insert into database
         const { error } = await supabase.from('lender_programs').insert(programs);
-        
         if (error) throw error;
 
         toast.success(`Imported ${programs.length} lenders from Excel`);
-        fetchPrograms();
+        queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
       } catch (error) {
         console.error('Error parsing/uploading Excel:', error);
         toast.error('Failed to import Excel file');
@@ -540,11 +642,10 @@ const LenderPrograms = () => {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     };
-    
+
     reader.readAsArrayBuffer(file);
   };
 
-  // Shared row parsing logic
   const parseRowsToPrograms = (headers: string[], rows: string[][]) => {
     const programs: Array<{
       lender_name: string;
@@ -582,7 +683,7 @@ const LenderPrograms = () => {
       headers.forEach((header, idx) => {
         const value = (row[idx] || '').toString().trim();
         const h = header.toLowerCase();
-        
+
         if (h === 'institution' || (h.includes('lender') && h.includes('name'))) lender_name = value;
         else if (h === 'call y/n' || h === 'call' || h.includes('call')) call_status = value || 'N';
         else if (h === 'last contact' || (h.includes('last') && h.includes('contact'))) last_contact = value;
@@ -633,7 +734,7 @@ const LenderPrograms = () => {
     const delimiters = [',', '\t', ';', '|'];
     let bestDelimiter = ',';
     let maxCount = 0;
-    
+
     for (const d of delimiters) {
       const count = (firstLine.match(new RegExp(d === '|' ? '\\|' : d, 'g')) || []).length;
       if (count > maxCount) {
@@ -646,14 +747,14 @@ const LenderPrograms = () => {
 
   const parseAndUploadCSV = async (file: File) => {
     setUploading(true);
-    
+
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
         const delimiter = detectDelimiter(text);
         const lines = text.split('\n').filter(line => line.trim());
-        
+
         if (lines.length < 2) {
           toast.error('CSV file must have a header row and at least one data row');
           setUploading(false);
@@ -661,88 +762,13 @@ const LenderPrograms = () => {
         }
 
         const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
-        console.log('CSV Headers:', headers);
-        
-        const programs: Array<{
-          lender_name: string;
-          call_status: string | null;
-          last_contact: string | null;
-          next_call: string | null;
-          location: string | null;
-          looking_for: string | null;
-          contact_name: string | null;
-          phone: string | null;
-          email: string | null;
-          lender_type: string | null;
-          loan_types: string | null;
-          loan_size_text: string | null;
-          states: string | null;
-          program_name: string;
-          program_type: string;
-        }> = [];
+        const csvRows: string[][] = [];
 
         for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(delimiter).map(v => v.trim().replace(/['"]/g, ''));
-          
-          let lender_name = '';
-          let call_status = '';
-          let last_contact = '';
-          let next_call = '';
-          let location = '';
-          let looking_for = '';
-          let contact_name = '';
-          let phone = '';
-          let email = '';
-          let lender_type = '';
-          let loan_types = '';
-          let loan_size_text = '';
-          let states = '';
-
-          headers.forEach((header, idx) => {
-            const value = values[idx] || '';
-            const h = header.toLowerCase();
-            
-            if (h === 'institution' || (h.includes('lender') && h.includes('name'))) lender_name = value;
-            else if (h === 'call y/n' || h === 'call' || h.includes('call')) call_status = value || 'N';
-            else if (h === 'last contact' || (h.includes('last') && h.includes('contact'))) last_contact = value;
-            else if (h === 'next call' || (h.includes('next') && h.includes('call'))) next_call = value;
-            else if (h === 'location') location = value;
-            else if (h === 'looking for' || h.includes('looking')) looking_for = value;
-            else if (h === 'name' || h === 'contact name' || h === 'contact') contact_name = value;
-            else if (h === 'phone' || h.includes('phone')) phone = value;
-            else if (h === 'email' || h.includes('email')) email = value;
-            else if (h === 'type of lender' || h === 'lender type' || h.includes('type of lender') || h.includes('lender type')) lender_type = value;
-            else if (h === 'types of loans' || h === 'loan types' || h.includes('types of loan') || h.includes('loan type')) loan_types = value;
-            else if (h === 'loan size' || h.includes('loan size') || h.includes('loansize') || h === 'size') loan_size_text = value;
-            else if (h === 'states' || h.includes('state')) states = value;
-          });
-
-          if (lender_name) {
-            programs.push({
-              lender_name,
-              call_status: call_status || 'N',
-              last_contact: last_contact ? (() => {
-                const d = new Date(last_contact);
-                return isNaN(d.getTime()) ? null : d.toISOString();
-              })() : null,
-              next_call: next_call ? (() => {
-                const d = new Date(next_call);
-                return isNaN(d.getTime()) ? null : d.toISOString();
-              })() : null,
-              location: location || null,
-              looking_for: looking_for || null,
-              contact_name: contact_name || null,
-              phone: phone || null,
-              email: email || null,
-              lender_type: lender_type || null,
-              loan_types: loan_types || null,
-              loan_size_text: loan_size_text || null,
-              states: states || null,
-              program_name: loan_types || 'General',
-              program_type: lender_type || 'Other',
-            });
-          }
+          csvRows.push(lines[i].split(delimiter).map(v => v.trim().replace(/['"]/g, '')));
         }
+
+        const programs = parseRowsToPrograms(headers, csvRows);
 
         if (programs.length === 0) {
           toast.error('No valid lender data found in CSV');
@@ -750,13 +776,11 @@ const LenderPrograms = () => {
           return;
         }
 
-        // Insert into database
         const { error } = await supabase.from('lender_programs').insert(programs);
-        
         if (error) throw error;
 
         toast.success(`Imported ${programs.length} lenders from CSV`);
-        fetchPrograms();
+        queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
       } catch (error) {
         console.error('Error parsing/uploading CSV:', error);
         toast.error('Failed to import CSV');
@@ -765,13 +789,86 @@ const LenderPrograms = () => {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     };
-    
+
     reader.readAsText(file);
   };
 
   const dirtyCount = rows.filter(r => r.isDirty && r.lender_name.trim()).length;
 
-  if (loading) {
+  // ── ColHeader (CRM pattern from People.tsx) ──
+  const ColHeader = ({
+    colKey,
+    children,
+    className: extraClassName,
+    style: extraStyle,
+  }: {
+    colKey: string;
+    children: React.ReactNode;
+    className?: string;
+    style?: React.CSSProperties;
+  }) => {
+    const width = columnWidths[colKey] ?? 120;
+    const sortOptions = COLUMN_SORT_OPTIONS[colKey];
+    const isMenuOpen = colMenuOpen === colKey;
+    return (
+      <th
+        className={`px-4 py-1.5 text-left whitespace-nowrap group/col transition-colors hover:z-20 ${extraClassName ?? ''}`}
+        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#d8cce8'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
+      >
+        <ResizableColumnHeader
+          columnId={colKey}
+          currentWidth={`${width}px`}
+          onResize={handleColumnResize}
+        >
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
+            {children}
+          </span>
+          {sortOptions && (
+            <div className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setColMenuOpen(isMenuOpen ? null : colKey)}
+                title="Sort options"
+                style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
+                onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
+                onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+              >
+                ⋮
+              </button>
+              {isMenuOpen && (
+                <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, backgroundColor: '#fff', border: '1px solid #e4dced', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, padding: '4px 0', overflow: 'hidden' }}>
+                  {sortOptions.map((opt) => (
+                    <button
+                      key={`${opt.field}-${opt.dir}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSortField(opt.field);
+                        setSortDir(opt.dir);
+                        setColMenuOpen(null);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
+                    >
+                      {opt.dir === 'asc' ? (
+                        <span style={{ color: '#3b2778', fontSize: 16 }}>↑</span>
+                      ) : (
+                        <span style={{ color: '#5f6368', fontSize: 16 }}>↓</span>
+                      )}
+                      <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </ResizableColumnHeader>
+      </th>
+    );
+  };
+
+  // ── Render ──
+
+  if (isLoading) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center py-20">
@@ -793,6 +890,14 @@ const LenderPrograms = () => {
               onChange={handleFileSelect}
               className="hidden"
             />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handleAddRow}
+            >
+              + Add Row
+            </Button>
             <Button
               variant={panelMode === 'filter' ? "default" : "outline"}
               size="sm"
@@ -816,10 +921,10 @@ const LenderPrograms = () => {
               <Sparkles className="h-3.5 w-3.5" />
               AI Advisor
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-1.5" 
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
             >
@@ -834,117 +939,153 @@ const LenderPrograms = () => {
             )}
           </div>
 
-        {/* Main content grid - spreadsheet + optional panel */}
+        {/* Main content grid - table + optional panel */}
         <div className={`grid gap-4 ${panelMode !== 'list' ? 'grid-cols-1 xl:grid-cols-4' : 'grid-cols-1'}`}>
-          {/* Spreadsheet Section */}
+          {/* Table Section */}
           <div className={panelMode !== 'list' ? 'xl:col-span-3' : ''}>
             {/* Search */}
             <div className="relative max-w-md mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search lenders..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-3 bg-background border-border"
+                className="pl-9 bg-background border-border rounded-full"
               />
             </div>
 
-            {/* Spreadsheet Table */}
-            <div className="bg-card rounded-md border border-border overflow-hidden">
+            {/* CRM Table */}
+            <div className="bg-white dark:bg-card rounded-md border border-[#c8bdd6] overflow-hidden">
               <ScrollArea className="h-[calc(100vh-320px)]">
-                <div style={{ minWidth: COLUMNS.reduce((sum, c) => sum + c.width, 50) }}>
-                  {/* Header */}
-                  <div className="flex bg-muted border-b-2 border-border sticky top-0 z-10">
-                    {COLUMNS.map((col) => (
-                      <div
-                        key={col.key}
-                        className="px-3 py-3 text-sm font-semibold text-foreground border-r border-border last:border-r-0 flex-shrink-0"
-                        style={{ width: col.width }}
-                      >
-                        {col.label}
-                      </div>
-                    ))}
-                    <div className="w-12 px-3 py-3 flex-shrink-0" />
-                  </div>
-
-                  {/* Rows */}
-                  {filteredRows.map((row) => (
-                    <div
-                      key={row.id}
-                      className={`flex border-b border-border hover:bg-muted/50 group min-h-[48px] ${
-                        row.isDirty ? 'bg-amber-500/10' : ''
-                      }`}
-                    >
+                <table className="w-full text-[13px]" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
                       {COLUMNS.map((col) => {
-                          const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key;
-                          const value = row[col.key] as string | number;
-                          const isLookingFor = col.key === 'looking_for';
-
+                        const isSticky = col.key === 'lender_name';
                         return (
-                          <div
+                          <ColHeader
                             key={col.key}
-                            className={`px-2 py-2 border-r border-border/50 last:border-r-0 flex-shrink-0 flex ${
-                              isLookingFor ? 'items-start' : 'items-center'
-                            } ${
-                              col.editable ? 'cursor-text' : ''
-                            } ${col.key === 'rowNum' ? 'bg-muted/50 text-muted-foreground text-sm font-medium justify-center' : ''}`}
-                            style={{ width: col.width }}
-                            onClick={() => handleCellClick(row.id, col.key)}
+                            colKey={col.key}
+                            className={isSticky ? 'sticky top-0 z-30 group/hdr' : 'sticky top-0 z-20'}
+                            style={isSticky ? { left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' } : undefined}
                           >
-                            {isEditing ? (
-                              isLookingFor ? (
-                                <textarea
-                                  autoFocus
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  onBlur={handleCellBlur}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Escape') {
-                                      setEditingCell(null);
-                                      setEditValue('');
-                                    }
-                                  }}
-                                  className="w-full h-20 text-sm px-2 py-1 border border-primary rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                                />
-                              ) : (
-                                <Input
-                                  autoFocus
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  onBlur={handleCellBlur}
-                                  onKeyDown={handleKeyDown}
-                                  className="h-8 text-sm px-2 border-primary focus-visible:ring-1 focus-visible:ring-primary bg-background"
-                                />
-                              )
-                            ) : (
-                              <span className={`text-sm w-full ${
-                                col.key === 'call_status' && value === 'Y' ? 'text-green-500 font-medium' : 'text-foreground'
-                              } ${isLookingFor ? 'whitespace-pre-wrap break-words line-clamp-3' : 'truncate'}`}>
-                                {value || (col.key === 'rowNum' ? '' : '')}
-                              </span>
-                            )}
-                          </div>
+                            {col.label}
+                          </ColHeader>
                         );
                       })}
-                      <div className="w-12 flex items-center justify-center flex-shrink-0">
-                        {(row.lender_name.trim() || !row.isNew) && (
-                          <button
-                            onClick={() => handleDeleteRow(row)}
-                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity p-1"
+                      {/* Delete action column */}
+                      <th
+                        className="sticky top-0 z-20 w-12"
+                        style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }}
+                      />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAndSorted.length === 0 ? (
+                      <tr>
+                        <td colSpan={COLUMNS.length + 1} className="text-center py-16 text-muted-foreground">
+                          <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                          <p>No lender programs found</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAndSorted.map((row) => {
+                        const isDirty = row.isDirty;
+                        return (
+                          <tr
+                            key={row.id}
+                            className={`group cursor-pointer transition-colors duration-100 ${
+                              isDirty
+                                ? 'bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30'
+                                : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted'
+                            }`}
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                            {COLUMNS.map((col) => {
+                              const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key;
+                              const value = row[col.key] as string;
+                              const isLookingFor = col.key === 'looking_for';
+                              const isSticky = col.key === 'lender_name';
+                              const stickyBg = isDirty
+                                ? 'bg-amber-50 dark:bg-amber-950/20 group-hover:bg-amber-100 dark:group-hover:bg-amber-950/30'
+                                : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
+
+                              return (
+                                <td
+                                  key={col.key}
+                                  className={`px-4 py-2 overflow-hidden ${
+                                    isSticky ? `sticky left-0 z-[5] transition-colors ${stickyBg}` : ''
+                                  }`}
+                                  style={{
+                                    width: columnWidths[col.key],
+                                    border: '1px solid #c8bdd6',
+                                    ...(isSticky ? { boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' } : {}),
+                                  }}
+                                  onClick={() => handleCellClick(row.id, col.key)}
+                                >
+                                  {isEditing ? (
+                                    isLookingFor ? (
+                                      <textarea
+                                        autoFocus
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        onBlur={handleCellBlur}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Escape') {
+                                            setEditingCell(null);
+                                            setEditValue('');
+                                          }
+                                        }}
+                                        className="w-full h-20 text-[13px] px-2 py-1 border border-[#3b2778] rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-[#3b2778] resize-none"
+                                      />
+                                    ) : (
+                                      <Input
+                                        autoFocus
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        onBlur={handleCellBlur}
+                                        onKeyDown={handleKeyDown}
+                                        className="h-8 text-[13px] px-2 border-[#3b2778] focus-visible:ring-1 focus-visible:ring-[#3b2778] bg-background"
+                                      />
+                                    )
+                                  ) : (
+                                    <span className={`text-[13px] block w-full ${
+                                      col.key === 'call_status' && value === 'Y' ? 'text-green-600 font-medium' : 'text-foreground'
+                                    } ${isLookingFor ? 'whitespace-pre-wrap break-words line-clamp-3' : 'truncate'}${
+                                      isSticky ? ' font-semibold' : ''
+                                    }`}>
+                                      {value || ''}
+                                    </span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                            {/* Delete button */}
+                            <td
+                              className="w-12 text-center"
+                              style={{ border: '1px solid #c8bdd6' }}
+                            >
+                              {(row.lender_name.trim() || !row.isNew) && (
+                                <button
+                                  onClick={() => handleDeleteRow(row)}
+                                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity p-1"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
                 <ScrollBar orientation="horizontal" />
                 <ScrollBar orientation="vertical" />
               </ScrollArea>
             </div>
 
             <p className="text-xs text-muted-foreground mt-2">
-              Click any cell to edit. Changes are highlighted in yellow.
+              Click any cell to edit. Changes are highlighted in yellow. {filteredAndSorted.length} lender{filteredAndSorted.length !== 1 ? 's' : ''} shown.
             </p>
           </div>
 
@@ -952,7 +1093,7 @@ const LenderPrograms = () => {
           {panelMode === 'filter' && (
             <div className="xl:col-span-1">
               <Card className="h-full flex flex-col border-border">
-                <CardHeader 
+                <CardHeader
                   className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors bg-muted/30"
                   onClick={() => setPanelMode('list')}
                 >
@@ -1071,7 +1212,7 @@ const LenderPrograms = () => {
           {panelMode === 'advisor' && (
             <div className="xl:col-span-1">
               <Card className="h-full flex flex-col border-primary/20">
-                <CardHeader 
+                <CardHeader
                   className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => setPanelMode('list')}
                 >

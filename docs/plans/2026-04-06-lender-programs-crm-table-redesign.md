@@ -62,15 +62,15 @@ Rewrite the LenderPrograms page from its current custom spreadsheet-style layout
 **Files:**
 - Modify: `src/pages/admin/LenderPrograms.tsx`
 
-- [ ] Replace flex-based layout with native HTML `<table>` element
-- [ ] Apply purple theme: header bg #eee6f6, cell borders #c8bdd6, 13px typography, header font-semibold uppercase
-- [ ] Remove 900-row fill pattern; only render actual data rows from database
-- [ ] Switch data fetching from manual fetch/useState to useQuery (TanStack Query) for consistency with other CRM pages
-- [ ] Add ResizableColumnHeader to all column headers with localStorage persistence key `lender-programs-column-widths`
-- [ ] Add DEFAULT_COLUMN_WIDTHS object matching current column widths
-- [ ] Make Institution column sticky (left: 0, z-index, box-shadow) like People.tsx person column
-- [ ] Add per-column sort dropdown menus (three-dot icon with asc/desc options)
-- [ ] Add sortField/sortDir state with useMemo-based sorting of filtered data
+- [x] Replace flex-based layout with native HTML `<table>` element
+- [x] Apply purple theme: header bg #eee6f6, cell borders #c8bdd6, 13px typography, header font-semibold uppercase
+- [x] Remove 900-row fill pattern; only render actual data rows from database
+- [x] Switch data fetching from manual fetch/useState to useQuery (TanStack Query) for consistency with other CRM pages
+- [x] Add ResizableColumnHeader to all column headers with localStorage persistence key `lender-programs-column-widths`
+- [x] Add DEFAULT_COLUMN_WIDTHS object matching current column widths
+- [x] Make Institution column sticky (left: 0, z-index, box-shadow) like People.tsx person column
+- [x] Add per-column sort dropdown menus (three-dot icon with asc/desc options)
+- [x] Add sortField/sortDir state with useMemo-based sorting of filtered data
 
 ### Task 4: Add row selection, bulk actions, and clickable contacts
 
