@@ -54,6 +54,7 @@ import Projects from "./pages/admin/Projects";
 import UnderwritingExpandedView from "./components/admin/UnderwritingExpandedView";
 import PipelineExpandedView from "./components/admin/PipelineExpandedView";
 import LenderManagementExpandedView from "./components/admin/LenderManagementExpandedView";
+import LenderExpandedView from "./components/admin/LenderExpandedView";
 import PeopleExpandedView from "./components/admin/PeopleExpandedView";
 import CompanyExpandedView from "./components/admin/CompanyExpandedView";
 import ProjectExpandedView from "./components/admin/ProjectExpandedView";
@@ -154,6 +155,7 @@ const App = () => (
                 <Route path="/superadmin/newsletter" element={<AdminNewsletter />} />
                 <Route path="/superadmin/rate-watch" element={<AdminRateWatch />} />
                 <Route path="/superadmin/lender-programs" element={<LenderPrograms />} />
+                <Route path="/superadmin/lender-programs/expanded-view/:lenderId" element={<LenderExpandedView />} />
                 <Route path="/superadmin/tracking" element={<AdminTracking />} />
                 <Route path="/superadmin/volume-log" element={<LoanVolumeLog />} />
                 <Route path="/superadmin/volume-log/lead/:leadId" element={<VolumeLogExpandedView />} />
@@ -198,6 +200,7 @@ const App = () => (
                 <Route path="/admin/tasks" element={<AdminRoute><Tasks /></AdminRoute>} />
                 <Route path="/admin/calls" element={<AdminRoute><Calls /></AdminRoute>} />
                 <Route path="/admin/lender-programs" element={<AdminRoute><LenderPrograms /></AdminRoute>} />
+                <Route path="/admin/lender-programs/expanded-view/:lenderId" element={<AdminRoute><LenderExpandedView /></AdminRoute>} />
                 <Route path="/admin/gmail" element={<AdminRoute><Gmail /></AdminRoute>} />
                 <Route path="/admin/email-templates" element={<AdminRoute><EmailTemplates /></AdminRoute>} />
                 <Route path="/admin/calendar" element={<AdminRoute><Calendar /></AdminRoute>} />

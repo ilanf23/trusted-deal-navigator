@@ -50,12 +50,12 @@ Rewrite the LenderPrograms page from its current custom spreadsheet-style layout
 - Create: `src/components/admin/LenderExpandedView.tsx`
 - Modify: `src/App.tsx`
 
-- [ ] Create full-page expanded view following PeopleExpandedView pattern with tabbed layout
-- [ ] Include Overview tab with all lender fields in editable card layout
-- [ ] Include Notes/Activity tab for tracking interactions
-- [ ] Add back button to return to lender programs list
-- [ ] Add route in App.tsx: `/admin/lender-programs/expanded-view/:lenderId` (both admin and superadmin paths)
-- [ ] Make email/phone fields clickable (mailto: and tel: links) with copy buttons
+- [x] Create full-page expanded view following PeopleExpandedView pattern with tabbed layout
+- [x] Include Overview tab with all lender fields in editable card layout
+- [x] Include Notes/Activity tab for tracking interactions
+- [x] Add back button to return to lender programs list
+- [x] Add route in App.tsx: `/admin/lender-programs/expanded-view/:lenderId` (both admin and superadmin paths)
+- [x] Make email/phone fields clickable (mailto: and tel: links) with copy buttons
 
 ### Task 3: Rewrite LenderPrograms.tsx table to match CRM pattern
 
