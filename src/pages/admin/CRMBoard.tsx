@@ -81,7 +81,7 @@ const CRMBoard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('*, team_member:team_members(id, name, email, role)')
+        .select('*, team_member:users(id, name, email, role)')
         .order('updated_at', { ascending: false });
 
       if (error) throw error;

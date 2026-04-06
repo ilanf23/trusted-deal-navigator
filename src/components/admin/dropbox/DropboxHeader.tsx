@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Plus, Unplug, FolderPlus, FileText, Presentation, Table2, Globe, Upload, ArrowRightLeft, FileInput, Pen, PenLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,16 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface DropboxHeaderProps {
@@ -22,7 +33,6 @@ interface DropboxHeaderProps {
   onUploadFiles: () => void;
   onUploadFolder: () => void;
   connectedEmail: string | null;
-  isOwner: boolean;
   onDisconnect: () => void;
 }
 
@@ -33,11 +43,11 @@ export function DropboxHeader({
   onUploadFiles,
   onUploadFolder,
   connectedEmail,
-  isOwner,
   onDisconnect,
 }: DropboxHeaderProps) {
   const avatarInitial = connectedEmail?.charAt(0).toUpperCase() || '?';
   const { toast } = useToast();
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 
   const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 
@@ -182,16 +192,62 @@ export function DropboxHeader({
         </div>
       </div>
 
-      {/* Right */}
-      <Avatar className="h-7 w-7">
-        <AvatarFallback className="text-xs bg-primary text-primary-foreground">{avatarInitial}</AvatarFallback>
-      </Avatar>
+      {/* Right — account menu */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="gap-2 h-8 px-2">
+            <Avatar className="h-6 w-6">
+              <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">{avatarInitial}</AvatarFallback>
+            </Avatar>
+            {connectedEmail && (
+              <span className="text-xs text-muted-foreground max-w-[160px] truncate hidden sm:inline">
+                {connectedEmail}
+              </span>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          {connectedEmail && (
+            <>
+              <DropdownMenuLabel className="font-normal text-xs text-muted-foreground truncate">
+                {connectedEmail}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          <DropdownMenuItem
+            onClick={() => setShowDisconnectDialog(true)}
+            className="text-destructive focus:text-destructive"
+          >
+            <Unplug className="h-4 w-4 mr-2" />
+            Disconnect Dropbox
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      {isOwner && (
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={onDisconnect}>
-          <Unplug className="h-3.5 w-3.5" />
-        </Button>
-      )}
+      {/* Disconnect confirmation */}
+      <AlertDialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect Dropbox?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the Dropbox connection{connectedEmail ? ` for ${connectedEmail}` : ''}. You can reconnect anytime.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onDisconnect();
+                setShowDisconnectDialog(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Disconnect
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

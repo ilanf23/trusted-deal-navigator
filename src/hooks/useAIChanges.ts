@@ -52,7 +52,7 @@ export const useAIChanges = (filters?: UseAIChangesFilters) => {
     queryFn: async () => {
       let q = supabase
         .from('ai_agent_changes' as any)
-        .select('*, team_member:team_members(name, avatar_url)')
+        .select('*, team_member:users(name, avatar_url)')
         .order('created_at', { ascending: false })
         .limit(100);
 

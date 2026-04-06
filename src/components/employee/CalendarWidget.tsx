@@ -55,7 +55,10 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 
-const getCalendarCallbackUrl = () => `${window.location.origin}/superadmin/calendar-callback`;
+const getCalendarCallbackUrl = () => {
+  const prefix = window.location.pathname.startsWith('/superadmin') ? '/superadmin' : '/admin';
+  return `${window.location.origin}${prefix}/calendar-callback`;
+};
 
 interface Appointment {
   id: string;

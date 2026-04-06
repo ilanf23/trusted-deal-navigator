@@ -56,11 +56,11 @@ export default function CalendarCallback() {
           // If window.close() didn't work (some browsers block it), redirect after delay
           setTimeout(() => {
             if (!window.closed) {
-              navigate('/admin/people/evans');
+              navigate('/admin/calendar');
             }
           }, 500);
         } else {
-          navigate('/admin/people/evans');
+          navigate('/admin/calendar');
         }
       };
 

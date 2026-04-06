@@ -25,7 +25,7 @@ export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MPro
       
       const { data } = await supabase
         .from('team_funded_deals')
-        .select('loan_amount, fee_earned, days_in_pipeline, funded_at, team_member:team_members(name)')
+        .select('loan_amount, fee_earned, days_in_pipeline, funded_at, team_member:users(name)')
         .gte('funded_at', startDate)
         .order('funded_at', { ascending: false });
       return (data || []).map((d: any) => ({

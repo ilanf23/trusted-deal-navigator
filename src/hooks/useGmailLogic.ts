@@ -174,40 +174,6 @@ export function useGmailLogic(config?: CRMGmailConfig) {
     },
   });
 
-  // Handle URL param to auto-select a thread (from feed activity cards)
-  const handledThreadKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    const threadId = searchParams.get('threadId');
-    const messageId = searchParams.get('messageId');
-    const replyIntent = searchParams.get('reply');
-    if (!threadId && !messageId) {
-      handledThreadKeyRef.current = null;
-      return;
-    }
-    const key = `${threadId || ''}:${messageId || ''}`;
-    if (handledThreadKeyRef.current === key) return;
-    handledThreadKeyRef.current = key;
-
-    // Find the email matching this thread or message ID
-    if (allEmails.length > 0) {
-      const match = allEmails.find(
-        (e) => (threadId && e.threadId === threadId) || (messageId && e.id === messageId)
-      );
-      if (match) {
-        handleSelectEmail(match.id);
-        if (replyIntent === 'true') {
-          setTimeout(() => setShowInlineReply(true), 300);
-        }
-      }
-      // Clear the params after handling
-      const next = new URLSearchParams(searchParams);
-      next.delete('threadId');
-      next.delete('messageId');
-      next.delete('reply');
-      setSearchParams(next, { replace: true });
-    }
-  }, [searchParams, allEmails, handleSelectEmail, setShowInlineReply, setSearchParams]);
-
   // Handle URL params to open compose dialog from dashboard nudges or tasks
   useEffect(() => {
     const compose = searchParams.get('compose');
@@ -363,6 +329,40 @@ export function useGmailLogic(config?: CRMGmailConfig) {
     const combined = [...mockExternalEmails, ...emails];
     return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [emails]);
+
+  // Handle URL param to auto-select a thread (from feed activity cards)
+  const handledThreadKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const threadId = searchParams.get('threadId');
+    const messageId = searchParams.get('messageId');
+    const replyIntent = searchParams.get('reply');
+    if (!threadId && !messageId) {
+      handledThreadKeyRef.current = null;
+      return;
+    }
+    const key = `${threadId || ''}:${messageId || ''}`;
+    if (handledThreadKeyRef.current === key) return;
+    handledThreadKeyRef.current = key;
+
+    // Find the email matching this thread or message ID
+    if (allEmails.length > 0) {
+      const match = allEmails.find(
+        (e) => (threadId && e.threadId === threadId) || (messageId && e.id === messageId)
+      );
+      if (match) {
+        handleSelectEmail(match.id);
+        if (replyIntent === 'true') {
+          setTimeout(() => setShowInlineReply(true), 300);
+        }
+      }
+      // Clear the params after handling
+      const next = new URLSearchParams(searchParams);
+      next.delete('threadId');
+      next.delete('messageId');
+      next.delete('reply');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, allEmails, handleSelectEmail, setShowInlineReply, setSearchParams]);
 
   // Filter emails based on CRM classification, folder, and search query
   const filteredEmails = useMemo(() => {

@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from 'react';
-import { useTeamMember } from '@/hooks/useTeamMember';
 import { useDropboxConnection } from '@/hooks/useDropboxConnection';
 import {
   useDropboxList,
@@ -24,7 +23,6 @@ import { DropboxPreviewPanel } from './dropbox/DropboxPreviewPanel';
 import { DropboxDialogs } from './dropbox/DropboxDialogs';
 
 export function DropboxBrowser() {
-  const { isOwner } = useTeamMember();
   const {
     isConnected,
     connectedEmail,
@@ -305,28 +303,20 @@ export function DropboxBrowser() {
 
   if (!isConnected) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 space-y-6 max-w-lg mx-auto">
-        <HardDrive className="h-16 w-16 text-muted-foreground/50" />
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] space-y-6">
+        <div className="p-6 rounded-full bg-muted">
+          <HardDrive className="h-16 w-16 text-muted-foreground" />
+        </div>
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-semibold">Connect Dropbox</h2>
-          <p className="text-muted-foreground">
-            Connect your company Dropbox account to browse, upload, and manage files directly from this dashboard.
+          <h2 className="text-2xl font-semibold">Connect Your Dropbox</h2>
+          <p className="text-muted-foreground max-w-md">
+            Connect your Dropbox account to browse, upload, and manage files directly from your dashboard.
           </p>
         </div>
         <Button onClick={connect} size="lg">
           <HardDrive className="mr-2 h-4 w-4" />
           Connect Dropbox
         </Button>
-        <div className="text-xs text-muted-foreground space-y-1 border-t pt-4 w-full">
-          <p className="font-medium">First-time setup (one-time, by a developer):</p>
-          <ol className="list-decimal list-inside space-y-1 ml-1">
-            <li>Create an app at <a href="https://www.dropbox.com/developers/apps" target="_blank" rel="noopener noreferrer" className="underline text-primary hover:text-primary/80">dropbox.com/developers/apps</a></li>
-            <li>Set redirect URI to: <code className="bg-muted px-1 rounded">{window.location.origin}/admin/dropbox/callback</code></li>
-            <li>Add <code className="bg-muted px-1 rounded">DROPBOX_APP_KEY</code> and <code className="bg-muted px-1 rounded">DROPBOX_APP_SECRET</code> to Supabase edge function secrets</li>
-            <li>Run the SQL migration: <code className="bg-muted px-1 rounded">supabase/migrations/20260304_dropbox_tables.sql</code></li>
-          </ol>
-          <p className="pt-1">Once set up, anyone on the team can click Connect above.</p>
-        </div>
       </div>
     );
   }
@@ -344,7 +334,6 @@ export function DropboxBrowser() {
         onUploadFiles={() => fileInputRef.current?.click()}
         onUploadFolder={() => folderInputRef.current?.click()}
         connectedEmail={connectedEmail}
-        isOwner={isOwner}
         onDisconnect={disconnect}
       />
 

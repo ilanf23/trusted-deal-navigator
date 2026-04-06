@@ -125,17 +125,9 @@ Deno.serve(async (req) => {
         upsertData.team_member_name = teamMemberName;
       }
 
-      // Delete existing connection for this team member if exists
-      if (teamMemberName) {
-        await supabaseAdmin
-          .from('calendar_connections')
-          .delete()
-          .eq('team_member_name', teamMemberName);
-      }
-
       const { error: upsertError } = await supabaseAdmin
         .from('calendar_connections')
-        .insert(upsertData);
+        .upsert(upsertData, { onConflict: 'user_id' });
 
       if (upsertError) {
         console.error('Failed to save tokens:', upsertError);

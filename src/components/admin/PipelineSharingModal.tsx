@@ -64,7 +64,7 @@ const PipelineSharingModal = ({ open, onOpenChange, ownerId, ownerName }: Pipeli
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pipeline_shares')
-        .select('*, team_member:team_members!pipeline_shares_shared_with_id_fkey(id, name, email, role, avatar_url)')
+        .select('*, team_member:users!pipeline_shares_shared_with_id_fkey(id, name, email, role, avatar_url)')
         .eq('owner_id', ownerId);
       if (error) throw error;
       return data as PipelineShare[];
