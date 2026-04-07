@@ -72,10 +72,10 @@ Create a comprehensive settings page accessible from every admin profile (both /
 - Create: `src/components/admin/settings/AppearanceSection.tsx`
 - Modify: `src/pages/admin/Settings.tsx`
 
-- [ ] Build AppearanceSection using `useTheme()` from next-themes
-- [ ] Include three theme options: Light, Dark, System (follows OS preference). Use radio cards or toggle group with visual previews (sun icon, moon icon, monitor icon).
-- [ ] Show the SceneThemeToggle as a visual preview element alongside the radio selection
-- [ ] Ensure theme change applies immediately across the entire admin portal without page reload
+- [x] Build AppearanceSection using `useTheme()` from next-themes
+- [x] Include three theme options: Light, Dark, System (follows OS preference). Use radio cards or toggle group with visual previews (sun icon, moon icon, monitor icon).
+- [x] Show the SceneThemeToggle as a visual preview element alongside the radio selection
+- [x] Ensure theme change applies immediately across the entire admin portal without page reload
 
 ### Task 5: Notification Preferences Section
 
