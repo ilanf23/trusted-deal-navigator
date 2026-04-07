@@ -679,65 +679,6 @@ export type Database = {
           },
         ]
       }
-      checklist_template_items: {
-        Row: {
-          assigned_to: string | null
-          created_at: string
-          due_date: string | null
-          id: string
-          position: number
-          template_id: string
-          text: string
-        }
-        Insert: {
-          assigned_to?: string | null
-          created_at?: string
-          due_date?: string | null
-          id?: string
-          position?: number
-          template_id: string
-          text: string
-        }
-        Update: {
-          assigned_to?: string | null
-          created_at?: string
-          due_date?: string | null
-          id?: string
-          position?: number
-          template_id?: string
-          text?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "checklist_template_items_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      checklist_templates: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          name: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          name?: string
-        }
-        Relationships: []
-      }
       communications: {
         Row: {
           call_sid: string | null
@@ -1505,57 +1446,6 @@ export type Database = {
         }
         Relationships: []
       }
-      email_metadata: {
-        Row: {
-          created_at: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
-          gmail_message_id: string
-          gmail_thread_id: string | null
-          id: string
-          is_fyi: boolean | null
-          last_activity_date: string | null
-          lead_id: string | null
-          next_action: string | null
-          sla_breach: boolean | null
-          sla_due_date: string | null
-          updated_at: string
-          user_id: string
-          waiting_on: string | null
-        }
-        Insert: {
-          created_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          gmail_message_id: string
-          gmail_thread_id?: string | null
-          id?: string
-          is_fyi?: boolean | null
-          last_activity_date?: string | null
-          lead_id?: string | null
-          next_action?: string | null
-          sla_breach?: boolean | null
-          sla_due_date?: string | null
-          updated_at?: string
-          user_id: string
-          waiting_on?: string | null
-        }
-        Update: {
-          created_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          gmail_message_id?: string
-          gmail_thread_id?: string | null
-          id?: string
-          is_fyi?: boolean | null
-          last_activity_date?: string | null
-          lead_id?: string | null
-          next_action?: string | null
-          sla_breach?: boolean | null
-          sla_due_date?: string | null
-          updated_at?: string
-          user_id?: string
-          waiting_on?: string | null
-        }
-        Relationships: []
-      }
       email_templates: {
         Row: {
           body: string
@@ -1945,36 +1835,6 @@ export type Database = {
           },
         ]
       }
-      feed_comments: {
-        Row: {
-          activity_id: string
-          content: string
-          created_at: string
-          created_by: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
-          id: string
-          lead_id: string | null
-        }
-        Insert: {
-          activity_id: string
-          content: string
-          created_at?: string
-          created_by?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          lead_id?: string | null
-        }
-        Update: {
-          activity_id?: string
-          content?: string
-          created_at?: string
-          created_by?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          lead_id?: string | null
-        }
-        Relationships: []
-      }
       feed_reactions: {
         Row: {
           activity_id: string
@@ -2060,44 +1920,6 @@ export type Database = {
             columns: ["hidden_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      invoice_items: {
-        Row: {
-          amount: number
-          created_at: string
-          description: string
-          id: string
-          invoice_id: string
-          quantity: number
-          unit_price: number
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          description: string
-          id?: string
-          invoice_id: string
-          quantity?: number
-          unit_price: number
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          description?: string
-          id?: string
-          invoice_id?: string
-          quantity?: number
-          unit_price?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invoice_items_invoice_id_fkey"
-            columns: ["invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
         ]
@@ -2490,36 +2312,6 @@ export type Database = {
         }
         Relationships: []
       }
-      marketing_stats: {
-        Row: {
-          conversions: number | null
-          created_at: string
-          date: string
-          id: string
-          leads_count: number | null
-          page_views: number | null
-          source: string
-        }
-        Insert: {
-          conversions?: number | null
-          created_at?: string
-          date: string
-          id?: string
-          leads_count?: number | null
-          page_views?: number | null
-          source: string
-        }
-        Update: {
-          conversions?: number | null
-          created_at?: string
-          date?: string
-          id?: string
-          leads_count?: number | null
-          page_views?: number | null
-          source?: string
-        }
-        Relationships: []
-      }
       messages: {
         Row: {
           content: string
@@ -2726,42 +2518,6 @@ export type Database = {
           },
         ]
       }
-      newsletter_subscribers: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          name: string | null
-          source: string | null
-          status: string
-          subscribed_at: string
-          unsubscribed_at: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          name?: string | null
-          source?: string | null
-          status?: string
-          subscribed_at?: string
-          unsubscribed_at?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          name?: string | null
-          source?: string | null
-          status?: string
-          subscribed_at?: string
-          unsubscribed_at?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       newsletter_templates: {
         Row: {
           content: string
@@ -2895,82 +2651,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      partner_commissions: {
-        Row: {
-          amount: number
-          created_at: string
-          id: string
-          notes: string | null
-          paid_at: string | null
-          partner_id: string
-          referral_id: string | null
-          status: string
-        }
-        Insert: {
-          amount?: number
-          created_at?: string
-          id?: string
-          notes?: string | null
-          paid_at?: string | null
-          partner_id: string
-          referral_id?: string | null
-          status?: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          id?: string
-          notes?: string | null
-          paid_at?: string | null
-          partner_id?: string
-          referral_id?: string | null
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "partner_commissions_referral_id_fkey"
-            columns: ["referral_id"]
-            isOneToOne: false
-            referencedRelation: "partner_referrals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      partner_referral_status_history: {
-        Row: {
-          changed_at: string
-          id: string
-          new_status: string
-          note: string | null
-          old_status: string | null
-          referral_id: string
-        }
-        Insert: {
-          changed_at?: string
-          id?: string
-          new_status: string
-          note?: string | null
-          old_status?: string | null
-          referral_id: string
-        }
-        Update: {
-          changed_at?: string
-          id?: string
-          new_status?: string
-          note?: string | null
-          old_status?: string | null
-          referral_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "partner_referral_status_history_referral_id_fkey"
-            columns: ["referral_id"]
-            isOneToOne: false
-            referencedRelation: "partner_referrals"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       partner_referrals: {
         Row: {
@@ -3468,125 +3148,6 @@ export type Database = {
             columns: ["stage_id"]
             isOneToOne: false
             referencedRelation: "pipeline_stages"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pipeline_column_values: {
-        Row: {
-          assigned_to_id: string | null
-          boolean_value: boolean | null
-          column_id: string
-          contact_value: Json | null
-          created_at: string
-          date_value: string | null
-          dropdown_value: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
-          id: string
-          lead_id: string
-          number_value: number | null
-          tag_values: string[] | null
-          text_value: string | null
-          updated_at: string
-        }
-        Insert: {
-          assigned_to_id?: string | null
-          boolean_value?: boolean | null
-          column_id: string
-          contact_value?: Json | null
-          created_at?: string
-          date_value?: string | null
-          dropdown_value?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          lead_id: string
-          number_value?: number | null
-          tag_values?: string[] | null
-          text_value?: string | null
-          updated_at?: string
-        }
-        Update: {
-          assigned_to_id?: string | null
-          boolean_value?: boolean | null
-          column_id?: string
-          contact_value?: Json | null
-          created_at?: string
-          date_value?: string | null
-          dropdown_value?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          lead_id?: string
-          number_value?: number | null
-          tag_values?: string[] | null
-          text_value?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pipeline_column_values_assigned_to_id_fkey"
-            columns: ["assigned_to_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pipeline_column_values_column_id_fkey"
-            columns: ["column_id"]
-            isOneToOne: false
-            referencedRelation: "pipeline_columns"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pipeline_columns: {
-        Row: {
-          column_type: Database["public"]["Enums"]["pipeline_column_type"]
-          created_at: string
-          formula: string | null
-          id: string
-          is_frozen: boolean
-          is_visible: boolean
-          name: string
-          options: Json | null
-          pipeline_id: string
-          position: number
-          settings: Json | null
-          updated_at: string
-        }
-        Insert: {
-          column_type?: Database["public"]["Enums"]["pipeline_column_type"]
-          created_at?: string
-          formula?: string | null
-          id?: string
-          is_frozen?: boolean
-          is_visible?: boolean
-          name: string
-          options?: Json | null
-          pipeline_id: string
-          position?: number
-          settings?: Json | null
-          updated_at?: string
-        }
-        Update: {
-          column_type?: Database["public"]["Enums"]["pipeline_column_type"]
-          created_at?: string
-          formula?: string | null
-          id?: string
-          is_frozen?: boolean
-          is_visible?: boolean
-          name?: string
-          options?: Json | null
-          pipeline_id?: string
-          position?: number
-          settings?: Json | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pipeline_columns_pipeline_id_fkey"
-            columns: ["pipeline_id"]
-            isOneToOne: false
-            referencedRelation: "pipelines"
             referencedColumns: ["id"]
           },
         ]
@@ -4146,57 +3707,6 @@ export type Database = {
           },
           {
             foreignKeyName: "task_activities_team_member_id_fkey"
-            columns: ["team_member_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      task_files: {
-        Row: {
-          created_at: string
-          file_name: string
-          file_size: number | null
-          file_type: string | null
-          file_url: string
-          id: string
-          task_id: string
-          team_member_id: string | null
-          uploaded_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          file_name: string
-          file_size?: number | null
-          file_type?: string | null
-          file_url: string
-          id?: string
-          task_id: string
-          team_member_id?: string | null
-          uploaded_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          file_name?: string
-          file_size?: number | null
-          file_type?: string | null
-          file_url?: string
-          id?: string
-          task_id?: string
-          team_member_id?: string | null
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "evan_task_files_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_files_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
             referencedRelation: "users"

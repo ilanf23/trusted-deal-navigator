@@ -29,7 +29,6 @@
 ### AI Assistants
 - `evan-ai-assistant` — merged assistant + agent executor. Uses OpenAI.
 - `lead-ai-assistant` — lead-specific assistant with activity context (10/60s)
-- `ai-agent-executor` — execute AI actions (update_lead) with audit trail and scope checking
 - `ai-email-chat` — AI email chat for leads. Builds lead context from questionnaire/rate_watch data (10/60s)
 - `lender-program-assistant` — match leads to lender programs via OpenAI (10/60s)
 

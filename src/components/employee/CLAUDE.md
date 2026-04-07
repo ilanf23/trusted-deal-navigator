@@ -4,9 +4,8 @@
 
 ## Structure
 
-### Layout (2 files)
+### Layout
 - `EvanLayout.tsx` — wraps `AdminLayout`, adds Evan-specific floating UI and context
-- `EvanPortalWrapper.tsx` — lifts EvanLayout above route tree to persist Twilio call state
 
 ### Widgets (8 files)
 Self-contained dashboard cards with own data fetching:
@@ -25,13 +24,10 @@ Self-contained dashboard cards with own data fetching:
 
 ### Subdirectories
 
-**`dashboard/`** (12 files) — Advanced dashboard:
-- `TopActions`, `QuickActions` — action buttons
-- `TodaysPriorities`, `NudgesWidget` — daily focus
-- `PerformanceSnapshot`, `RoadTo1Point5M`, `CommissionTracker` — performance
-- `PersonalPipeline`, `HotDeals` — deal tracking
-- `ActivityFeed`, `TaskBoard` — activity
-- `CompanyRevenueHero` — revenue overview
+**`dashboard/`** — Dashboard widgets:
+- `TopActions` — action buttons
+- `NudgesWidget` — daily focus
+- `RevenueChart` — revenue visualization
 
 **`gmail/`** (6 files) — Evan's Gmail integration:
 - `GmailInbox`, `GmailEmailList`, `GmailEmailDetail` — inbox UI
@@ -50,6 +46,5 @@ Self-contained dashboard cards with own data fetching:
 ## Key Patterns
 
 - EvanLayout wraps AdminLayout — Evan inherits all admin chrome
-- `EvanPortalWrapper` must stay above route tree to preserve Twilio Device
 - Widgets are self-contained: own React Query hooks, internal state, action dialogs
 - `types.ts` in tasks/ is the single source for task-related type definitions and color configs

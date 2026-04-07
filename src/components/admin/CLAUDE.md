@@ -15,12 +15,12 @@
 **Detail Panels (Expanded View + Detail Panel pairs):**
 - `PeopleExpandedView` / `PeopleDetailPanel` — CRM people management
 - `CompanyExpandedView` / `CompanyDetailPanel` — CRM company management
-- `LenderManagementExpandedView` / `LenderManagementDetailPanel` — lender tracking
+- `LenderManagementExpandedView` — lender tracking
 - `LenderExpandedView` / `LenderDetailPanel` — lender programs CRM detail view
 - `PipelineExpandedView` / `PipelineDetailPanel` — deal pipeline
 - `ProjectExpandedView` / `ProjectDetailDialog` — project tracking
 - `UnderwritingExpandedView` / `UnderwritingDetailPanel` — underwriting pipeline
-- `VolumeLogExpandedView` / `VolumeLogDetailPanel` — loan volume
+- `VolumeLogExpandedView` — loan volume
 
 **Dialogs/Modals:**
 - `LeadDetailDialog` — full lead management (multi-tab, ~146KB)
@@ -30,15 +30,15 @@
 - `ColumnManagerModal`, `MoveBoxesModal`, `ChecklistBuilder` — utilities
 
 **Pipeline Components:**
-- `KanbanColumn`, `PipelineColumnHeader`, `ResizableColumnHeader` — board UI
+- `PipelineColumnHeader`, `ResizableColumnHeader` — board UI
 - `PipelineBulkToolbar`, `SelectAllHeader` — bulk operations
-- `LeadCard`, `InlineEditableCell`, `InlineEditableFields` — data display/edit
+- `InlineEditableCell`, `InlineEditableFields` — data display/edit
 
 **Floating UI:**
-- `FloatingAIChat`, `FloatingBugReport`, `FloatingInbox` — persistent overlay tools
+- `FloatingBugReport`, `FloatingInbox` — persistent overlay tools
 
 **Integration:**
-- `DropboxBrowser`, `DropboxFilePicker` — Dropbox file management
+- `DropboxBrowser` — Dropbox file management
 - `GmailComposeDialog` — email composition
 - `AIEmailAssistant`, `AIEmailAssistantSheet` — AI-powered email
 - `LenderProgramAssistant` — AI lender matching
@@ -47,11 +47,7 @@
 
 **`ai-changes/`** (4 files) — AI change tracking: table, filters, diff view, detail panel
 
-**`dashboard/`** (14 files) — Admin dashboard widgets:
-- `DashboardHeader`, `RevenueKPIStrip`, `RevenueGoalCard`, `RevenueBreakdown`
-- `PipelineHealthWidget`, `LenderProgramsWidget`, `TasksOverviewWidget`
-- `ScorecardMiniWidget`, `NextBestAction`, `CommissionSection`
-- `CallsActivityWidget`, `DealSourcesChart`
+**`dashboard/`** — Admin dashboard:
 - `useDashboardData.ts` — data hook for all dashboard metrics
 
 **`dropbox/`** (11 files) — Full Dropbox file manager:
@@ -61,11 +57,9 @@
 - `DropboxDialogs` — file operation dialogs
 - `dropboxConstants.ts`, `useDropboxStarred.ts` — utilities
 
-**`inbox/`** (10 files) — Gmail-powered deal inbox:
-- `InboxHeader`, `InboxSidebar`, `GmailSidebar` — navigation
-- `DealCard`, `DealDetailPanel` — deal-centric email view
-- `EmailActionBar`, `InlineReplyBox`, `RecipientAutocomplete` — compose
-- `StageFilterTabs`, `WaitingOnBadge` — status tracking
+**`inbox/`** — Gmail-powered deal inbox:
+- `GmailSidebar` — navigation
+- `InlineReplyBox`, `RecipientAutocomplete` — compose
 
 **`modules/`** (4 files) — Module/feature tracker: cards, detail dialog, pipeline board, requirements
 

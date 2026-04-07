@@ -23,7 +23,6 @@
 - `useWendysDashboard` — Wendy's follow-ups, daily targets, communication log.
 
 ## Gmail & Email
-- `useEmailThreads` — email thread CRUD. Mutations: upsert, linkDeal, setNextAction, setWaitingOn, markComplete. Provides counts (untriaged, waitingOn*).
 - `useGmail` — low-level Gmail API access via `gmail-api` edge function. Operations: fetchMessages, send, archive, trash, markAsRead.
 - `useGmailConnection` — higher-level Gmail connection. OAuth flow, folder queries, send, disconnect.
 - `useGmailPeopleSync` — auto-creates leads from unknown Gmail senders. Backfills `pipeline_leads`.
@@ -37,7 +36,6 @@
 
 ## Google Sheets
 - `useGoogleSheets` — connection + operations via `google-sheets-auth`/`google-sheets-api` edge functions: list, getData, updateCell, appendRow.
-- `useVolumeLogSync` — bidirectional sync between Supabase leads and Google Sheets. Config (column mapping, header row), pull/push operations.
 
 ## Data & Tasks
 - `useFeedData` — activity stream from 7 sources: lead_activities, notes, communications, tasks, outbound_emails, people activities/notes.
