@@ -42,15 +42,20 @@ const SessionSection = () => {
   const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOutAllDevices = async () => {
+    if (!window.confirm('Are you sure you want to sign out of all devices? You will need to sign in again on each device.')) {
+      return;
+    }
+
     setSigningOut(true);
     const { error } = await supabase.auth.signOut({ scope: 'global' });
-    setSigningOut(false);
 
     if (error) {
+      setSigningOut(false);
       toast.error(error.message || 'Failed to sign out of all devices');
       return;
     }
 
+    // Component will unmount from auth redirect — no further state updates needed
     toast.success('Signed out of all devices. You will be redirected to the login page.');
   };
 

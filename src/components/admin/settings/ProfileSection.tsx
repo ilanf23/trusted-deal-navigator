@@ -122,6 +122,7 @@ const ProfileSection = () => {
           fallbackInitials={(teamMember.name || '??').substring(0, 2).toUpperCase()}
           size="lg"
           tableName="users"
+          tableIdColumn="id"
           queryKeysToInvalidate={[['team-member', user?.id || ''], ['team-members'], ['user-profile', teamMember.id]]}
         />
         <div>

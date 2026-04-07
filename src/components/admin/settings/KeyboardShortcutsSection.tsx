@@ -1,25 +1,17 @@
 import { Separator } from '@/components/ui/separator';
 import { Search, Navigation, LayoutGrid, MessageSquare } from 'lucide-react';
 
-interface Shortcut {
-  keys: string[];
-  description: string;
-}
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+const modKey = isMac ? '⌘' : 'Ctrl';
 
-interface ShortcutGroup {
-  title: string;
-  icon: React.ElementType;
-  shortcuts: Shortcut[];
-}
-
-const shortcutGroups: ShortcutGroup[] = [
+const shortcutGroups = [
   {
     title: 'Navigation',
     icon: Navigation,
     shortcuts: [
-      { keys: ['⌘', 'K'], description: 'Open command palette / quick search' },
-      { keys: ['⌘', '/'], description: 'Toggle sidebar' },
-      { keys: ['⌘', ','], description: 'Open settings' },
+      { keys: [modKey, 'K'], description: 'Open command palette / quick search' },
+      { keys: [modKey, '/'], description: 'Toggle sidebar' },
+      { keys: [modKey, ','], description: 'Open settings' },
       { keys: ['Esc'], description: 'Close dialog or panel' },
     ],
   },
@@ -27,9 +19,9 @@ const shortcutGroups: ShortcutGroup[] = [
     title: 'Search & Filters',
     icon: Search,
     shortcuts: [
-      { keys: ['⌘', 'F'], description: 'Focus search in current view' },
-      { keys: ['⌘', 'Shift', 'F'], description: 'Global search' },
-      { keys: ['⌘', 'Shift', 'L'], description: 'Clear all filters' },
+      { keys: [modKey, 'F'], description: 'Focus search in current view' },
+      { keys: [modKey, 'Shift', 'F'], description: 'Global search' },
+      { keys: [modKey, 'Shift', 'L'], description: 'Clear all filters' },
     ],
   },
   {
@@ -38,7 +30,7 @@ const shortcutGroups: ShortcutGroup[] = [
     shortcuts: [
       { keys: ['N'], description: 'Create new lead (when pipeline focused)' },
       { keys: ['E'], description: 'Edit selected lead' },
-      { keys: ['⌘', 'Enter'], description: 'Save and close current form' },
+      { keys: [modKey, 'Enter'], description: 'Save and close current form' },
       { keys: ['Tab'], description: 'Move to next field' },
       { keys: ['Shift', 'Tab'], description: 'Move to previous field' },
     ],
@@ -49,7 +41,7 @@ const shortcutGroups: ShortcutGroup[] = [
     shortcuts: [
       { keys: ['C'], description: 'Compose new email (in inbox)' },
       { keys: ['R'], description: 'Reply to email (in inbox)' },
-      { keys: ['⌘', 'Shift', 'Enter'], description: 'Send email' },
+      { keys: [modKey, 'Shift', 'Enter'], description: 'Send email' },
     ],
   },
 ];
