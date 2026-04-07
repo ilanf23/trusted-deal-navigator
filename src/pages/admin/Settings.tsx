@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import ProfileSection from '@/components/admin/settings/ProfileSection';
 import SecuritySection from '@/components/admin/settings/SecuritySection';
 import AppearanceSection from '@/components/admin/settings/AppearanceSection';
+import NotificationSection from '@/components/admin/settings/NotificationSection';
 
 type SettingsSection = 'profile' | 'security' | 'appearance' | 'notifications' | 'shortcuts' | 'sessions';
 
@@ -87,9 +88,7 @@ const Settings = () => {
                 {activeSection === 'profile' && <ProfileSection />}
                 {activeSection === 'security' && <SecuritySection />}
                 {activeSection === 'appearance' && <AppearanceSection />}
-                {activeSection === 'notifications' && (
-                  <p className="text-sm text-muted-foreground">Notifications section will be implemented in a future task.</p>
-                )}
+                {activeSection === 'notifications' && <NotificationSection />}
                 {activeSection === 'shortcuts' && (
                   <p className="text-sm text-muted-foreground">Keyboard shortcuts section will be implemented in a future task.</p>
                 )}

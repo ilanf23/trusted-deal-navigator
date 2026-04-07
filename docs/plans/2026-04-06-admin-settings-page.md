@@ -83,9 +83,9 @@ Create a comprehensive settings page accessible from every admin profile (both /
 - Create: `src/components/admin/settings/NotificationSection.tsx`
 - Modify: `src/pages/admin/Settings.tsx`
 
-- [ ] Build NotificationSection with toggle switches for notification categories: Email notifications (new leads, task assignments, deal updates, system alerts), Browser push notification preferences, Daily digest email on/off
-- [ ] Store preferences in the `users` table using a JSONB column or in user metadata via Supabase auth. If no existing column fits, store in Supabase auth user_metadata for now.
-- [ ] Load existing preferences on mount and save changes with debounced auto-save or explicit save button
+- [x] Build NotificationSection with toggle switches for notification categories: Email notifications (new leads, task assignments, deal updates, system alerts), Browser push notification preferences, Daily digest email on/off
+- [x] Store preferences in the `users` table using a JSONB column or in user metadata via Supabase auth. If no existing column fits, store in Supabase auth user_metadata for now.
+- [x] Load existing preferences on mount and save changes with debounced auto-save or explicit save button
 
 ### Task 6: Keyboard Shortcuts and Sessions Sections
 
