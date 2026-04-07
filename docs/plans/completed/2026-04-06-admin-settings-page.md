@@ -115,5 +115,5 @@ Create a comprehensive settings page accessible from every admin profile (both /
 
 ### Task 8: Update documentation
 
-- [ ] Update CLAUDE.md if internal patterns changed (new settings route, new components directory)
-- [ ] Move this plan to `docs/plans/completed/`
+- [x] Update CLAUDE.md if internal patterns changed (new settings route, new components directory)
+- [x] Move this plan to `docs/plans/completed/`

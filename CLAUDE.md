@@ -29,7 +29,7 @@ Stack: React 18 + TypeScript + Vite, shadcn/ui + Tailwind, Supabase (auth/db/edg
 src/
   components/     # ~270 components across 11 subdirectories
     ui/           # 61 shadcn/ui primitives (do not heavily modify)
-    admin/        # 105 admin portal components (CRM, pipeline, inbox, dropbox, sheets)
+    admin/        # 105 admin portal components (CRM, pipeline, inbox, dropbox, sheets, settings)
     evan/         # 25 Evan sales rep portal components (dashboard, gmail, tasks)
     home/         # 10 public landing page sections
     layout/       # 3 public site layout wrappers (Header, Footer, PublicLayout)
@@ -96,6 +96,7 @@ Token identity: `clx-admin`. 1-hour expiry from `twilio-token` edge function. De
 - UI primitives: `src/components/ui/` (shadcn/ui — do not heavily modify these)
 - Admin-shared components: `src/components/admin/`
 - Employee portal components: `src/components/employee/`
+- Settings page at `/superadmin/settings` and `/admin/settings` — consolidated account management, profile editing, appearance (theme toggle), notifications, keyboard shortcuts, and sessions. Components live in `src/components/admin/settings/`.
 - `AdminSidebar.tsx` renders different nav sections based on role: Ilan-specific, owner, or employee (built via `useMemo` from `teamMember` + `isOwner`)
 - Sidebar collapsed state: `state === 'collapsed'` from `useSidebar()`; always handle both expanded and collapsed rendering paths
 - Variants via `cva` (class-variance-authority), props extend native HTML attributes, `React.forwardRef` for ref access
