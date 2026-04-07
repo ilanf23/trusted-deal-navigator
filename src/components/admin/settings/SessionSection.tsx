@@ -88,7 +88,9 @@ const SessionSection = () => {
               <span className="text-sm font-medium">Session started</span>
             </div>
             <span className="text-sm text-muted-foreground">
-              {session?.created_at ? formatDate(session.created_at) : 'Unknown'}
+              {session?.expires_at && session?.expires_in
+                ? formatDate(new Date((session.expires_at - session.expires_in) * 1000).toISOString())
+                : formatDate(user?.last_sign_in_at)}
             </span>
           </div>
 

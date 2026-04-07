@@ -217,18 +217,6 @@ const PasswordChangeForm = ({ lastPasswordChange }: { lastPasswordChange?: strin
     form.reset();
   };
 
-  const PasswordToggle = ({ show, onToggle }: { show: boolean; onToggle: () => void }) => (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label={show ? 'Hide password' : 'Show password'}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-      tabIndex={-1}
-    >
-      {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-    </button>
-  );
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -342,5 +330,19 @@ const PasswordChangeForm = ({ lastPasswordChange }: { lastPasswordChange?: strin
     </div>
   );
 };
+
+// --- Password Toggle (module-scoped to avoid remounting on parent re-render) ---
+
+const PasswordToggle = ({ show, onToggle }: { show: boolean; onToggle: () => void }) => (
+  <button
+    type="button"
+    onClick={onToggle}
+    aria-label={show ? 'Hide password' : 'Show password'}
+    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+    tabIndex={-1}
+  >
+    {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+  </button>
+);
 
 export default SecuritySection;

@@ -32,15 +32,16 @@ const NotificationSection = () => {
   const [initialPreferences, setInitialPreferences] = useState<NotificationPreferences>(defaultPreferences);
   const [saving, setSaving] = useState(false);
 
+  const userId = user?.id;
+  const storedPrefs = user?.user_metadata?.notification_preferences as NotificationPreferences | undefined;
+
   useEffect(() => {
-    if (!user) return;
-    const stored = user.user_metadata?.notification_preferences as NotificationPreferences | undefined;
-    if (stored) {
-      const merged = { ...defaultPreferences, ...stored };
-      setPreferences(merged);
-      setInitialPreferences(merged);
-    }
-  }, [user]);
+    if (!userId || !storedPrefs) return;
+    const merged = { ...defaultPreferences, ...storedPrefs };
+    setPreferences(merged);
+    setInitialPreferences(merged);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only sync on login, not every metadata change
+  }, [userId]);
 
   const isDirty = JSON.stringify(preferences) !== JSON.stringify(initialPreferences);
 

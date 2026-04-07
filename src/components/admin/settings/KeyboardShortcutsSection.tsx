@@ -1,7 +1,7 @@
 import { Separator } from '@/components/ui/separator';
 import { Search, Navigation, LayoutGrid, MessageSquare } from 'lucide-react';
 
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.userAgent);
 const modKey = isMac ? '⌘' : 'Ctrl';
 
 const shortcutGroups = [
