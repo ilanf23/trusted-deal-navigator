@@ -1,8 +1,7 @@
 import {
   Home, FolderOpen, Image, Users,
-  ChevronDown, ChevronRight, Star, Plus, LayoutGrid,
+  ChevronDown, ChevronRight, Star,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
@@ -43,7 +42,7 @@ export function DropboxSidebar({
   };
 
   return (
-    <div className="w-[220px] flex-shrink-0 border-r bg-white dark:bg-zinc-950 flex flex-col h-full hidden lg:flex">
+    <div className="w-[220px] flex-shrink-0 border-r border-[#e8eaed] dark:border-border bg-[#f8f9fa] dark:bg-muted/30 flex flex-col h-full hidden lg:flex">
       {/* Top nav */}
       <div className="flex-1 overflow-auto py-3">
         <nav className="space-y-0.5 px-2">
@@ -55,13 +54,13 @@ export function DropboxSidebar({
                 key={item.id}
                 onClick={() => handleNavClick(item)}
                 className={cn(
-                  'flex items-center gap-3 w-full px-3 py-2 rounded-lg text-[13px] font-medium tracking-[-0.01em] transition-colors',
+                  'flex items-center gap-3 w-full px-3 py-2 rounded-md text-[13px] font-medium tracking-[-0.01em] transition-colors',
                   isActive
-                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                    : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                    ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-300'
+                    : 'text-[#3c4043] dark:text-zinc-300 hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30',
                 )}
               >
-                <Icon className={cn('h-[18px] w-[18px] flex-shrink-0', isActive && 'text-blue-600 dark:text-blue-400')} />
+                <Icon className={cn('h-[18px] w-[18px] flex-shrink-0', isActive && 'text-[#3b2778] dark:text-purple-300')} />
                 {item.label}
               </button>
             );
@@ -73,14 +72,11 @@ export function DropboxSidebar({
         {/* Quick access */}
         <div className="px-2">
           <div className="flex items-center justify-between px-3 py-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Quick access</span>
-            <Button variant="ghost" size="icon" className="h-5 w-5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
-              <Plus className="h-3 w-3" />
-            </Button>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5f6368] dark:text-muted-foreground">Quick access</span>
           </div>
 
           <Collapsible open={starredOpen} onOpenChange={setStarredOpen}>
-            <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-1.5 rounded-lg text-[13px] font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+            <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[13px] font-medium text-[#3c4043] dark:text-zinc-300 hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 transition-colors">
               {starredOpen ? <ChevronDown className="h-3 w-3 text-zinc-400" /> : <ChevronRight className="h-3 w-3 text-zinc-400" />}
               <Star className="h-3.5 w-3.5 text-zinc-400" />
               Starred
@@ -92,27 +88,20 @@ export function DropboxSidebar({
                     <button
                       key={entry.id}
                       onClick={() => onStarredEntryClick(entry)}
-                      className="block w-full text-left px-3 py-1 text-xs truncate text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 rounded transition-colors"
+                      className="block w-full text-left px-3 py-1 text-xs truncate text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-md transition-colors"
                     >
                       {entry.name}
                     </button>
                   ))}
                 </div>
               ) : (
-                <p className="ml-9 px-3 py-1.5 text-xs text-zinc-400 dark:text-zinc-500">Drag important items here.</p>
+                <p className="ml-9 px-3 py-1.5 text-xs text-[#5f6368] dark:text-muted-foreground">Drag important items here.</p>
               )}
             </CollapsibleContent>
           </Collapsible>
         </div>
       </div>
 
-      {/* Bottom */}
-      <div className="border-t px-4 py-3">
-        <button className="flex items-center gap-2 text-[13px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
-          <LayoutGrid className="h-4 w-4" />
-          More
-        </button>
-      </div>
     </div>
   );
 }

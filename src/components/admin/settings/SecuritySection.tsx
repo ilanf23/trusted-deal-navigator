@@ -198,6 +198,7 @@ const PasswordChangeForm = ({ lastPasswordChange }: { lastPasswordChange?: strin
     });
 
     if (verifyError) {
+      toast.error('Current password is incorrect');
       form.setError('currentPassword', { message: 'Current password is incorrect' });
       return;
     }

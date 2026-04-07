@@ -1,6 +1,7 @@
 import { getLeadDisplayName } from '@/lib/utils';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { useAutoFitColumns, CHAR_W_SM } from '@/hooks/useAutoFitColumns';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -356,30 +357,6 @@ const LenderManagement = () => {
     interactions: true, inactiveDays: true, tags: true,
   });
 
-  const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
-    deal: 200, company: 130, contact: 110, value: 90, ownedBy: 80,
-    tasks: 55, status: 100, stage: 160, daysInStage: 55, stageUpdated: 85,
-    lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
-  }), []);
-
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem('lm-column-widths');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
-      }
-    } catch {}
-    return DEFAULT_COLUMN_WIDTHS;
-  });
-
-  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setColumnWidths(prev => {
-      const next = { ...prev, [columnId]: newWidth };
-      localStorage.setItem('lm-column-widths', JSON.stringify(next));
-      return next;
-    });
-  }, []);
 
   const columnsMenuRef = useRef<HTMLDivElement>(null);
 
@@ -682,6 +659,25 @@ const LenderManagement = () => {
 
     return result;
   }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap, stages]);
+
+  const lmAutoFitConfig = useMemo(() => ({
+    deal: { getText: (l: any) => getLeadDisplayName(l), extraPx: 58 },
+    company: { getText: (l: any) => l.company_name, extraPx: 32 },
+    contact: { getText: (l: any) => l.name },
+    ownedBy: { getText: (l: any) => teamMemberMap[l.assigned_to ?? ''] ?? '', extraPx: 32 },
+    stage: { getText: (l: any) => dynamicStageConfig[l._stageId]?.title ?? l.status, charWidth: CHAR_W_SM, extraPx: 40 },
+  }), [teamMemberMap, dynamicStageConfig]);
+
+  const { columnWidths, handleColumnResize } = useAutoFitColumns({
+    minWidths: {
+      deal: 200, company: 130, contact: 110, value: 90, ownedBy: 80,
+      tasks: 55, status: 100, stage: 160, daysInStage: 55, stageUpdated: 85,
+      lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+    },
+    autoFitConfig: lmAutoFitConfig,
+    data: filteredAndSorted,
+    storageKey: 'lm-col-widths-v2',
+  });
 
   // Group leads by stage for Kanban
   const leadsByStage = useMemo(() => {
@@ -1282,7 +1278,7 @@ const LenderManagement = () => {
                                     <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
                                       <Building2 className="h-3 w-3 text-muted-foreground" />
                                     </div>
-                                    <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate max-w-[120px]">{lead.company_name}</span>
+                                    <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate">{lead.company_name}</span>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground/40">—</span>
@@ -1293,7 +1289,7 @@ const LenderManagement = () => {
                             {/* Contact */}
                             {columnVisibility.contact && (
                               <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate block max-w-[110px]">{lead.name}</span>
+                                <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate block">{lead.name}</span>
                               </td>
                             )}
 
@@ -1312,7 +1308,7 @@ const LenderManagement = () => {
                                 {assignedName ? (
                                   <div className="flex items-center gap-2">
                                     <CrmAvatar name={assignedName} imageUrl={assignedAvatar} size="sm" />
-                                    <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate max-w-[80px]">{assignedName}</span>
+                                    <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate">{assignedName}</span>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground/40 text-[13px]">—</span>

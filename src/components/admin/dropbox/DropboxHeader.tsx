@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Unplug, FolderPlus, FileText, Presentation, Table2, Globe, Upload, ArrowRightLeft, FileInput, Pen, PenLine } from 'lucide-react';
+import { Plus, Unplug, FolderPlus, FileText, Presentation, Table2, Upload, ArrowRightLeft, FileInput, Pen, PenLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -52,7 +52,7 @@ export function DropboxHeader({
   const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 border-b">
+    <div className="flex items-center gap-3 px-6 py-3 border-b border-[#e8eaed] dark:border-border">
       {/* + New button */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -110,11 +110,6 @@ export function DropboxHeader({
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-          <DropdownMenuItem onClick={() => toast({ title: 'Coming soon', description: 'Web shortcut creation is coming soon.' })}>
-            <Globe className="h-4 w-4 mr-2" />
-            Web shortcut
-          </DropdownMenuItem>
-
           <DropdownMenuSeparator />
 
           {/* Add section */}
@@ -187,7 +182,7 @@ export function DropboxHeader({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search"
-            className="h-8 text-sm"
+            className="h-8 text-[13px] rounded-md"
           />
         </div>
       </div>

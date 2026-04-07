@@ -9,7 +9,9 @@ import { Loader2, Globe, Clock, Calendar, LogOut, Monitor } from 'lucide-react';
 
 const formatDate = (dateStr: string | undefined) => {
   if (!dateStr) return 'Unknown';
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'Unknown';
+  return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

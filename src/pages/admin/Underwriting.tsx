@@ -1,6 +1,6 @@
 import { getLeadDisplayName } from '@/lib/utils';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +16,7 @@ import UnderwritingDetailPanel from '@/components/admin/UnderwritingDetailPanel'
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
+import { useAutoFitColumns, CHAR_W_SM } from '@/hooks/useAutoFitColumns';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import {
   ArrowUpDown,
@@ -353,28 +354,14 @@ const Underwriting = () => {
     );
   }, [searchTerm]);
 
-  const MIN_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
-    opportunity: 220, company: 100, contact: 100, value: 80, ownedBy: 80,
-    tasks: 55, status: 100, stage: 120, daysInStage: 55, stageUpdated: 85,
-    lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
-  }), []);
-
-  // User-saved widths from manual column resizing
-  const [savedColumnWidths, setSavedColumnWidths] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem('uw-col-widths-v2');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return {};
-  });
-
-  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setSavedColumnWidths(prev => {
-      const next = { ...prev, [columnId]: newWidth };
-      localStorage.setItem('uw-col-widths-v2', JSON.stringify(next));
-      return next;
-    });
-  }, []);
+  const uwAutoFitConfig = useMemo(() => ({
+    opportunity: { getText: (l: any) => getLeadDisplayName(l), extraPx: 58 },
+    company: { getText: (l: any) => l.company_name, extraPx: 32 },
+    contact: { getText: (l: any) => l.name },
+    value: { getText: (l: any) => formatValue(fakeValue(l.id)) },
+    ownedBy: { getText: (l: any) => teamMemberMap[l.assigned_to ?? ''] ?? '', extraPx: 32 },
+    stage: { getText: (l: any) => dynamicStageConfig[l._stageId]?.title ?? l.status, charWidth: CHAR_W_SM, extraPx: 40 },
+  }), [teamMemberMap, dynamicStageConfig]);
 
   const columnsMenuRef = useRef<HTMLDivElement>(null);
 
@@ -678,56 +665,16 @@ const Underwriting = () => {
     [leads]
   );
 
-  // Auto-fit column widths based on actual data content
-  const columnWidths = useMemo(() => {
-    const CHAR_W = 7.8; // approx px per char at 13px font
-    const CHAR_W_SM = 6.5; // approx px per char at 11px font
-    const CELL_PAD = 32; // px-4 each side
-
-    const maxTextW = (items: (string | null | undefined)[], charWidth = CHAR_W, extra = 0) => {
-      let max = 0;
-      for (const s of items) {
-        const len = (s ?? '').length;
-        if (len > max) max = len;
-      }
-      return Math.ceil(max * charWidth + CELL_PAD + extra);
-    };
-
-    const auto: Record<string, number> = {};
-
-    if (filteredAndSorted.length > 0) {
-      // Opportunity: avatar(28) + gap(10) + name + expand btn(20)
-      auto.opportunity = maxTextW(filteredAndSorted.map(l => getLeadDisplayName(l)), CHAR_W, 58);
-      // Company: icon(24) + gap(8) + text
-      auto.company = maxTextW(filteredAndSorted.map(l => l.company_name), CHAR_W, 32);
-      // Contact: plain name text
-      auto.contact = maxTextW(filteredAndSorted.map(l => l.name));
-      // Value: formatted currency
-      auto.value = maxTextW(filteredAndSorted.map(l => formatValue(fakeValue(l.id))));
-      // Owner: avatar(24) + gap(8) + name
-      auto.ownedBy = maxTextW(
-        filteredAndSorted.map(l => teamMemberMap[l.assigned_to ?? ''] ?? ''),
-        CHAR_W, 32
-      );
-      // Stage: dot(6) + gap(6) + label + badge padding(20)
-      auto.stage = maxTextW(
-        filteredAndSorted.map(l => dynamicStageConfig[l._stageId]?.title ?? l.status),
-        CHAR_W_SM, 40
-      );
-    }
-
-    // Merge: minimums → auto-fit → user-saved overrides
-    const merged: Record<string, number> = { ...MIN_COLUMN_WIDTHS };
-    for (const key of Object.keys(merged)) {
-      if (auto[key] !== undefined) {
-        merged[key] = Math.max(merged[key], auto[key]);
-      }
-      if (savedColumnWidths[key] !== undefined) {
-        merged[key] = savedColumnWidths[key];
-      }
-    }
-    return merged;
-  }, [filteredAndSorted, teamMemberMap, savedColumnWidths, MIN_COLUMN_WIDTHS]);
+  const { columnWidths, handleColumnResize } = useAutoFitColumns({
+    minWidths: {
+      opportunity: 220, company: 100, contact: 100, value: 80, ownedBy: 80,
+      tasks: 55, status: 100, stage: 120, daysInStage: 55, stageUpdated: 85,
+      lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+    },
+    autoFitConfig: uwAutoFitConfig,
+    data: filteredAndSorted,
+    storageKey: 'uw-col-widths-v2',
+  });
 
   function handleColSort(field: SortField) {
     if (sortField === field) {
@@ -1422,7 +1369,7 @@ const Underwriting = () => {
                                     <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
                                       <Building2 className="h-3 w-3 text-muted-foreground" />
                                     </div>
-                                    <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate max-w-[110px]">{lead.company_name}</span>
+                                    <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate">{lead.company_name}</span>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground/40">—</span>

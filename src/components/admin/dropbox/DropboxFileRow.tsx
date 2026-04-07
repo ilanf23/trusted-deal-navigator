@@ -86,16 +86,16 @@ export function DropboxFileRow({
         onDrop: (e: React.DragEvent) => onFolderDrop?.(e, entry),
       } : {})}
       className={cn(
-        'grid grid-cols-[1fr_160px_200px] items-center px-4 py-2 border-b border-border/50 hover:bg-muted/40 transition-colors group',
+        'grid grid-cols-[1fr_160px_200px] items-center px-6 py-2.5 border-b border-[#e8eaed] dark:border-border/50 hover:bg-[#f8f9fb] dark:hover:bg-muted/30 transition-colors duration-150 group',
         isFolder && 'cursor-pointer',
         isDragging && 'opacity-40',
-        isDragOver && !isDragging && 'bg-primary/10 ring-2 ring-primary/30 ring-inset',
+        isDragOver && !isDragging && 'bg-[#eee6f6] dark:bg-purple-950/30 ring-2 ring-[#3b2778]/30 dark:ring-purple-400/30 ring-inset',
       )}
       onClick={() => onClick(entry)}
     >
       {/* Name column */}
       <div className="flex items-center gap-3 min-w-0">
-        <Icon className={cn('h-5 w-5 flex-shrink-0', isFolder ? 'text-[#0061fe]' : 'text-muted-foreground')} />
+        <Icon className={cn('h-5 w-5 flex-shrink-0', isFolder ? 'text-[#3b2778] dark:text-purple-400' : 'text-muted-foreground')} />
         {isEditing ? (
           <Input
             ref={inputRef}
@@ -112,10 +112,10 @@ export function DropboxFileRow({
           />
         ) : (
           <>
-            <span className="text-sm truncate">{entry.name}</span>
+            <span className="text-[13px] truncate">{entry.name}</span>
             <button
               onClick={(e) => { e.stopPropagation(); onStartEditing(entry); }}
-              className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
             >
               <Pencil className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-foreground" />
             </button>
@@ -133,16 +133,16 @@ export function DropboxFileRow({
       </div>
 
       {/* Who can access column */}
-      <div className="text-sm text-muted-foreground">Only you</div>
+      <div className="text-[13px] text-[#5f6368] dark:text-muted-foreground">Only you</div>
 
       {/* Modified column */}
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
+        <span className="text-[13px] text-[#5f6368] dark:text-muted-foreground">
           {isFolder ? '--' : formatModifiedDate(entry.server_modified)}
         </span>
 
         {/* Context menu */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150" onClick={(e) => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0">

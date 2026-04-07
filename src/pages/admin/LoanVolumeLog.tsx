@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -310,25 +311,6 @@ const LoanVolumeLog = () => {
     signals: true,
   });
 
-  // Column widths (persisted)
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem('vl-column-widths');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
-      }
-    } catch { /* empty */ }
-    return { ...DEFAULT_COLUMN_WIDTHS };
-  });
-
-  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setColumnWidths(prev => {
-      const next = { ...prev, [columnId]: newWidth };
-      localStorage.setItem('vl-column-widths', JSON.stringify(next));
-      return next;
-    });
-  }, []);
 
   const columnsMenuRef = useRef<HTMLDivElement>(null);
 
@@ -533,6 +515,21 @@ const LoanVolumeLog = () => {
 
     return result;
   }, [leads, statusFilter, categoryFilter, stageFilter, wonFilter, assignedFilter, searchTerm, sortField, sortDir, teamMemberMap]);
+
+  const { columnWidths, handleColumnResize } = useAutoFitColumns({
+    minWidths: DEFAULT_COLUMN_WIDTHS,
+    autoFitConfig: {
+      borrower: { getText: (l: any) => l.name, extraPx: 58 },
+      company: { getText: (l: any) => l.company_name, extraPx: 32 },
+      lender: { getText: (l: any) => l.lender_name },
+      lenderType: { getText: (l: any) => l.lender_type },
+      assignedTo: { getText: (l: any) => teamMemberMap[l.assigned_to ?? ''] ?? '', extraPx: 32 },
+      source: { getText: (l: any) => l.source },
+      category: { getText: (l: any) => l.category },
+    },
+    data: filteredAndSorted,
+    storageKey: 'lv-col-widths-v2',
+  });
 
   // Summary stats
   const summaryStats = useMemo(() => {

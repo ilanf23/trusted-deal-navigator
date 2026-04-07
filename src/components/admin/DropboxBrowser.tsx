@@ -304,8 +304,8 @@ export function DropboxBrowser() {
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] space-y-6">
-        <div className="p-6 rounded-full bg-muted">
-          <HardDrive className="h-16 w-16 text-muted-foreground" />
+        <div className="p-6 rounded-full bg-[#eee6f6] dark:bg-purple-950/30">
+          <HardDrive className="h-16 w-16 text-[#3b2778] dark:text-purple-400" />
         </div>
         <div className="text-center space-y-2">
           <h2 className="text-2xl font-semibold">Connect Your Dropbox</h2>

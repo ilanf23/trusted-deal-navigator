@@ -64,7 +64,7 @@ export function DropboxFileCard({
   return (
     <div
       className={cn(
-        'relative border rounded-lg p-4 hover:shadow-sm transition-shadow bg-card group',
+        'relative border rounded-md p-4 hover:shadow-sm transition-all duration-150 bg-card border-[#e8eaed] dark:border-border group',
         isFolder && 'cursor-pointer',
       )}
       onClick={() => onClick(entry)}
@@ -73,7 +73,7 @@ export function DropboxFileCard({
       <button
         onClick={(e) => { e.stopPropagation(); onToggleStar(entry.path_lower); }}
         className={cn(
-          'absolute top-2 right-2 transition-opacity z-10',
+          'absolute top-2 right-2 transition-opacity duration-150 z-10',
           isStarred ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
         )}
       >
@@ -81,7 +81,7 @@ export function DropboxFileCard({
       </button>
 
       {/* Context menu */}
-      <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={(e) => e.stopPropagation()}>
+      <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -114,7 +114,7 @@ export function DropboxFileCard({
 
       {/* Icon */}
       <div className="flex items-center justify-center py-6">
-        <Icon className={cn('h-12 w-12', isFolder ? 'text-[#0061fe]' : 'text-muted-foreground/60')} />
+        <Icon className={cn('h-12 w-12', isFolder ? 'text-[#3b2778] dark:text-purple-400' : 'text-muted-foreground/60')} />
       </div>
 
       {/* Name + date */}
@@ -134,7 +134,7 @@ export function DropboxFileCard({
         />
       ) : (
         <div className="flex items-center gap-1 min-w-0">
-          <p className="text-sm font-medium truncate">{entry.name}</p>
+          <p className="text-[13px] font-medium truncate">{entry.name}</p>
           <button
             onClick={(e) => { e.stopPropagation(); onStartEditing(entry); }}
             className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -143,7 +143,7 @@ export function DropboxFileCard({
           </button>
         </div>
       )}
-      <p className="text-xs text-muted-foreground mt-0.5">
+      <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground mt-0.5">
         {isFolder ? 'Folder' : formatModifiedDate(entry.server_modified)}
       </p>
     </div>

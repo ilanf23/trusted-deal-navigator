@@ -142,7 +142,7 @@ export function DropboxFileList({
     <div
       className={cn(
         'flex-1 overflow-auto relative',
-        dragOver && 'bg-primary/5 ring-2 ring-primary/20 ring-inset',
+        dragOver && 'bg-[#eee6f6]/30 dark:bg-purple-950/20 ring-2 ring-[#3b2778]/20 dark:ring-purple-400/20 ring-inset',
       )}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
@@ -154,8 +154,8 @@ export function DropboxFileList({
         </div>
       ) : filteredEntries.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-          <Folder className="h-12 w-12 mb-3 opacity-30" />
-          <p className="text-sm">
+          <Folder className="h-12 w-12 mb-3 text-[#3b2778]/20 dark:text-purple-400/20" />
+          <p className="text-[13px] text-[#5f6368] dark:text-muted-foreground">
             {searchQuery
               ? 'No files match your search'
               : activeTab === 'starred'
@@ -164,7 +164,7 @@ export function DropboxFileList({
               ? 'No recent files'
               : 'This folder is empty'}
           </p>
-          <p className="text-xs mt-1">Drag & drop files here to upload</p>
+          <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground mt-1">Drag & drop files here to upload</p>
         </div>
       ) : viewMode === 'list' ? (
         <div>
@@ -198,7 +198,7 @@ export function DropboxFileList({
         </div>
       ) : (
         <div>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3 p-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4 p-6">
             {filteredEntries.slice(0, visibleCount).map((entry) => (
               <DropboxFileCard
                 key={entry.id}
@@ -221,7 +221,7 @@ export function DropboxFileList({
             ))}
           </div>
           {filteredEntries.length > visibleCount && (
-            <div className="flex items-center justify-center gap-3 py-4 border-t">
+            <div className="flex items-center justify-center gap-3 py-4 border-t border-[#e8eaed] dark:border-border">
               <span className="text-sm text-muted-foreground">
                 Showing {visibleCount} of {filteredEntries.length} items
               </span>
@@ -240,9 +240,9 @@ export function DropboxFileList({
       {/* Upload overlay when dragging */}
       {dragOver && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg p-8">
-            <Upload className="h-8 w-8 text-primary mx-auto mb-2" />
-            <p className="text-sm text-primary font-medium">Drop files to upload</p>
+          <div className="bg-[#eee6f6] dark:bg-purple-950/30 border-2 border-dashed border-[#3b2778]/30 dark:border-purple-400/30 rounded-md p-8">
+            <Upload className="h-8 w-8 text-[#3b2778] dark:text-purple-300 mx-auto mb-2" />
+            <p className="text-sm text-[#3b2778] dark:text-purple-300 font-medium">Drop files to upload</p>
           </div>
         </div>
       )}

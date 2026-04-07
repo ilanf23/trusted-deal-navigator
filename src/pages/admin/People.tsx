@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -466,29 +467,6 @@ const People = () => {
     );
   }, [searchTerm]);
 
-  const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
-    person: 260, title: 130, company: 130, tasks: 55, email: 170,
-    contactType: 200, pipeline: 220, lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
-  }), []);
-
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem('people-column-widths');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
-      }
-    } catch {}
-    return DEFAULT_COLUMN_WIDTHS;
-  });
-
-  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setColumnWidths(prev => {
-      const next = { ...prev, [columnId]: newWidth };
-      localStorage.setItem('people-column-widths', JSON.stringify(next));
-      return next;
-    });
-  }, []);
 
   const columnsMenuRef = useRef<HTMLDivElement>(null);
   const detailPanelRef = useRef<HTMLDivElement>(null);
@@ -817,6 +795,21 @@ const People = () => {
     return result;
   }, [people, activeFilter, searchTerm, sortField, sortDir, customFilters, followedLeadIds, teamMember?.id]);
 
+  const { columnWidths, handleColumnResize } = useAutoFitColumns({
+    minWidths: {
+      person: 260, title: 130, company: 130, tasks: 55, email: 170,
+      contactType: 200, pipeline: 220, lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+    },
+    autoFitConfig: {
+      person: { getText: (p: any) => p.name, extraPx: 58 },
+      title: { getText: (p: any) => p.title },
+      company: { getText: (p: any) => p.company_name, extraPx: 32 },
+      email: { getText: (p: any) => p.email },
+      pipeline: { getText: (p: any) => (p._pipelineName ?? '') + (p._stageName ? ' > ' + p._stageName : '') },
+    },
+    data: filteredAndSorted,
+    storageKey: 'people-col-widths-v2',
+  });
 
   function handleColSort(field: SortField) {
     if (sortField === field) {
@@ -1492,7 +1485,7 @@ const People = () => {
                             {/* Title */}
                             {columnVisibility.title && (
                               <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.title, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate block max-w-[120px]">{person.title ?? '—'}</span>
+                                <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate block">{person.title ?? '—'}</span>
                               </td>
                             )}
 
@@ -1504,7 +1497,7 @@ const People = () => {
                                     <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
                                       <Building2 className="h-3 w-3 text-muted-foreground" />
                                     </div>
-                                    <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate max-w-[110px]">{person.company_name}</span>
+                                    <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate">{person.company_name}</span>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground/40">—</span>
@@ -1530,7 +1523,7 @@ const People = () => {
                             {columnVisibility.email && (
                               <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}>
                                 {person.email ? (
-                                  <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate block max-w-[160px]">{person.email}</span>
+                                  <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate block">{person.email}</span>
                                 ) : (
                                   <span className="text-muted-foreground/40">—</span>
                                 )}

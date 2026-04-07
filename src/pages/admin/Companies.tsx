@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
@@ -312,34 +313,6 @@ const Companies = () => {
     emailDomain: true, lastActivity: true, interactions: true, inactiveDays: true, tags: true,
   });
 
-  const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
-    company: 200, phone: 130, contact: 140, deals: 80, website: 150,
-    contactType: 120, emailDomain: 140, lastActivity: 120, interactions: 90, inactiveDays: 90, tags: 100,
-  }), []);
-
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem('companies-column-widths');
-      if (saved) {
-        const parsed = JSON.parse(saved) as Record<string, number>;
-        // Enforce minimum widths so saved narrow values don't cause overlap
-        const merged = { ...DEFAULT_COLUMN_WIDTHS };
-        for (const key of Object.keys(parsed)) {
-          merged[key] = Math.max(parsed[key], DEFAULT_COLUMN_WIDTHS[key] ?? 60);
-        }
-        return merged;
-      }
-    } catch {}
-    return DEFAULT_COLUMN_WIDTHS;
-  });
-
-  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setColumnWidths(prev => {
-      const next = { ...prev, [columnId]: newWidth };
-      localStorage.setItem('companies-column-widths', JSON.stringify(next));
-      return next;
-    });
-  }, []);
 
   const columnsMenuRef = useRef<HTMLDivElement>(null);
 
@@ -600,6 +573,21 @@ const Companies = () => {
     return result;
   }, [companies, activeFilter, searchTerm, sortField, sortDir]);
 
+  const { columnWidths, handleColumnResize } = useAutoFitColumns({
+    minWidths: {
+      company: 200, phone: 130, contact: 140, deals: 80, website: 150,
+      contactType: 120, emailDomain: 140, lastActivity: 120, interactions: 90, inactiveDays: 90, tags: 100,
+    },
+    autoFitConfig: {
+      company: { getText: (c: any) => c.name, extraPx: 58 },
+      phone: { getText: (c: any) => c.phone },
+      contact: { getText: (c: any) => c.contact_name },
+      website: { getText: (c: any) => c.website?.replace(/^https?:\/\//, '') },
+      emailDomain: { getText: (c: any) => c.email_domain },
+    },
+    data: filteredAndSorted,
+    storageKey: 'companies-col-widths-v2',
+  });
 
   function handleColSort(field: SortField) {
     if (sortField === field) {

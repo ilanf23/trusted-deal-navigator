@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
+import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -71,20 +72,6 @@ const AdminLeads = () => {
   const [previewLead, setPreviewLead] = useState<LeadWithOwner | null>(null);
   const { toast } = useToast();
 
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem('admin-leads-column-widths');
-      if (saved) return { ...DEFAULT_LEADS_COL_WIDTHS, ...JSON.parse(saved) };
-    } catch { /* ignore corrupt localStorage */ }
-    return DEFAULT_LEADS_COL_WIDTHS;
-  });
-  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setColumnWidths(prev => {
-      const next = { ...prev, [columnId]: newWidth };
-      localStorage.setItem('admin-leads-column-widths', JSON.stringify(next));
-      return next;
-    });
-  }, []);
 
   const ColHeader = ({ colKey, children, className: extraClassName, style: extraStyle }: {
     colKey?: string;
@@ -313,6 +300,16 @@ const AdminLeads = () => {
       lead.phone?.toLowerCase().includes(search.toLowerCase());
     const matchesOwner = ownerFilter === 'all' || lead.assigned_to === ownerFilter;
     return matchesSearch && matchesOwner;
+  });
+
+  const { columnWidths, handleColumnResize } = useAutoFitColumns({
+    minWidths: DEFAULT_LEADS_COL_WIDTHS,
+    autoFitConfig: {
+      lead: { getText: (l: any) => l.name, extraPx: 32 },
+      contact: { getText: (l: any) => l.phone || l.email },
+    },
+    data: filteredLeads,
+    storageKey: 'leads-col-widths-v2',
   });
 
   const statusCounts = leads.reduce((acc, lead) => {

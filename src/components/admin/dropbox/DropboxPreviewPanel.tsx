@@ -65,16 +65,16 @@ export function DropboxPreviewPanel({ entry, onClose, onDownload, onDelete, onRe
 
   return (
     <>
-      <div className="w-[600px] border-l flex flex-col bg-background shrink-0">
+      <div className="w-[600px] border-l border-[#e8eaed] dark:border-border flex flex-col bg-background shrink-0">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[#e8eaed] dark:border-border">
           <div className="flex items-center gap-2 min-w-0">
             <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
             <div className="min-w-0">
-              <p className="font-semibold text-sm truncate">{entry.name}</p>
-              <p className="text-xs text-muted-foreground">{formatFileSize(entry.size)}</p>
+              <p className="font-semibold text-[13px] truncate">{entry.name}</p>
+              <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground">{formatFileSize(entry.size)}</p>
             </div>
           </div>
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => openEditor()}>
@@ -83,7 +83,7 @@ export function DropboxPreviewPanel({ entry, onClose, onDownload, onDelete, onRe
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center gap-1 px-3 py-2 border-b overflow-x-auto">
+        <div className="flex items-center gap-1 px-3 py-2 border-b border-[#e8eaed] dark:border-border overflow-x-auto">
           <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 shrink-0" onClick={() => openEditor()}>
             <Pencil className="h-3.5 w-3.5" /> Edit
           </Button>
@@ -116,7 +116,7 @@ export function DropboxPreviewPanel({ entry, onClose, onDownload, onDelete, onRe
         </div>
 
         {/* Image Preview */}
-        <div className="flex-1 overflow-auto flex items-center justify-center bg-zinc-100 p-4 min-h-0">
+        <div className="flex-1 overflow-auto flex items-center justify-center bg-[#f8f9fa] dark:bg-muted/30 p-4 min-h-0">
           {!imageUrl && !imageError && (
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           )}
@@ -139,7 +139,7 @@ export function DropboxPreviewPanel({ entry, onClose, onDownload, onDelete, onRe
         </div>
 
         {/* Zoom Controls */}
-        <div className="flex items-center justify-center px-4 py-2 border-t">
+        <div className="flex items-center justify-center px-4 py-2 border-t border-[#e8eaed] dark:border-border">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.max(10, z - 10))} disabled={zoom <= 10}>
               <ZoomOut className="h-4 w-4" />

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,20 +83,6 @@ const EmployeeLeads = () => {
   });
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
 
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem('employee-leads-column-widths');
-      if (saved) return { ...DEFAULT_EL_COL_WIDTHS, ...JSON.parse(saved) };
-    } catch { /* ignore corrupt localStorage */ }
-    return DEFAULT_EL_COL_WIDTHS;
-  });
-  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setColumnWidths(prev => {
-      const next = { ...prev, [columnId]: newWidth };
-      localStorage.setItem('employee-leads-column-widths', JSON.stringify(next));
-      return next;
-    });
-  }, []);
 
   const { setPageTitle } = useAdminTopBar();
   useEffect(() => {
@@ -360,6 +347,16 @@ const EmployeeLeads = () => {
       lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
     return matchesSearch && matchesStatus;
+  });
+
+  const { columnWidths, handleColumnResize } = useAutoFitColumns({
+    minWidths: DEFAULT_EL_COL_WIDTHS,
+    autoFitConfig: {
+      lead: { getText: (l: any) => l.name, extraPx: 32 },
+      contact: { getText: (l: any) => l.phone || l.email },
+    },
+    data: filteredLeads,
+    storageKey: 'emp-leads-col-widths-v2',
   });
 
   const statusCounts = leads.reduce((acc, lead) => {
@@ -717,7 +714,7 @@ const EmployeeLeads = () => {
                               </p>
                             )}
                             {lead.email && (
-                              <p className="text-[13px] text-muted-foreground flex items-center gap-1.5 truncate max-w-[120px]">
+                              <p className="text-[13px] text-muted-foreground flex items-center gap-1.5 truncate">
                                 <Mail className="w-3 h-3 flex-shrink-0" />
                                 <span className="truncate">{lead.email}</span>
                               </p>

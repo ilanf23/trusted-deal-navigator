@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/form';
 
 const profileSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().trim().min(1, 'Name is required'),
   phone: z.string().optional(),
   position: z.string().optional(),
   city: z.string().optional(),

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -110,29 +111,6 @@ const Projects = () => {
   const [addTagsDialogOpen, setAddTagsDialogOpen] = useState(false);
   const [bulkTagValue, setBulkTagValue] = useState('');
 
-  // ── Column resize state (persisted to localStorage) ──
-  const DEFAULT_COLUMN_WIDTHS = useMemo(() => ({
-    name: 260, owner: 150, people: 180, related: 200, modified: 130,
-  }), []);
-
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem('projects-column-widths');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
-      }
-    } catch { /* ignore corrupt localStorage */ }
-    return DEFAULT_COLUMN_WIDTHS;
-  });
-
-  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setColumnWidths(prev => {
-      const next = { ...prev, [columnId]: newWidth };
-      localStorage.setItem('projects-column-widths', JSON.stringify(next));
-      return next;
-    });
-  }, []);
 
   // Close column sort menu on outside click
   useEffect(() => {
@@ -304,7 +282,15 @@ const Projects = () => {
     return result;
   }, [rawProjects, searchTerm, sortField, sortDir, leadMap, teamMemberMap, projectPeopleMap, activeFilter]);
 
-
+  const { columnWidths, handleColumnResize } = useAutoFitColumns({
+    minWidths: { name: 260, owner: 150, people: 180, related: 200, modified: 130 },
+    autoFitConfig: {
+      name: { getText: (p: any) => p.name, extraPx: 24 },
+      owner: { getText: (p: any) => teamMemberMap[p.owner ?? ''] ?? '', extraPx: 32 },
+    },
+    data: filteredProjects,
+    storageKey: 'projects-col-widths-v2',
+  });
 
   const allSelected = filteredProjects.length > 0 && filteredProjects.every(p => selectedIds.has(p.id));
   const toggleAll = () => {

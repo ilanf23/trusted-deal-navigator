@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { useNavigate } from 'react-router-dom';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -383,25 +384,6 @@ const LenderPrograms = () => {
     });
   };
 
-  // ── Column widths (localStorage-persisted) ──
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    try {
-      const saved = localStorage.getItem('lender-programs-column-widths');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
-      }
-    } catch { /* ignore */ }
-    return DEFAULT_COLUMN_WIDTHS;
-  });
-
-  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setColumnWidths(prev => {
-      const next = { ...prev, [columnId]: newWidth };
-      localStorage.setItem('lender-programs-column-widths', JSON.stringify(next));
-      return next;
-    });
-  }, []);
 
   // ── Close sort menu on outside click ──
   useEffect(() => {
@@ -474,6 +456,24 @@ const LenderPrograms = () => {
 
     return result;
   }, [rows, searchQuery, filters, sortField, sortDir]);
+
+  const { columnWidths, handleColumnResize } = useAutoFitColumns({
+    minWidths: DEFAULT_COLUMN_WIDTHS,
+    autoFitConfig: {
+      lender_name: { getText: (r: any) => r.lender_name, extraPx: 24 },
+      contact_name: { getText: (r: any) => r.contact_name },
+      email: { getText: (r: any) => r.email },
+      phone: { getText: (r: any) => r.phone },
+      location: { getText: (r: any) => r.location },
+      looking_for: { getText: (r: any) => r.looking_for },
+      loan_types: { getText: (r: any) => r.loan_types },
+      loan_size_text: { getText: (r: any) => r.loan_size_text },
+      states: { getText: (r: any) => r.states },
+    },
+    data: filteredAndSorted,
+    storageKey: 'lender-col-widths-v2',
+    maxAutoWidth: 400,
+  });
 
   const isAllSelected = useMemo(() => {
     return filteredAndSorted.length > 0 && filteredAndSorted.every(r => selectedLenderIds.has(r.id));
