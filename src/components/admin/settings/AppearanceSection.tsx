@@ -37,7 +37,7 @@ const AppearanceSection = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {themeOptions.map((option) => {
           const Icon = option.icon;
           const isSelected = theme === option.value;

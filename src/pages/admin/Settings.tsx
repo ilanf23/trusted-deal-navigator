@@ -38,7 +38,7 @@ const Settings = () => {
     return () => {
       setPageTitle(null);
     };
-  }, []);
+  }, [setPageTitle]);
 
   const current = sections.find((s) => s.id === activeSection)!;
 
@@ -50,10 +50,10 @@ const Settings = () => {
           <p className="text-muted-foreground mt-1">Manage your account and preferences</p>
         </div>
 
-        <div className="flex gap-6">
+        <div className="flex flex-col md:flex-row gap-6">
           {/* Left sidebar navigation */}
-          <nav className="w-56 flex-shrink-0">
-            <div className="space-y-1">
+          <nav className="w-full md:w-56 flex-shrink-0">
+            <div className="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
               {sections.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
@@ -62,7 +62,7 @@ const Settings = () => {
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left',
+                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left whitespace-nowrap md:whitespace-normal md:w-full',
                       isActive
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'

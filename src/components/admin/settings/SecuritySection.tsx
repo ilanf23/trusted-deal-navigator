@@ -9,7 +9,6 @@ import { Loader2, Mail, Lock, Eye, EyeOff, Check, X, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Progress } from '@/components/ui/progress';
 import {
   Form,
   FormField,
@@ -71,11 +70,11 @@ const getStrengthLabel = (strength: number) => {
 };
 
 const getStrengthColor = (strength: number) => {
-  if (strength <= 20) return 'bg-red-500';
-  if (strength <= 40) return 'bg-orange-500';
-  if (strength <= 60) return 'bg-yellow-500';
-  if (strength <= 80) return 'bg-blue-500';
-  return 'bg-green-500';
+  if (strength <= 20) return '#ef4444';
+  if (strength <= 40) return '#f97316';
+  if (strength <= 60) return '#eab308';
+  if (strength <= 80) return '#3b82f6';
+  return '#22c55e';
 };
 
 const SecuritySection = () => {
@@ -279,7 +278,12 @@ const PasswordChangeForm = ({ lastPasswordChange }: { lastPasswordChange?: strin
                 {newPassword.length > 0 && (
                   <div className="space-y-2 pt-1">
                     <div className="flex items-center gap-2">
-                      <Progress value={strength} className={`h-2 flex-1 [&>div]:${getStrengthColor(strength)}`} />
+                      <div className="h-2 flex-1 rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className="h-full transition-all rounded-full"
+                          style={{ width: `${strength}%`, backgroundColor: getStrengthColor(strength) }}
+                        />
+                      </div>
                       <span className="text-xs text-muted-foreground w-20 text-right">{getStrengthLabel(strength)}</span>
                     </div>
                     <ul className="space-y-1">

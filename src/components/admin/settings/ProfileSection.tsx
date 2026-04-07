@@ -149,7 +149,7 @@ const ProfileSection = () => {
             )}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-sm text-muted-foreground">Email</Label>
               <Input value={fullProfile?.email || ''} disabled className="bg-muted" />
@@ -188,7 +188,7 @@ const ProfileSection = () => {
           <Separator />
 
           <p className="text-sm font-medium">Location</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <FormField
               control={form.control}
               name="city"
