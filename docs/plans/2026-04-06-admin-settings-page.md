@@ -48,11 +48,11 @@ Create a comprehensive settings page accessible from every admin profile (both /
 - Create: `src/components/admin/settings/ProfileSection.tsx`
 - Modify: `src/pages/admin/Settings.tsx`
 
-- [ ] Build ProfileSection component with editable fields: display name, email (read-only here, editable in Security), phone number, position/title, and address fields (city, state, zip)
-- [ ] Integrate existing AvatarUpload component for profile photo management with crop/zoom functionality
-- [ ] Use React Hook Form + Zod for form validation
-- [ ] Save profile changes to the `users` table via Supabase update, with toast notifications for success/error
-- [ ] Invalidate team-member query cache on successful save
+- [x] Build ProfileSection component with editable fields: display name, email (read-only here, editable in Security), phone number, position/title, and address fields (city, state, zip)
+- [x] Integrate existing AvatarUpload component for profile photo management with crop/zoom functionality
+- [x] Use React Hook Form + Zod for form validation
+- [x] Save profile changes to the `users` table via Supabase update, with toast notifications for success/error
+- [x] Invalidate team-member query cache on successful save
 
 ### Task 3: Security Section - Email and Password Changes
 
