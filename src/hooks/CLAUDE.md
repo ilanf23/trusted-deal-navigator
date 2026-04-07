@@ -51,8 +51,6 @@
 
 ## System
 - `useEdgeFunctionWarmup` — pings `twilio-inbound` every 5 minutes (admin users only) to keep function warm.
-- `useNewSignups` — new signups this week from `new_signups` table.
-
 ## Patterns
 - All data hooks use `useQuery` with explicit `queryKey` arrays for cache management
 - Mutations use `useMutation` with `onSuccess` cache invalidation via `queryClient.invalidateQueries`

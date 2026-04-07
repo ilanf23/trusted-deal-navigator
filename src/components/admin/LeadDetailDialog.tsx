@@ -102,7 +102,7 @@ interface Lead {
 
 interface LeadPhone {
   id: string;
-  lead_id: string;
+  entity_id: string;
   phone_number: string;
   phone_type: string;
   is_primary: boolean;
@@ -110,7 +110,7 @@ interface LeadPhone {
 
 interface LeadEmail {
   id: string;
-  lead_id: string;
+  entity_id: string;
   email: string;
   email_type: string;
   is_primary: boolean;
@@ -118,7 +118,7 @@ interface LeadEmail {
 
 interface LeadAddress {
   id: string;
-  lead_id: string;
+  entity_id: string;
   address_type: string;
   address_line_1: string | null;
   address_line_2: string | null;
@@ -131,7 +131,7 @@ interface LeadAddress {
 
 interface LeadContact {
   id: string;
-  lead_id: string;
+  entity_id: string;
   name: string;
   title: string | null;
   email: string | null;
@@ -143,7 +143,7 @@ interface LeadContact {
 
 interface LeadActivity {
   id: string;
-  lead_id: string;
+  entity_id: string;
   activity_type: string;
   title: string | null;
   content: string | null;
@@ -227,7 +227,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [notesOpen, setNotesOpen] = useState(true);
   const [magicColumnsOpen, setMagicColumnsOpen] = useState(true);
 
-  // Query lead_responses from database for placeholder/custom field data
+  // Query deal_responses from database for placeholder/custom field data
   const { data: leadResponseData } = useQuery({
     queryKey: ['lead-response-data', lead?.id],
     queryFn: async () => {
@@ -890,7 +890,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     },
   });
 
-  // Update phone in lead_phones table
+  // Update phone in entity_phones table
   const updatePhone = useMutation({
     mutationFn: async ({ id, phone_number, phone_type }: { id: string; phone_number?: string; phone_type?: string }) => {
       const updates: { phone_number?: string; phone_type?: string } = {};
@@ -905,7 +905,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     },
   });
 
-  // Update email in lead_emails table
+  // Update email in entity_emails table
   const updateEmail = useMutation({
     mutationFn: async ({ id, email, email_type }: { id: string; email?: string; email_type?: string }) => {
       const updates: { email?: string; email_type?: string } = {};

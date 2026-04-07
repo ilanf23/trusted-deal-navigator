@@ -43,7 +43,7 @@ const RecipientAutocomplete: React.FC<RecipientAutocompleteProps> = ({
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('leads')
+        .from('people')
         .select('id, name, email, company_name')
         .or(`name.ilike.${query}%,email.ilike.${query}%,company_name.ilike.${query}%`)
         .not('email', 'is', null)

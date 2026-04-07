@@ -30,7 +30,7 @@ export const MetricsWidget = () => {
 
       // Get leads
       const { data: leads } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('status, created_at');
 
       // Get tasks completed this month

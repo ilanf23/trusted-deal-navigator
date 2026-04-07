@@ -234,15 +234,16 @@ export function EmailActionBar({
 
       // Log activity if linked to a deal
       if (linkedDeal?.id) {
-        await supabase.from('lead_activities').insert({
-          lead_id: linkedDeal.id,
+        await supabase.from('activities').insert({
+          entity_id: linkedDeal.id,
+          entity_type: 'pipeline',
           activity_type: 'email',
           title: `Nudge ${nudgeType} draft created`,
           content: subject,
         });
 
-        // Update lead timestamp
-        await supabase.from('leads').update({ 
+        // Update deal timestamp
+        await supabase.from('pipeline').update({
           updated_at: new Date().toISOString(),
           last_activity_at: new Date().toISOString(),
         }).eq('id', linkedDeal.id);
@@ -355,15 +356,16 @@ export function EmailActionBar({
         next_action: 'Review received documents' 
       });
 
-      // Update lead status if applicable
+      // Update deal status if applicable
       if (linkedDeal?.id) {
-        await supabase.from('leads').update({ 
+        await supabase.from('pipeline').update({
           updated_at: new Date().toISOString(),
           last_activity_at: new Date().toISOString(),
         }).eq('id', linkedDeal.id);
 
-        await supabase.from('lead_activities').insert({
-          lead_id: linkedDeal.id,
+        await supabase.from('activities').insert({
+          entity_id: linkedDeal.id,
+          entity_type: 'pipeline',
           activity_type: 'status',
           title: 'Documents received from borrower',
           content: `Via email: ${emailSubject}`,
@@ -391,15 +393,16 @@ export function EmailActionBar({
         next_action: 'Review lender response' 
       });
 
-      // Update lead
+      // Update deal
       if (linkedDeal?.id) {
-        await supabase.from('leads').update({ 
+        await supabase.from('pipeline').update({
           updated_at: new Date().toISOString(),
           last_activity_at: new Date().toISOString(),
         }).eq('id', linkedDeal.id);
 
-        await supabase.from('lead_activities').insert({
-          lead_id: linkedDeal.id,
+        await supabase.from('activities').insert({
+          entity_id: linkedDeal.id,
+          entity_type: 'pipeline',
           activity_type: 'status',
           title: 'Lender response received',
           content: `Via email: ${emailSubject}`,
@@ -443,8 +446,9 @@ export function EmailActionBar({
 
       // Log activity
       if (linkedDeal?.id) {
-        await supabase.from('lead_activities').insert({
-          lead_id: linkedDeal.id,
+        await supabase.from('activities').insert({
+          entity_id: linkedDeal.id,
+          entity_type: 'pipeline',
           activity_type: 'status',
           title: 'Deal escalated',
           content: escalateNote || 'Escalation triggered from inbox',
@@ -482,8 +486,9 @@ export function EmailActionBar({
       });
 
       if (linkedDeal?.id) {
-        await supabase.from('lead_activities').insert({
-          lead_id: linkedDeal.id,
+        await supabase.from('activities').insert({
+          entity_id: linkedDeal.id,
+          entity_type: 'pipeline',
           activity_type: 'status',
           title: 'Email action completed',
           content: `Completed: ${emailSubject}`,

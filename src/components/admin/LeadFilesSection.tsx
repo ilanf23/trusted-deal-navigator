@@ -21,7 +21,7 @@ import { useDropboxAutoUpload } from '@/hooks/useDropboxAutoUpload';
 
 interface LeadFile {
   id: string;
-  lead_id: string;
+  entity_id: string;
   file_name: string;
   file_url: string;
   file_type: string | null;
@@ -96,9 +96,9 @@ export function LeadFilesSection({ leadId, leadName, companyName }: LeadFilesSec
     queryKey: ['lead-files', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_files')
-        .select('id, lead_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('lead_id', leadId)
+        .from('entity_files')
+        .select('id, entity_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
+        .eq('entity_id', leadId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as LeadFile[];
@@ -143,9 +143,9 @@ export function LeadFilesSection({ leadId, leadName, companyName }: LeadFilesSec
           }
 
           const { error: dbError } = await supabase
-            .from('lead_files')
+            .from('entity_files')
             .insert({
-              lead_id: leadId,
+              entity_id: leadId,
               file_name: file.name,
               file_url: filePath,
               file_type: file.type || null,
@@ -217,7 +217,7 @@ export function LeadFilesSection({ leadId, leadName, companyName }: LeadFilesSec
       if (storageError) console.error('Storage delete error:', storageError);
 
       const { error: dbError } = await supabase
-        .from('lead_files')
+        .from('entity_files')
         .delete()
         .eq('id', file.id);
 

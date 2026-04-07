@@ -82,7 +82,7 @@ const AdminMessages = () => {
     try {
       const { data, error } = await supabase
         .from('call_rating_notifications')
-        .select('*, lead:leads(name, phone, email)')
+        .select('*, lead:pipeline(name, phone, email)')
         .order('created_at', { ascending: false });
       
       if (error) throw error;

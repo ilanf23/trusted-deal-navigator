@@ -48,7 +48,7 @@ const RevenueChart = ({ evanId }: RevenueChartProps) => {
     queryKey: ['revenue-chart', evanId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select(`
           id,
           name,

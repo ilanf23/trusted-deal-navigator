@@ -305,7 +305,7 @@ Subject: ${followUpEmailSubject}
 ${followUpEmailContent}`;
       
       await supabase
-        .from('leads')
+        .from('pipeline')
         .update({ notes: updatedNotes })
         .eq('id', leadId);
     }

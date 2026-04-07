@@ -1035,27 +1035,16 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
     },
   });
 
-  // ── Pipeline records query ──
-  const { data: pipelineRecords = [] } = useQuery({
-    queryKey: ['person-pipeline-records', person.id],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('pipeline_leads')
-        .select('id, pipeline_id, stage_id, added_at, updated_at, pipeline:pipelines(id, name), stage:pipeline_stages(id, name, color)')
-        .eq('lead_id', person.id)
-        .order('updated_at', { ascending: false });
-      if (error) throw error;
-      return data as Array<{
-        id: string;
-        pipeline_id: string;
-        stage_id: string;
-        added_at: string;
-        updated_at: string;
-        pipeline: { id: string; name: string };
-        stage: { id: string; name: string; color: string | null };
-      }>;
-    },
-  });
+  // ── Pipeline records — people are standalone entities, no longer in pipelines directly ──
+  const pipelineRecords: Array<{
+    id: string;
+    pipeline_id: string;
+    stage_id: string;
+    added_at: string;
+    updated_at: string;
+    pipeline: { id: string; name: string };
+    stage: { id: string; name: string; color: string | null };
+  }> = [];
 
   const { data: allPipelines = [] } = usePipelines();
 
@@ -1065,26 +1054,13 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
     return allPipelines.filter((p: any) => p.name?.toLowerCase().includes(q));
   }, [allPipelines, pipelineSearchText]);
 
+  // Add to pipeline — disabled, people are standalone entities now
   const addToPipelineMutation = useMutation({
-    mutationFn: async (pipelineId: string) => {
-      const { data: stages, error: stagesError } = await (supabase as any)
-        .from('pipeline_stages')
-        .select('id')
-        .eq('pipeline_id', pipelineId)
-        .order('position')
-        .limit(1);
-      if (stagesError) throw stagesError;
-      if (!stages || stages.length === 0) throw new Error('Pipeline has no stages');
-
-      const { error: insertError } = await (supabase as any)
-        .from('pipeline_leads')
-        .insert({ pipeline_id: pipelineId, lead_id: person.id, stage_id: stages[0].id });
-      if (insertError) throw insertError;
+    mutationFn: async (_pipelineId: string) => {
+      // People are no longer added to pipelines directly.
+      // Use pipeline_people junction table to link people to deals instead.
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['person-pipeline-records', person.id] });
-      queryClient.invalidateQueries({ queryKey: ['people'] });
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
       toast.success('Added to pipeline');
       setPipelineSearchText('');
       setPipelineSearchFocused(false);
@@ -1124,16 +1100,12 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
     enabled: !!person.company_name,
   });
 
-  // ── Remove from pipeline ──
+  // Remove from pipeline — disabled, people are standalone entities now
   const removeFromPipelineMutation = useMutation({
-    mutationFn: async (recordId: string) => {
-      const { error } = await (supabase as any).from('pipeline_leads').delete().eq('id', recordId);
-      if (error) throw error;
+    mutationFn: async (_recordId: string) => {
+      // People are no longer in pipelines directly.
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['person-pipeline-records', person.id] });
-      queryClient.invalidateQueries({ queryKey: ['people'] });
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
       toast.success('Removed from pipeline');
     },
     onError: () => toast.error('Failed to remove from pipeline'),

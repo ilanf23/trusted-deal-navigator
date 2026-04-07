@@ -359,7 +359,7 @@ const LoanVolumeLog = () => {
     queryKey: ['volume-log-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*')
         .order('updated_at', { ascending: false });
       if (error) throw error;
@@ -406,7 +406,7 @@ const LoanVolumeLog = () => {
   const updateLeadMutation = useMutation({
     mutationFn: async ({ leadId, field, value }: { leadId: string; field: string; value: any }) => {
       const { error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .update({ [field]: value })
         .eq('id', leadId);
       if (error) throw error;

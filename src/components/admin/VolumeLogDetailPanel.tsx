@@ -143,7 +143,7 @@ export default function VolumeLogDetailPanel({
     if (!lead) return;
     setMarkingWon(true);
     const { error } = await supabase
-      .from('leads')
+      .from('pipeline')
       .update({ won: true } as any)
       .eq('id', lead.id);
     setMarkingWon(false);

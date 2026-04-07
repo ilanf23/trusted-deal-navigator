@@ -147,7 +147,7 @@ export const CommunicationsWidget = () => {
     queryKey: ['leads-for-comm'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, name, phone')
         .order('name');
       if (error) throw error;
@@ -238,7 +238,7 @@ export const CommunicationsWidget = () => {
     mutationFn: async (comm: Communication) => {
       // Create new lead with phone from communication
       const { data: newLead, error: leadError } = await supabase
-        .from('leads')
+        .from('pipeline')
         .insert({
           name: newLeadData.name,
           phone: comm.phone_number,

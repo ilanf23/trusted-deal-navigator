@@ -739,13 +739,13 @@ export default function CompanyExpandedView() {
     enabled: !!company?.company_name,
   });
 
-  // Related deals (leads table where company_name matches)
+  // Related deals (pipeline table where company_name matches)
   const { data: relatedDeals = [] } = useQuery({
     queryKey: ['company-related-deals', company?.company_name],
     queryFn: async () => {
       if (!company?.company_name) return [];
       const { data } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, name, status, deal_value, assigned_to')
         .eq('company_name', company.company_name)
         .order('created_at', { ascending: false });

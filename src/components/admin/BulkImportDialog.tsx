@@ -237,7 +237,7 @@ export default function BulkImportDialog({ open, onOpenChange }: BulkImportDialo
       }));
 
       const { data: insertedLeads, error } = await supabase
-        .from('leads')
+        .from('people')
         .insert(leadsToInsert)
         .select('id');
 
@@ -247,15 +247,7 @@ export default function BulkImportDialog({ open, onOpenChange }: BulkImportDialo
       } else {
         totalDone += insertedLeads.length;
 
-        // Add to default pipeline
-        if (pipeline && firstStageId && insertedLeads.length > 0) {
-          const pipelineLeads = insertedLeads.map(l => ({
-            lead_id: l.id,
-            pipeline_id: pipeline.id,
-            stage_id: firstStageId!,
-          }));
-          await supabase.from('pipeline_leads').insert(pipelineLeads);
-        }
+        // People are standalone entities — no pipeline insert needed
       }
 
       setImportProgress({ done: totalDone, total: records.length, errors: totalErrors });
@@ -263,7 +255,7 @@ export default function BulkImportDialog({ open, onOpenChange }: BulkImportDialo
 
     setImportErrors(errors);
     setStep('done');
-    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['people'] });
 
     if (totalErrors === 0) {
       toast.success(`Successfully imported ${totalDone} contacts`);

@@ -87,9 +87,9 @@ export const useFeedData = () => {
         { data: checklists },
         { data: checklistItems },
       ] = await Promise.all([
-        // All leads (no pipeline filter — every pipeline)
+        // All deals (no pipeline filter — every pipeline)
         supabase
-          .from('leads')
+          .from('pipeline')
           .select('id, name, company_name, status, notes, created_at, updated_at, source, assigned_to, phone')
           .order('updated_at', { ascending: false })
           .limit(200),
@@ -103,10 +103,10 @@ export const useFeedData = () => {
           .select('id, communication_type, direction, content, created_at, lead_id, phone_number')
           .order('created_at', { ascending: false })
           .limit(200),
-        // Lead activities (logged activities from all pipelines)
+        // Activities (logged activities from all pipelines)
         supabase
-          .from('lead_activities')
-          .select('id, activity_type, content, title, created_at, created_by, lead_id')
+          .from('activities')
+          .select('id, activity_type, content, title, created_at, created_by, entity_id')
           .order('created_at', { ascending: false })
           .limit(200),
         // Outbound emails (Gmail sent emails linked to leads)
@@ -118,12 +118,12 @@ export const useFeedData = () => {
           .limit(200),
         // Checklists linked to activities
         supabase
-          .from('lead_checklists')
+          .from('underwriting_checklists')
           .select('id, title, activity_id')
           .not('activity_id', 'is', null),
         // Checklist items
         supabase
-          .from('lead_checklist_items')
+          .from('underwriting_checklist_items')
           .select('id, checklist_id, text, is_checked, position')
           .order('position', { ascending: true }),
       ]);
@@ -132,6 +132,7 @@ export const useFeedData = () => {
       const teamMap = new Map((teamMembers || []).map(tm => [tm.id, { name: tm.name, avatarUrl: tm.avatar_url }]));
       const teamNameMap = new Map((teamMembers || []).map(tm => [tm.name.toLowerCase(), tm.avatar_url]));
       const leadMap = new Map((leads || []).map(l => [l.id, { name: l.name, company: l.company_name, status: l.status, assignedTo: l.assigned_to, phone: l.phone }]));
+      // Note: 'leads' above is actually 'pipeline' (deals) data
 
       // ── Build checklist map: activityId → { title, items[] } ──
       const checklistByActivity = new Map<string, { title: string | null; items: FeedChecklistItem[] }>();
@@ -152,13 +153,13 @@ export const useFeedData = () => {
         }
       }
 
-      // Track lead_activities IDs to deduplicate against lead.notes
-      const leadActivityLeadIds = new Set<string>();
+      // Track activities entity IDs to deduplicate against lead.notes
+      const activityEntityIds = new Set<string>();
 
-      // ── 1. Lead Activities (from lead_activities table — all pipelines) ──
+      // ── 1. Activities (from activities table — all pipelines) ──
       for (const la of (leadActivities || [])) {
-        leadActivityLeadIds.add(la.lead_id);
-        const leadInfo = leadMap.get(la.lead_id);
+        activityEntityIds.add(la.entity_id);
+        const leadInfo = leadMap.get(la.entity_id);
         const creatorInfo = la.created_by ? teamMap.get(la.created_by) : null;
         const actorName = creatorInfo?.name || 'Team';
 
@@ -181,7 +182,7 @@ export const useFeedData = () => {
           actorAvatarUrl: creatorInfo?.avatarUrl || null,
           leadName: leadInfo?.name || 'Unknown',
           leadCompany: leadInfo?.company || null,
-          leadId: la.lead_id,
+          leadId: la.entity_id,
           content: la.content || la.title || `${la.activity_type} logged`,
           time: formatTime(la.created_at),
           rawDate: new Date(la.created_at),
@@ -196,11 +197,11 @@ export const useFeedData = () => {
         });
       }
 
-      // ── 2. Lead notes (only for leads not already covered by lead_activities) ──
+      // ── 2. Deal notes (only for deals not already covered by activities) ──
       for (const lead of (leads || [])) {
         if (!lead.notes) continue;
-        // Skip if this lead already has entries from lead_activities
-        if (leadActivityLeadIds.has(lead.id)) continue;
+        // Skip if this deal already has entries from activities
+        if (activityEntityIds.has(lead.id)) continue;
 
         const assigneeInfo = lead.assigned_to ? teamMap.get(lead.assigned_to) : null;
         const assigneeName = assigneeInfo?.name || 'Team';

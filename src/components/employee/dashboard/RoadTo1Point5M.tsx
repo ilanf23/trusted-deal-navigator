@@ -22,17 +22,20 @@ export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MPro
       const startDate = timePeriod === 'ytd'
         ? new Date(new Date().getFullYear(), 0, 1).toISOString()
         : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-      
+
       const { data } = await supabase
-        .from('team_funded_deals')
-        .select('loan_amount, fee_earned, days_in_pipeline, funded_at, team_member:users(name)')
-        .gte('funded_at', startDate)
-        .order('funded_at', { ascending: false });
+        .from('pipeline')
+        .select('deal_value, net_revenue, actual_net_revenue, close_date, created_at, assigned_to_user:users!pipeline_assigned_to_fkey(name)')
+        .eq('won', true)
+        .gte('close_date', startDate)
+        .order('close_date', { ascending: false });
       return (data || []).map((d: any) => ({
-        rep: d.team_member?.name || 'Unknown',
-        loanAmount: Number(d.loan_amount),
-        daysInPipeline: d.days_in_pipeline,
-        fee: Number(d.fee_earned),
+        rep: d.assigned_to_user?.name || 'Unknown',
+        loanAmount: Number(d.deal_value) || 0,
+        daysInPipeline: d.close_date && d.created_at
+          ? Math.round((new Date(d.close_date).getTime() - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24))
+          : 0,
+        fee: Number(d.actual_net_revenue) || Number(d.net_revenue) || 0,
       }));
     },
   });

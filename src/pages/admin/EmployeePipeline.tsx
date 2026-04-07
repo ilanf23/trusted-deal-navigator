@@ -132,7 +132,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
+type Lead = Database['public']['Tables']['pipeline']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 // Status enum values in pipeline order
@@ -470,12 +470,12 @@ const EmployeePipeline = () => {
   }, [allTeamMembers]);
 
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['evans-pipeline-leads', currentMemberId, ownerFilter, teamMemberNameToId],
+    queryKey: ['evans-pipeline-deals', currentMemberId, ownerFilter, teamMemberNameToId],
     queryFn: async () => {
       if (!currentMemberId) return [];
-      
+
       let query = supabase
-        .from('leads')
+        .from('pipeline')
         .select('*')
         .order('updated_at', { ascending: false });
       
@@ -644,24 +644,19 @@ const EmployeePipeline = () => {
       
       // Fetch additional lead data for context
       const { data: leadData } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select(`
           *,
-          pipeline_leads(
-            stage_id,
-            pipeline_id,
-            pipeline_stages(name, color),
-            pipelines(name)
-          ),
+          pipeline_stages(name, color),
+          pipelines(name),
           lead_responses(*)
         `)
         .eq('id', pendingEmailLead.id)
         .single();
-      
+
       // Get pipeline stage info
-      const pipelineLead = leadData?.pipeline_leads?.[0];
-      const stageName = pipelineLead?.pipeline_stages?.name || 'Discovery';
-      const pipelineNameVal = pipelineLead?.pipelines?.name || 'Main Pipeline';
+      const stageName = leadData?.pipeline_stages?.name || 'Discovery';
+      const pipelineNameVal = leadData?.pipelines?.name || 'Main Pipeline';
       
       // Get lead response data
       const leadResponse = leadData?.lead_responses?.[0];
@@ -759,7 +754,7 @@ const EmployeePipeline = () => {
       // Update lead's last_activity_at
       if (composeLeadId) {
         await supabase
-          .from('leads')
+          .from('pipeline')
           .update({ last_activity_at: new Date().toISOString() })
           .eq('id', composeLeadId);
       }
@@ -770,7 +765,7 @@ const EmployeePipeline = () => {
       setComposeSubject('');
       setComposeBody('');
       setComposeLeadId(null);
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
     } catch (error: any) {
       console.error('Error sending email:', error);
       toast.error('Failed to send email: ' + error.message);
@@ -790,7 +785,7 @@ const EmployeePipeline = () => {
       } else if (status === 'won' || status === 'funded') {
         updates.converted_at = new Date().toISOString();
       }
-      const { error } = await supabase.from('leads').update(updates).eq('id', id);
+      const { error } = await supabase.from('pipeline').update(updates).eq('id', id);
       if (error) throw error;
 
       // Register undo with global context (unless this is an undo operation itself)
@@ -799,13 +794,12 @@ const EmployeePipeline = () => {
           label: `${leadName || 'Lead'} moved to ${stages.find(s => s.status === status)?.title || status}`,
           execute: async () => {
             const { error: undoError } = await supabase
-              .from('leads')
+              .from('pipeline')
               .update({ status: previousStatus, updated_at: new Date().toISOString() })
               .eq('id', id);
             if (undoError) throw undoError;
-            queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
-            queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
-            queryClient.invalidateQueries({ queryKey: ['leads'] });
+            queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
+            queryClient.invalidateQueries({ queryKey: ['pipeline'] });
           },
         });
       }
@@ -827,9 +821,8 @@ const EmployeePipeline = () => {
       }
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
       if (!((variables.previousStatus === 'discovery' || variables.previousStatus === 'initial_review') && (variables.status === 'pre_qualification' || variables.status === 'moving_to_underwriting'))) {
         if (variables.skipUndo) {
           toast.success('Undo successful');
@@ -846,7 +839,7 @@ const EmployeePipeline = () => {
     mutationFn: async ({ name, status }: { name: string; status: LeadStatus }) => {
       if (!currentMemberId) throw new Error('Current team member not found');
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .insert({
           name: name.trim(),
           status,
@@ -859,7 +852,7 @@ const EmployeePipeline = () => {
       return data as Lead;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
       toast.success('Lead created');
       setAddingToStage(null);
       setNewLeadName('');
@@ -877,13 +870,13 @@ const EmployeePipeline = () => {
   const updateLeadFieldMutation = useMutation({
     mutationFn: async ({ id, field, value }: { id: string; field: string; value: string | null }) => {
       if (!canEdit) throw new Error('Not authorized to update this lead');
-      const { error } = await supabase.from('leads').update({ [field]: value }).eq('id', id);
+      const { error } = await supabase.from('pipeline').update({ [field]: value }).eq('id', id);
       if (error) throw error;
       return { field, value };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
     },
     onError: () => toast.error('Failed to update lead'),
   });
@@ -895,21 +888,21 @@ const EmployeePipeline = () => {
       
       // First, fetch the leads data before deleting (for undo)
       const { data: leadsToDelete, error: fetchError } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*')
         .in('id', leadIds);
-      
+
       if (fetchError) throw fetchError;
-      
+
       // Delete the leads
-      const { error } = await supabase.from('leads').delete().in('id', leadIds);
+      const { error } = await supabase.from('pipeline').delete().in('id', leadIds);
       if (error) throw error;
-      
+
       return leadsToDelete as Lead[];
     },
     onSuccess: (deletedLeads) => {
-      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
       toast.success(`${deletedLeads.length} lead(s) deleted`);
       clearSelection();
       setDeleteConfirmOpen(false);
@@ -926,17 +919,16 @@ const EmployeePipeline = () => {
           execute: async () => {
             // Restore the deleted leads
             const { error: restoreError } = await supabase
-              .from('leads')
+              .from('pipeline')
               .insert(deletedLeads.map(lead => ({
                 ...lead,
                 updated_at: new Date().toISOString(),
               })));
-            
+
             if (restoreError) throw restoreError;
-            
-            queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
-            queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
-            queryClient.invalidateQueries({ queryKey: ['leads'] });
+
+            queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
+            queryClient.invalidateQueries({ queryKey: ['pipeline'] });
           },
         });
       }
@@ -951,18 +943,18 @@ const EmployeePipeline = () => {
       
       // Get current assignments before updating (for undo)
       const { data: leadsBeforeUpdate } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, assigned_to, name')
         .in('id', leadIds);
-      
-      const { error } = await supabase.from('leads').update({ assigned_to: ownerId }).in('id', leadIds);
+
+      const { error } = await supabase.from('pipeline').update({ assigned_to: ownerId }).in('id', leadIds);
       if (error) throw error;
       return { ownerId, leadsBeforeUpdate, leadCount: leadIds.length };
     },
     onSuccess: (result) => {
       toast.success(`${result.leadCount} lead(s) reassigned`);
-      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
       clearSelection();
       
       // Register undo for bulk owner change
@@ -977,10 +969,10 @@ const EmployeePipeline = () => {
           execute: async () => {
             // Restore original assignments
             for (const lead of result.leadsBeforeUpdate!) {
-              await supabase.from('leads').update({ assigned_to: lead.assigned_to }).eq('id', lead.id);
+              await supabase.from('pipeline').update({ assigned_to: lead.assigned_to }).eq('id', lead.id);
             }
-            queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
-            queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+            queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
+            queryClient.invalidateQueries({ queryKey: ['pipeline'] });
           },
         });
       }
@@ -1171,7 +1163,7 @@ const EmployeePipeline = () => {
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-slate-400" />
                 <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">Test</Badge>
-                <DbTableBadge tables={['leads', 'pipeline_leads']} />
+                <DbTableBadge tables={['pipeline']} />
                 {selectedPipeline && (
                   <div 
                     className="w-2 h-2 rounded-full flex-shrink-0" 
@@ -2002,8 +1994,8 @@ const EmployeePipeline = () => {
         open={!!detailDialogLead}
         onOpenChange={(open) => !open && setDetailDialogLead(null)}
         onLeadUpdated={() => {
-          queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
-          queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+          queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
+          queryClient.invalidateQueries({ queryKey: ['pipeline'] });
         }}
       />
 

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, TrendingDown, Target, DollarSign, Gauge, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, DollarSign, Gauge, BarChart3, Loader2 } from 'lucide-react';
 import { startOfYear, startOfMonth, differenceInDays } from 'date-fns';
 import type { TimePeriod } from '@/pages/admin/Dashboard';
 
@@ -11,90 +11,72 @@ interface PerformanceSnapshotProps {
   timePeriod?: TimePeriod;
 }
 
-// Mock data for varied deal values (simulating different closing prices)
-const mockDealData = [
-  { status: 'funded', loanAmount: 850000, closedDate: '2026-01-05' },
-  { status: 'funded', loanAmount: 425000, closedDate: '2026-01-08' },
-  { status: 'funded', loanAmount: 1200000, closedDate: '2025-12-15' },
-  { status: 'funded', loanAmount: 275000, closedDate: '2025-11-20' },
-  { status: 'funded', loanAmount: 950000, closedDate: '2025-10-10' },
-  { status: 'funded', loanAmount: 180000, closedDate: '2025-09-25' },
-  { status: 'funded', loanAmount: 2100000, closedDate: '2025-08-18' },
-  { status: 'funded', loanAmount: 650000, closedDate: '2025-07-05' },
-  { status: 'funded', loanAmount: 520000, closedDate: '2025-06-12' },
-  { status: 'funded', loanAmount: 380000, closedDate: '2025-05-22' },
-  { status: 'funded', loanAmount: 1450000, closedDate: '2025-04-08' },
-  { status: 'funded', loanAmount: 290000, closedDate: '2025-03-15' },
-  { status: 'funded', loanAmount: 780000, closedDate: '2025-02-28' },
-  { status: 'funded', loanAmount: 1100000, closedDate: '2025-01-18' },
-  // Pipeline deals (not funded yet)
-  { status: 'discovery', loanAmount: 450000 },
-  { status: 'pre_qualification', loanAmount: 890000 },
-  { status: 'pre_qualification', loanAmount: 320000 },
-  { status: 'document_collection', loanAmount: 1750000 },
-  { status: 'document_collection', loanAmount: 560000 },
-  { status: 'underwriting', loanAmount: 980000 },
-  { status: 'underwriting', loanAmount: 1200000 },
-  { status: 'approval', loanAmount: 720000 },
-  { status: 'approval', loanAmount: 2400000 },
-];
+const stageWeights: Record<string, number> = {
+  discovery: 0.1,
+  initial_review: 0.15,
+  pre_qualification: 0.25,
+  onboarding: 0.3,
+  document_collection: 0.5,
+  moving_to_underwriting: 0.6,
+  underwriting: 0.7,
+  ready_for_wu_approval: 0.8,
+  pre_approval_issued: 0.85,
+  approval: 0.9,
+};
+
+const annualTarget = 500000;
+const monthlyTarget = 45000;
 
 export const PerformanceSnapshot = ({ evanId, timePeriod = 'ytd' }: PerformanceSnapshotProps) => {
   const today = new Date();
   const yearStart = startOfYear(today);
   const monthStart = startOfMonth(today);
   const periodStart = timePeriod === 'ytd' ? yearStart : monthStart;
-  
+
   const daysIntoPeriod = differenceInDays(today, periodStart);
   const totalDaysInPeriod = timePeriod === 'ytd' ? 365 : new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
   const periodProgress = Math.round((daysIntoPeriod / totalDaysInPeriod) * 100);
 
-  const { data: metrics } = useQuery({
+  const { data: metrics, isLoading } = useQuery({
     queryKey: ['performance-snapshot', evanId, timePeriod],
     queryFn: async () => {
-      // Calculate metrics from mock data based on time period
-      const stageWeights: Record<string, number> = {
-        discovery: 0.1,
-        pre_qualification: 0.25,
-        document_collection: 0.5,
-        underwriting: 0.7,
-        approval: 0.9,
-        funded: 1.0,
-      };
+      const startDate = periodStart.toISOString();
 
-      // Filter funded deals by period
-      const fundedDeals = mockDealData.filter(deal => {
-        if (deal.status !== 'funded' || !deal.closedDate) return false;
-        const closedDate = new Date(deal.closedDate);
-        return closedDate >= periodStart && closedDate <= today;
-      });
+      // Fetch funded deals from pipeline (won deals)
+      const { data: fundedDeals } = await supabase
+        .from('pipeline')
+        .select('actual_net_revenue, net_revenue, close_date')
+        .eq('won', true)
+        .gte('close_date', startDate);
 
-      // Calculate revenue (2% broker fee on loan amount)
-      const revenueInPeriod = fundedDeals.reduce((sum, deal) => sum + (deal.loanAmount * 0.01), 0);
-      
-      // Pipeline deals (not funded)
-      const pipelineDeals = mockDealData.filter(deal => deal.status !== 'funded');
-      
-      // Calculate weighted forecast
-      const weightedForecast = pipelineDeals.reduce((sum, deal) => {
-        const fee = deal.loanAmount * 0.01;
-        const weight = stageWeights[deal.status] || 0.1;
+      // Fetch pipeline deals (not funded/won/lost)
+      const { data: pipelineDeals } = await supabase
+        .from('pipeline')
+        .select('deal_value, status')
+        .not('status', 'in', '("funded","won","lost")');
+
+      const funded = fundedDeals || [];
+      const pipeline = pipelineDeals || [];
+
+      const revenueInPeriod = funded.reduce((sum, d) => sum + (Number(d.actual_net_revenue) || Number(d.net_revenue) || 0), 0);
+      const fundedCount = funded.length;
+
+      const weightedForecast = pipeline.reduce((sum, d) => {
+        const dealValue = Number(d.deal_value) || 0;
+        const fee = dealValue * 0.01;
+        const weight = stageWeights[d.status] || 0.1;
         return sum + (fee * weight);
       }, 0);
 
-      // Annual/Monthly targets
-      const annualTarget = 500000;
-      const monthlyTarget = 45000;
       const targetAmount = timePeriod === 'ytd' ? annualTarget : monthlyTarget;
       const targetToDate = (targetAmount * periodProgress) / 100;
       const paceVsPlan = targetToDate > 0 ? Math.round((revenueInPeriod / targetToDate) * 100) : 0;
-      
-      // Confidence score based on pipeline health
-      const advancedStageDeals = pipelineDeals.filter(d => 
-        ['underwriting', 'approval'].includes(d.status)
+
+      const advancedStageDeals = pipeline.filter(d =>
+        ['underwriting', 'ready_for_wu_approval', 'pre_approval_issued', 'approval'].includes(d.status)
       ).length;
       const confidenceScore = Math.min(100, Math.round(
-        (pipelineDeals.length * 5) + (advancedStageDeals * 15) + (paceVsPlan * 0.3)
+        (pipeline.length * 5) + (advancedStageDeals * 15) + (paceVsPlan * 0.3)
       ));
 
       return {
@@ -104,11 +86,10 @@ export const PerformanceSnapshot = ({ evanId, timePeriod = 'ytd' }: PerformanceS
         paceVsPlan,
         weightedForecast,
         confidenceScore,
-        fundedDeals: fundedDeals.length,
+        fundedDeals: fundedCount,
         periodProgress,
       };
     },
-    enabled: true,
   });
 
   const formatCurrency = (value: number) => {
@@ -119,6 +100,16 @@ export const PerformanceSnapshot = ({ evanId, timePeriod = 'ytd' }: PerformanceS
 
   const paceStatus = (metrics?.paceVsPlan || 0) >= 100 ? 'ahead' : 'behind';
   const periodLabel = timePeriod === 'ytd' ? 'YTD' : 'MTD';
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -153,8 +144,8 @@ export const PerformanceSnapshot = ({ evanId, timePeriod = 'ytd' }: PerformanceS
             <p className="text-2xl font-bold">
               {Math.round(((metrics?.revenueInPeriod || 0) / (metrics?.targetAmount || 1)) * 100)}%
             </p>
-            <Progress 
-              value={((metrics?.revenueInPeriod || 0) / (metrics?.targetAmount || 1)) * 100} 
+            <Progress
+              value={((metrics?.revenueInPeriod || 0) / (metrics?.targetAmount || 1)) * 100}
               className="h-1.5 mt-2"
             />
             <p className="text-xs text-muted-foreground mt-1">
@@ -203,8 +194,8 @@ export const PerformanceSnapshot = ({ evanId, timePeriod = 'ytd' }: PerformanceS
             <p className="text-2xl font-bold">
               {metrics?.confidenceScore || 0}
             </p>
-            <Progress 
-              value={metrics?.confidenceScore || 0} 
+            <Progress
+              value={metrics?.confidenceScore || 0}
               className="h-1.5 mt-2"
             />
             <p className="text-xs text-muted-foreground mt-1">

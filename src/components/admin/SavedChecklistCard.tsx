@@ -43,7 +43,7 @@ export default function SavedChecklistCard({ checklist, formatDate, leadId }: Sa
   const handleToggleItem = useCallback(async (itemId: string, currentChecked: boolean) => {
     setTogglingItem(itemId);
     const { error } = await supabase
-      .from('lead_checklist_items')
+      .from('underwriting_checklist_items')
       .update({ is_checked: !currentChecked })
       .eq('id', itemId);
     setTogglingItem(null);

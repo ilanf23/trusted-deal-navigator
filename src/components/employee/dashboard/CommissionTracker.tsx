@@ -22,7 +22,7 @@ export const CommissionTracker = ({ evanId }: CommissionTrackerProps) => {
 
       // Get funded deals this month
       const { data: monthlyFunded } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*, lead_responses(*)')
         .eq('assigned_to', evanId)
         .eq('status', 'funded')
@@ -30,7 +30,7 @@ export const CommissionTracker = ({ evanId }: CommissionTrackerProps) => {
 
       // Get funded deals this year
       const { data: yearlyFunded } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*, lead_responses(*)')
         .eq('assigned_to', evanId)
         .eq('status', 'funded')
@@ -38,7 +38,7 @@ export const CommissionTracker = ({ evanId }: CommissionTrackerProps) => {
 
       // Get pending (in approval stage)
       const { data: pendingDeals } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*, lead_responses(*)')
         .eq('assigned_to', evanId)
         .eq('status', 'approval');

@@ -181,7 +181,7 @@ const MoveBoxesModal = ({
       }
 
       const { error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .update(updates)
         .in('id', leadIds);
       
@@ -217,48 +217,18 @@ const MoveBoxesModal = ({
 
       const targetStageId = targetStages?.[0]?.id;
 
-      // For each lead, update or insert into pipeline_leads
+      // Update each deal's pipeline_id and stage_id directly on the pipeline table
       for (const leadId of leadIds) {
-        // Check if lead already exists in target pipeline
-        const { data: existing } = await supabase
-          .from('pipeline_leads')
-          .select('id')
-          .eq('pipeline_id', targetPipelineId)
-          .eq('lead_id', leadId)
-          .single();
+        const { error: updateError } = await supabase
+          .from('pipeline')
+          .update({
+            pipeline_id: targetPipelineId,
+            stage_id: targetStageId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', leadId);
 
-        if (existing) {
-          // Update existing entry
-          const { error: updateError } = await supabase
-            .from('pipeline_leads')
-            .update({
-              stage_id: targetStageId,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', existing.id);
-
-          if (updateError) throw updateError;
-        } else {
-          // Insert new entry
-          const { error: insertError } = await supabase
-            .from('pipeline_leads')
-            .insert({
-              pipeline_id: targetPipelineId,
-              lead_id: leadId,
-              stage_id: targetStageId,
-            });
-
-          if (insertError) throw insertError;
-        }
-
-        // Remove from current pipeline if specified
-        if (currentPipelineId) {
-          await supabase
-            .from('pipeline_leads')
-            .delete()
-            .eq('pipeline_id', currentPipelineId)
-            .eq('lead_id', leadId);
-        }
+        if (updateError) throw updateError;
       }
 
       return { count: leadIds.length, targetPipelineId };

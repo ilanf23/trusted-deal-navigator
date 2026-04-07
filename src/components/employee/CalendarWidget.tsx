@@ -259,7 +259,7 @@ export const CalendarWidget = () => {
 
       let query = supabase
         .from('tasks')
-        .select('id, title, due_date, is_completed, priority, status, lead:leads(name, company_name)')
+        .select('id, title, due_date, is_completed, priority, status, lead:pipeline(name, company_name)')
         .not('due_date', 'is', null)
         .gte('due_date', start.toISOString())
         .lte('due_date', end.toISOString())

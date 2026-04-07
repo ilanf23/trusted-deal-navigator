@@ -94,7 +94,7 @@ interface RateWatchEntry {
   occupancy_use: string | null;
   owner_occupied_pct: number | null;
   seeking_to_improve: string | null;
-  leads: {
+  pipeline: {
     id: string;
     name: string;
     email: string | null;
@@ -185,7 +185,7 @@ const RateWatch = () => {
         .from('rate_watch')
         .select(`
           *,
-          leads (
+          pipeline (
             id, name, email, phone, company_name, status, source, notes, assigned_to,
             created_at, updated_at, questionnaire_sent_at, questionnaire_completed_at,
             known_as, title, contact_type, tags, about, website, linkedin, twitter
@@ -210,7 +210,7 @@ const RateWatch = () => {
       const watchedIds = watchedLeads?.map(w => w.lead_id) || [];
 
       let query = supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, name, email, phone, company_name');
 
       if (watchedIds.length > 0) {
@@ -307,9 +307,9 @@ const RateWatch = () => {
     if (searchTerm) {
       const s = searchTerm.toLowerCase();
       entries = entries.filter(e =>
-        e.leads.name.toLowerCase().includes(s) ||
-        e.leads.email?.toLowerCase().includes(s) ||
-        e.leads.company_name?.toLowerCase().includes(s) ||
+        e.pipeline.name.toLowerCase().includes(s) ||
+        e.pipeline.email?.toLowerCase().includes(s) ||
+        e.pipeline.company_name?.toLowerCase().includes(s) ||
         e.loan_type?.toLowerCase().includes(s) ||
         e.collateral_type?.toLowerCase().includes(s) ||
         e.re_location?.toLowerCase().includes(s)
@@ -320,7 +320,7 @@ const RateWatch = () => {
     entries = [...entries].sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
-        case 'name': cmp = a.leads.name.localeCompare(b.leads.name); break;
+        case 'name': cmp = a.pipeline.name.localeCompare(b.pipeline.name); break;
         case 'current_rate': cmp = a.current_rate - b.current_rate; break;
         case 'target_rate': cmp = a.target_rate - b.target_rate; break;
         case 'gap': cmp = getGap(a) - getGap(b); break;
@@ -461,11 +461,11 @@ const RateWatch = () => {
 
           let existingLead = null;
           if (email) {
-            const { data } = await supabase.from('leads').select('id').eq('email', email).single();
+            const { data } = await supabase.from('pipeline').select('id').eq('email', email).single();
             existingLead = data;
           }
           if (!existingLead) {
-            const { data } = await supabase.from('leads').select('id').ilike('name', name).single();
+            const { data } = await supabase.from('pipeline').select('id').ilike('name', name).single();
             existingLead = data;
           }
 
@@ -473,7 +473,7 @@ const RateWatch = () => {
             leadId = existingLead.id;
           } else {
             const { data: newLead, error: leadError } = await supabase
-              .from('leads')
+              .from('pipeline')
               .insert({
                 name,
                 email,
@@ -558,10 +558,10 @@ const RateWatch = () => {
     if (useAI) {
       setSelectedLeadForAI({
         id: entry.lead_id,
-        name: entry.leads.name,
-        email: entry.leads.email,
-        phone: entry.leads.phone,
-        company_name: entry.leads.company_name,
+        name: entry.pipeline.name,
+        email: entry.pipeline.email,
+        phone: entry.pipeline.phone,
+        company_name: entry.pipeline.company_name,
         loan_type: entry.loan_type,
         loan_amount: entry.loan_amount,
         current_rate: entry.current_rate,
@@ -571,9 +571,9 @@ const RateWatch = () => {
       updateLastContacted.mutate(entry.id);
     } else {
       const emailData: PrefilledEmail = {
-        to: entry.leads.email || '',
+        to: entry.pipeline.email || '',
         subject: `Rate Alert: Your ${entry.loan_type || 'Loan'} Refinancing Opportunity`,
-        body: `Dear ${entry.leads.name},
+        body: `Dear ${entry.pipeline.name},
 
 Great news! Interest rates have dropped to a level that makes refinancing your loan attractive.
 
@@ -581,7 +581,7 @@ Current Rate: ${entry.current_rate}%
 Target Rate: ${entry.target_rate}%
 ${entry.loan_amount ? `Loan Amount: $${entry.loan_amount.toLocaleString()}` : ''}
 ${entry.loan_type ? `Loan Type: ${entry.loan_type}` : ''}
-${entry.leads.company_name ? `Company: ${entry.leads.company_name}` : ''}
+${entry.pipeline.company_name ? `Company: ${entry.pipeline.company_name}` : ''}
 
 This presents an excellent opportunity to reduce your monthly payments or shorten your loan term.
 
@@ -921,14 +921,14 @@ Commercial Lending X`,
                           isExpanded={isExpanded}
                           onToggleExpand={() => setExpandedRow(isExpanded ? null : entry.id)}
                           onViewLead={() => {
-                            setSelectedLeadForDetail(entry.leads);
+                            setSelectedLeadForDetail(entry.pipeline);
                             setLeadDetailOpen(true);
                           }}
                           onEmail={() => openEmailForEntry(entry, false)}
                           onAIEmail={() => openEmailForEntry(entry, true)}
                           onPhone={() => {
-                            if (entry.leads.phone) {
-                              window.open(`tel:${entry.leads.phone}`, '_blank');
+                            if (entry.pipeline.phone) {
+                              window.open(`tel:${entry.pipeline.phone}`, '_blank');
                               updateLastContacted.mutate(entry.id);
                             }
                           }}
@@ -1038,11 +1038,11 @@ const RateWatchRow = ({
         {/* Borrower */}
         <TableCell>
           <div className="min-w-[140px]">
-            <p className="font-medium text-sm leading-tight">{entry.leads.name}</p>
-            {entry.leads.company_name && (
+            <p className="font-medium text-sm leading-tight">{entry.pipeline.name}</p>
+            {entry.pipeline.company_name && (
               <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                 <Building2 className="w-3 h-3 shrink-0" />
-                <span className="truncate max-w-[160px]">{entry.leads.company_name}</span>
+                <span className="truncate max-w-[160px]">{entry.pipeline.company_name}</span>
               </p>
             )}
           </div>
@@ -1148,7 +1148,7 @@ const RateWatchRow = ({
               </TooltipTrigger>
               <TooltipContent>Template Email</TooltipContent>
             </Tooltip>
-            {entry.leads.phone && (
+            {entry.pipeline.phone && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onPhone(); }}>
@@ -1234,14 +1234,14 @@ const ExpandedDetail = ({ entry, formatCurrency }: { entry: RateWatchEntry; form
 
       {/* Contact Info */}
       <div className="mt-4 pt-3 border-t flex items-center gap-4 text-xs text-muted-foreground">
-        {entry.leads.email && (
+        {entry.pipeline.email && (
           <span className="flex items-center gap-1">
-            <Mail className="w-3 h-3" /> {entry.leads.email}
+            <Mail className="w-3 h-3" /> {entry.pipeline.email}
           </span>
         )}
-        {entry.leads.phone && (
+        {entry.pipeline.phone && (
           <span className="flex items-center gap-1">
-            <Phone className="w-3 h-3" /> {entry.leads.phone}
+            <Phone className="w-3 h-3" /> {entry.pipeline.phone}
           </span>
         )}
       </div>

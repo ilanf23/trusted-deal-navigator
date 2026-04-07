@@ -43,7 +43,7 @@ export const LeadsWidget = () => {
     queryKey: ['workspace-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*')
         .order('updated_at', { ascending: false })
         .limit(20);

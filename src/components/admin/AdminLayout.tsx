@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useState, createContext, useContext } from 'react';
 import { AdminTopBarProvider, useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import NotificationBell from './NotificationBell';
+import AdminTopBarSearch from './AdminTopBarSearch';
 
 export const AdminLayoutMountedContext = createContext(false);
 
@@ -71,6 +72,16 @@ const SplitViewContent = ({ children }: AdminLayoutProps) => {
   );
 };
 
+const DefaultTopBarSearch = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  return (
+    <AdminTopBarSearch
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+    />
+  );
+};
+
 const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
   const [inboxOpen, setInboxOpen] = useState(false);
   const { lastAction, isUndoing, executeUndo } = useUndo();
@@ -102,13 +113,11 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
               )}
             </div>
 
-            {/* Center: search bar or spacer */}
+            {/* Center: search bar (page-specific or default CRM search) */}
             <div className="flex-1 flex justify-center min-w-0" key="topbar-center">
-              {searchComponent && (
-                <div className="w-full max-w-[614px]">
-                  {searchComponent}
-                </div>
-              )}
+              <div className="w-full max-w-[614px]">
+                {searchComponent || <DefaultTopBarSearch />}
+              </div>
             </div>
 
             {/* Right: page actions + global actions */}

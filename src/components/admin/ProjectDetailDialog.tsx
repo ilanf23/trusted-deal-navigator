@@ -18,7 +18,7 @@ import { CalendarIcon, User, Trash2, FolderOpen, X, ChevronDown } from 'lucide-r
 
 export interface LeadProject {
   id: string;
-  lead_id: string;
+  entity_id: string;
   name: string;
   status: string | null;
   project_stage: string | null;
@@ -108,7 +108,7 @@ export default function ProjectDetailDialog({
   const { data: allLeads = [] } = useQuery({
     queryKey: ['all-leads-for-project-picker'],
     queryFn: async () => {
-      const { data } = await supabase.from('leads').select('id, name, company_name').order('name').limit(500);
+      const { data } = await supabase.from('pipeline').select('id, name, company_name').order('name').limit(500);
       return (data ?? []) as { id: string; name: string; company_name: string | null }[];
     },
     enabled: open,
@@ -139,7 +139,7 @@ export default function ProjectDetailDialog({
       setClxFileName(project.clx_file_name || '');
       setBankRelationships(project.bank_relationships || '');
       setWaitingOn(project.waiting_on || '');
-      setRelatedToId(project.lead_id || '');
+      setRelatedToId(project.entity_id || '');
     } else {
       setName(''); setStatus('open'); setProjectStage('open');
       setPriority(''); setOwner(''); setDueDate(new Date());
@@ -161,8 +161,9 @@ export default function ProjectDetailDialog({
     mutationFn: async () => {
       const resolvedLeadId = relatedToId || leadId;
       if (!resolvedLeadId) throw new Error('A Related To lead is required');
-      const { data, error } = await supabase.from('lead_projects').insert({
-        lead_id: resolvedLeadId,
+      const { data, error } = await supabase.from('entity_projects').insert({
+        entity_id: resolvedLeadId,
+        entity_type: 'deal',
         name: name.trim(),
         status,
         project_stage: projectStage,
@@ -188,7 +189,7 @@ export default function ProjectDetailDialog({
         registerUndo({
           label: `Created project "${name.trim()}"`,
           execute: async () => {
-            const { error: e } = await supabase.from('lead_projects').delete().eq('id', data.id);
+            const { error: e } = await supabase.from('entity_projects').delete().eq('id', data.id);
             if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
             queryClient.invalidateQueries({ queryKey: ['all-projects'] });
@@ -208,7 +209,7 @@ export default function ProjectDetailDialog({
         previousValues[key] = project[key as keyof LeadProject];
       }
       const { error } = await supabase
-        .from('lead_projects')
+        .from('entity_projects')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', project.id);
       if (error) throw error;
@@ -222,7 +223,7 @@ export default function ProjectDetailDialog({
           label: `Updated project ${fieldNames}`,
           execute: async () => {
             const { error: e } = await supabase
-              .from('lead_projects')
+              .from('entity_projects')
               .update({ ...result.previousValues, updated_at: new Date().toISOString() })
               .eq('id', result.projectId);
             if (e) throw e;
@@ -240,11 +241,11 @@ export default function ProjectDetailDialog({
       if (!project) return;
       // Capture full record for undo re-insert
       const { data: fullRecord } = await supabase
-        .from('lead_projects')
+        .from('entity_projects')
         .select('*')
         .eq('id', project.id)
         .single();
-      const { error } = await supabase.from('lead_projects').delete().eq('id', project.id);
+      const { error } = await supabase.from('entity_projects').delete().eq('id', project.id);
       if (error) throw error;
       return fullRecord;
     },
@@ -257,7 +258,7 @@ export default function ProjectDetailDialog({
           label: `Deleted project "${deletedProject.name}"`,
           execute: async () => {
             const { id, ...rest } = deletedProject;
-            const { error: e } = await supabase.from('lead_projects').insert({ id, ...rest });
+            const { error: e } = await supabase.from('entity_projects').insert({ id, ...rest });
             if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
             queryClient.invalidateQueries({ queryKey: ['all-projects'] });

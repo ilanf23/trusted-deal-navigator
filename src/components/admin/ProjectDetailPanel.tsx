@@ -85,35 +85,35 @@ export default function ProjectDetailPanel({
 
   // Fetch lead info for context
   const { data: lead } = useQuery({
-    queryKey: ['project-lead', project.lead_id],
+    queryKey: ['project-lead', project.entity_id],
     queryFn: async () => {
-      const { data } = await supabase.from('leads').select('name, company_name, opportunity_name, email, last_activity_at').eq('id', project.lead_id).single();
+      const { data } = await supabase.from('pipeline').select('name, company_name, opportunity_name, email, last_activity_at').eq('id', project.entity_id).single();
       return data;
     },
-    enabled: !!project.lead_id,
+    enabled: !!project.entity_id,
   });
 
   // Interaction count
   const { data: interactionCount = 0 } = useQuery({
-    queryKey: ['project-panel-interactions', project.lead_id],
+    queryKey: ['project-panel-interactions', project.entity_id],
     queryFn: async () => {
       const { count } = await supabase
         .from('communications')
         .select('id', { count: 'exact', head: true })
-        .eq('lead_id', project.lead_id);
+        .eq('lead_id', project.entity_id);
       return count ?? 0;
     },
-    enabled: !!project.lead_id,
+    enabled: !!project.entity_id,
   });
 
   // Lead emails for gmail search
   const { data: leadEmails = [] } = useQuery({
-    queryKey: ['project-panel-lead-emails', project.lead_id],
+    queryKey: ['project-panel-lead-emails', project.entity_id],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_emails').select('email').eq('lead_id', project.lead_id);
+      const { data } = await supabase.from('entity_emails').select('email').eq('entity_id', project.entity_id);
       return (data || []) as { email: string }[];
     },
-    enabled: !!project.lead_id,
+    enabled: !!project.entity_id,
   });
 
   const leadEmailAddresses = useMemo(() => {
@@ -132,12 +132,12 @@ export default function ProjectDetailPanel({
       const { data } = await supabase.from('gmail_connections').select('*').eq('user_id', session.user.id).maybeSingle();
       return data;
     },
-    enabled: !!project.lead_id,
+    enabled: !!project.entity_id,
   });
 
   // Gmail emails
   const { data: gmailEmails = [], isLoading: gmailEmailsLoading } = useQuery({
-    queryKey: ['project-panel-gmail-emails', project.lead_id, leadEmailAddresses],
+    queryKey: ['project-panel-gmail-emails', project.entity_id, leadEmailAddresses],
     queryFn: async () => {
       if (!gmailConnection || leadEmailAddresses.length === 0) return [];
       const { data: { session } } = await supabase.auth.getSession();
@@ -156,7 +156,7 @@ export default function ProjectDetailPanel({
         isRead: !msg.isUnread,
       }));
     },
-    enabled: !!gmailConnection && leadEmailAddresses.length > 0 && !!project.lead_id,
+    enabled: !!gmailConnection && leadEmailAddresses.length > 0 && !!project.entity_id,
   });
 
   // Group gmail emails into threads
@@ -190,72 +190,71 @@ export default function ProjectDetailPanel({
 
   // Activities
   const { data: activities = [] } = useQuery({
-    queryKey: ['project-panel-activities', project.lead_id],
+    queryKey: ['project-panel-activities', project.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_activities')
+        .from('activities')
         .select('*')
-        .eq('lead_id', project.lead_id)
+        .eq('entity_id', project.entity_id)
         .order('created_at', { ascending: false });
       return data ?? [];
     },
-    enabled: !!project.lead_id,
+    enabled: !!project.entity_id,
   });
 
   // Tasks
   const { data: tasks = [] } = useQuery({
-    queryKey: ['project-panel-tasks', project.lead_id],
+    queryKey: ['project-panel-tasks', project.entity_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('tasks')
         .select('*')
-        .eq('lead_id', project.lead_id)
+        .eq('lead_id', project.entity_id)
         .order('created_at', { ascending: false });
       return data ?? [];
     },
-    enabled: !!project.lead_id,
+    enabled: !!project.entity_id,
   });
 
   // Contacts
   const { data: contacts = [] } = useQuery({
-    queryKey: ['project-panel-contacts', project.lead_id],
+    queryKey: ['project-panel-contacts', project.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_contacts')
+        .from('entity_contacts')
         .select('*')
-        .eq('lead_id', project.lead_id);
+        .eq('entity_id', project.entity_id);
       return data ?? [];
     },
-    enabled: !!project.lead_id,
+    enabled: !!project.entity_id,
   });
 
   // Files
   const { data: files = [] } = useQuery({
-    queryKey: ['project-panel-files', project.lead_id],
+    queryKey: ['project-panel-files', project.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_files')
+        .from('entity_files')
         .select('id, file_name, file_type, file_size, created_at')
-        .eq('lead_id', project.lead_id)
+        .eq('entity_id', project.entity_id)
         .order('created_at', { ascending: false });
       return data ?? [];
     },
-    enabled: !!project.lead_id,
+    enabled: !!project.entity_id,
   });
 
   // Pipeline info
   const { data: pipelineInfo } = useQuery({
-    queryKey: ['project-panel-pipeline', project.lead_id],
+    queryKey: ['project-panel-pipeline', project.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('pipeline_leads')
-        .select('pipeline_id, pipelines(name)')
-        .eq('lead_id', project.lead_id)
-        .limit(1)
+        .from('pipeline')
+        .select('pipeline_id, pipelines:pipeline_id(name)')
+        .eq('id', project.entity_id)
         .single();
       return data as { pipeline_id: string; pipelines: { name: string } | null } | null;
     },
-    enabled: !!project.lead_id,
+    enabled: !!project.entity_id,
   });
 
   // Linked people
@@ -279,7 +278,7 @@ export default function ProjectDetailPanel({
     queryKey: ['linked-lead-names-panel', linkedLeadIds],
     queryFn: async () => {
       if (linkedLeadIds.length === 0) return {};
-      const { data } = await supabase.from('leads').select('id, name, company_name, phone, email, title, avatar_url').in('id', linkedLeadIds);
+      const { data } = await supabase.from('pipeline').select('id, name, company_name, phone, email, title, avatar_url').in('id', linkedLeadIds);
       const m: Record<string, { name: string; company_name: string | null; phone: string | null; email: string | null; title: string | null; avatar_url: string | null }> = {};
       for (const l of data ?? []) m[l.id] = l;
       return m;
@@ -291,7 +290,7 @@ export default function ProjectDetailPanel({
   const { data: allLeads = [] } = useQuery({
     queryKey: ['all-leads-for-picker'],
     queryFn: async () => {
-      const { data } = await supabase.from('leads').select('id, name, company_name').order('name').limit(200);
+      const { data } = await supabase.from('pipeline').select('id, name, company_name').order('name').limit(200);
       return (data ?? []) as { id: string; name: string; company_name: string | null }[];
     },
     enabled: showPeoplePicker,
@@ -320,24 +319,24 @@ export default function ProjectDetailPanel({
   // Follow
   const teamMemberId = teamMember?.id;
   const { data: isFollowing = false } = useQuery({
-    queryKey: ['project-follow', project.lead_id, teamMemberId],
+    queryKey: ['project-follow', project.entity_id, teamMemberId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_followers').select('id')
-        .eq('lead_id', project.lead_id).eq('team_member_id', teamMemberId!).maybeSingle();
+      const { data } = await supabase.from('entity_followers').select('id')
+        .eq('entity_id', project.entity_id).eq('team_member_id', teamMemberId!).maybeSingle();
       return !!data;
     },
-    enabled: !!project.lead_id && !!teamMemberId,
+    enabled: !!project.entity_id && !!teamMemberId,
   });
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
       if (isFollowing) {
-        await supabase.from('lead_followers').delete().eq('lead_id', project.lead_id).eq('team_member_id', teamMemberId!);
+        await supabase.from('entity_followers').delete().eq('entity_id', project.entity_id).eq('team_member_id', teamMemberId!);
       } else {
-        await supabase.from('lead_followers').insert({ lead_id: project.lead_id, team_member_id: teamMemberId! });
+        await supabase.from('entity_followers').insert({ entity_id: project.entity_id, team_member_id: teamMemberId! });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-follow', project.lead_id, teamMemberId] });
+      queryClient.invalidateQueries({ queryKey: ['project-follow', project.entity_id, teamMemberId] });
       toast.success(isFollowing ? 'Unfollowed' : 'Following');
     },
   });
@@ -346,7 +345,7 @@ export default function ProjectDetailPanel({
 
   const saveField = useCallback(async (field: string, value: unknown) => {
     const { error } = await supabase
-      .from('lead_projects')
+      .from('entity_projects')
       .update({ [field]: value, updated_at: new Date().toISOString() })
       .eq('id', project.id);
     if (error) { toast.error('Failed to save'); return; }
@@ -355,25 +354,26 @@ export default function ProjectDetailPanel({
 
   // ── Activity save ──
   const handleSaveActivity = useCallback(async () => {
-    if (!project.lead_id) return;
+    if (!project.entity_id) return;
     const rawContent = activityTab === 'log' ? activityNote : noteContent;
     const content = rawContent.trim();
     const type = activityTab === 'log' ? activityType : 'note';
     if (!content || isHtmlEmpty(content)) { toast.error('Please enter some content'); return; }
     setSavingActivity(true);
-    const { error } = await supabase.from('lead_activities').insert({
-      lead_id: project.lead_id,
+    const { error } = await supabase.from('activities').insert({
+      entity_id: project.entity_id,
+      entity_type: 'deal',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
     });
     setSavingActivity(false);
     if (error) { toast.error('Failed to save activity'); return; }
-    await supabase.from('leads').update({ last_activity_at: new Date().toISOString() }).eq('id', project.lead_id);
+    await supabase.from('pipeline').update({ last_activity_at: new Date().toISOString() }).eq('id', project.entity_id);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote(''); else setNoteContent('');
-    queryClient.invalidateQueries({ queryKey: ['project-panel-activities', project.lead_id] });
-  }, [project.lead_id, activityTab, activityType, activityNote, noteContent, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ['project-panel-activities', project.entity_id] });
+  }, [project.entity_id, activityTab, activityType, activityNote, noteContent, queryClient]);
 
   // Merge activities + email threads into timeline
   const timelineItems = useMemo(() => {

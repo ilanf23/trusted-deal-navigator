@@ -263,13 +263,13 @@ Deno.serve(async (req) => {
           if (fromNumber) {
             const normalized = fromNumber.replace(/\D/g, '').slice(-10);
             const { data: phoneMatch } = await sb
-              .from('lead_phones')
-              .select('lead_id')
+              .from('entity_phones')
+              .select('entity_id')
               .ilike('phone_number', `%${normalized}`)
               .limit(1)
               .maybeSingle();
             if (phoneMatch) {
-              leadId = phoneMatch.lead_id;
+              leadId = phoneMatch.entity_id;
             }
           }
 

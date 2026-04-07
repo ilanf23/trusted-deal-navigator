@@ -39,7 +39,7 @@ export function useEmailThreads() {
         .from('email_threads')
         .select(`
           *,
-          lead:leads(id, name, company_name, status)
+          lead:pipeline(id, name, company_name, status)
         `)
         .order('last_message_date', { ascending: false });
       

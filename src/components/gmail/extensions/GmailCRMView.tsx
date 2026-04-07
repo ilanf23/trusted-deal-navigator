@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Mail, Loader2, ChevronDown, RefreshCw, X, FileText, Unplug, Search } from 'lucide-react';
+import { Mail, Loader2, ChevronDown, RefreshCw, X, Unplug, Search } from 'lucide-react';
+import { GmailTemplatesView } from '@/components/gmail/GmailTemplatesView';
 import { GmailTaskDialog } from '@/components/admin/GmailTaskDialog';
 import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
@@ -184,38 +185,14 @@ export function GmailCRMView({ userKey, callbackPrefix, returnPath }: GmailCRMVi
             {selectedEmail ? (
               <GmailEmailDetail logic={logic} />
             ) : activeFolder === 'templates' ? (
-              /* Templates View */
-              <div className="h-full flex flex-col">
-                <div className="p-3 border-b border-border">
-                  <h2 className="font-semibold text-sm">Email Templates</h2>
-                  <p className="text-xs text-muted-foreground mt-1">Click a template to use it in a new email</p>
-                </div>
-                <ScrollArea className="flex-1">
-                  <div className="p-3 space-y-2">
-                    {emailTemplates.map((template) => (
-                      <div
-                        key={template.id}
-                        onClick={() => {
-                          setComposeTo('');
-                          setComposeSubject(template.subject);
-                          setComposeBody(appendSignature(template.body));
-                          setComposeOpen(true);
-                        }}
-                        className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileText className="w-4 h-4 text-primary" />
-                          <span className="font-medium text-sm">{template.name}</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-1">
-                          <span className="font-medium text-foreground">Subject:</span> {template.subject}
-                        </p>
-                        <p className="text-sm text-muted-foreground line-clamp-2">{template.body}</p>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
+              <GmailTemplatesView
+                onUseTemplate={(subject, body) => {
+                  setComposeTo('');
+                  setComposeSubject(subject);
+                  setComposeBody(body);
+                  setComposeOpen(true);
+                }}
+              />
             ) : (
               <GmailEmailList logic={logic} />
             )}

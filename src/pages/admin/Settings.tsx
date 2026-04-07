@@ -11,6 +11,7 @@ import {
   Monitor,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ProfileSection from '@/components/admin/settings/ProfileSection';
 
 type SettingsSection = 'profile' | 'security' | 'appearance' | 'notifications' | 'shortcuts' | 'sessions';
 
@@ -81,9 +82,7 @@ const Settings = () => {
                 <CardDescription>{current.description}</CardDescription>
               </CardHeader>
               <CardContent>
-                {activeSection === 'profile' && (
-                  <p className="text-sm text-muted-foreground">Profile section will be implemented in the next task.</p>
-                )}
+                {activeSection === 'profile' && <ProfileSection />}
                 {activeSection === 'security' && (
                   <p className="text-sm text-muted-foreground">Security section will be implemented in a future task.</p>
                 )}

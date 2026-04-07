@@ -65,7 +65,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod, confidence: ex
     queryKey: ['company-revenue-hero-leads'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, name, converted_at, created_at, lead_responses(loan_amount)')
         .eq('status', 'funded')
         .gte('converted_at', startOfYear(now).toISOString())
@@ -87,7 +87,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod, confidence: ex
     queryKey: ['company-revenue-hero-pipeline'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, status, lead_responses(loan_amount)')
         .neq('status', 'won')
         .neq('status', 'funded')

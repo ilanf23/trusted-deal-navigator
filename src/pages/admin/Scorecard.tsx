@@ -303,7 +303,7 @@ const Scorecard = () => {
     queryKey: ['scorecard-all-leads', repFilter, evanMember?.id, selectedWeek],
     queryFn: async () => {
       let query = supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, name, company_name, status, assigned_to, created_at, updated_at');
       if (repFilter === 'me' && evanMember?.id) {
         query = query.eq('assigned_to', evanMember.id);
@@ -334,8 +334,8 @@ const Scorecard = () => {
     queryKey: ['scorecard-activities', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_activities')
-        .select('id, lead_id, activity_type, title, content, created_at')
+        .from('activities')
+        .select('id, entity_id, activity_type, title, content, created_at')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
       if (error) throw error;
@@ -414,7 +414,7 @@ const Scorecard = () => {
       : (communications || []);
 
     const scopedActivities = repFilter === 'me'
-      ? (leadActivities || []).filter(a => userLeadIds.has(a.lead_id))
+      ? (leadActivities || []).filter(a => userLeadIds.has(a.entity_id))
       : (leadActivities || []);
 
     const scopedTasks = repFilter === 'me'
@@ -482,7 +482,7 @@ const Scorecard = () => {
     ).length;
 
     const recentMovements = stageChanges.slice(0, 10).map((activity) => {
-      const lead = allLeads.find((l) => l.id === activity.lead_id);
+      const lead = allLeads.find((l) => l.id === activity.entity_id);
       return {
         id: activity.id,
         leadName: lead?.name || 'Unknown',

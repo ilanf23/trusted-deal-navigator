@@ -17,23 +17,25 @@ export const TodaysPriorities = ({ evanId }: TodaysPrioritiesProps) => {
     queryFn: async () => {
       if (!evanId) return null;
 
-      // Get today's appointments
+      // Get today's appointments for this user
       const { data: appointments } = await supabase
         .from('appointments')
         .select('*')
+        .eq('team_member_id', evanId!)
         .gte('start_time', startOfDay(today).toISOString())
         .lte('start_time', endOfDay(today).toISOString());
 
-      // Get pending tasks due today or overdue
+      // Get pending tasks due today or overdue for this user
       const { data: tasks } = await supabase
         .from('tasks')
         .select('*')
+        .eq('team_member_id', evanId!)
         .eq('is_completed', false)
         .lte('due_date', endOfDay(today).toISOString());
 
       // Get Evan's leads
       const { data: leads } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*, lead_responses(*)')
         .eq('assigned_to', evanId);
 

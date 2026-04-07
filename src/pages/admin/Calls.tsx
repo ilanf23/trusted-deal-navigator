@@ -82,7 +82,7 @@ interface CallLog {
   recording_url?: string | null;
   recording_sid?: string | null;
   call_sid?: string | null;
-  leads?: {
+  pipeline?: {
     name: string;
     company_name: string | null;
   } | null;
@@ -148,6 +148,22 @@ const Calls = () => {
     setPageTitle('Calls');
     return () => { setPageTitle(null); };
   }, [setPageTitle]);
+
+  // Check if this user has their own call setup (any communications records)
+  const { data: hasCallSetup, isLoading: checkingCallSetup } = useQuery({
+    queryKey: ['call-setup-check', teamMember?.id],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('communications')
+        .select('id', { count: 'exact', head: true })
+        .eq('team_member_id', teamMember!.id)
+        .limit(1);
+      return (count ?? 0) > 0;
+    },
+    enabled: !!teamMember,
+    staleTime: 1000 * 60 * 10,
+  });
+
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [transcriptDialogOpen, setTranscriptDialogOpen] = useState(false);
   const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
@@ -221,7 +237,7 @@ const Calls = () => {
         .from('communications')
         .select(`
           *,
-          leads (
+          pipeline (
             name,
             company_name
           )
@@ -274,7 +290,7 @@ const Calls = () => {
       ];
 
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*')
         .or(phoneVariants.map(p => `phone.ilike.%${p.slice(-10)}%`).join(','))
         .limit(1)
@@ -293,9 +309,9 @@ const Calls = () => {
       if (!matchedLead?.id) return null;
       
       const { data, error } = await supabase
-        .from('lead_responses')
+        .from('deal_responses')
         .select('*')
-        .eq('lead_id', matchedLead.id)
+        .eq('entity_id', matchedLead.id)
         .order('submitted_at', { ascending: false })
         .limit(1)
         .single();
@@ -334,7 +350,7 @@ const Calls = () => {
         : `📞 Initial call: ${callDate}\n⏳ No transcript available yet`;
 
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .insert({
           name,
           email: email || null,
@@ -430,12 +446,12 @@ const Calls = () => {
         // Re-fetch the updated call to get fresh data
         const { data: updatedComm } = await supabase
           .from('communications')
-          .select('id, lead_id, transcript, direction, created_at, phone_number, leads(name, email, phone)')
+          .select('id, lead_id, transcript, direction, created_at, phone_number, pipeline(name, email, phone)')
           .eq('id', call.id)
           .single();
         
-        if (updatedComm?.lead_id && updatedComm.leads) {
-          const leadData = updatedComm.leads as unknown as { name: string; email: string | null; phone: string | null };
+        if (updatedComm?.lead_id && updatedComm.pipeline) {
+          const leadData = updatedComm.pipeline as unknown as { name: string; email: string | null; phone: string | null };
           const callDate = format(new Date(updatedComm.created_at), 'MMM d, yyyy h:mm a');
           setPendingAutomationData({
             leadId: updatedComm.lead_id,
@@ -521,6 +537,26 @@ const Calls = () => {
     setPendingAutomationData(null);
     toast.info('Automation skipped - lead created without follow-up task');
   };
+
+  if (!checkingCallSetup && teamMember && hasCallSetup === false) {
+    return (
+      <EmployeeLayout>
+        <div className="flex items-center justify-center py-20">
+          <Card className="max-w-md text-center">
+            <CardHeader>
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+                <AlertCircle className="h-6 w-6 text-amber-600" />
+              </div>
+              <CardTitle className="text-lg">Manual Setup Required</CardTitle>
+              <CardDescription>
+                The calling feature requires individual Twilio phone number configuration for your account. Please contact the dev builder to get your phone line set up.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </EmployeeLayout>
+    );
+  }
 
   if (callsLoading) {
     return (
@@ -839,7 +875,7 @@ const Calls = () => {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
                                 <p className="font-medium text-sm truncate">
-                                  {call.leads?.name || formatPhoneNumber(call.phone_number || 'Unknown')}
+                                  {call.pipeline?.name || formatPhoneNumber(call.phone_number || 'Unknown')}
                                 </p>
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                                   {formatDuration(call.duration_seconds)}
@@ -849,9 +885,9 @@ const Calls = () => {
                                 <span className="text-xs text-muted-foreground">
                                   {call.phone_number ? formatPhoneNumber(call.phone_number) : 'No number'}
                                 </span>
-                                {call.leads?.company_name && (
+                                {call.pipeline?.company_name && (
                                   <span className="text-xs text-muted-foreground">
-                                    • {call.leads.company_name}
+                                    • {call.pipeline.company_name}
                                   </span>
                                 )}
                               </div>
@@ -936,7 +972,7 @@ const Calls = () => {
             <DialogDescription>
               {selectedTranscriptCall && (
                 <>
-                  {selectedTranscriptCall.leads?.name || formatPhoneNumber(selectedTranscriptCall.phone_number || 'Unknown')}
+                  {selectedTranscriptCall.pipeline?.name || formatPhoneNumber(selectedTranscriptCall.phone_number || 'Unknown')}
                   {' • '}
                   {format(new Date(selectedTranscriptCall.created_at), 'MMM d, yyyy h:mm a')}
                   {' • '}

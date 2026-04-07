@@ -92,7 +92,7 @@ const TeamPerformance = () => {
     queryKey: ['team-leads-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select(`
           id,
           name,
@@ -101,11 +101,7 @@ const TeamPerformance = () => {
           created_at,
           converted_at,
           last_activity_at,
-          pipeline_leads (
-            stage_id,
-            pipeline_stages (name, color)
-          ),
-          lead_responses (
+          deal_responses (
             loan_amount,
             funding_amount
           )
@@ -124,17 +120,13 @@ const TeamPerformance = () => {
     queryKey: ['team-pipeline-analytics'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select(`
           id,
           status,
           last_activity_at,
           created_at,
-          pipeline_leads (
-            stage_id,
-            pipeline_stages (name, color)
-          ),
-          lead_responses (
+          deal_responses (
             loan_amount
           )
         `)
@@ -152,11 +144,11 @@ const TeamPerformance = () => {
     queryKey: ['team-funded-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select(`
           id,
           converted_at,
-          lead_responses (
+          deal_responses (
             loan_amount
           )
         `)
@@ -202,7 +194,7 @@ const TeamPerformance = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('call_rating_notifications')
-        .select('*, lead:leads(name, phone, email)')
+        .select('*, lead:pipeline(name, phone, email)')
         .gte('created_at', periodStart.toISOString())
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -215,7 +207,7 @@ const TeamPerformance = () => {
     queryKey: ['leads-map-for-calls'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, name, company_name');
       if (error) throw error;
       return data?.reduce((acc, lead) => {
@@ -245,11 +237,11 @@ const TeamPerformance = () => {
     }
 
     const fundedDealsWithAmount = fundedLeads?.filter(
-      (lead) => lead.lead_responses && lead.lead_responses.length > 0 && lead.lead_responses[0]?.loan_amount
+      (lead) => lead.deal_responses && lead.deal_responses.length > 0 && lead.deal_responses[0]?.loan_amount
     ) || [];
 
     const totalLoanVolume = fundedDealsWithAmount.reduce(
-      (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0),
+      (sum, lead) => sum + (lead.deal_responses?.[0]?.loan_amount || 0),
       0
     );
     const totalRevenue = totalLoanVolume * 0.01;
@@ -257,10 +249,10 @@ const TeamPerformance = () => {
     const avgDealSize = totalDeals > 0 ? totalRevenue / totalDeals : 0;
 
     const pipelineLeadsWithAmount = pipelineData?.filter(
-      (lead) => lead.lead_responses && lead.lead_responses.length > 0
+      (lead) => lead.deal_responses && lead.deal_responses.length > 0
     ) || [];
     const pipelineValue = pipelineLeadsWithAmount.reduce(
-      (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.01,
+      (sum, lead) => sum + (lead.deal_responses?.[0]?.loan_amount || 0) * 0.01,
       0
     );
     const pipelineDeals = pipelineData?.length || 0;
@@ -324,7 +316,7 @@ const TeamPerformance = () => {
       }) || [];
 
       const revenue = monthlyFunded.reduce(
-        (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.01,
+        (sum, lead) => sum + (lead.deal_responses?.[0]?.loan_amount || 0) * 0.01,
         0
       );
 
@@ -344,14 +336,14 @@ const TeamPerformance = () => {
     const stageMap: Record<string, { count: number; amount: number; color: string }> = {};
 
     pipelineData.forEach((lead) => {
-      const stageName = lead.pipeline_leads?.[0]?.pipeline_stages?.name || lead.status || 'Unknown';
-      const stageColor = lead.pipeline_leads?.[0]?.pipeline_stages?.color || STAGE_COLORS[lead.status] || '#94a3b8';
+      const stageName = lead.status || 'Unknown';
+      const stageColor = STAGE_COLORS[lead.status] || '#94a3b8';
       
       if (!stageMap[stageName]) {
         stageMap[stageName] = { count: 0, amount: 0, color: stageColor };
       }
       stageMap[stageName].count++;
-      stageMap[stageName].amount += (lead.lead_responses?.[0]?.loan_amount || 0) * 0.01;
+      stageMap[stageName].amount += (lead.deal_responses?.[0]?.loan_amount || 0) * 0.01;
     });
 
     return Object.entries(stageMap).map(([name, data]) => ({

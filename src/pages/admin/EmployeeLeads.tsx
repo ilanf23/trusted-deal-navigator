@@ -162,7 +162,7 @@ const EmployeeLeads = () => {
     queryFn: async () => {
       if (!evanId) return [];
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*')
         .eq('assigned_to', evanId)
         .order('updated_at', { ascending: false });
@@ -208,7 +208,7 @@ const EmployeeLeads = () => {
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!evanId) throw new Error('Evan team member not found');
-      const { error } = await supabase.from('leads').insert([{ ...data, assigned_to: evanId }]);
+      const { error } = await supabase.from('pipeline').insert([{ ...data, assigned_to: evanId }]);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -224,7 +224,7 @@ const EmployeeLeads = () => {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
       if (!canEdit) throw new Error('Not authorized to edit this lead');
-      const { error } = await supabase.from('leads').update(data).eq('id', id);
+      const { error } = await supabase.from('pipeline').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -243,12 +243,12 @@ const EmployeeLeads = () => {
       
       // Get lead data before deleting (for undo)
       const { data: leadToDelete } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*')
         .eq('id', id)
         .single();
-      
-      const { error } = await supabase.from('leads').delete().eq('id', id);
+
+      const { error } = await supabase.from('pipeline').delete().eq('id', id);
       if (error) throw error;
       
       return leadToDelete;
@@ -264,7 +264,7 @@ const EmployeeLeads = () => {
         registerUndo({
           label: `Deleted ${deletedLead.name}`,
           execute: async () => {
-            const { error } = await supabase.from('leads').insert({
+            const { error } = await supabase.from('pipeline').insert({
               ...deletedLead,
               updated_at: new Date().toISOString(),
             });
@@ -289,7 +289,7 @@ const EmployeeLeads = () => {
       if (newStatus === 'approval') {
         updateData.qualified_at = new Date().toISOString();
       }
-      const { error } = await supabase.from('leads').update(updateData).eq('id', leadId);
+      const { error } = await supabase.from('pipeline').update(updateData).eq('id', leadId);
       if (error) throw error;
       toast.success('Lead status updated');
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
@@ -301,7 +301,7 @@ const EmployeeLeads = () => {
           label: `${leadName || lead?.name || 'Lead'} moved to ${statusConfig[newStatus]?.label || newStatus}`,
           execute: async () => {
             const { error: undoError } = await supabase
-              .from('leads')
+              .from('pipeline')
               .update({ status: previousStatus })
               .eq('id', leadId);
             if (undoError) throw undoError;

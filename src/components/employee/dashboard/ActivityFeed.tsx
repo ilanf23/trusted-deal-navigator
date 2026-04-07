@@ -33,7 +33,7 @@ export const ActivityFeed = ({ evanId }: ActivityFeedProps) => {
 
       // Get recent lead status changes (approximated by updated_at)
       const { data: recentLeads } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, name, status, updated_at, company_name')
         .eq('assigned_to', evanId)
         .order('updated_at', { ascending: false })

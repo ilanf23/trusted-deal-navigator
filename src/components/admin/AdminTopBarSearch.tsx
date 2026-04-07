@@ -57,7 +57,7 @@ const AdminTopBarSearch = ({
       const q = debouncedQuery.trim();
       if (!q) return [];
       const { data, error } = await supabase
-        .from('leads')
+        .from('people')
         .select('id, name, company_name, email, phone')
         .or(`name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%`)
         .order('updated_at', { ascending: false })

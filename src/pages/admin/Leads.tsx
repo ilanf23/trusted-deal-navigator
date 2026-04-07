@@ -150,7 +150,7 @@ const AdminLeads = () => {
   const fetchLeads = async () => {
     try {
       let query = supabase
-        .from('leads')
+        .from('pipeline')
         .select('*, team_member:users(id, name, email, position)')
         .order('created_at', { ascending: false });
       
@@ -188,7 +188,7 @@ const AdminLeads = () => {
     try {
       const assignedTo = newLead.assigned_to || teamMembers[0]?.id || null;
       
-      const { error } = await supabase.from('leads').insert({
+      const { error } = await supabase.from('pipeline').insert({
         name: newLead.name,
         email: newLead.email || null,
         phone: newLead.phone || null,
@@ -214,7 +214,7 @@ const AdminLeads = () => {
 
   const handleOwnerChange = async (leadId: string, newOwnerId: string) => {
     try {
-      const { error } = await supabase.from('leads').update({ assigned_to: newOwnerId }).eq('id', leadId);
+      const { error } = await supabase.from('pipeline').update({ assigned_to: newOwnerId }).eq('id', leadId);
       
       if (error) throw error;
       
@@ -234,10 +234,10 @@ const AdminLeads = () => {
         updateData.qualified_at = new Date().toISOString();
       }
 
-      const { error } = await supabase.from('leads').update(updateData).eq('id', leadId);
-      
+      const { error } = await supabase.from('pipeline').update(updateData).eq('id', leadId);
+
       if (error) throw error;
-      
+
       toast({ title: 'Success', description: 'Lead status updated' });
       fetchLeads();
     } catch (error) {

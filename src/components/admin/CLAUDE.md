@@ -51,7 +51,7 @@
 - `DashboardHeader`, `RevenueKPIStrip`, `RevenueGoalCard`, `RevenueBreakdown`
 - `PipelineHealthWidget`, `LenderProgramsWidget`, `TasksOverviewWidget`
 - `ScorecardMiniWidget`, `NextBestAction`, `CommissionSection`
-- `CallsActivityWidget`, `NewSignupsWidget`, `DealSourcesChart`
+- `CallsActivityWidget`, `DealSourcesChart`
 - `useDashboardData.ts` — data hook for all dashboard metrics
 
 **`dropbox/`** (11 files) — Full Dropbox file manager:

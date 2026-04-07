@@ -71,7 +71,7 @@ const priorityOptions = [{ value: 'none', label: '—' }, ...Object.entries(prio
 
 interface LeadFile {
   id: string;
-  lead_id: string;
+  entity_id: string;
   file_name: string;
   file_url: string;
   file_type: string | null;
@@ -178,7 +178,7 @@ export default function ProjectExpandedView() {
     queryKey: ['project-expanded', projectId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_projects')
+        .from('entity_projects')
         .select('*')
         .eq('id', projectId!)
         .single();
@@ -189,12 +189,12 @@ export default function ProjectExpandedView() {
   });
 
   const { data: lead } = useQuery({
-    queryKey: ['project-lead', project?.lead_id],
+    queryKey: ['project-lead', project?.entity_id],
     queryFn: async () => {
-      const { data } = await supabase.from('leads').select('*').eq('id', project!.lead_id).single();
+      const { data } = await supabase.from('pipeline').select('*').eq('id', project!.entity_id).single();
       return data;
     },
-    enabled: !!project?.lead_id,
+    enabled: !!project?.entity_id,
   });
 
   const { data: teamMembers = [] } = useQuery({
@@ -212,43 +212,43 @@ export default function ProjectExpandedView() {
 
   // Activities for this lead
   const { data: activities = [] } = useQuery({
-    queryKey: ['lead-activities', project?.lead_id],
+    queryKey: ['lead-activities', project?.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_activities')
+        .from('activities')
         .select('*')
-        .eq('lead_id', project!.lead_id)
+        .eq('entity_id', project!.entity_id)
         .order('created_at', { ascending: false });
       return data ?? [];
     },
-    enabled: !!project?.lead_id,
+    enabled: !!project?.entity_id,
   });
 
   // Tasks for this lead (used in Board tab)
   const { data: tasks = [] } = useQuery({
-    queryKey: ['person-tasks', project?.lead_id],
+    queryKey: ['person-tasks', project?.entity_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('tasks')
         .select('*')
-        .eq('lead_id', project!.lead_id)
+        .eq('lead_id', project!.entity_id)
         .order('created_at', { ascending: false });
       return (data ?? []) as ProjectTask[];
     },
-    enabled: !!project?.lead_id,
+    enabled: !!project?.entity_id,
   });
 
   // Contacts for this lead (legacy)
   const { data: contacts = [] } = useQuery({
-    queryKey: ['lead-contacts', project?.lead_id],
+    queryKey: ['lead-contacts', project?.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_contacts')
+        .from('entity_contacts')
         .select('*')
-        .eq('lead_id', project!.lead_id);
+        .eq('entity_id', project!.entity_id);
       return data ?? [];
     },
-    enabled: !!project?.lead_id,
+    enabled: !!project?.entity_id,
   });
 
   // Linked people (project_people junction)
@@ -270,7 +270,7 @@ export default function ProjectExpandedView() {
     queryKey: ['pp-lead-names', ppLeadIds],
     queryFn: async () => {
       if (ppLeadIds.length === 0) return {};
-      const { data } = await supabase.from('leads').select('id, name, company_name, email, phone').in('id', ppLeadIds);
+      const { data } = await supabase.from('pipeline').select('id, name, company_name, email, phone').in('id', ppLeadIds);
       const m: Record<string, { name: string; company_name: string | null; email: string | null; phone: string | null }> = {};
       for (const l of data ?? []) m[l.id] = l;
       return m;
@@ -284,7 +284,7 @@ export default function ProjectExpandedView() {
   const { data: allLeadsForPicker = [] } = useQuery({
     queryKey: ['all-leads-picker-expanded'],
     queryFn: async () => {
-      const { data } = await supabase.from('leads').select('id, name, company_name').order('name').limit(200);
+      const { data } = await supabase.from('pipeline').select('id, name, company_name').order('name').limit(200);
       return (data ?? []) as { id: string; name: string; company_name: string | null }[];
     },
     enabled: showPeoplePicker,
@@ -302,32 +302,31 @@ export default function ProjectExpandedView() {
 
   // Files for this lead
   const { data: leadFiles = [] } = useQuery({
-    queryKey: ['project-lead-files', project?.lead_id],
+    queryKey: ['project-lead-files', project?.entity_id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_files')
+        .from('entity_files')
         .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('lead_id', project!.lead_id)
+        .eq('entity_id', project!.entity_id)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as LeadFile[];
     },
-    enabled: !!project?.lead_id,
+    enabled: !!project?.entity_id,
   });
 
   // Pipeline info for this lead
   const { data: pipelineInfo } = useQuery({
-    queryKey: ['lead-pipeline-info', project?.lead_id],
+    queryKey: ['lead-pipeline-info', project?.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('pipeline_leads')
-        .select('pipeline_id, pipelines(name)')
-        .eq('lead_id', project!.lead_id)
-        .limit(1)
+        .from('pipeline')
+        .select('pipeline_id, pipelines:pipeline_id(name)')
+        .eq('id', project!.entity_id)
         .single();
       return data as { pipeline_id: string; pipelines: { name: string } | null } | null;
     },
-    enabled: !!project?.lead_id,
+    enabled: !!project?.entity_id,
   });
 
   // ── Stats ──
@@ -353,17 +352,17 @@ export default function ProjectExpandedView() {
   const saveField = useCallback(async (field: string, value: unknown) => {
     if (!projectId) return;
     // Capture previous value before update
-    const { data: prev } = await supabase.from('lead_projects').select(field).eq('id', projectId).single();
+    const { data: prev } = await supabase.from('entity_projects').select(field).eq('id', projectId).single();
     const previousValue = prev ? (prev as Record<string, unknown>)[field] : null;
     const { error } = await supabase
-      .from('lead_projects')
+      .from('entity_projects')
       .update({ [field]: value, updated_at: new Date().toISOString() })
       .eq('id', projectId);
     if (error) { toast.error('Failed to save'); return; }
     registerUndo({
       label: `Updated ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('lead_projects').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', projectId);
+        const { error: e } = await supabase.from('entity_projects').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', projectId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['project-expanded', projectId] });
         queryClient.invalidateQueries({ queryKey: ['all-projects'] });
@@ -376,10 +375,11 @@ export default function ProjectExpandedView() {
   // ── Log activity ──
 
   const handleLogActivity = useCallback(async () => {
-    if (!project?.lead_id || !noteContent.trim()) return;
+    if (!project?.entity_id || !noteContent.trim()) return;
     setSavingNote(true);
-    await supabase.from('lead_activities').insert({
-      lead_id: project.lead_id,
+    await supabase.from('activities').insert({
+      entity_id: project.entity_id,
+      entity_type: 'deal',
       activity_type: activityTab === 'note' ? 'note' : activityType,
       content: noteContent.trim(),
       title: activityTab === 'note' ? 'Note' : activityType.replace(/_/g, ' '),
@@ -387,16 +387,16 @@ export default function ProjectExpandedView() {
     });
     setSavingNote(false);
     setNoteContent('');
-    queryClient.invalidateQueries({ queryKey: ['lead-activities', project.lead_id] });
+    queryClient.invalidateQueries({ queryKey: ['lead-activities', project.entity_id] });
     toast.success(activityTab === 'note' ? 'Note saved' : 'Activity logged');
-  }, [project?.lead_id, noteContent, activityTab, activityType, teamMember, queryClient]);
+  }, [project?.entity_id, noteContent, activityTab, activityType, teamMember, queryClient]);
 
   // ── Board: add task ──
 
   const handleAddBoardTask = useCallback(async (status: string) => {
-    if (!project?.lead_id || !newTaskTitle.trim()) return;
+    if (!project?.entity_id || !newTaskTitle.trim()) return;
     const { data: created, error } = await supabase.from('tasks').insert({
-      lead_id: project.lead_id,
+      lead_id: project.entity_id,
       title: newTaskTitle.trim(),
       status: status,
       source: 'lead',
@@ -405,7 +405,7 @@ export default function ProjectExpandedView() {
     if (error) { toast.error('Failed to add task'); return; }
     setNewTaskTitle('');
     setAddingTaskCol(null);
-    queryClient.invalidateQueries({ queryKey: ['person-tasks', project.lead_id] });
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project.entity_id] });
     toast.success('Task added');
     if (created) {
       registerUndo({
@@ -413,11 +413,11 @@ export default function ProjectExpandedView() {
         execute: async () => {
           const { error: e } = await supabase.from('tasks').delete().eq('id', created.id);
           if (e) throw e;
-          queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+          queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
         },
       });
     }
-  }, [project?.lead_id, newTaskTitle, teamMember, queryClient, registerUndo]);
+  }, [project?.entity_id, newTaskTitle, teamMember, queryClient, registerUndo]);
 
   // ── Board: toggle task ──
 
@@ -442,11 +442,11 @@ export default function ProjectExpandedView() {
           updated_at: new Date().toISOString(),
         }).eq('id', task.id);
         if (e) throw e;
-        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
       },
     });
-    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
-  }, [project?.lead_id, queryClient, registerUndo]);
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
+  }, [project?.entity_id, queryClient, registerUndo]);
 
   // ── Board: update task field ──
 
@@ -459,7 +459,7 @@ export default function ProjectExpandedView() {
       updated_at: new Date().toISOString(),
     }).eq('id', taskId);
     if (error) { toast.error('Failed to update task'); return; }
-    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
     // Keep selected task in sync
     setSelectedBoardTask(prev => prev?.id === taskId ? { ...prev, [field]: value } as ProjectTask : prev);
     registerUndo({
@@ -467,10 +467,10 @@ export default function ProjectExpandedView() {
       execute: async () => {
         const { error: e } = await supabase.from('tasks').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', taskId);
         if (e) throw e;
-        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
       },
     });
-  }, [project?.lead_id, queryClient, registerUndo]);
+  }, [project?.entity_id, queryClient, registerUndo]);
 
   // ── Board task grouping ──
 
@@ -484,12 +484,12 @@ export default function ProjectExpandedView() {
   const ownerName = project?.owner ? teamMemberMap[project.owner] : null;
 
   const teamMemberId = teamMember?.id;
-  const leadId = project?.lead_id;
+  const leadId = project?.entity_id;
   const { data: isFollowing = false } = useQuery({
     queryKey: ['lead-follow', leadId, teamMemberId],
     queryFn: async () => {
-      const { data } = await supabase.from('lead_followers').select('id')
-        .eq('lead_id', leadId!).eq('team_member_id', teamMemberId!).maybeSingle();
+      const { data } = await supabase.from('entity_followers').select('id')
+        .eq('entity_id', leadId!).eq('team_member_id', teamMemberId!).maybeSingle();
       return !!data;
     },
     enabled: !!leadId && !!teamMemberId,
@@ -497,9 +497,9 @@ export default function ProjectExpandedView() {
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
       if (isFollowing) {
-        await supabase.from('lead_followers').delete().eq('lead_id', leadId!).eq('team_member_id', teamMemberId!);
+        await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('team_member_id', teamMemberId!);
       } else {
-        await supabase.from('lead_followers').insert({ lead_id: leadId!, team_member_id: teamMemberId! });
+        await supabase.from('entity_followers').insert({ entity_id: leadId!, team_member_id: teamMemberId! });
       }
     },
     onSuccess: () => {
@@ -511,14 +511,14 @@ export default function ProjectExpandedView() {
   const handleDeleteProject = useCallback(async () => {
     if (!projectId) return;
     // Capture full project record before deleting
-    const { data: projectData } = await supabase.from('lead_projects').select('*').eq('id', projectId).single();
-    const { error } = await supabase.from('lead_projects').delete().eq('id', projectId);
+    const { data: projectData } = await supabase.from('entity_projects').select('*').eq('id', projectId).single();
+    const { error } = await supabase.from('entity_projects').delete().eq('id', projectId);
     if (error) { toast.error('Failed to delete project'); return; }
     if (projectData) {
       registerUndo({
         label: `Deleted project "${projectData.name}"`,
         execute: async () => {
-          const { error: e } = await supabase.from('lead_projects').insert(projectData);
+          const { error: e } = await supabase.from('entity_projects').insert(projectData);
           if (e) throw e;
           queryClient.invalidateQueries({ queryKey: ['all-projects'] });
         },
@@ -551,10 +551,10 @@ export default function ProjectExpandedView() {
 
   // ── Save task (Related sidebar) ──
   const handleSaveSidebarTask = useCallback(async () => {
-    if (!project?.lead_id || !newSidebarTaskTitle.trim()) return;
+    if (!project?.entity_id || !newSidebarTaskTitle.trim()) return;
     setSavingTask(true);
     const { data: created, error } = await supabase.from('tasks').insert({
-      lead_id: project.lead_id,
+      lead_id: project.entity_id,
       title: newSidebarTaskTitle.trim(),
       status: 'todo',
       source: 'lead',
@@ -564,42 +564,42 @@ export default function ProjectExpandedView() {
     if (error) { toast.error('Failed to create task'); return; }
     toast.success('Task created');
     setNewSidebarTaskTitle(''); setAddingTask(false);
-    queryClient.invalidateQueries({ queryKey: ['person-tasks', project.lead_id] });
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project.entity_id] });
     if (created) {
       registerUndo({
         label: `Created task "${newSidebarTaskTitle.trim()}"`,
         execute: async () => {
           const { error: e } = await supabase.from('tasks').delete().eq('id', created.id);
           if (e) throw e;
-          queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+          queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
         },
       });
     }
-  }, [project?.lead_id, newSidebarTaskTitle, teamMember, queryClient, registerUndo]);
+  }, [project?.entity_id, newSidebarTaskTitle, teamMember, queryClient, registerUndo]);
 
   // ── Save company (Related sidebar) ──
   const handleSaveCompany = useCallback(async () => {
-    if (!project?.lead_id || !newCompanyName.trim()) return;
+    if (!project?.entity_id || !newCompanyName.trim()) return;
     setSavingCompany(true);
-    const { error } = await supabase.from('leads').update({ company_name: newCompanyName.trim() }).eq('id', project.lead_id);
+    const { error } = await supabase.from('pipeline').update({ company_name: newCompanyName.trim() }).eq('id', project.entity_id);
     setSavingCompany(false);
     if (error) { toast.error('Failed to update company'); return; }
     toast.success('Company updated');
     setNewCompanyName(''); setAddingCompany(false);
-    queryClient.invalidateQueries({ queryKey: ['project-lead', project.lead_id] });
-  }, [project?.lead_id, newCompanyName, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ['project-lead', project.entity_id] });
+  }, [project?.entity_id, newCompanyName, queryClient]);
 
   // ── File upload ──
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !project?.lead_id) return;
+    if (!file || !project?.entity_id) return;
     e.target.value = '';
 
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) { toast.error('You must be logged in to upload files.'); return; }
 
     setUploadingFile(true);
-    const filePath = `${project.lead_id}/${Date.now()}_${sanitizeFileName(file.name)}`;
+    const filePath = `${project.entity_id}/${Date.now()}_${sanitizeFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage
       .from('lead-files')
       .upload(filePath, file, { contentType: file.type || 'application/octet-stream', upsert: true });
@@ -610,8 +610,9 @@ export default function ProjectExpandedView() {
       return;
     }
 
-    const { error: dbError } = await supabase.from('lead_files').insert({
-      lead_id: project.lead_id,
+    const { error: dbError } = await supabase.from('entity_files').insert({
+      entity_id: project.entity_id,
+      entity_type: 'deal',
       file_name: file.name,
       file_url: filePath,
       file_type: file.type || null,
@@ -624,8 +625,8 @@ export default function ProjectExpandedView() {
       return;
     }
     toast.success('File uploaded');
-    queryClient.invalidateQueries({ queryKey: ['project-lead-files', project.lead_id] });
-  }, [project?.lead_id, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ['project-lead-files', project.entity_id] });
+  }, [project?.entity_id, queryClient]);
 
   // ── File drop handler ──
   const handleFileDrop = useCallback((e: React.DragEvent) => {
@@ -645,12 +646,12 @@ export default function ProjectExpandedView() {
   // ── File delete ──
   const handleDeleteFile = useCallback(async (file: LeadFile) => {
     await supabase.storage.from('lead-files').remove([file.file_url]);
-    const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
+    const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
     if (error) { toast.error('Failed to delete file'); return; }
     toast.success('File deleted');
-    queryClient.invalidateQueries({ queryKey: ['project-lead-files', project?.lead_id] });
+    queryClient.invalidateQueries({ queryKey: ['project-lead-files', project?.entity_id] });
     // No undo for file deletes — storage object is already removed and cannot be restored
-  }, [project?.lead_id, queryClient]);
+  }, [project?.entity_id, queryClient]);
 
   // ── File download (signed URL) ──
   const handleDownloadFile = useCallback(async (file: LeadFile) => {
@@ -946,7 +947,7 @@ export default function ProjectExpandedView() {
                       className="h-8 text-xs text-destructive hover:text-destructive gap-1.5"
                       onClick={async () => {
                         await supabase.from('tasks').delete().eq('id', selectedBoardTask.id);
-                        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+                        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
                         setSelectedBoardTask(null);
                         toast.success('Task deleted');
                       }}

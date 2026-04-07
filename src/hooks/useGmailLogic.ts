@@ -156,19 +156,13 @@ export function useGmailLogic(config?: CRMGmailConfig) {
     queryKey: ['gmail-all-leads'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('leads')
+        .from('people')
         .select(`
           *,
-          lead_emails(email, email_type),
+          entity_emails(email, email_type),
           lead_phones(id, phone_number, phone_type),
-          lead_contacts(id, name, title, email, phone, is_primary),
-          lead_responses(*),
-          pipeline_leads(
-            stage_id,
-            pipeline_id,
-            pipeline_stages(name, color),
-            pipelines(name)
-          )
+          entity_contacts(id, name, title, email, phone, is_primary),
+          lead_responses(*)
         `);
       return data || [];
     },
@@ -288,21 +282,21 @@ export function useGmailLogic(config?: CRMGmailConfig) {
   const { data: crmEmails = [] } = useQuery({
     queryKey: ['crm-lead-emails'],
     queryFn: async () => {
-      const { data: leads } = await supabase
-        .from('leads')
+      const { data: people } = await supabase
+        .from('people')
         .select('email')
         .not('email', 'is', null);
-      const { data: leadEmails } = await supabase
-        .from('lead_emails')
+      const { data: entityEmails } = await supabase
+        .from('entity_emails')
         .select('email');
-      const { data: leadContacts } = await supabase
-        .from('lead_contacts')
+      const { data: entityContacts } = await supabase
+        .from('entity_contacts')
         .select('email')
         .not('email', 'is', null);
       const allEmailsSet = new Set<string>();
-      leads?.forEach(l => l.email && allEmailsSet.add(l.email.toLowerCase()));
-      leadEmails?.forEach(e => e.email && allEmailsSet.add(e.email.toLowerCase()));
-      leadContacts?.forEach(c => c.email && allEmailsSet.add(c.email.toLowerCase()));
+      people?.forEach(l => l.email && allEmailsSet.add(l.email.toLowerCase()));
+      entityEmails?.forEach(e => e.email && allEmailsSet.add(e.email.toLowerCase()));
+      entityContacts?.forEach(c => c.email && allEmailsSet.add(c.email.toLowerCase()));
       return Array.from(allEmailsSet);
     },
   });
@@ -392,7 +386,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
           if (!isExternal) return false;
           const lead = allLeads.find(l => {
             if (l.email?.toLowerCase() === senderEmail) return true;
-            if (l.lead_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
+            if (l.entity_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
             return false;
           });
           if (!lead) return false;
@@ -453,7 +447,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
         externalCount++;
         const lead = allLeads.find(l => {
           if (l.email?.toLowerCase() === senderEmail) return true;
-          if (l.lead_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
+          if (l.entity_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
           return false;
         });
         if (lead) {
@@ -486,50 +480,30 @@ export function useGmailLogic(config?: CRMGmailConfig) {
     },
   });
 
-  // Mutation to update lead
+  // Mutation to update person
   const updateLeadMutation = useMutation({
     mutationFn: async ({ leadId, updates }: { leadId: string; updates: Record<string, any> }) => {
-      const { error } = await supabase.from('leads').update(updates).eq('id', leadId);
+      const { error } = await supabase.from('people').update(updates).eq('id', leadId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gmail-all-leads'] });
-      toast.success('Lead updated');
+      toast.success('Contact updated');
     },
     onError: (error: any) => {
       toast.error('Failed to update: ' + error.message);
     },
   });
 
-  // Mutation to update pipeline lead stage
+  // Stage mutation removed — people are no longer placed in pipelines.
+  // Pipeline stage assignment is now done on deals in the `pipeline` table.
   const updateStageMutation = useMutation({
-    mutationFn: async ({ leadId, stageId }: { leadId: string; stageId: string }) => {
-      const { data: existing } = await supabase
-        .from('pipeline_leads')
-        .select('id')
-        .eq('lead_id', leadId)
-        .maybeSingle();
-      if (existing) {
-        const { error } = await supabase.from('pipeline_leads').update({ stage_id: stageId }).eq('lead_id', leadId);
-        if (error) throw error;
-      } else {
-        const { data: defaultPipeline } = await supabase
-          .from('pipelines')
-          .select('id')
-          .eq('is_main', true)
-          .maybeSingle();
-        const { error } = await supabase
-          .from('pipeline_leads')
-          .insert({ lead_id: leadId, stage_id: stageId, pipeline_id: defaultPipeline?.id });
-        if (error) throw error;
-      }
+    mutationFn: async ({ leadId: _leadId, stageId: _stageId }: { leadId: string; stageId: string }) => {
+      // No-op: people are standalone and not assigned to pipeline stages
+      console.warn('[useGmailLogic] updateStageMutation called but people are no longer in pipelines');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gmail-all-leads'] });
-      toast.success('Stage updated');
-    },
-    onError: (error: any) => {
-      toast.error('Failed to update stage: ' + error.message);
     },
   });
 
@@ -562,9 +536,8 @@ export function useGmailLogic(config?: CRMGmailConfig) {
     setCurrentLeadIdForEmail(lead.id);
 
     try {
-      const pipelineLead = lead.pipeline_leads?.[0];
-      const stageName = pipelineLead?.pipeline_stages?.name || 'Unknown';
-      const pipelineName = pipelineLead?.pipelines?.name || 'Unknown';
+      const stageName = 'Unknown';
+      const pipelineName = 'Unknown';
       const response = lead.lead_responses?.[0];
       const leadContext = {
         name: lead.name, company: lead.company_name, email: lead.email, phone: lead.phone,
@@ -847,7 +820,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
 
       const lead = findLeadForEmail(selectedEmail);
       if (lead) {
-        await supabase.from('leads').update({ last_activity_at: new Date().toISOString() }).eq('id', lead.id);
+        await supabase.from('people').update({ last_activity_at: new Date().toISOString() }).eq('id', lead.id);
       }
 
       if (originatingTaskId) {

@@ -78,10 +78,10 @@ export const GmailTaskDialog = ({
 
   // Fetch leads for the customer dropdown
   const { data: leads = [] } = useQuery({
-    queryKey: ['leads-for-tasks'],
+    queryKey: ['people-for-tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('people')
         .select('id, name, company_name')
         .order('name');
       if (error) throw error;

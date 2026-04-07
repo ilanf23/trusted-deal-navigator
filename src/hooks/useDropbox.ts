@@ -64,7 +64,7 @@ export function useDropboxPhotosFromDB(enabled = false) {
       const orFilter = PHOTO_EXTENSIONS.map(ext => `name.ilike.%.${ext}`).join(',');
       const { data, error } = await supabase
         .from('dropbox_files')
-        .select('*, lead:leads(name)')
+        .select('*, lead:pipeline(name)')
         .eq('is_folder', false)
         .or(orFilter)
         .order('modified_at', { ascending: false })

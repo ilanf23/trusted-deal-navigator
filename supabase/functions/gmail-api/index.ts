@@ -997,7 +997,7 @@ Deno.serve(async (req) => {
 
             // Update lead's last_activity_at
             const { error: leadError } = await supabaseAdmin
-              .from('leads')
+              .from('people')
               .update({ last_activity_at: new Date().toISOString() })
               .eq('id', body.leadId);
 

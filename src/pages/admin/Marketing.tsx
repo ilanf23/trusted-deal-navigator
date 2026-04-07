@@ -72,7 +72,7 @@ const AdminMarketing = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: leadsData, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+        const { data: leadsData, error } = await supabase.from('pipeline').select('*').order('created_at', { ascending: false });
         
         if (error) throw error;
 

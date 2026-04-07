@@ -97,7 +97,7 @@ const Dashboard = () => {
     companyRevenueYTD, companyRevenueMTD,
     tasksData, tasksLoading,
     isLoading, isFetching,
-  } = useDashboardData(timePeriod);
+  } = useDashboardData(timePeriod, teamMember?.id);
 
   const firstName = teamMember?.name || 'Team';
   const evanId = teamMember?.id;

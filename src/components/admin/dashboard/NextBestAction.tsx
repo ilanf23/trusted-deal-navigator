@@ -37,10 +37,11 @@ export const NextBestAction = ({ evanId }: NextBestActionProps) => {
     queryFn: async () => {
       if (!evanId) return null;
 
-      // First: overdue task with an associated lead
+      // First: overdue task with an associated lead — scoped to current user
       const { data: overdueTasks } = await supabase
         .from('tasks')
         .select('id, title, due_date, priority, lead_id')
+        .eq('team_member_id', evanId!)
         .eq('is_completed', false)
         .lt('due_date', new Date().toISOString())
         .order('due_date', { ascending: true })
@@ -50,7 +51,7 @@ export const NextBestAction = ({ evanId }: NextBestActionProps) => {
 
       if (taskWithLead) {
         const { data: lead } = await supabase
-          .from('leads')
+          .from('pipeline')
           .select('id, name, company_name, status, lead_responses(loan_amount)')
           .eq('id', taskWithLead.lead_id)
           .single();
@@ -70,7 +71,7 @@ export const NextBestAction = ({ evanId }: NextBestActionProps) => {
 
       // Second: lead closest to closing with longest inactivity
       const { data: staleLeads } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, name, company_name, status, updated_at, lead_responses(loan_amount)')
         .eq('assigned_to', evanId)
         .in('status', ['approval', 'ready_for_wu_approval', 'pre_approval_issued', 'underwriting'])
@@ -137,7 +138,7 @@ export const NextBestAction = ({ evanId }: NextBestActionProps) => {
           <h2 className="text-lg md:text-xl font-bold text-foreground">
             {nextAction.action}
           </h2>
-          <DbTableBadge tables={['tasks', 'leads']} />
+          <DbTableBadge tables={['tasks', 'pipeline']} />
         </div>
 
         <div className="flex items-center gap-3 mt-3 flex-wrap">

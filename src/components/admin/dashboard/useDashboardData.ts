@@ -24,7 +24,7 @@ const now = new Date();
 const weekStart = startOfWeek(now, { weekStartsOn: 1 });
 const weekEnd = endOfDay(addDays(weekStart, 6));
 
-export function useDashboardData(timePeriod: TimePeriod) {
+export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string | null) {
   const periodStart = timePeriod === 'ytd' ? startOfYear(now) : startOfMonth(now);
 
   // Leads analytics (existing)
@@ -32,7 +32,7 @@ export function useDashboardData(timePeriod: TimePeriod) {
     queryKey: ['admin-leads-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, name, status, source, created_at, converted_at, lead_responses(loan_amount, funding_amount)')
         .gte('created_at', periodStart.toISOString());
       if (error) throw error;
@@ -47,7 +47,7 @@ export function useDashboardData(timePeriod: TimePeriod) {
     queryKey: ['admin-pipeline-analytics'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, name, status, lead_responses(loan_amount, funding_amount)')
         .neq('status', 'funded');
       if (error) throw error;
@@ -62,7 +62,7 @@ export function useDashboardData(timePeriod: TimePeriod) {
     queryKey: ['admin-funded-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, converted_at, lead_responses(loan_amount)')
         .eq('status', 'funded')
         .gte('converted_at', periodStart.toISOString());
@@ -78,7 +78,7 @@ export function useDashboardData(timePeriod: TimePeriod) {
     queryKey: ['company-funded-deals-leads'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, name, converted_at, lead_responses(loan_amount)')
         .eq('status', 'funded')
         .gte('converted_at', startOfYear(now).toISOString());
@@ -107,17 +107,19 @@ export function useDashboardData(timePeriod: TimePeriod) {
     },
   });
 
-  // Tasks overview (new)
+  // Tasks overview — scoped to current team member
   const tasksQuery = useQuery({
-    queryKey: ['dashboard-tasks-overview'],
+    queryKey: ['dashboard-tasks-overview', teamMemberId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
         .select('id, title, priority, due_date, is_completed, status, created_at')
+        .eq('team_member_id', teamMemberId!)
         .order('due_date', { ascending: true });
       if (error) throw error;
       return data || [];
     },
+    enabled: !!teamMemberId,
   });
 
   // Scorecard data (new) - communications + new leads this week
@@ -138,7 +140,7 @@ export function useDashboardData(timePeriod: TimePeriod) {
     queryKey: ['dashboard-scorecard-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('id, status, created_at, converted_at')
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString());

@@ -37,13 +37,12 @@ interface UseGmailPeopleSyncOptions {
 export function useGmailPeopleSync({ allEmails, allLeads, findLeadForEmail }: UseGmailPeopleSyncOptions) {
   const queryClient = useQueryClient();
   const processedRef = useRef<Set<string>>(new Set());
-  const pipelineSyncedRef = useRef<Set<string>>(new Set());
 
   const { data: allPeople = [] } = useQuery<Person[]>({
     queryKey: ['gmail-people'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('leads')
+        .from('people')
         .select('id, name, email, contact_type, company_name, phone, title, notes, tags, linkedin, source, created_at, last_activity_at');
       return (data as Person[]) || [];
     },
@@ -67,13 +66,9 @@ export function useGmailPeopleSync({ allEmails, allLeads, findLeadForEmail }: Us
 
     const lead = findLeadForEmail(email);
     if (lead) {
-      const pipelineLead = lead.pipeline_leads?.[0];
       return {
         type: 'lead',
         lead,
-        stageName: pipelineLead?.pipeline_stages?.name,
-        stageColor: pipelineLead?.pipeline_stages?.color,
-        pipelineName: pipelineLead?.pipelines?.name,
       };
     }
 
@@ -85,28 +80,7 @@ export function useGmailPeopleSync({ allEmails, allLeads, findLeadForEmail }: Us
     return { type: 'unknown' };
   }, [findLeadForEmail, findPersonForEmail, isInternalSender]);
 
-  // Helper: look up default pipeline + first stage
-  const getDefaultPipelineStage = async () => {
-    const { data: pipeline } = await supabase
-      .from('pipelines')
-      .select('id')
-      .eq('is_main', true)
-      .maybeSingle();
-    if (!pipeline) return null;
-
-    const { data: stage } = await supabase
-      .from('pipeline_stages')
-      .select('id')
-      .eq('pipeline_id', pipeline.id)
-      .order('position', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (!stage) return null;
-
-    return { pipelineId: pipeline.id, stageId: stage.id };
-  };
-
-  // 1. Auto-create people + leads + pipeline_leads for unknown senders
+  // 1. Auto-create people for unknown senders (standalone — no pipeline assignment)
   useEffect(() => {
     if (allEmails.length === 0 || allLeads.length === 0) return;
 
@@ -136,37 +110,21 @@ export function useGmailPeopleSync({ allEmails, allLeads, findLeadForEmail }: Us
     if (unknownEmails.size === 0) return;
 
     const syncUnknownSenders = async () => {
-      // Create leads so they appear in pipeline
-      const defaults = await getDefaultPipelineStage();
-
-      const leadRows = Array.from(unknownEmails.entries()).map(([email, name]) => ({
+      // Create people as standalone contacts
+      const peopleRows = Array.from(unknownEmails.entries()).map(([email, name]) => ({
         name,
         email,
         status: 'initial_review' as const,
         source: 'Gmail',
       }));
 
-      const { data: insertedLeads, error: leadsError } = await supabase
-        .from('leads')
-        .insert(leadRows)
+      const { error: peopleError } = await supabase
+        .from('people')
+        .insert(peopleRows)
         .select('id');
 
-      if (leadsError) {
-        console.error('[useGmailPeopleSync] Failed to insert leads:', leadsError);
-      }
-
-      // Add to default pipeline
-      if (insertedLeads && insertedLeads.length > 0 && defaults) {
-        const pipelineRows = insertedLeads.map((lead: { id: string }) => ({
-          lead_id: lead.id,
-          pipeline_id: defaults.pipelineId,
-          stage_id: defaults.stageId,
-        }));
-
-        const { error: plError } = await supabase.from('pipeline_leads').insert(pipelineRows);
-        if (plError) {
-          console.error('[useGmailPeopleSync] Failed to insert pipeline_leads:', plError);
-        }
+      if (peopleError) {
+        console.error('[useGmailPeopleSync] Failed to insert people:', peopleError);
       }
 
       // Mark as processed
@@ -176,60 +134,12 @@ export function useGmailPeopleSync({ allEmails, allLeads, findLeadForEmail }: Us
 
       queryClient.invalidateQueries({ queryKey: ['gmail-people'] });
       queryClient.invalidateQueries({ queryKey: ['gmail-all-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
     };
 
     syncUnknownSenders();
   }, [allEmails, allLeads, allPeople, findLeadForEmail, findPersonForEmail, isInternalSender, queryClient]);
 
-  // 2. Backfill: ensure existing leads matched from Gmail have a pipeline_leads entry
-  useEffect(() => {
-    if (allEmails.length === 0 || allLeads.length === 0) return;
-
-    const leadsWithoutPipeline: string[] = [];
-
-    for (const email of allEmails) {
-      const senderEmail = extractEmailAddress(email.from);
-      if (!senderEmail || isInternalSender(senderEmail)) continue;
-
-      const lead = findLeadForEmail(email);
-      if (!lead) continue;
-      if (pipelineSyncedRef.current.has(lead.id)) continue;
-
-      // Check if this lead already has a pipeline_leads entry
-      const hasPipeline = lead.pipeline_leads && lead.pipeline_leads.length > 0;
-      pipelineSyncedRef.current.add(lead.id);
-
-      if (!hasPipeline) {
-        leadsWithoutPipeline.push(lead.id);
-      }
-    }
-
-    if (leadsWithoutPipeline.length === 0) return;
-
-    const backfillPipelineLeads = async () => {
-      const defaults = await getDefaultPipelineStage();
-      if (!defaults) return;
-
-      const rows = leadsWithoutPipeline.map(leadId => ({
-        lead_id: leadId,
-        pipeline_id: defaults.pipelineId,
-        stage_id: defaults.stageId,
-      }));
-
-      const { error } = await supabase.from('pipeline_leads').insert(rows);
-      if (error) {
-        console.error('[useGmailPeopleSync] Failed to backfill pipeline_leads:', error);
-        return;
-      }
-
-      console.log(`[useGmailPeopleSync] Backfilled ${rows.length} leads into default pipeline`);
-      queryClient.invalidateQueries({ queryKey: ['gmail-all-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
-    };
-
-    backfillPipelineLeads();
-  }, [allEmails, allLeads, findLeadForEmail, isInternalSender, queryClient]);
+  // Pipeline backfill removed — people are standalone and not placed in pipelines.
 
   return {
     allPeople,

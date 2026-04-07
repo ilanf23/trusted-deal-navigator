@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
     // Update lead's last_activity_at for scorecard tracking
     if (leadId) {
       const { error: leadError } = await supabase
-        .from('leads')
+        .from('people')
         .update({ last_activity_at: new Date().toISOString() })
         .eq('id', leadId);
 

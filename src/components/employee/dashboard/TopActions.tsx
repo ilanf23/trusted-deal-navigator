@@ -66,7 +66,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
     queryKey: ['top-actions', evanId],
     queryFn: async () => {
       const { data: leads, error } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select(`
           id,
           name,
@@ -107,19 +107,21 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
     enabled: !!evanId,
   });
 
-  // Fetch pending tasks per lead
+  // Fetch pending tasks per lead — scoped to current user
   const { data: tasks } = useQuery({
-    queryKey: ['lead-tasks-widget'],
+    queryKey: ['lead-tasks-widget', evanId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
         .select('id, title, due_date, priority, description, lead_id')
+        .eq('team_member_id', evanId!)
         .eq('is_completed', false)
         .order('due_date', { ascending: true });
 
       if (error) throw error;
       return data;
     },
+    enabled: !!evanId,
   });
 
   const actions = useMemo(() => {

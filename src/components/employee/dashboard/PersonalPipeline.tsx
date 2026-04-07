@@ -28,7 +28,7 @@ export const PersonalPipeline = ({ evanId }: PersonalPipelineProps) => {
       if (!evanId) return null;
 
       const { data: leads } = await supabase
-        .from('leads')
+        .from('pipeline')
         .select('*, lead_responses(*)')
         .eq('assigned_to', evanId);
 
