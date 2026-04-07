@@ -31,6 +31,7 @@ import {
   BrainCircuit,
   ScrollText,
   Briefcase,
+  Settings,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -147,6 +148,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
           { title: 'Volume Log', url: '/superadmin/volume-log', icon: ScrollText },
           { title: 'AI Changes', url: '/superadmin/ai-changes', icon: BrainCircuit },
+          { title: 'Settings', url: '/superadmin/settings', icon: Settings },
         ],
       });
 
@@ -242,6 +244,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
           { title: 'Bug Reporting', url: '/admin/bug-reporting', icon: Bug },
+          { title: 'Settings', url: '/admin/settings', icon: Settings },
         ],
         noCollapse: true,
       });

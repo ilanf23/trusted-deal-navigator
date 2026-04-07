@@ -92,6 +92,7 @@ import PartnerDashboard from "./pages/partner/Dashboard";
 import PartnerReferrals from "./pages/partner/Referrals";
 import PartnerCommissions from "./pages/partner/Commissions";
 import AdminTracking from "./pages/admin/Tracking";
+import AdminSettings from "./pages/admin/Settings";
 import PartnerProfilePage from "./pages/partner/Profile";
 
 const queryClient = new QueryClient({
@@ -155,6 +156,7 @@ const App = () => (
                 <Route path="/superadmin/volume-log" element={<LoanVolumeLog />} />
                 <Route path="/superadmin/volume-log/lead/:leadId" element={<VolumeLogExpandedView />} />
                 <Route path="/superadmin/ai-changes" element={<AIChanges />} />
+                <Route path="/superadmin/settings" element={<AdminSettings />} />
                 <Route path="/superadmin/dropbox" element={<DropboxPage />} />
                 <Route path="/superadmin/dropbox/callback" element={<DropboxCallback />} />
                 <Route path="/superadmin/inbox/callback" element={<AdminInboxCallback />} />
@@ -218,6 +220,7 @@ const App = () => (
                 <Route path="/admin/newsletter" element={<AdminRoute><AdminNewsletter /></AdminRoute>} />
                 <Route path="/admin/marketing" element={<AdminRoute><AdminMarketing /></AdminRoute>} />
                 <Route path="/admin/tracking" element={<AdminRoute><AdminTracking /></AdminRoute>} />
+                <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
                 {/* Legacy redirects */}
                 <Route path="/admin/evan" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/admin/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
