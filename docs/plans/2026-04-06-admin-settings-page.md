@@ -94,9 +94,9 @@ Create a comprehensive settings page accessible from every admin profile (both /
 - Create: `src/components/admin/settings/SessionSection.tsx`
 - Modify: `src/pages/admin/Settings.tsx`
 
-- [ ] Build KeyboardShortcutsSection as a reference card showing useful keyboard shortcuts for the app (navigation shortcuts, common actions). Display in a clean grid/table layout.
-- [ ] Build SessionSection showing the current active session info: browser, IP approximation (from Supabase session), login time, and a sign-out-all-devices button using `supabase.auth.signOut({ scope: 'global' })`
-- [ ] Include account creation date and last sign-in timestamp from Supabase auth metadata
+- [x] Build KeyboardShortcutsSection as a reference card showing useful keyboard shortcuts for the app (navigation shortcuts, common actions). Display in a clean grid/table layout.
+- [x] Build SessionSection showing the current active session info: browser, IP approximation (from Supabase session), login time, and a sign-out-all-devices button using `supabase.auth.signOut({ scope: 'global' })`
+- [x] Include account creation date and last sign-in timestamp from Supabase auth metadata
 
 ### Task 7: Polish and Verify
 

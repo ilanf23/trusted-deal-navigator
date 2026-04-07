@@ -15,6 +15,8 @@ import ProfileSection from '@/components/admin/settings/ProfileSection';
 import SecuritySection from '@/components/admin/settings/SecuritySection';
 import AppearanceSection from '@/components/admin/settings/AppearanceSection';
 import NotificationSection from '@/components/admin/settings/NotificationSection';
+import KeyboardShortcutsSection from '@/components/admin/settings/KeyboardShortcutsSection';
+import SessionSection from '@/components/admin/settings/SessionSection';
 
 type SettingsSection = 'profile' | 'security' | 'appearance' | 'notifications' | 'shortcuts' | 'sessions';
 
@@ -89,12 +91,8 @@ const Settings = () => {
                 {activeSection === 'security' && <SecuritySection />}
                 {activeSection === 'appearance' && <AppearanceSection />}
                 {activeSection === 'notifications' && <NotificationSection />}
-                {activeSection === 'shortcuts' && (
-                  <p className="text-sm text-muted-foreground">Keyboard shortcuts section will be implemented in a future task.</p>
-                )}
-                {activeSection === 'sessions' && (
-                  <p className="text-sm text-muted-foreground">Sessions section will be implemented in a future task.</p>
-                )}
+                {activeSection === 'shortcuts' && <KeyboardShortcutsSection />}
+                {activeSection === 'sessions' && <SessionSection />}
               </CardContent>
             </Card>
           </div>
