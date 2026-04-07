@@ -38,7 +38,7 @@ const ProfileSection = () => {
   const { teamMember } = useTeamMember();
   const queryClient = useQueryClient();
 
-  const { data: fullProfile, isLoading } = useQuery({
+  const { data: fullProfile, isLoading, error: profileError } = useQuery({
     queryKey: ['user-profile', teamMember?.id],
     queryFn: async () => {
       if (!teamMember) return null;
@@ -76,7 +76,8 @@ const ProfileSection = () => {
         zip_code: fullProfile.zip_code || '',
       });
     }
-  }, [fullProfile, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullProfile]);
 
   const onSubmit = async (values: ProfileFormValues) => {
     if (!teamMember) return;
@@ -108,6 +109,14 @@ const ProfileSection = () => {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <div className="text-sm text-destructive py-6">
+        Failed to load profile. Please try refreshing the page.
       </div>
     );
   }
