@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ProfileSection from '@/components/admin/settings/ProfileSection';
+import SecuritySection from '@/components/admin/settings/SecuritySection';
 
 type SettingsSection = 'profile' | 'security' | 'appearance' | 'notifications' | 'shortcuts' | 'sessions';
 
@@ -83,9 +84,7 @@ const Settings = () => {
               </CardHeader>
               <CardContent>
                 {activeSection === 'profile' && <ProfileSection />}
-                {activeSection === 'security' && (
-                  <p className="text-sm text-muted-foreground">Security section will be implemented in a future task.</p>
-                )}
+                {activeSection === 'security' && <SecuritySection />}
                 {activeSection === 'appearance' && (
                   <p className="text-sm text-muted-foreground">Appearance section will be implemented in a future task.</p>
                 )}

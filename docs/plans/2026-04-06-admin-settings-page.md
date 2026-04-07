@@ -60,11 +60,11 @@ Create a comprehensive settings page accessible from every admin profile (both /
 - Create: `src/components/admin/settings/SecuritySection.tsx`
 - Modify: `src/pages/admin/Settings.tsx`
 
-- [ ] Build SecuritySection with two subsections: Change Email and Change Password
-- [ ] Change Email: input for new email, calls `supabase.auth.updateUser({ email: newEmail })`. Show notice that a confirmation email will be sent to both old and new addresses.
-- [ ] Change Password: current password verification field, new password field, confirm password field. Use `supabase.auth.updateUser({ password: newPassword })`. Add password strength indicator (min 8 chars, mixed case, number, special char).
-- [ ] Add proper error handling and success toast notifications for both flows
-- [ ] Show last password change date if available from user metadata
+- [x] Build SecuritySection with two subsections: Change Email and Change Password
+- [x] Change Email: input for new email, calls `supabase.auth.updateUser({ email: newEmail })`. Show notice that a confirmation email will be sent to both old and new addresses.
+- [x] Change Password: current password verification field, new password field, confirm password field. Use `supabase.auth.updateUser({ password: newPassword })`. Add password strength indicator (min 8 chars, mixed case, number, special char).
+- [x] Add proper error handling and success toast notifications for both flows
+- [x] Show last password change date if available from user metadata
 
 ### Task 4: Appearance Section - Theme Toggle
 
