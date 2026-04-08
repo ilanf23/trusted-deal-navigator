@@ -1585,7 +1585,7 @@ export default function UnderwritingExpandedView() {
             </div>
 
             {/* Value */}
-            <EditableField icon={<DollarSign className="h-3.5 w-3.5" />} label="Value" value={lead.deal_value != null ? formatValue(lead.deal_value) : ''} field="deal_value" leadId={lead.id} onSaved={handleFieldSaved} transform={(v) => v ? Number(v.replace(/[^0-9.$,]/g, '')) : null} />
+            <EditableField icon={<DollarSign className="h-3.5 w-3.5" />} label="Value" value={lead.deal_value != null ? formatValue(lead.deal_value) : ''} field="deal_value" leadId={lead.id} onSaved={handleFieldSaved} transform={(v) => v ? Number(v.replace(/[^0-9.$,]/g, '')) : null} tableName="underwriting" />
 
             {/* Description */}
             <div>
