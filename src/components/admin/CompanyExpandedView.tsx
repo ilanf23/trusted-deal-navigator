@@ -11,6 +11,7 @@ import { isHtmlEmpty } from '@/lib/sanitize';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import {
   X, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, FileText, CheckSquare,
@@ -178,7 +179,7 @@ function EditableField({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-50/50">
+      <div className="flex items-center gap-2 px-3 py-2">
         <div className="flex items-center gap-2 text-blue-400 shrink-0">
           {icon}
           <span className="text-xs font-medium text-blue-500">{label}</span>
@@ -191,7 +192,7 @@ function EditableField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
+            className="w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
         </div>
@@ -235,7 +236,7 @@ function EditableContactRow({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg">
         <div className="text-blue-400 shrink-0">{icon}</div>
         <input
           ref={inputRef}
@@ -318,7 +319,7 @@ function EditableTags({
 
   if (editing) {
     return (
-      <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5">
+      <div className="rounded-lg p-2.5">
         <input
           ref={inputRef}
           value={draft}
@@ -745,7 +746,7 @@ export default function CompanyExpandedView() {
     queryFn: async () => {
       if (!company?.company_name) return [];
       const { data } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, status, deal_value, assigned_to')
         .eq('company_name', company.company_name)
         .order('created_at', { ascending: false });
@@ -832,7 +833,7 @@ export default function CompanyExpandedView() {
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Company Details */}
-        <ScrollArea className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] md:shrink-0 md:min-w-[240px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
+        <ScrollArea className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
           <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
             {/* ── Back Arrow ── */}
@@ -845,11 +846,7 @@ export default function CompanyExpandedView() {
 
             {/* ── Contact Card Header ── */}
             <div className="flex items-start gap-4">
-              <div className="h-14 w-14 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center shrink-0">
-                <span className="text-lg font-bold text-white">
-                  {company.company_name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
-                </span>
-              </div>
+              <CrmAvatar name={company.company_name} size="xl" />
               <div className="min-w-0 pt-0.5">
                 <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{company.company_name}</h2>
                 {company.contact_name && (
@@ -875,7 +872,7 @@ export default function CompanyExpandedView() {
             {/* Details */}
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Details</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
+              <div className=" bg-card">
                 {/* Contact Type */}
                 <div className="px-3 py-2 space-y-1.5">
                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -948,7 +945,7 @@ export default function CompanyExpandedView() {
             {/* Fixed (read-only info) */}
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-muted/50">
+              <div className=" bg-muted/50">
                 <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Companies" />
                 <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(company.created_at)} />
                 <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Updated" value={formatDate(company.updated_at)} />

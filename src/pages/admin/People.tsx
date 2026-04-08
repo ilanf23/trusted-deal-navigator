@@ -55,7 +55,6 @@ import {
   Briefcase,
   Link2,
   Maximize2,
-  Bookmark,
   BarChart3,
   Equal,
   Landmark,
@@ -1009,7 +1008,7 @@ const People = () => {
           <button
             onClick={() => setSidebarOpen(v => !v)}
             title={sidebarOpen ? 'Hide filters' : 'Show filters'}
-            style={{ left: sidebarOpen ? 'calc(18rem - 1.3125rem)' : 'calc(72px - 21px)', borderRadius: '50%', transition: 'left 200ms ease' }}
+            style={{ left: sidebarOpen ? 'calc(18rem - 1.3125rem + 19px)' : 'calc(72px - 21px + 19px)', borderRadius: '50%', transition: 'left 200ms ease' }}
             className="absolute top-[9px] z-20 h-[42px] w-[42px] border border-gray-300 dark:border-border bg-white dark:bg-card flex items-center justify-center text-black dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted hover:border-gray-400 transition-colors shadow-sm"
           >
             <ArrowLeft className="h-5 w-5" strokeWidth={2.5} style={{ transform: `scale(2) ${sidebarOpen ? '' : 'rotate(180deg)'}`, transition: 'transform 200ms ease' }} />
@@ -1017,7 +1016,7 @@ const People = () => {
 
           {/* ── Left Sidebar (Copper style) ── */}
           <aside
-            className={`shrink-0 border-r border-[#e8eaed] dark:border-border flex flex-col overflow-hidden transition-all duration-200 ${
+            className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
               sidebarOpen ? 'w-72 bg-[#f8f9fa] dark:bg-muted/30' : 'w-[72px] bg-[#eef0f2] dark:bg-muted/50'
             }`}
           >
@@ -1027,10 +1026,11 @@ const People = () => {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => { setFilterPanelOpen(true); setSelectedPerson(null); }}
-                    className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors text-[#5f6368] dark:text-muted-foreground"
-                    title="New filter"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-[#3b2778] bg-[#eee6f6] hover:bg-[#e0d4f0] dark:text-purple-300 dark:bg-purple-950/40 dark:hover:bg-purple-950/60 transition-colors"
+                    title="Create new filter"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>New</span>
                   </button>
                 </div>
               </div>
@@ -1041,7 +1041,7 @@ const People = () => {
                   <input
                     type="text"
                     placeholder="Search Filters"
-                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#1a73e8] dark:focus:border-blue-500 transition-colors"
+                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#3b2778] dark:focus:border-purple-400 transition-colors"
                   />
                 </div>
               </div>
@@ -1060,7 +1060,6 @@ const People = () => {
                       }`}
                     >
                       <span className="flex items-center gap-2">
-                        <Bookmark className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-[#3b2778] dark:text-purple-400' : 'text-[#80868b] dark:text-muted-foreground'}`} />
                         <span className={`text-[14px] font-medium truncate`}>{opt.label}</span>
                       </span>
                       {count > 0 && (
@@ -1169,7 +1168,7 @@ const People = () => {
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
             {/* ── Copper-Style Content Title Bar ── */}
-            <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-white dark:bg-background">
+            <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-[#f8f9fa] dark:bg-muted/30">
 
               <div className="flex items-center gap-3 ml-24">
                 <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
@@ -1189,8 +1188,8 @@ const People = () => {
                   <PopoverTrigger asChild>
                     <button
                       title="Sort options"
-                      className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                        isNonDefaultSort ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                      className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
+                        isNonDefaultSort ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                       }`}
                     >
                       <BarChart3 className="h-4 w-4" />
@@ -1224,8 +1223,8 @@ const People = () => {
                 <button
                   onClick={isFiltersActive ? clearAllFilters : undefined}
                   title={isFiltersActive ? 'Clear all filters' : 'No active filters'}
-                  className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                    isFiltersActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                  className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
+                    isFiltersActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                   }`}
                 >
                   {isFiltersActive ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
@@ -1236,8 +1235,8 @@ const People = () => {
                   <button
                     onClick={() => setShowColumnsMenu(v => !v)}
                     title="Show/hide columns"
-                    className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                      showColumnsMenu ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                    className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
+                      showColumnsMenu ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                     }`}
                   >
                     <LayoutGrid className="h-4 w-4" />
@@ -1379,7 +1378,7 @@ const People = () => {
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
                         <tr key={i} className="bg-white dark:bg-card">
-                          <td className="pl-4 pr-6 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                          <td className="pl-4 pr-5 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-4 w-4 rounded shrink-0" />
                               <Skeleton className="h-7 w-7 rounded-full shrink-0" />
@@ -1431,7 +1430,6 @@ const People = () => {
                         const taskCount = taskCountMap[person.id] ?? 0;
                         const interactionCount = interactionCountMap[person.id] ?? 0;
                         const inactiveDays = daysSince(person.last_activity_at);
-                        const isStale = inactiveDays !== null && inactiveDays > 7;
                         const isDetailSelected = selectedPerson?.id === person.id;
                         const isBulkSelected = selectedPersonIds.has(person.id);
 
@@ -1447,15 +1445,15 @@ const People = () => {
                             onClick={() => handleRowClick(person)}
                             className={`cursor-pointer transition-colors duration-200 group ${
                               isDetailSelected
-                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
+                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
                                 : isBulkSelected
                                   ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
                                   : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >
                             {/* Person + Checkbox (sticky) */}
-                            <td className={`pl-4 pr-6 py-3 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                              <div className="flex items-center gap-4">
+                            <td className={`px-3 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                              <div className="flex items-center gap-3">
                                 <div className="shrink-0" title="Select" onClick={(e) => e.stopPropagation()}>
                                   <Checkbox
                                     checked={isBulkSelected}
@@ -1463,154 +1461,141 @@ const People = () => {
                                     className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                                   />
                                 </div>
-                                <CrmAvatar name={person.name} imageUrl={person.image_url} />
-                                <div className="min-w-0 flex-1">
-                                  <div className="relative flex items-center">
-                                    <p className="font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight flex-1 min-w-0">
-                                      {person.name}
-                                    </p>
-                                    <button
-                                      type="button"
-                                      title="Open expanded view"
-                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/contacts/people/expanded-view/${person.id}`); }}
-                                      className="absolute right-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
-                                    >
-                                      <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
-                                    </button>
-                                  </div>
+                                <div className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full min-w-0">
+                                  <CrmAvatar name={person.name} imageUrl={person.image_url} />
+                                  <span className="text-[16px] text-[#202124] dark:text-foreground truncate">{person.name}</span>
                                 </div>
+                                <button
+                                  type="button"
+                                  title="Open expanded view"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/contacts/people/expanded-view/${person.id}`); }}
+                                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                >
+                                  <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+                                </button>
                               </div>
                             </td>
 
                             {/* Title */}
                             {columnVisibility.title && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.title, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate block">{person.title ?? '—'}</span>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.title, border: '1px solid #c8bdd6' }}>
+                                {person.title ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{person.title}</span>
+                                ) : (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
+                                )}
                               </td>
                             )}
 
                             {/* Company */}
                             {columnVisibility.company && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
                                 {person.company_name ? (
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                  <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
+                                    <div className="h-6 w-6 rounded-full bg-white dark:bg-card flex items-center justify-center shrink-0">
                                       <Building2 className="h-3 w-3 text-muted-foreground" />
                                     </div>
-                                    <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate">{person.company_name}</span>
-                                  </div>
+                                    <span className="text-[16px] text-[#202124] dark:text-foreground truncate">{person.company_name}</span>
+                                  </span>
                                 ) : (
-                                  <span className="text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Tasks */}
                             {columnVisibility.tasks && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
-                                {taskCount > 0 ? (
-                                  <span className="inline-flex items-center gap-1 text-[12px] text-[#5f6368] dark:text-muted-foreground">
-                                    <CheckSquare className="h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground" />
-                                    {taskCount}
-                                  </span>
-                                ) : (
-                                  <CheckSquare className="h-3.5 w-3.5 text-[#dadce0] dark:text-muted-foreground/30" />
-                                )}
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{taskCount}</span>
                               </td>
                             )}
 
                             {/* Email */}
                             {columnVisibility.email && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}>
                                 {person.email ? (
-                                  <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate block">{person.email}</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{person.email}</span>
                                 ) : (
-                                  <span className="text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Contact Type */}
                             {columnVisibility.contactType && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}>
                                 {typeCfg ? (
-                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${typeCfg.bg} ${typeCfg.color}`}>
+                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${typeCfg.bg} ${typeCfg.color}`}>
                                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${typeCfg.dot}`} />
                                     {typeCfg.label}
                                   </span>
                                 ) : (
-                                  <span className="text-muted-foreground text-xs">{person.contact_type}</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{person.contact_type}</span>
                                 )}
                               </td>
                             )}
 
                             {/* Pipeline / Stage */}
                             {columnVisibility.pipeline && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}>
                                 {person._pipelineName ? (
-                                  <span className="text-[12px] text-foreground whitespace-nowrap truncate">
-                                    <span className="font-semibold">{person._pipelineName}</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full whitespace-nowrap">
+                                    {person._pipelineName}
                                     {person._stageName && (
-                                      <span className="text-muted-foreground font-normal">{' > '}{person._stageName}</span>
+                                      <span className="text-muted-foreground">{' > '}{person._stageName}</span>
                                     )}
                                   </span>
                                 ) : (
-                                  <span className="text-muted-foreground/40">--</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">--</span>
                                 )}
                               </td>
                             )}
 
                             {/* Last Contacted */}
                             {columnVisibility.lastContacted && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(person.last_activity_at)}</span>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
+                                {person.last_activity_at ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums">{formatShortDate(person.last_activity_at)}</span>
+                                ) : (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
+                                )}
                               </td>
                             )}
 
                             {/* Interactions */}
                             {columnVisibility.interactions && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
-                                {interactionCount > 0 ? (
-                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-[11px] font-bold text-blue-600 dark:text-blue-400">
-                                    {interactionCount}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground/40 text-[13px]">0</span>
-                                )}
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{interactionCount}</span>
                               </td>
                             )}
 
                             {/* Inactive Days */}
                             {columnVisibility.inactiveDays && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
-                                {isStale ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800">
-                                    {inactiveDays}d
-                                  </span>
-                                ) : inactiveDays !== null ? (
-                                  <span className="text-[12px] text-muted-foreground tabular-nums">{inactiveDays}d</span>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
+                                {inactiveDays !== null ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{inactiveDays}d</span>
                                 ) : (
-                                  <span className="text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Tags */}
                             {columnVisibility.tags && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
                                 {person.tags && person.tags.length > 0 ? (
                                   <span className="flex items-center gap-1 flex-wrap">
                                     {person.tags.slice(0, 2).map((tag) => (
-                                      <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-muted text-muted-foreground border border-border/60">
+                                      <span key={tag} className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
                                         {tag}
                                       </span>
                                     ))}
                                     {person.tags.length > 2 && (
-                                      <span className="text-[10px] text-muted-foreground font-medium">+{person.tags.length - 2}</span>
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-muted-foreground">+{person.tags.length - 2}</span>
                                     )}
                                   </span>
                                 ) : (
-                                  <span className="text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}

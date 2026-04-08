@@ -14,6 +14,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/address-autocomplete';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import {
   X, DollarSign, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, CheckSquare, FileText,
@@ -36,7 +37,7 @@ import {
   formatPhoneNumber,
 } from './InlineEditableFields';
 
-type Lead = Database['public']['Tables']['pipeline']['Row'];
+type Lead = Database['public']['Tables']['potential']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 interface LeadEmail {
@@ -195,7 +196,7 @@ function useCrmInlineSave(
     const previousValue = currentValue;
     setSaving(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from('potential')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -206,7 +207,7 @@ function useCrmInlineSave(
     registerUndo({
       label: `Updated ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('pipeline').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('potential').update({ [field]: previousValue || null }).eq('id', leadId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
@@ -260,7 +261,7 @@ function CrmEditableField({
             onBlur={save}
             disabled={saving}
             placeholder={placeholder}
-            className="w-full text-sm font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
+            className="w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
         </div>
@@ -317,7 +318,7 @@ function CrmEditableRichTextField({
     const previousValue = value;
     setSaving(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from('potential')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -325,7 +326,7 @@ function CrmEditableRichTextField({
     registerUndoRich({
       label: `Updated ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('pipeline').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('potential').update({ [field]: previousValue || null }).eq('id', leadId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
@@ -402,7 +403,7 @@ function CrmEditableTags({
     const previousTags = [...tags];
     setSaving(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from('potential')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', leadId);
     setSaving(false);
@@ -413,7 +414,7 @@ function CrmEditableTags({
     registerUndoTags({
       label: 'Updated tags',
       execute: async () => {
-        const { error: e } = await supabase.from('pipeline').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
+        const { error: e } = await supabase.from('potential').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
         if (e) throw e;
         onSaved('tags', previousTags.join(','));
       },
@@ -424,7 +425,7 @@ function CrmEditableTags({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1.5 rounded-lg bg-blue-50/50 border border-blue-100 px-3 py-1.5">
+      <div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5">
         <input
           ref={inputRef}
           value={draft}
@@ -663,10 +664,10 @@ export default function PipelineExpandedView() {
   // ── Stage change handler ──
   const handleStageChange = useCallback(async (newStatus: LeadStatus) => {
     if (!leadId) return;
-    const { data: current } = await supabase.from('pipeline').select('status').eq('id', leadId).single();
+    const { data: current } = await supabase.from('potential').select('status').eq('id', leadId).single();
     const previousStatus = current?.status as LeadStatus | null;
     const { error } = await supabase
-      .from('pipeline')
+      .from('potential')
       .update({ status: newStatus })
       .eq('id', leadId);
     if (error) {
@@ -676,39 +677,39 @@ export default function PipelineExpandedView() {
     registerUndo({
       label: `Stage changed to ${pipelineStageConfig[newStatus]?.title ?? newStatus}`,
       execute: async () => {
-        const { error: e } = await supabase.from('pipeline').update({ status: previousStatus }).eq('id', leadId);
+        const { error: e } = await supabase.from('potential').update({ status: previousStatus }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-        queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+        queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
       },
     });
     toast.success('Stage updated');
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
   }, [leadId, queryClient, registerUndo]);
 
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
     if (!isUndoingRef.current) toast.success('Updated');
   }, [leadId, queryClient, isUndoingRef]);
 
   const handleBooleanToggle = useCallback(async (field: string, currentVal: boolean) => {
     if (!leadId) return;
-    const { error } = await supabase.from('pipeline').update({ [field]: !currentVal }).eq('id', leadId);
+    const { error } = await supabase.from('potential').update({ [field]: !currentVal }).eq('id', leadId);
     if (error) { toast.error('Failed to save'); return; }
     registerUndo({
       label: `Toggled ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('pipeline').update({ [field]: currentVal }).eq('id', leadId);
+        const { error: e } = await supabase.from('potential').update({ [field]: currentVal }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-        queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+        queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
       },
     });
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
     toast.success('Updated');
   }, [leadId, queryClient, registerUndo]);
 
@@ -725,7 +726,7 @@ export default function PipelineExpandedView() {
     setSavingActivity(true);
     const { error } = await supabase.from('activities').insert({
       entity_id: leadId,
-      entity_type: 'pipeline',
+      entity_type: 'potential',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -736,7 +737,7 @@ export default function PipelineExpandedView() {
       return;
     }
     // Reset inactive days timer
-    await supabase.from('pipeline').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
+    await supabase.from('potential').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote('');
     else setNoteContent('');
@@ -791,7 +792,7 @@ export default function PipelineExpandedView() {
     setSavingContact(true);
     const { error } = await supabase.from('entity_contacts').insert({
       entity_id: leadId,
-      entity_type: 'pipeline',
+      entity_type: 'potential',
       name: newContactName.trim(),
       title: newContactTitle.trim() || null,
     });
@@ -812,7 +813,7 @@ export default function PipelineExpandedView() {
     if (!leadId || !newCompanyName.trim()) return;
     setSavingCompany(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from('potential')
       .update({ company_name: newCompanyName.trim() })
       .eq('id', leadId);
     setSavingCompany(false);
@@ -824,7 +825,7 @@ export default function PipelineExpandedView() {
     setNewCompanyName('');
     setAddingCompany(false);
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
   }, [leadId, newCompanyName, queryClient]);
 
   // ── Save milestone (Related sidebar) ──
@@ -899,7 +900,7 @@ export default function PipelineExpandedView() {
 
     const { error: dbError } = await supabase.from('entity_files').insert({
       entity_id: leadId,
-      entity_type: 'pipeline',
+      entity_type: 'potential',
       file_name: file.name,
       file_url: filePath,
       file_type: file.type || null,
@@ -956,7 +957,7 @@ export default function PipelineExpandedView() {
     queryKey: ['pipeline-lead-expanded', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('*')
         .eq('id', leadId!)
         .single();
@@ -1012,7 +1013,7 @@ export default function PipelineExpandedView() {
   const { data: contacts = [] } = useQuery({
     queryKey: ['pipeline-lead-contacts', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_contacts').select('*').eq('entity_id', leadId!).eq('entity_type', 'pipeline');
+      const { data } = await supabase.from('entity_contacts').select('*').eq('entity_id', leadId!).eq('entity_type', 'potential');
       return data ?? [];
     },
     enabled: !!leadId,
@@ -1051,7 +1052,7 @@ export default function PipelineExpandedView() {
         .from('entity_files')
         .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
         .eq('entity_id', leadId!)
-        .eq('entity_type', 'pipeline')
+        .eq('entity_type', 'potential')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as LeadFile[];
@@ -1066,7 +1067,7 @@ export default function PipelineExpandedView() {
         .from('activities')
         .select('*')
         .eq('entity_id', leadId!)
-        .eq('entity_type', 'pipeline')
+        .eq('entity_type', 'potential')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -1100,7 +1101,7 @@ export default function PipelineExpandedView() {
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['pipeline-lead-emails', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadId!).eq('entity_type', 'pipeline');
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadId!).eq('entity_type', 'potential');
       return (data || []) as LeadEmail[];
     },
     enabled: !!leadId,
@@ -1109,7 +1110,7 @@ export default function PipelineExpandedView() {
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['pipeline-lead-phones', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadId!).eq('entity_type', 'pipeline');
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadId!).eq('entity_type', 'potential');
       return (data || []) as LeadPhone[];
     },
     enabled: !!leadId,
@@ -1118,7 +1119,7 @@ export default function PipelineExpandedView() {
   const { data: leadAddresses = [] } = useQuery({
     queryKey: ['pipeline-lead-addresses', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadId!).eq('entity_type', 'pipeline');
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadId!).eq('entity_type', 'potential');
       return (data || []) as LeadAddress[];
     },
     enabled: !!leadId,
@@ -1220,7 +1221,7 @@ export default function PipelineExpandedView() {
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'pipeline', email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'potential', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1245,7 +1246,7 @@ export default function PipelineExpandedView() {
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'pipeline', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'potential', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1272,7 +1273,7 @@ export default function PipelineExpandedView() {
       if (!leadId || !newAddressLine1.trim()) return;
       const { error } = await supabase.from('entity_addresses').insert({
         entity_id: leadId,
-        entity_type: 'pipeline',
+        entity_type: 'potential',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -1324,7 +1325,7 @@ export default function PipelineExpandedView() {
   const ownerOptions = teamMembers.map((m) => ({ value: m.id, label: m.name }));
 
   function goBack() {
-    navigate('/admin/pipeline');
+    navigate('/admin/pipeline/potential');
   }
 
   return (
@@ -1333,7 +1334,7 @@ export default function PipelineExpandedView() {
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Details — CRM-style contact panel */}
-        <ScrollArea className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] md:shrink-0 md:min-w-[240px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
+        <ScrollArea className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
             <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
               {/* ── Back Arrow ── */}
@@ -1346,11 +1347,7 @@ export default function PipelineExpandedView() {
 
               {/* ── Contact Card Header ── */}
               <div className="flex items-start gap-4">
-                <div className={`h-14 w-14 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center shrink-0`}>
-                  <span className="text-lg font-bold text-white">
-                    {lead.name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
-                  </span>
-                </div>
+                <CrmAvatar name={lead.name} imageUrl={lead.image_url} size="xl" />
                 <div className="min-w-0 pt-0.5">
                   <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{getLeadDisplayName(lead)}</h2>
                   {lead.company_name && (
@@ -1410,12 +1407,12 @@ export default function PipelineExpandedView() {
                   <span className="text-xs font-medium text-muted-foreground block mb-1">Contact Type</span>
                   <Select value={lead.contact_type ?? ''} onValueChange={async (v) => {
                     const previousType = lead.contact_type;
-                    const { error } = await supabase.from('pipeline').update({ contact_type: v || null }).eq('id', lead.id);
+                    const { error } = await supabase.from('potential').update({ contact_type: v || null }).eq('id', lead.id);
                     if (error) { toast.error('Failed to save'); return; }
                     registerUndo({
                       label: `Contact type changed to ${v}`,
                       execute: async () => {
-                        const { error: e } = await supabase.from('pipeline').update({ contact_type: previousType || null }).eq('id', lead.id);
+                        const { error: e } = await supabase.from('potential').update({ contact_type: previousType || null }).eq('id', lead.id);
                         if (e) throw e;
                         handleFieldSaved('contact_type', previousType ?? '');
                       },
@@ -1444,12 +1441,12 @@ export default function PipelineExpandedView() {
                       <button
                         onClick={async () => {
                           const previousOwner = lead.assigned_to;
-                          const { error } = await supabase.from('pipeline').update({ assigned_to: null }).eq('id', lead.id);
+                          const { error } = await supabase.from('potential').update({ assigned_to: null }).eq('id', lead.id);
                           if (error) { toast.error('Failed to save'); return; }
                           registerUndo({
                             label: 'Owner cleared',
                             execute: async () => {
-                              const { error: e } = await supabase.from('pipeline').update({ assigned_to: previousOwner }).eq('id', lead.id);
+                              const { error: e } = await supabase.from('potential').update({ assigned_to: previousOwner }).eq('id', lead.id);
                               if (e) throw e;
                               handleFieldSaved('assigned_to', previousOwner ?? '');
                             },
@@ -1464,12 +1461,12 @@ export default function PipelineExpandedView() {
                   ) : ownerOptions.length > 0 ? (
                     <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
                       const previousOwner = lead.assigned_to;
-                      const { error } = await supabase.from('pipeline').update({ assigned_to: v || null }).eq('id', lead.id);
+                      const { error } = await supabase.from('potential').update({ assigned_to: v || null }).eq('id', lead.id);
                       if (error) { toast.error('Failed to save'); return; }
                       registerUndo({
                         label: `Owner changed`,
                         execute: async () => {
-                          const { error: e } = await supabase.from('pipeline').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
+                          const { error: e } = await supabase.from('potential').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
                           if (e) throw e;
                           handleFieldSaved('assigned_to', previousOwner ?? '');
                         },
@@ -1547,7 +1544,7 @@ export default function PipelineExpandedView() {
                     <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
                   ))}
                   {showAddEmail ? (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
                       <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                       <Select value={newEmailType} onValueChange={setNewEmailType}>
                         <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
@@ -1574,7 +1571,7 @@ export default function PipelineExpandedView() {
                     <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
                   ))}
                   {showAddPhone ? (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
                       <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                       <Select value={newPhoneType} onValueChange={setNewPhoneType}>
                         <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
@@ -1602,7 +1599,7 @@ export default function PipelineExpandedView() {
                     <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
                   ))}
                   {showAddAddress ? (
-                    <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+                    <div className="rounded-lg p-2.5 space-y-2">
                       <AddressAutocompleteInput
                         value={newAddressLine1}
                         onChange={setNewAddressLine1}

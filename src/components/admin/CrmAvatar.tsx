@@ -19,7 +19,8 @@ export function getInitials(name: string): string {
   return name
     .split(' ')
     .filter(Boolean)
-    .map(n => n[0])
+    .map(n => n.replace(/[^a-zA-Z]/g, '')[0])
+    .filter(Boolean)
     .join('')
     .toUpperCase()
     .slice(0, 2) || '?';
@@ -49,11 +50,11 @@ export function CrmAvatar({ name, imageUrl, size = 'md', className }: CrmAvatarP
   const initials = getInitials(name);
 
   return (
-    <Avatar className={cn(container, 'shadow-sm', className)}>
+    <Avatar className={cn(container, 'shadow-sm', className)} style={size === 'xl' ? { height: 64, width: 64 } : undefined}>
       {imageUrl && (
         <AvatarImage src={imageUrl} alt={name} className="object-cover" />
       )}
-      <AvatarFallback className={cn(color, font, 'text-white font-bold')}>
+      <AvatarFallback className={cn(color, font, 'text-white font-bold')} style={size === 'xl' ? { fontSize: '1.35rem' } : undefined}>
         {initials}
       </AvatarFallback>
     </Avatar>

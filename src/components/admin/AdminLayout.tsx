@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { UndoProvider, useUndo } from '@/contexts/UndoContext';
 import { useAIAssistant } from '@/contexts/AIAssistantContext';
 import { SplitViewProvider, useSplitView } from '@/contexts/SplitViewContext';
-import SceneThemeToggle from '@/components/ui/SceneThemeToggle';
 import SplitViewContainer from './splitview/SplitViewContainer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, createContext, useContext } from 'react';
@@ -160,9 +159,6 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
 
               {/* Split View Toggle */}
               <SplitViewToggle />
-
-              {/* Theme Toggle */}
-              <SceneThemeToggle />
             </div>
           </header>
           

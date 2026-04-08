@@ -191,7 +191,7 @@ export default function ProjectExpandedView() {
   const { data: lead } = useQuery({
     queryKey: ['project-lead', project?.entity_id],
     queryFn: async () => {
-      const { data } = await supabase.from('pipeline').select('*').eq('id', project!.entity_id).single();
+      const { data } = await supabase.from('potential').select('*').eq('id', project!.entity_id).single();
       return data;
     },
     enabled: !!project?.entity_id,
@@ -270,7 +270,7 @@ export default function ProjectExpandedView() {
     queryKey: ['pp-lead-names', ppLeadIds],
     queryFn: async () => {
       if (ppLeadIds.length === 0) return {};
-      const { data } = await supabase.from('pipeline').select('id, name, company_name, email, phone').in('id', ppLeadIds);
+      const { data } = await supabase.from('potential').select('id, name, company_name, email, phone').in('id', ppLeadIds);
       const m: Record<string, { name: string; company_name: string | null; email: string | null; phone: string | null }> = {};
       for (const l of data ?? []) m[l.id] = l;
       return m;
@@ -284,7 +284,7 @@ export default function ProjectExpandedView() {
   const { data: allLeadsForPicker = [] } = useQuery({
     queryKey: ['all-leads-picker-expanded'],
     queryFn: async () => {
-      const { data } = await supabase.from('pipeline').select('id, name, company_name').order('name').limit(200);
+      const { data } = await supabase.from('potential').select('id, name, company_name').order('name').limit(200);
       return (data ?? []) as { id: string; name: string; company_name: string | null }[];
     },
     enabled: showPeoplePicker,
@@ -320,7 +320,7 @@ export default function ProjectExpandedView() {
     queryKey: ['lead-pipeline-info', project?.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('pipeline_id, pipelines:pipeline_id(name)')
         .eq('id', project!.entity_id)
         .single();
@@ -581,7 +581,7 @@ export default function ProjectExpandedView() {
   const handleSaveCompany = useCallback(async () => {
     if (!project?.entity_id || !newCompanyName.trim()) return;
     setSavingCompany(true);
-    const { error } = await supabase.from('pipeline').update({ company_name: newCompanyName.trim() }).eq('id', project.entity_id);
+    const { error } = await supabase.from('potential').update({ company_name: newCompanyName.trim() }).eq('id', project.entity_id);
     setSavingCompany(false);
     if (error) { toast.error('Failed to update company'); return; }
     toast.success('Company updated');
@@ -967,7 +967,7 @@ export default function ProjectExpandedView() {
         <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
           {/* LEFT: Details */}
-          <div className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
+          <div className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
             <ScrollArea className="md:h-full">
               <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6 overflow-x-hidden">
 

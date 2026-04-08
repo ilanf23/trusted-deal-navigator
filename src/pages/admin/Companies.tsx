@@ -22,7 +22,7 @@ import {
   ArrowLeft, PanelLeft, Filter, ChevronDown, ChevronUp, Plus,
   Building2, Tag, Check, X, LayoutGrid, FileSearch,
   PanelRightOpen, Sparkles, Loader2, Download, PlusCircle, Globe, Maximize2,
-  Search, Bookmark, BarChart3, AtSign, User, CalendarDays,
+  Search, BarChart3, AtSign, User, CalendarDays,
   MessageSquare, Moon, Phone, DollarSign,
 } from 'lucide-react';
 import {
@@ -686,7 +686,7 @@ const Companies = () => {
           <button
             onClick={() => setSidebarOpen(v => !v)}
             title={sidebarOpen ? 'Hide filters' : 'Show filters'}
-            style={{ left: sidebarOpen ? 'calc(18rem - 1.3125rem)' : 'calc(72px - 21px)', borderRadius: '50%', transition: 'left 200ms ease' }}
+            style={{ left: sidebarOpen ? 'calc(18rem - 1.3125rem + 19px)' : 'calc(72px - 21px + 19px)', borderRadius: '50%', transition: 'left 200ms ease' }}
             className="absolute top-[9px] z-20 h-[42px] w-[42px] border border-gray-300 dark:border-border bg-white dark:bg-card flex items-center justify-center text-black dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted hover:border-gray-400 transition-colors shadow-sm"
           >
             <ArrowLeft className="h-5 w-5" strokeWidth={2.5} style={{ transform: `scale(2) ${sidebarOpen ? '' : 'rotate(180deg)'}`, transition: 'transform 200ms ease' }} />
@@ -694,7 +694,7 @@ const Companies = () => {
 
           {/* ── Left Sidebar (Copper style) ── */}
           <aside
-            className={`shrink-0 border-r border-[#e8eaed] dark:border-border flex flex-col overflow-hidden transition-all duration-200 ${
+            className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
               sidebarOpen ? 'w-72 bg-[#f8f9fa] dark:bg-muted/30' : 'w-[72px] bg-[#eef0f2] dark:bg-muted/50'
             }`}
           >
@@ -720,7 +720,7 @@ const Companies = () => {
                   <input
                     type="text"
                     placeholder="Search Filters"
-                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#1a73e8] dark:focus:border-blue-500 transition-colors"
+                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#3b2778] dark:focus:border-purple-400 transition-colors"
                   />
                 </div>
               </div>
@@ -739,7 +739,6 @@ const Companies = () => {
                       }`}
                     >
                       <span className="flex items-center gap-2">
-                        <Bookmark className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-[#3b2778] dark:text-purple-400' : 'text-[#80868b] dark:text-muted-foreground'}`} />
                         <span className={`text-[14px] font-medium truncate`}>{opt.label}</span>
                       </span>
                       {count > 0 && (
@@ -805,13 +804,12 @@ const Companies = () => {
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
             {/* ── Copper-Style Content Title Bar ── */}
-            <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-white dark:bg-background">
+            <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-[#f8f9fa] dark:bg-muted/30">
 
               <div className="flex items-center gap-3 ml-24">
                 <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
                   {FILTER_OPTIONS.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Companies'}
                 </h2>
-                <Bookmark className="h-4 w-4 text-[#80868b] dark:text-muted-foreground shrink-0" />
                 {!isLoading && (
                   <span className="text-[#5f6368] dark:text-muted-foreground text-sm tabular-nums whitespace-nowrap">
                     # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'company' : 'companies'}
@@ -825,8 +823,8 @@ const Companies = () => {
                   <PopoverTrigger asChild>
                     <button
                       title="Sort options"
-                      className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                        isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                      className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
+                        isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                       }`}
                     >
                       <BarChart3 className="h-4 w-4" />
@@ -860,8 +858,8 @@ const Companies = () => {
                 <button
                   onClick={isFiltersActive ? clearAllFilters : undefined}
                   title={isFiltersActive ? 'Clear all filters' : 'No active filters'}
-                  className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                    isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                  className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
+                    isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                   }`}
                 >
                   {isFiltersActive ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
@@ -872,8 +870,8 @@ const Companies = () => {
                   <button
                     onClick={() => setShowColumnsMenu(v => !v)}
                     title="Show/hide columns"
-                    className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                      showColumnsMenu ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                    className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
+                      showColumnsMenu ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                     }`}
                   >
                     <LayoutGrid className="h-4 w-4" />
@@ -995,7 +993,7 @@ const Companies = () => {
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
                         <tr key={i} className="bg-white dark:bg-card">
-                          <td className="pl-2 pr-4 py-1.5 w-12 text-center sticky left-0 z-[5] bg-white dark:bg-card" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-5 rounded" /></td>
+                          <td className="pl-2 pr-3 py-1.5 w-12 text-center sticky left-0 z-[5] bg-white dark:bg-card" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-5 rounded" /></td>
                           <td className="px-4 py-1.5 sticky z-[5] bg-white dark:bg-card" style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6' }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-7 w-7 rounded-md shrink-0" />
@@ -1042,7 +1040,6 @@ const Companies = () => {
                       filteredAndSorted.map((company) => {
                         const typeCfg = contactTypeConfig[company.contact_type ?? 'Other'];
                         const inactiveDaysVal = daysSince(company.last_activity_at) ?? 0;
-                        const isStale = inactiveDaysVal > 7;
                         const isSelected = selectedCompany?.id === company.id;
 
                         const stickyBg = isSelected
@@ -1055,12 +1052,12 @@ const Companies = () => {
                             onClick={() => handleRowClick(company)}
                             className={`cursor-pointer transition-colors duration-100 group ${
                               isSelected
-                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
+                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
                                 : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >
                             {/* Checkbox */}
-                            <td className={`pl-2 pr-4 py-1.5 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ border: '1px solid #c8bdd6' }}>
+                            <td className={`pl-2 pr-3 py-1.5 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg} ${isSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ border: '1px solid #c8bdd6' }}>
                               <Checkbox
                                 checked={isSelected}
                                 className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
@@ -1068,154 +1065,150 @@ const Companies = () => {
                             </td>
 
                             {/* Company (sticky) */}
-                            <td className={`px-4 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                              <div className="flex items-center gap-2.5">
-                                <CrmAvatar name={company.company_name} />
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <p className="font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight">
-                                      {company.company_name}
-                                    </p>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/contacts/companies/expanded-view/${company.id}`); }}
-                                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
-                                    >
-                                      <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
-                                    </button>
-                                  </div>
-                                </div>
+                            <td className={`px-3 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                              <div className="flex items-center gap-1.5">
+                                <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
+                                  <CrmAvatar name={company.company_name} />
+                                  <span className="text-[16px] text-[#202124] dark:text-foreground truncate">
+                                    {company.company_name}
+                                  </span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/contacts/companies/expanded-view/${company.id}`); }}
+                                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                >
+                                  <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+                                </button>
                               </div>
                             </td>
 
                             {/* Phone */}
                             {columnVisibility.phone && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.phone, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.phone, border: '1px solid #c8bdd6' }}>
                                 {company.phone ? (
-                                  <span className="text-[13px] text-[#5f6368] dark:text-muted-foreground truncate block">{company.phone}</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{company.phone}</span>
                                 ) : (
-                                  <span className="text-[#5f6368]/40 dark:text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Contact */}
                             {columnVisibility.contact && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
                                 {company.contact_name ? (
-                                  <span className="text-[13px] text-[#5f6368] dark:text-muted-foreground truncate block">{company.contact_name}</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{company.contact_name}</span>
                                 ) : (
-                                  <span className="text-[#5f6368]/40 dark:text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Deals */}
                             {columnVisibility.deals && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.deals, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.deals, border: '1px solid #c8bdd6' }}>
                                 {company.deals_count > 0 ? (
-                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-muted text-[11px] font-bold text-foreground/70">
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
                                     {company.deals_count}
                                   </span>
                                 ) : (
-                                  <span className="text-[#5f6368]/40 dark:text-muted-foreground/40 text-[13px]">0</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">0</span>
                                 )}
                               </td>
                             )}
 
                             {/* Website */}
                             {columnVisibility.website && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.website, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.website, border: '1px solid #c8bdd6' }}>
                                 {company.website ? (
                                   <a
                                     href={company.website}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-[13px] text-primary hover:underline truncate block"
+                                    className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full hover:underline"
                                     onClick={e => e.stopPropagation()}
                                   >
                                     {company.website.replace(/^https?:\/\//, '')}
                                   </a>
                                 ) : (
-                                  <span className="text-[#5f6368]/40 dark:text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Contact Type */}
                             {columnVisibility.contactType && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}>
                                 {typeCfg ? (
                                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${typeCfg.bg} ${typeCfg.color}`}>
                                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${typeCfg.dot}`} />
                                     {typeCfg.label}
                                   </span>
                                 ) : (
-                                  <span className="text-[#5f6368] dark:text-muted-foreground text-xs">{company.contact_type}</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{company.contact_type}</span>
                                 )}
                               </td>
                             )}
 
                             {/* Email Domain */}
                             {columnVisibility.emailDomain && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.emailDomain, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.emailDomain, border: '1px solid #c8bdd6' }}>
                                 {company.email_domain ? (
-                                  <span className="text-[13px] text-[#5f6368] dark:text-muted-foreground truncate block">{company.email_domain}</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{company.email_domain}</span>
                                 ) : (
-                                  <span className="text-[#5f6368]/40 dark:text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Last Activity */}
                             {columnVisibility.lastActivity && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.lastActivity, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{formatShortDate(company.last_activity_at)}</span>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.lastActivity, border: '1px solid #c8bdd6' }}>
+                                {formatShortDate(company.last_activity_at) ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{formatShortDate(company.last_activity_at)}</span>
+                                ) : (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
+                                )}
                               </td>
                             )}
 
                             {/* Interactions (derived from deals_count) */}
                             {columnVisibility.interactions && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
                                 {company.deals_count > 0 ? (
-                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
                                     {company.deals_count}
                                   </span>
                                 ) : (
-                                  <span className="text-[#5f6368]/40 dark:text-muted-foreground/40 text-[13px]">0</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">0</span>
                                 )}
                               </td>
                             )}
 
                             {/* Inactive Days */}
                             {columnVisibility.inactiveDays && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
-                                {isStale ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800">
-                                    {inactiveDaysVal}d
-                                  </span>
-                                ) : (
-                                  <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{inactiveDaysVal}d</span>
-                                )}
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{inactiveDaysVal}d</span>
                               </td>
                             )}
 
                             {/* Tags */}
                             {columnVisibility.tags && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
                                 {company.tags && company.tags.length > 0 ? (
                                   <span className="flex items-center gap-1 flex-wrap">
                                     {company.tags.slice(0, 2).map((tag) => (
-                                      <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-muted text-muted-foreground border border-border/60">
+                                      <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
                                         {tag}
                                       </span>
                                     ))}
                                     {company.tags.length > 2 && (
-                                      <span className="text-[10px] text-muted-foreground font-medium">+{company.tags.length - 2}</span>
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">+{company.tags.length - 2}</span>
                                     )}
                                   </span>
                                 ) : (
-                                  <span className="text-[#5f6368]/40 dark:text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}

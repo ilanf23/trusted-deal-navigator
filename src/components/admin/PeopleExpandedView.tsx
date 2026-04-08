@@ -378,7 +378,7 @@ function EditableField({
             onBlur={save}
             disabled={saving}
             placeholder={placeholder}
-            className="w-full text-sm font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
+            className="w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
         </div>
@@ -436,7 +436,7 @@ function EditableContactRow({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg">
         <div className="text-blue-400 shrink-0">{icon}</div>
         <input
           ref={inputRef}
@@ -613,7 +613,7 @@ function EditableTags({
   if (editing) {
     return (
       <>
-        <div ref={containerRef} className="rounded-lg bg-blue-50/50 border border-blue-100 p-2">
+        <div ref={containerRef} className="rounded-lg p-2">
           <div className="flex flex-wrap gap-1.5 items-center">
             {draftTags.map((tag) => (
               <span key={tag} className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-medium">
@@ -797,7 +797,7 @@ function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; on
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
         <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
         <Select value={draftType} onValueChange={setDraftType}>
           <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
@@ -847,7 +847,7 @@ function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonP
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
         <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
         <Select value={draftType} onValueChange={setDraftType}>
           <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
@@ -915,7 +915,7 @@ function AddressBlock({ entry, onDelete, onUpdate }: { entry: PersonAddress; onD
 
   if (editing) {
     return (
-      <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+      <div className="rounded-lg p-2.5 space-y-2">
         <input autoFocus value={line1} onChange={(e) => setLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
         <div className="flex gap-1.5">
           <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
@@ -1890,7 +1890,7 @@ export default function PeopleExpandedView() {
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Details */}
-        <ScrollArea className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] md:shrink-0 md:min-w-[240px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
+        <ScrollArea className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
           <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
             {/* ── Back Arrow ── */}
@@ -2218,7 +2218,7 @@ export default function PeopleExpandedView() {
                   <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} onUpdate={(id, data) => updateEmailMutation.mutate({ id, data })} />
                 ))}
                 {showAddEmail ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
                     <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                     <Select value={newEmailType} onValueChange={setNewEmailType}>
                       <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
@@ -2243,7 +2243,7 @@ export default function PeopleExpandedView() {
                   <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}`)} onUpdate={(id, data) => updatePhoneMutation.mutate({ id, data })} />
                 ))}
                 {showAddPhone ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
                     <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                     <Select value={newPhoneType} onValueChange={setNewPhoneType}>
                       <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
@@ -2269,7 +2269,7 @@ export default function PeopleExpandedView() {
                   <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} onUpdate={(id, data) => updateAddressMutation.mutate({ id, data })} />
                 ))}
                 {showAddAddress ? (
-                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+                  <div className="rounded-lg p-2.5 space-y-2">
                     <AddressAutocompleteInput
                       value={newAddressLine1}
                       onChange={setNewAddressLine1}

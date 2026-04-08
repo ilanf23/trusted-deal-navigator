@@ -110,7 +110,7 @@ function EditableField({
 
   if (editing) {
     return (
-      <div className="flex items-start gap-2 px-3.5 py-1.5 bg-blue-50/50">
+      <div className="flex items-start gap-2 px-3 py-2">
         <div className="flex items-center gap-2 text-blue-400 shrink-0 mt-1">
           {icon}
           <span className="text-xs font-medium text-blue-500">{label}</span>
@@ -125,7 +125,7 @@ function EditableField({
               onBlur={save}
               rows={3}
               disabled={saving}
-              className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all resize-none"
+              className="w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors resize-none"
             />
           ) : (
             <input
@@ -135,7 +135,7 @@ function EditableField({
               onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
               onBlur={save}
               disabled={saving}
-              className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
+              className="w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
             />
           )}
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}

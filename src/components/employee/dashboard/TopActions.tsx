@@ -66,7 +66,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
     queryKey: ['top-actions', evanId],
     queryFn: async () => {
       const { data: leads, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select(`
           id,
           name,
@@ -351,7 +351,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
           if (item.leadId) params.set('leadId', item.leadId);
           return `/admin/calls?${params.toString()}`;
         }
-        return '/admin/pipeline';
+        return '/admin/pipeline/potential';
 
       case 'follow_up':
         // Tasks: use email with AI suggestions if lead exists, otherwise calls

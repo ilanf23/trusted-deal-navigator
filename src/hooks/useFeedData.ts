@@ -89,7 +89,7 @@ export const useFeedData = () => {
       ] = await Promise.all([
         // All deals (no pipeline filter — every pipeline)
         supabase
-          .from('pipeline')
+          .from('potential')
           .select('id, name, company_name, status, notes, created_at, updated_at, source, assigned_to, phone')
           .order('updated_at', { ascending: false })
           .limit(200),

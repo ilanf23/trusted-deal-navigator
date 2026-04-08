@@ -7,7 +7,6 @@ import {
   FileText, 
   Receipt, 
   MessageSquare,
-  UserPlus,
   LogOut,
   Kanban,
   TrendingDown,
@@ -136,7 +135,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         items: [
           { title: 'Overview', url: '/superadmin', icon: LayoutDashboard },
           { title: 'CRM Board', url: '/superadmin/crm', icon: Kanban },
-          { title: 'Leads', url: '/superadmin/leads', icon: UserPlus },
           { title: 'Rate Watch', url: '/superadmin/rate-watch', icon: TrendingDown },
           { title: 'Lender Programs', url: '/superadmin/lender-programs', icon: Building2 },
           { title: 'Clients', url: '/superadmin/clients', icon: Users },
@@ -197,10 +195,10 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Feed', url: '/admin/pipeline/feed', icon: Rss },
           {
             title: 'Pipeline',
-            url: '/admin/pipeline',
+            url: '/admin/pipeline/potential',
             icon: Kanban,
             subItems: [
-              { title: 'Potential', url: '/admin/pipeline?view=potential', icon: Crosshair },
+              { title: 'Potential', url: '/admin/pipeline/potential', icon: Crosshair },
               { title: 'Underwriting', url: '/admin/pipeline/underwriting', icon: ClipboardList },
               { title: 'Lender Management', url: '/admin/pipeline/lender-management', icon: Building2 },
             ],

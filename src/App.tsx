@@ -30,7 +30,6 @@ import Auth from "./pages/Auth";
 import Questionnaire from "./pages/Questionnaire";
 import RateWatchQuestionnaire from "./pages/RateWatchQuestionnaire";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
-import AdminLeads from "./pages/admin/Leads";
 import AdminClients from "./pages/admin/Clients";
 import AdminContracts from "./pages/admin/Contracts";
 import AdminInvoices from "./pages/admin/Invoices";
@@ -42,9 +41,8 @@ import AdminRateWatch from "./pages/admin/RateWatch";
 import AdminInboxCallback from "./pages/admin/InboxCallback";
 import LenderPrograms from "./pages/admin/LenderPrograms";
 import Dashboard from "./pages/admin/Dashboard";
-import EmployeeLeads from "./pages/admin/EmployeeLeads";
 import EmployeePipeline from "./pages/admin/EmployeePipeline";
-import Pipeline from "./pages/admin/Pipeline";
+import Pipeline from "./pages/admin/Potential";
 import PipelineFeed from "./pages/admin/PipelineFeed";
 import Underwriting from "./pages/admin/Underwriting";
 import LenderManagement from "./pages/admin/LenderManagement";
@@ -138,8 +136,7 @@ const App = () => (
               <Route element={<AdminRouteLayout />}>
                 <Route path="/superadmin" element={<SuperAdminDashboard />} />
                 <Route path="/superadmin/team-performance" element={<TeamPerformance />} />
-                <Route path="/superadmin/leads" element={<AdminLeads />} />
-                <Route path="/superadmin/pipeline" element={<Pipeline />} />
+                <Route path="/superadmin/pipeline/potential" element={<Pipeline />} />
                 <Route path="/superadmin/pipeline-test" element={<EmployeePipeline />} />
                 <Route path="/superadmin/crm" element={<EmployeePipeline />} />
                 <Route path="/superadmin/clients" element={<AdminClients />} />
@@ -180,8 +177,7 @@ const App = () => (
               {/* Admin Employee Routes (wrapped with AdminPortalWrapper for persistent call state) */}
               <Route element={<AdminPortalWrapper />}>
                 <Route path="/admin/dashboard" element={<AdminRoute><Dashboard /></AdminRoute>} />
-                <Route path="/admin/leads" element={<AdminRoute><EmployeeLeads /></AdminRoute>} />
-                <Route path="/admin/pipeline" element={<AdminRoute><Pipeline /></AdminRoute>} />
+                <Route path="/admin/pipeline/potential" element={<AdminRoute><Pipeline /></AdminRoute>} />
                 <Route path="/admin/pipeline/feed" element={<AdminRoute><PipelineFeed /></AdminRoute>} />
                 <Route path="/admin/pipeline/underwriting" element={<AdminRoute><Underwriting /></AdminRoute>} />
                 <Route path="/admin/pipeline/lender-management" element={<AdminRoute><LenderManagement /></AdminRoute>} />
@@ -191,7 +187,7 @@ const App = () => (
                 <Route path="/admin/contacts/companies" element={<AdminRoute><Companies /></AdminRoute>} />
                 <Route path="/admin/pipeline/underwriting/expanded-view/:leadId" element={<AdminRoute><UnderwritingExpandedView /></AdminRoute>} />
                 <Route path="/admin/pipeline/lender-management/expanded-view/:leadId" element={<AdminRoute><LenderManagementExpandedView /></AdminRoute>} />
-                <Route path="/admin/pipeline/pipeline/expanded-view/:leadId" element={<AdminRoute><PipelineExpandedView /></AdminRoute>} />
+                <Route path="/admin/pipeline/potential/expanded-view/:leadId" element={<AdminRoute><PipelineExpandedView /></AdminRoute>} />
                 <Route path="/admin/contacts/people/expanded-view/:personId" element={<AdminRoute><PeopleExpandedView /></AdminRoute>} />
                 <Route path="/admin/contacts/companies/expanded-view/:companyId" element={<AdminRoute><CompanyExpandedView /></AdminRoute>} />
                 <Route path="/admin/tasks" element={<AdminRoute><Tasks /></AdminRoute>} />

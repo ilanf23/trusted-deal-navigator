@@ -290,7 +290,7 @@ const Calls = () => {
       ];
 
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('*')
         .or(phoneVariants.map(p => `phone.ilike.%${p.slice(-10)}%`).join(','))
         .limit(1)
@@ -350,7 +350,7 @@ const Calls = () => {
         : `📞 Initial call: ${callDate}\n⏳ No transcript available yet`;
 
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .insert({
           name,
           email: email || null,

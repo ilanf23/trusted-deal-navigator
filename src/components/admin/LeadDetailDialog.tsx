@@ -410,7 +410,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-detail', lead?.id],
     queryFn: async () => {
       if (!lead) return null;
-      const { data } = await supabase.from('pipeline').select('*').eq('id', lead.id).maybeSingle();
+      const { data } = await supabase.from('potential').select('*').eq('id', lead.id).maybeSingle();
       return data;
     },
     enabled: !!lead && open,
@@ -692,7 +692,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const updateLeadStatus = useMutation({
     mutationFn: async (newStatus: string) => {
       if (!lead) return;
-      const { error } = await supabase.from('pipeline').update({ status: newStatus as LeadStatus }).eq('id', lead.id);
+      const { error } = await supabase.from('potential').update({ status: newStatus as LeadStatus }).eq('id', lead.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -705,7 +705,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const updateLeadAssignment = useMutation({
     mutationFn: async (assignedTo: string) => {
       if (!lead) return;
-      const { error } = await supabase.from('pipeline').update({ assigned_to: assignedTo }).eq('id', lead.id);
+      const { error } = await supabase.from('potential').update({ assigned_to: assignedTo }).eq('id', lead.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -718,7 +718,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const saveNotes = useMutation({
     mutationFn: async () => {
       if (!lead) return;
-      const { error } = await supabase.from('pipeline').update({ notes: notesContent }).eq('id', lead.id);
+      const { error } = await supabase.from('potential').update({ notes: notesContent }).eq('id', lead.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -731,7 +731,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const addContactEmail = useMutation({
     mutationFn: async (email: string) => {
       if (!lead) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: lead.id, entity_type: 'pipeline', email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: lead.id, entity_type: 'potential', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -745,7 +745,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const addContactPhone = useMutation({
     mutationFn: async (phone: string) => {
       if (!lead) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: lead.id, entity_type: 'pipeline', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: lead.id, entity_type: 'potential', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -783,7 +783,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       if (!lead || !newAddressLine1.trim()) return;
       const { error } = await supabase.from('entity_addresses').insert({
         entity_id: lead.id,
-        entity_type: 'pipeline',
+        entity_type: 'potential',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -820,7 +820,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       if (!lead) return;
       const { error } = await supabase.from('entity_contacts').insert({
         entity_id: lead.id,
-        entity_type: 'pipeline',
+        entity_type: 'potential',
         name: contact.name,
         title: contact.title || null,
         email: contact.email || null,
@@ -855,7 +855,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const updateContactInfo = useMutation({
     mutationFn: async (updates: Partial<typeof contactInfo>) => {
       if (!lead) return;
-      const { error } = await supabase.from('pipeline').update({
+      const { error } = await supabase.from('potential').update({
         known_as: updates.knownAs ?? contactInfo.knownAs,
         title: updates.contactTitle ?? contactInfo.contactTitle,
         contact_type: updates.contactType ?? contactInfo.contactType,
@@ -879,7 +879,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const updateLead = useMutation({
     mutationFn: async (updates: { name?: string; company_name?: string | null; email?: string | null; phone?: string | null }) => {
       if (!lead) return;
-      const { error } = await supabase.from('pipeline').update(updates).eq('id', lead.id);
+      const { error } = await supabase.from('potential').update(updates).eq('id', lead.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -941,7 +941,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       if (!lead) return;
       const { error } = await supabase.from('activities').insert({
         entity_id: lead.id,
-        entity_type: 'pipeline',
+        entity_type: 'potential',
         activity_type: 'comment',
         title: 'Comment added',
         content: comment,
@@ -1006,7 +1006,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       if (!lead) return;
       const { error } = await supabase.from('activities').insert({
         entity_id: lead.id,
-        entity_type: 'pipeline',
+        entity_type: 'potential',
         activity_type: 'meeting',
         title: title || 'Scheduled meeting',
         content: `Meeting scheduled for ${date}`,

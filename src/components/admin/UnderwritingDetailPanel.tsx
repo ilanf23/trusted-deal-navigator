@@ -137,7 +137,7 @@ function EditableField({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-50/50">
+      <div className="flex items-center gap-2 px-3 py-2">
         <div className="flex items-center gap-2 text-blue-400 shrink-0">
           {icon}
           <span className="text-xs font-medium text-blue-500">{label}</span>
@@ -150,7 +150,7 @@ function EditableField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
+            className="w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
         </div>
@@ -286,7 +286,7 @@ function EditableContactRow({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg">
         <div className="text-blue-400 shrink-0">{icon}</div>
         <input
           ref={inputRef}
@@ -360,7 +360,7 @@ function EditableTags({
 
   if (editing) {
     return (
-      <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5">
+      <div className="rounded-lg p-2.5">
         <input
           ref={inputRef}
           value={draft}
@@ -1187,7 +1187,7 @@ export default function UnderwritingDetailPanel({
   });
 
   return (
-    <aside className="shrink-0 w-[380px] border-l border-border/60 bg-card flex flex-col h-full animate-in slide-in-from-right-5 duration-200">
+    <aside className="absolute top-0 right-0 z-30 w-[380px] border-l border-border/60 bg-card flex flex-col max-h-full overflow-y-auto shadow-xl animate-in slide-in-from-right-5 duration-200">
       {/* ── Header ── */}
       <div className="shrink-0">
         {/* Top control bar */}
@@ -1422,7 +1422,7 @@ export default function UnderwritingDetailPanel({
                   <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
                 ))}
                 {showAddEmail ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
                     <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                     <Select value={newEmailType} onValueChange={setNewEmailType}>
                       <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
@@ -1447,7 +1447,7 @@ export default function UnderwritingDetailPanel({
                   <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
                 ))}
                 {showAddPhone ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
                     <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                     <Select value={newPhoneType} onValueChange={setNewPhoneType}>
                       <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
@@ -1473,7 +1473,7 @@ export default function UnderwritingDetailPanel({
                   <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
                 ))}
                 {showAddAddress ? (
-                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+                  <div className="rounded-lg p-2.5 space-y-2">
                     <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
                     <div className="flex gap-1.5">
                       <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />

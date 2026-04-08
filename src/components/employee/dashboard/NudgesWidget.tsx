@@ -69,7 +69,7 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
       
       // Fetch active leads with emails that have stale activity AND have never been nudged
       const { data: leads, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, email, phone, company_name, status, last_activity_at, created_at, initial_nudge_created_at')
         .neq('status', 'won')
         .neq('status', 'funded')
@@ -124,7 +124,7 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
         if (!taskError) {
           // Mark the lead as nudged permanently - this ensures no future nudge tasks
           await supabase
-            .from('pipeline')
+            .from('potential')
             .update({ initial_nudge_created_at: new Date().toISOString() })
             .eq('id', lead.id);
             
@@ -183,7 +183,7 @@ Evan`;
         // Update lead's updated_at to prevent repeated nudges
         if (currentLeadId) {
           await supabase
-            .from('pipeline')
+            .from('potential')
             .update({ updated_at: new Date().toISOString() })
             .eq('id', currentLeadId);
         }

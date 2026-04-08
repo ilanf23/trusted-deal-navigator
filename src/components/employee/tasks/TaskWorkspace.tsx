@@ -307,7 +307,7 @@ export const TaskWorkspace = () => {
     try {
       // Fetch lead details
       const { data: lead, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, email, company_name')
         .eq('id', leadId)
         .single();
@@ -356,7 +356,7 @@ export const TaskWorkspace = () => {
         // Update lead's last_activity_at
         if (composeLeadId) {
           await supabase
-            .from('pipeline')
+            .from('potential')
             .update({ last_activity_at: new Date().toISOString() })
             .eq('id', composeLeadId);
         }

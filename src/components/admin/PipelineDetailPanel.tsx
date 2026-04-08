@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
-type Lead = Database['public']['Tables']['pipeline']['Row'];
+type Lead = Database['public']['Tables']['potential']['Row'];
 
 interface StageConfigEntry {
   title: string;
@@ -97,7 +97,7 @@ function useInlineSave(
     }
     setSaving(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from('potential')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -134,7 +134,7 @@ function EditableField({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-50/50">
+      <div className="flex items-center gap-2 px-3 py-2">
         <div className="flex items-center gap-2 text-blue-400 shrink-0">
           {icon}
           <span className="text-xs font-medium text-blue-500">{label}</span>
@@ -147,7 +147,7 @@ function EditableField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
+            className="w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
         </div>
@@ -186,7 +186,7 @@ function EditableSelectField({
     if (newValue === value) return;
     setSaving(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from('potential')
       .update({ [field]: newValue || null })
       .eq('id', leadId);
     setSaving(false);
@@ -239,7 +239,7 @@ function EditableContactRow({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg">
         <div className="text-blue-400 shrink-0">{icon}</div>
         <input
           ref={inputRef}
@@ -298,7 +298,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from('potential')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', leadId);
     setSaving(false);
@@ -313,7 +313,7 @@ function EditableTags({
 
   if (editing) {
     return (
-      <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5">
+      <div className="rounded-lg p-2.5">
         <input
           ref={inputRef}
           value={draft}
@@ -373,7 +373,7 @@ function EditableRichTextField({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from('potential')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -555,7 +555,7 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
         .from('activities')
         .select('id, activity_type, title, content, created_at')
         .eq('entity_id', lead.id)
-        .eq('entity_type', 'pipeline')
+        .eq('entity_type', 'potential')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -717,7 +717,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
         .from('entity_contacts')
         .select('id, name, title, email, phone, is_primary')
         .eq('entity_id', lead.id)
-        .eq('entity_type', 'pipeline')
+        .eq('entity_type', 'potential')
         .order('is_primary', { ascending: false });
       return data || [];
     },
@@ -767,7 +767,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
         .from('entity_files')
         .select('id')
         .eq('entity_id', lead.id)
-        .eq('entity_type', 'pipeline');
+        .eq('entity_type', 'potential');
       return data || [];
     },
   });
@@ -952,7 +952,7 @@ export default function PipelineDetailPanel({
   const currentStageIdx = stageKeys.indexOf(activeStageKey);
 
   const handleFieldSaved = useCallback((field: string, newValue: string) => {
-    queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
     if (onLeadUpdate) {
       if (field === 'tags') {
         // newValue is JSON-encoded
@@ -988,7 +988,7 @@ export default function PipelineDetailPanel({
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['entity-emails', 'pipeline', lead?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', lead.id).eq('entity_type', 'pipeline');
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', lead.id).eq('entity_type', 'potential');
       return (data || []) as EntityEmail[];
     },
     enabled: !!lead,
@@ -997,7 +997,7 @@ export default function PipelineDetailPanel({
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['entity-phones', 'pipeline', lead?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', lead.id).eq('entity_type', 'pipeline');
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', lead.id).eq('entity_type', 'potential');
       return (data || []) as EntityPhone[];
     },
     enabled: !!lead,
@@ -1006,7 +1006,7 @@ export default function PipelineDetailPanel({
   const { data: leadAddresses = [] } = useQuery({
     queryKey: ['entity-addresses', 'pipeline', lead?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', lead.id).eq('entity_type', 'pipeline');
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', lead.id).eq('entity_type', 'potential');
       return (data || []) as EntityAddress[];
     },
     enabled: !!lead,
@@ -1015,7 +1015,7 @@ export default function PipelineDetailPanel({
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: lead.id, entity_type: 'pipeline', email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: lead.id, entity_type: 'potential', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1040,7 +1040,7 @@ export default function PipelineDetailPanel({
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: lead.id, entity_type: 'pipeline', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: lead.id, entity_type: 'potential', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1068,7 +1068,7 @@ export default function PipelineDetailPanel({
       if (!newAddressLine1.trim()) return;
       const { error } = await supabase.from('entity_addresses').insert({
         entity_id: lead.id,
-        entity_type: 'pipeline',
+        entity_type: 'potential',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -1101,10 +1101,9 @@ export default function PipelineDetailPanel({
   });
 
   return (
-    <aside className="shrink-0 w-[380px] border-l border-border/60 bg-card flex flex-col h-full animate-in slide-in-from-right-5 duration-200">
+    <aside className="absolute top-0 right-0 z-30 w-[380px] border-l border-border/60 bg-card flex flex-col max-h-full overflow-y-auto shadow-xl animate-in slide-in-from-right-5 duration-200">
       {/* ── Header ── */}
       <div className="shrink-0">
-        <div className="h-1" style={{ background: 'linear-gradient(90deg, #6d28d9, #8b5cf6, #a78bfa)' }} />
 
         <div className="px-5 pt-4 pb-4">
           <div className="flex items-start justify-between mb-3">
@@ -1252,7 +1251,7 @@ export default function PipelineDetailPanel({
             {/* Deal Details -- all editable */}
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Deal Details</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
+              <div>
                 <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Pipeline" />
                 <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={lead.known_as ?? ''} field="known_as" leadId={lead.id} onSaved={handleFieldSaved} />
@@ -1293,7 +1292,7 @@ export default function PipelineDetailPanel({
                   <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
                 ))}
                 {showAddEmail ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
                     <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                     <Select value={newEmailType} onValueChange={setNewEmailType}>
                       <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
@@ -1320,7 +1319,7 @@ export default function PipelineDetailPanel({
                   <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
                 ))}
                 {showAddPhone ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
                     <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                     <Select value={newPhoneType} onValueChange={setNewPhoneType}>
                       <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
@@ -1348,7 +1347,7 @@ export default function PipelineDetailPanel({
                   <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
                 ))}
                 {showAddAddress ? (
-                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+                  <div className="rounded-lg p-2.5 space-y-2">
                     <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
                     <div className="flex gap-1.5">
                       <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />

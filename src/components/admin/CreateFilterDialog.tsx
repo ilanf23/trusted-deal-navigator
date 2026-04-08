@@ -157,7 +157,7 @@ function MultiSelect({ label, options, selected, onChange }: {
           >
             <Checkbox
               checked={allSelected}
-              className="h-3.5 w-3.5 rounded-sm"
+              className="h-3.5 w-3.5 rounded-sm data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778] dark:data-[state=checked]:bg-[#a78bfa] dark:data-[state=checked]:border-[#a78bfa]"
               tabIndex={-1}
             />
             <span className="font-medium">All</span>
@@ -171,7 +171,7 @@ function MultiSelect({ label, options, selected, onChange }: {
             >
               <Checkbox
                 checked={selected.includes(opt.value)}
-                className="h-3.5 w-3.5 rounded-sm"
+                className="h-3.5 w-3.5 rounded-sm data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778] dark:data-[state=checked]:bg-[#a78bfa] dark:data-[state=checked]:border-[#a78bfa]"
                 tabIndex={-1}
               />
               <span>{opt.label}</span>
@@ -240,44 +240,18 @@ function RangeInput({ label, minVal, maxVal, onMinChange, onMaxChange, placehold
   );
 }
 
-type BadgeColor = 'blue' | 'violet' | 'emerald' | 'amber' | 'sky' | 'slate';
-
-const badgeColorMap: Record<BadgeColor, string> = {
-  blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
-  violet: 'bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300',
-  emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
-  amber: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
-  sky: 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300',
-  slate: 'bg-slate-100 text-slate-700 dark:bg-slate-900/50 dark:text-slate-300',
-};
-
-function SectionBadge({ count, color = 'blue' }: { count: number; color?: BadgeColor }) {
+function SectionBadge({ count }: { count: number }) {
   if (count === 0) return null;
   return (
-    <span className={cn(
-      "text-[10px] rounded-full px-1.5 py-0.5 font-semibold min-w-[18px] text-center ml-2",
-      badgeColorMap[color],
-    )}>
+    <span className="text-[10px] rounded-full px-1.5 py-0.5 font-semibold min-w-[18px] text-center ml-2 bg-[#eee6f6] text-[#3b2778] dark:bg-purple-900/50 dark:text-purple-300">
       {count}
     </span>
   );
 }
 
-const iconContainerMap: Record<BadgeColor, string> = {
-  blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400',
-  violet: 'bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-400',
-  emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400',
-  amber: 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400',
-  sky: 'bg-sky-100 text-sky-600 dark:bg-sky-900/50 dark:text-sky-400',
-  slate: 'bg-slate-100 text-slate-600 dark:bg-slate-900/50 dark:text-slate-400',
-};
-
-function SectionIcon({ icon: Icon, color }: { icon: React.ElementType; color: BadgeColor }) {
+function SectionIcon({ icon: Icon }: { icon: React.ElementType }) {
   return (
-    <div className={cn(
-      "flex items-center justify-center h-7 w-7 rounded-md shrink-0 transition-colors",
-      iconContainerMap[color],
-    )}>
+    <div className="flex items-center justify-center h-7 w-7 rounded-md shrink-0 transition-colors bg-[#eee6f6] text-[#3b2778] dark:bg-purple-900/50 dark:text-purple-400">
       <Icon className="h-3.5 w-3.5" />
     </div>
   );
@@ -367,18 +341,19 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
   return (
     <>
       <button
-        className="text-muted-foreground hover:text-foreground transition-colors"
-        title="Add filter"
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-[#3b2778] bg-[#eee6f6] hover:bg-[#e0d4f0] dark:text-purple-300 dark:bg-purple-950/40 dark:hover:bg-purple-950/60 transition-colors"
+        title="Create new filter"
         onClick={() => setOpen(true)}
       >
-        <Plus className="h-5 w-5" />
+        <Plus className="h-3.5 w-3.5" />
+        <span>New</span>
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="w-[460px] max-w-[90vw] p-0 flex flex-col max-h-[80vh] gap-0 rounded-xl shadow-2xl border-border/60">
           {/* Header */}
           <DialogHeader className="px-5 pt-5 pb-3 bg-gradient-to-r from-muted/50 to-transparent">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-[#4a3290] to-[#3b2778] shadow-md">
                 <SlidersHorizontal className="h-4.5 w-4.5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
@@ -386,7 +361,7 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
                 <DialogDescription className="text-xs text-muted-foreground mt-0.5">
                   Build a custom filter to narrow your pipeline
                   {totalActive > 0 && (
-                    <span className="ml-1.5 inline-flex items-center rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-semibold">
+                    <span className="ml-1.5 inline-flex items-center rounded-full bg-[#eee6f6] text-[#3b2778] dark:bg-purple-900/50 dark:text-purple-300 px-1.5 py-0.5 text-[10px] font-semibold">
                       {totalActive} active
                     </span>
                   )}
@@ -404,7 +379,7 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
                   Filter Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  className="h-9 text-sm"
+                  className="h-9 text-sm focus-visible:ring-[#3b2778] dark:focus-visible:ring-[#a78bfa]"
                   placeholder="e.g. High-value deals in underwriting..."
                   value={values.filterName}
                   onChange={e => set('filterName', e.target.value)}
@@ -418,9 +393,9 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
               <AccordionItem value="activity" className="border-b border-border/50">
                 <AccordionTrigger className={triggerClass}>
                   <span className="flex items-center gap-2">
-                    <SectionIcon icon={MessageSquare} color="blue" />
+                    <SectionIcon icon={MessageSquare} />
                     Activity & Communication
-                    <SectionBadge count={sectionCounts.activity} color="blue" />
+                    <SectionBadge count={sectionCounts.activity} />
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="space-y-3 pb-1">
@@ -446,9 +421,9 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
               <AccordionItem value="pipeline" className="border-b border-border/50">
                 <AccordionTrigger className={triggerClass}>
                   <span className="flex items-center gap-2">
-                    <SectionIcon icon={GitBranch} color="violet" />
+                    <SectionIcon icon={GitBranch} />
                     Pipeline
-                    <SectionBadge count={sectionCounts.pipeline} color="violet" />
+                    <SectionBadge count={sectionCounts.pipeline} />
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="space-y-3 pb-1">
@@ -487,9 +462,9 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
               <AccordionItem value="ownership" className="border-b border-border/50">
                 <AccordionTrigger className={triggerClass}>
                   <span className="flex items-center gap-2">
-                    <SectionIcon icon={UserCheck} color="emerald" />
+                    <SectionIcon icon={UserCheck} />
                     Ownership
-                    <SectionBadge count={sectionCounts.ownership} color="emerald" />
+                    <SectionBadge count={sectionCounts.ownership} />
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="space-y-3 pb-1">
@@ -510,9 +485,9 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
               <AccordionItem value="dates" className="border-b border-border/50">
                 <AccordionTrigger className={triggerClass}>
                   <span className="flex items-center gap-2">
-                    <SectionIcon icon={CalendarDays} color="amber" />
+                    <SectionIcon icon={CalendarDays} />
                     Dates
-                    <SectionBadge count={sectionCounts.dates} color="amber" />
+                    <SectionBadge count={sectionCounts.dates} />
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="space-y-3 pb-1">
@@ -525,9 +500,9 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
               <AccordionItem value="source" className="border-b border-border/50">
                 <AccordionTrigger className={triggerClass}>
                   <span className="flex items-center gap-2">
-                    <SectionIcon icon={Globe} color="sky" />
+                    <SectionIcon icon={Globe} />
                     Source & Outcome
-                    <SectionBadge count={sectionCounts.source} color="sky" />
+                    <SectionBadge count={sectionCounts.source} />
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="space-y-3 pb-1">
@@ -562,9 +537,9 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
               <AccordionItem value="details" className="border-none">
                 <AccordionTrigger className={triggerClass}>
                   <span className="flex items-center gap-2">
-                    <SectionIcon icon={FileText} color="slate" />
+                    <SectionIcon icon={FileText} />
                     Details
-                    <SectionBadge count={sectionCounts.details} color="slate" />
+                    <SectionBadge count={sectionCounts.details} />
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="space-y-3 pb-1">
@@ -616,7 +591,7 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
             </Button>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
-              <Button size="sm" onClick={handleSave} disabled={!values.filterName.trim()}>
+              <Button size="sm" onClick={handleSave} disabled={!values.filterName.trim()} className="bg-[#3b2778] hover:bg-[#2d1d5e] text-white">
                 <Filter className="h-3.5 w-3.5 mr-1.5" />
                 Save Filter
               </Button>

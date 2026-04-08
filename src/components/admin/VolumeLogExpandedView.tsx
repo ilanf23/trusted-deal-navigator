@@ -8,7 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { LeadDealSheetTab } from '@/components/admin/LeadDealSheetTab';
 
-type Lead = Database['public']['Tables']['pipeline']['Row'];
+type Lead = Database['public']['Tables']['potential']['Row'];
 
 const VolumeLogExpandedView = () => {
   const { leadId } = useParams<{ leadId: string }>();
@@ -20,7 +20,7 @@ const VolumeLogExpandedView = () => {
     queryFn: async () => {
       if (!leadId) throw new Error('No lead ID');
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('*')
         .eq('id', leadId)
         .single();

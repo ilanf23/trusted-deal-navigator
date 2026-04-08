@@ -64,7 +64,7 @@ export const OutboundCallCard = ({ initialPhone, initialLeadId }: OutboundCallCa
     queryKey: ['leads-with-phones', searchQuery],
     queryFn: async () => {
       let query = supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, phone, company_name')
         .not('phone', 'is', null)
         .order('name', { ascending: true })

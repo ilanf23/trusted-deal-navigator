@@ -92,7 +92,7 @@ const TeamPerformance = () => {
     queryKey: ['team-leads-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select(`
           id,
           name,
@@ -120,7 +120,7 @@ const TeamPerformance = () => {
     queryKey: ['team-pipeline-analytics'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select(`
           id,
           status,
@@ -144,7 +144,7 @@ const TeamPerformance = () => {
     queryKey: ['team-funded-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select(`
           id,
           converted_at,
@@ -207,7 +207,7 @@ const TeamPerformance = () => {
     queryKey: ['leads-map-for-calls'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, company_name');
       if (error) throw error;
       return data?.reduce((acc, lead) => {

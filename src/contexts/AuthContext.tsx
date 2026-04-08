@@ -68,26 +68,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+        // IMPORTANT: Do NOT set session/user unconditionally here.
+        // Each event branch controls its own state updates to prevent
+        // background SIGNED_OUT events from clearing user before recovery.
 
         if (event === 'INITIAL_SESSION') {
-          // Don't handle loading here — let getSession().then() below handle the initial load
+          // Set session/user for early availability, but let getSession() below
+          // handle the initial load (role fetch + loading state).
+          setSession(session);
+          setUser(session?.user ?? null);
           return;
         }
 
-        // Only re-fetch role on actual sign-in AND only if we don't already have a role
-        if (event === 'SIGNED_IN' && roleRef.current === null) {
-          setRoleLoading(true);
-          Promise.resolve().then(async () => {
-            const role = await fetchUserRole(session!.user.id);
-            setRoleAndRef(role);
+        if (event === 'SIGNED_IN') {
+          setSession(session);
+          setUser(session?.user ?? null);
+          if (roleRef.current === null) {
+            setRoleLoading(true);
+            Promise.resolve().then(async () => {
+              const role = await fetchUserRole(session!.user.id);
+              setRoleAndRef(role);
+              setRoleLoading(false);
+              setLoading(false);
+            });
+          } else {
+            // Role already known — just make sure loading is false
             setRoleLoading(false);
             setLoading(false);
-          });
+          }
         } else if (event === 'SIGNED_OUT') {
-          // Only clear state if the user explicitly called signOut()
           if (signOutIntentRef.current) {
+            // Explicit sign out — clear everything
             setUser(null);
             setSession(null);
             setRoleAndRef(null);
@@ -95,7 +106,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setLoading(false);
             signOutIntentRef.current = false;
           } else {
-            // Background token refresh failure — do NOT clear state
+            // Background token refresh failure — preserve ALL existing state.
+            // Do NOT set user/session to null — that causes route guards to redirect.
             console.warn('AuthContext: Ignoring server-triggered SIGNED_OUT (likely a failed token refresh). Session state preserved.');
             // Attempt silent recovery from localStorage
             supabase.auth.getSession().then(({ data: { session: recoveredSession } }) => {
@@ -107,11 +119,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         } else if (event === 'TOKEN_REFRESHED') {
           // Silently update session — never clear the existing role
-          // Only flip loading off if it was still true (e.g. edge case)
-          setRoleLoading(false);
-          setLoading(false);
-        } else if (event === 'SIGNED_IN' && roleRef.current !== null) {
-          // Role already known — just make sure loading is false
+          setSession(session);
+          setUser(session?.user ?? null);
           setRoleLoading(false);
           setLoading(false);
         }

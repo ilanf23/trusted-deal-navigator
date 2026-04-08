@@ -103,7 +103,7 @@ export const TaskDetailDialog = ({
     queryKey: ['leads-for-tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, company_name')
         .order('name');
       if (error) throw error;
@@ -255,7 +255,7 @@ export const TaskDetailDialog = ({
     
     if (title.includes('document') || title.includes('doc') || title.includes('file')) {
       return { 
-        path: '/admin/pipeline', 
+        path: '/admin/pipeline/potential',
         label: 'Go to Pipeline', 
         icon: <FileText className="h-4 w-4" />,
         action: 'view'

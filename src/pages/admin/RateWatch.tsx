@@ -210,7 +210,7 @@ const RateWatch = () => {
       const watchedIds = watchedLeads?.map(w => w.lead_id) || [];
 
       let query = supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, email, phone, company_name');
 
       if (watchedIds.length > 0) {
@@ -461,11 +461,11 @@ const RateWatch = () => {
 
           let existingLead = null;
           if (email) {
-            const { data } = await supabase.from('pipeline').select('id').eq('email', email).single();
+            const { data } = await supabase.from('potential').select('id').eq('email', email).single();
             existingLead = data;
           }
           if (!existingLead) {
-            const { data } = await supabase.from('pipeline').select('id').ilike('name', name).single();
+            const { data } = await supabase.from('potential').select('id').ilike('name', name).single();
             existingLead = data;
           }
 
@@ -473,7 +473,7 @@ const RateWatch = () => {
             leadId = existingLead.id;
           } else {
             const { data: newLead, error: leadError } = await supabase
-              .from('pipeline')
+              .from('potential')
               .insert({
                 name,
                 email,

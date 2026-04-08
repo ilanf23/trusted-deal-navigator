@@ -149,7 +149,7 @@ const Newsletter = () => {
     queryKey: ['leads-for-newsletter'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, email, company_name, status, source, created_at')
         .not('email', 'is', null)
         .order('created_at', { ascending: false });

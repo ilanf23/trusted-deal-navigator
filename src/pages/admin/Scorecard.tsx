@@ -303,7 +303,7 @@ const Scorecard = () => {
     queryKey: ['scorecard-all-leads', repFilter, evanMember?.id, selectedWeek],
     queryFn: async () => {
       let query = supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, company_name, status, assigned_to, created_at, updated_at');
       if (repFilter === 'me' && evanMember?.id) {
         query = query.eq('assigned_to', evanMember.id);

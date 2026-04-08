@@ -132,7 +132,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-type Lead = Database['public']['Tables']['pipeline']['Row'];
+type Lead = Database['public']['Tables']['potential']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 // Status enum values in pipeline order
@@ -475,7 +475,7 @@ const EmployeePipeline = () => {
       if (!currentMemberId) return [];
 
       let query = supabase
-        .from('pipeline')
+        .from('potential')
         .select('*')
         .order('updated_at', { ascending: false });
       
@@ -644,7 +644,7 @@ const EmployeePipeline = () => {
       
       // Fetch additional lead data for context
       const { data: leadData } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select(`
           *,
           pipeline_stages(name, color),
@@ -754,7 +754,7 @@ const EmployeePipeline = () => {
       // Update lead's last_activity_at
       if (composeLeadId) {
         await supabase
-          .from('pipeline')
+          .from('potential')
           .update({ last_activity_at: new Date().toISOString() })
           .eq('id', composeLeadId);
       }
@@ -765,7 +765,7 @@ const EmployeePipeline = () => {
       setComposeSubject('');
       setComposeBody('');
       setComposeLeadId(null);
-      queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
     } catch (error: any) {
       console.error('Error sending email:', error);
       toast.error('Failed to send email: ' + error.message);
@@ -785,7 +785,7 @@ const EmployeePipeline = () => {
       } else if (status === 'won' || status === 'funded') {
         updates.converted_at = new Date().toISOString();
       }
-      const { error } = await supabase.from('pipeline').update(updates).eq('id', id);
+      const { error } = await supabase.from('potential').update(updates).eq('id', id);
       if (error) throw error;
 
       // Register undo with global context (unless this is an undo operation itself)
@@ -794,7 +794,7 @@ const EmployeePipeline = () => {
           label: `${leadName || 'Lead'} moved to ${stages.find(s => s.status === status)?.title || status}`,
           execute: async () => {
             const { error: undoError } = await supabase
-              .from('pipeline')
+              .from('potential')
               .update({ status: previousStatus, updated_at: new Date().toISOString() })
               .eq('id', id);
             if (undoError) throw undoError;
@@ -839,7 +839,7 @@ const EmployeePipeline = () => {
     mutationFn: async ({ name, status }: { name: string; status: LeadStatus }) => {
       if (!currentMemberId) throw new Error('Current team member not found');
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .insert({
           name: name.trim(),
           status,
@@ -870,7 +870,7 @@ const EmployeePipeline = () => {
   const updateLeadFieldMutation = useMutation({
     mutationFn: async ({ id, field, value }: { id: string; field: string; value: string | null }) => {
       if (!canEdit) throw new Error('Not authorized to update this lead');
-      const { error } = await supabase.from('pipeline').update({ [field]: value }).eq('id', id);
+      const { error } = await supabase.from('potential').update({ [field]: value }).eq('id', id);
       if (error) throw error;
       return { field, value };
     },
@@ -888,14 +888,14 @@ const EmployeePipeline = () => {
       
       // First, fetch the leads data before deleting (for undo)
       const { data: leadsToDelete, error: fetchError } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('*')
         .in('id', leadIds);
 
       if (fetchError) throw fetchError;
 
       // Delete the leads
-      const { error } = await supabase.from('pipeline').delete().in('id', leadIds);
+      const { error } = await supabase.from('potential').delete().in('id', leadIds);
       if (error) throw error;
 
       return leadsToDelete as Lead[];
@@ -919,7 +919,7 @@ const EmployeePipeline = () => {
           execute: async () => {
             // Restore the deleted leads
             const { error: restoreError } = await supabase
-              .from('pipeline')
+              .from('potential')
               .insert(deletedLeads.map(lead => ({
                 ...lead,
                 updated_at: new Date().toISOString(),
@@ -943,11 +943,11 @@ const EmployeePipeline = () => {
       
       // Get current assignments before updating (for undo)
       const { data: leadsBeforeUpdate } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, assigned_to, name')
         .in('id', leadIds);
 
-      const { error } = await supabase.from('pipeline').update({ assigned_to: ownerId }).in('id', leadIds);
+      const { error } = await supabase.from('potential').update({ assigned_to: ownerId }).in('id', leadIds);
       if (error) throw error;
       return { ownerId, leadsBeforeUpdate, leadCount: leadIds.length };
     },
@@ -969,7 +969,7 @@ const EmployeePipeline = () => {
           execute: async () => {
             // Restore original assignments
             for (const lead of result.leadsBeforeUpdate!) {
-              await supabase.from('pipeline').update({ assigned_to: lead.assigned_to }).eq('id', lead.id);
+              await supabase.from('potential').update({ assigned_to: lead.assigned_to }).eq('id', lead.id);
             }
             queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
             queryClient.invalidateQueries({ queryKey: ['pipeline'] });

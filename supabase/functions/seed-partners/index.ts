@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
 
     // Fetch existing leads to link
     const { data: leads, error: leadsError } = await supabaseAdmin
-      .from('pipeline')
+      .from('potential')
       .select('id, name')
       .order('created_at', { ascending: false })
       .limit(20)

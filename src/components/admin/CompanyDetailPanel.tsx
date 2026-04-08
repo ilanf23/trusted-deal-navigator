@@ -162,7 +162,7 @@ function EditableField({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-50/50">
+      <div className="flex items-center gap-2 px-3 py-2">
         <div className="flex items-center gap-2 text-blue-400 shrink-0">
           {icon}
           <span className="text-xs font-medium text-blue-500">{label}</span>
@@ -175,7 +175,7 @@ function EditableField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
+            className="w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
         </div>
@@ -216,7 +216,7 @@ function EditableContactRow({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg">
         <div className="text-blue-400 shrink-0">{icon}</div>
         <input
           ref={inputRef}
@@ -289,7 +289,7 @@ function EditableTags({
 
   if (editing) {
     return (
-      <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5">
+      <div className="rounded-lg p-2.5">
         <input
           ref={inputRef}
           value={draft}
@@ -674,10 +674,9 @@ export default function CompanyDetailPanel({
   }, [company, onCompanyUpdate, queryClient]);
 
   return (
-    <aside className="shrink-0 w-[380px] border-l border-border/60 bg-card flex flex-col h-full animate-in slide-in-from-right-5 duration-200">
+    <aside className="absolute top-0 right-0 z-30 w-[380px] border-l border-border/60 bg-card flex flex-col max-h-full overflow-y-auto shadow-xl animate-in slide-in-from-right-5 duration-200">
       {/* ── Header ── */}
       <div className="shrink-0">
-        <div className="h-1" style={{ background: 'linear-gradient(90deg, #6d28d9, #8b5cf6, #a78bfa)' }} />
 
         <div className="px-5 pt-4 pb-4">
           <div className="flex items-start justify-between mb-4">
@@ -828,7 +827,7 @@ export default function CompanyDetailPanel({
             {/* Details */}
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Details</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
+              <div>
                 <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={company.known_as ?? ''} field="known_as" companyId={company.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={company.clx_file_name ?? ''} field="clx_file_name" companyId={company.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={company.source ?? ''} field="source" companyId={company.id} onSaved={handleFieldSaved} />

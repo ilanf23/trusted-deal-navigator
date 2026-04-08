@@ -87,7 +87,7 @@ export default function ProjectDetailPanel({
   const { data: lead } = useQuery({
     queryKey: ['project-lead', project.entity_id],
     queryFn: async () => {
-      const { data } = await supabase.from('pipeline').select('name, company_name, opportunity_name, email, last_activity_at').eq('id', project.entity_id).single();
+      const { data } = await supabase.from('potential').select('name, company_name, opportunity_name, email, last_activity_at').eq('id', project.entity_id).single();
       return data;
     },
     enabled: !!project.entity_id,
@@ -248,7 +248,7 @@ export default function ProjectDetailPanel({
     queryKey: ['project-panel-pipeline', project.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('pipeline_id, pipelines:pipeline_id(name)')
         .eq('id', project.entity_id)
         .single();
@@ -278,7 +278,7 @@ export default function ProjectDetailPanel({
     queryKey: ['linked-lead-names-panel', linkedLeadIds],
     queryFn: async () => {
       if (linkedLeadIds.length === 0) return {};
-      const { data } = await supabase.from('pipeline').select('id, name, company_name, phone, email, title, avatar_url').in('id', linkedLeadIds);
+      const { data } = await supabase.from('potential').select('id, name, company_name, phone, email, title, avatar_url').in('id', linkedLeadIds);
       const m: Record<string, { name: string; company_name: string | null; phone: string | null; email: string | null; title: string | null; avatar_url: string | null }> = {};
       for (const l of data ?? []) m[l.id] = l;
       return m;
@@ -290,7 +290,7 @@ export default function ProjectDetailPanel({
   const { data: allLeads = [] } = useQuery({
     queryKey: ['all-leads-for-picker'],
     queryFn: async () => {
-      const { data } = await supabase.from('pipeline').select('id, name, company_name').order('name').limit(200);
+      const { data } = await supabase.from('potential').select('id, name, company_name').order('name').limit(200);
       return (data ?? []) as { id: string; name: string; company_name: string | null }[];
     },
     enabled: showPeoplePicker,
@@ -369,7 +369,7 @@ export default function ProjectDetailPanel({
     });
     setSavingActivity(false);
     if (error) { toast.error('Failed to save activity'); return; }
-    await supabase.from('pipeline').update({ last_activity_at: new Date().toISOString() }).eq('id', project.entity_id);
+    await supabase.from('potential').update({ last_activity_at: new Date().toISOString() }).eq('id', project.entity_id);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote(''); else setNoteContent('');
     queryClient.invalidateQueries({ queryKey: ['project-panel-activities', project.entity_id] });
@@ -390,7 +390,7 @@ export default function ProjectDetailPanel({
   const subtitle = lead ? [lead.company_name, lead.opportunity_name || lead.name].filter(Boolean).join(' - ') : '';
 
   return (
-    <aside className="shrink-0 w-[420px] border-l border-border/60 bg-white dark:bg-card flex flex-col shadow-lg animate-in slide-in-from-right-5 duration-200 h-full">
+    <aside className="absolute top-0 right-0 z-30 w-[420px] border-l border-border/60 bg-white dark:bg-card flex flex-col shadow-xl max-h-full overflow-y-auto animate-in slide-in-from-right-5 duration-200">
       {/* ── Top bar ── */}
       <div className="shrink-0 flex items-center justify-between px-5 pt-4 pb-2">
         <button

@@ -1444,7 +1444,15 @@ export type Database = {
           synced_at?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dropbox_files_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "potential"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_templates: {
         Row: {
@@ -1542,6 +1550,13 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "potential"
             referencedColumns: ["id"]
           },
         ]
@@ -2180,7 +2195,7 @@ export type Database = {
             foreignKeyName: "lender_management_origin_pipeline_fkey"
             columns: ["origin_pipeline_id"]
             isOneToOne: false
-            referencedRelation: "pipeline"
+            referencedRelation: "potential"
             referencedColumns: ["id"]
           },
           {
@@ -2583,6 +2598,47 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_read: boolean | null
+          link_url: string | null
+          team_member_id: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_read?: boolean | null
+          link_url?: string | null
+          team_member_id: string
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_read?: boolean | null
+          link_url?: string | null
+          team_member_id?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outbound_emails: {
         Row: {
           body_html: string
@@ -2918,7 +2974,147 @@ export type Database = {
         }
         Relationships: []
       }
-      pipeline: {
+      pipeline_shares: {
+        Row: {
+          access_level: string
+          created_at: string
+          created_by: string | null
+          id: string
+          owner_id: string
+          shared_with_id: string
+          updated_at: string
+        }
+        Insert: {
+          access_level?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          owner_id: string
+          shared_with_id: string
+          updated_at?: string
+        }
+        Update: {
+          access_level?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          owner_id?: string
+          shared_with_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_shares_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_shares_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_shares_shared_with_id_fkey"
+            columns: ["shared_with_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_stages: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          pipeline_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          pipeline_id: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          pipeline_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipelines: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_main: boolean | null
+          is_system: boolean
+          name: string
+          owner_id: string
+          template_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_main?: boolean | null
+          is_system?: boolean
+          name: string
+          owner_id: string
+          template_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_main?: boolean | null
+          is_system?: boolean
+          name?: string
+          owner_id?: string
+          template_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipelines_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      potential: {
         Row: {
           about: string | null
           actual_net_revenue: number | null
@@ -3152,26 +3348,26 @@ export type Database = {
           },
         ]
       }
-      pipeline_people: {
+      potential_people: {
         Row: {
           created_at: string
           id: string
           person_id: string
-          pipeline_id: string
+          potential_id: string
           role: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           person_id: string
-          pipeline_id: string
+          potential_id: string
           role?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           person_id?: string
-          pipeline_id?: string
+          potential_id?: string
           role?: string | null
         }
         Relationships: [
@@ -3184,149 +3380,9 @@ export type Database = {
           },
           {
             foreignKeyName: "pipeline_people_pipeline_id_fkey"
-            columns: ["pipeline_id"]
+            columns: ["potential_id"]
             isOneToOne: false
-            referencedRelation: "pipeline"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pipeline_shares: {
-        Row: {
-          access_level: string
-          created_at: string
-          created_by: string | null
-          id: string
-          owner_id: string
-          shared_with_id: string
-          updated_at: string
-        }
-        Insert: {
-          access_level?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          owner_id: string
-          shared_with_id: string
-          updated_at?: string
-        }
-        Update: {
-          access_level?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          owner_id?: string
-          shared_with_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pipeline_shares_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pipeline_shares_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pipeline_shares_shared_with_id_fkey"
-            columns: ["shared_with_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pipeline_stages: {
-        Row: {
-          color: string | null
-          created_at: string
-          id: string
-          name: string
-          pipeline_id: string
-          position: number
-          updated_at: string
-        }
-        Insert: {
-          color?: string | null
-          created_at?: string
-          id?: string
-          name: string
-          pipeline_id: string
-          position?: number
-          updated_at?: string
-        }
-        Update: {
-          color?: string | null
-          created_at?: string
-          id?: string
-          name?: string
-          pipeline_id?: string
-          position?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pipeline_stages_pipeline_id_fkey"
-            columns: ["pipeline_id"]
-            isOneToOne: false
-            referencedRelation: "pipelines"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pipelines: {
-        Row: {
-          color: string | null
-          created_at: string
-          description: string | null
-          icon: string | null
-          id: string
-          is_main: boolean | null
-          is_system: boolean
-          name: string
-          owner_id: string
-          template_type: string | null
-          updated_at: string
-        }
-        Insert: {
-          color?: string | null
-          created_at?: string
-          description?: string | null
-          icon?: string | null
-          id?: string
-          is_main?: boolean | null
-          is_system?: boolean
-          name: string
-          owner_id: string
-          template_type?: string | null
-          updated_at?: string
-        }
-        Update: {
-          color?: string | null
-          created_at?: string
-          description?: string | null
-          icon?: string | null
-          id?: string
-          is_main?: boolean | null
-          is_system?: boolean
-          name?: string
-          owner_id?: string
-          template_type?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pipelines_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "potential"
             referencedColumns: ["id"]
           },
         ]
@@ -3780,57 +3836,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "tasks_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "tasks_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "potential"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      team_funded_deals: {
-        Row: {
-          created_at: string
-          days_in_pipeline: number
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
-          fee_earned: number
-          funded_at: string
-          id: string
-          lead_id: string | null
-          loan_amount: number
-          notes: string | null
-          team_member_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          days_in_pipeline?: number
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          fee_earned?: number
-          funded_at?: string
-          id?: string
-          lead_id?: string | null
-          loan_amount?: number
-          notes?: string | null
-          team_member_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          days_in_pipeline?: number
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          fee_earned?: number
-          funded_at?: string
-          id?: string
-          lead_id?: string | null
-          loan_amount?: number
-          notes?: string | null
-          team_member_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "team_funded_deals_team_member_id_fkey"
+            foreignKeyName: "tasks_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -4078,7 +4091,7 @@ export type Database = {
             foreignKeyName: "underwriting_origin_pipeline_fkey"
             columns: ["origin_pipeline_id"]
             isOneToOne: false
-            referencedRelation: "pipeline"
+            referencedRelation: "potential"
             referencedColumns: ["id"]
           },
           {
@@ -4408,6 +4421,7 @@ export type Database = {
         | "lender_management"
         | "people"
         | "companies"
+        | "potential"
       invoice_status:
         | "draft"
         | "sent"
@@ -4592,6 +4606,7 @@ export const Constants = {
         "lender_management",
         "people",
         "companies",
+        "potential",
       ],
       invoice_status: [
         "draft",
@@ -4645,9 +4660,16 @@ export const Constants = {
 // ==========================================
 // Type aliases for the 5 CRM tables
 // ==========================================
-export type PipelineDeal = Database['public']['Tables']['pipeline']['Row']
-export type PipelineDealInsert = Database['public']['Tables']['pipeline']['Insert']
-export type PipelineDealUpdate = Database['public']['Tables']['pipeline']['Update']
+export type PotentialDeal = Database['public']['Tables']['potential']['Row']
+export type PotentialDealInsert = Database['public']['Tables']['potential']['Insert']
+export type PotentialDealUpdate = Database['public']['Tables']['potential']['Update']
+
+/** @deprecated Use PotentialDeal instead */
+export type PipelineDeal = PotentialDeal
+/** @deprecated Use PotentialDealInsert instead */
+export type PipelineDealInsert = PotentialDealInsert
+/** @deprecated Use PotentialDealUpdate instead */
+export type PipelineDealUpdate = PotentialDealUpdate
 
 export type UnderwritingDeal = Database['public']['Tables']['underwriting']['Row']
 export type UnderwritingDealInsert = Database['public']['Tables']['underwriting']['Insert']
@@ -4666,7 +4688,9 @@ export type CompanyInsert = Database['public']['Tables']['companies']['Insert']
 export type CompanyUpdate = Database['public']['Tables']['companies']['Update']
 
 // Junction table types
-export type PipelinePerson = Database['public']['Tables']['pipeline_people']['Row']
+export type PotentialPerson = Database['public']['Tables']['potential_people']['Row']
+/** @deprecated Use PotentialPerson instead */
+export type PipelinePerson = PotentialPerson
 export type UnderwritingPerson = Database['public']['Tables']['underwriting_people']['Row']
 export type LenderManagementPerson = Database['public']['Tables']['lender_management_people']['Row']
 export type CompanyPerson = Database['public']['Tables']['company_people']['Row']

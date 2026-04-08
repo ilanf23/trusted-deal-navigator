@@ -157,7 +157,7 @@ const Projects = () => {
     queryFn: async () => {
       if (leadIds.length === 0) return {};
       const { data } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, opportunity_name, company_name')
         .in('id', leadIds);
       const map: Record<string, { name: string; opportunity_name: string | null; company_name: string | null }> = {};
@@ -200,7 +200,7 @@ const Projects = () => {
     queryFn: async () => {
       if (linkedLeadIds.length === 0) return {};
       const { data } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name')
         .in('id', linkedLeadIds);
       const map: Record<string, string> = {};
@@ -634,15 +634,15 @@ const Projects = () => {
                       key={p.id}
                       className={`${filterPanelOpen ? 'cursor-default' : 'cursor-pointer'} transition-colors duration-100 group ${
                         selectedProject?.id === p.id
-                          ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
+                          ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
                           : isSelected
-                            ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
+                            ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
                             : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                       }`}
                       onClick={() => { if (!filterPanelOpen) setSelectedProject(p); }}
                     >
                       {/* Checkbox */}
-                      <td className={`pl-2 pr-4 py-1.5 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
+                      <td className={`pl-2 pr-3 py-1.5 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg} ${(selectedProject?.id === p.id || isSelected) ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={() => toggleOne(p.id)}
@@ -656,15 +656,15 @@ const Projects = () => {
                           <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0">
                             <Briefcase className="h-4 w-4 text-muted-foreground" />
                           </div>
-                          <div className="relative flex items-center min-w-0 flex-1">
-                            <span className="font-bold text-foreground truncate text-[13px] flex-1 min-w-0">
+                          <div className="flex items-center min-w-0 flex-1">
+                            <span className="font-bold text-foreground truncate text-[16px] flex-1 min-w-0">
                               {p.name}
                             </span>
                             <button
                               type="button"
                               title="Open expanded view"
                               onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/projects/expanded-view/${p.id}`); }}
-                              className="absolute right-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                              className="ml-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                             >
                               <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
                             </button>
@@ -674,7 +674,7 @@ const Projects = () => {
 
                       {/* Owned By */}
                       <td className="px-4 py-1.5" style={{ width: columnWidths.owner, border: '1px solid #c8bdd6' }}>
-                        <span className="text-[13px] text-foreground truncate block">
+                        <span className="text-[16px] text-foreground truncate block">
                           {ownerName ?? '—'}
                         </span>
                       </td>
@@ -684,29 +684,29 @@ const Projects = () => {
                         {(projectPeopleMap[p.id] ?? []).length > 0 ? (
                           <div className="flex items-center gap-1.5">
                             <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-[13px] text-foreground truncate">
+                            <span className="text-[16px] text-foreground truncate">
                               {projectPeopleMap[p.id].join(', ')}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-[13px] text-muted-foreground">—</span>
+                          <span className="text-[16px] text-muted-foreground">—</span>
                         )}
                       </td>
 
                       {/* Related To */}
                       <td className="px-4 py-1.5" style={{ width: columnWidths.related, border: '1px solid #c8bdd6' }}>
                         {relatedTo ? (
-                          <span className="text-[13px] text-blue-600 dark:text-blue-400 truncate block">
+                          <span className="text-[16px] text-blue-600 dark:text-blue-400 truncate block">
                             {relatedTo}
                           </span>
                         ) : (
-                          <span className="text-[13px] text-muted-foreground">—</span>
+                          <span className="text-[16px] text-muted-foreground">—</span>
                         )}
                       </td>
 
                       {/* Modified */}
                       <td className="px-4 py-1.5" style={{ width: columnWidths.modified, border: '1px solid #c8bdd6' }}>
-                        <span className="text-[13px] text-muted-foreground">
+                        <span className="text-[16px] text-muted-foreground">
                           {format(parseISO(p.updated_at), 'M/d/yyyy')}
                         </span>
                       </td>

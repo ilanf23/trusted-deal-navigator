@@ -32,7 +32,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     queryKey: ['admin-leads-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, status, source, created_at, converted_at, lead_responses(loan_amount, funding_amount)')
         .gte('created_at', periodStart.toISOString());
       if (error) throw error;
@@ -47,7 +47,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     queryKey: ['admin-pipeline-analytics'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, status, lead_responses(loan_amount, funding_amount)')
         .neq('status', 'funded');
       if (error) throw error;
@@ -62,7 +62,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     queryKey: ['admin-funded-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, converted_at, lead_responses(loan_amount)')
         .eq('status', 'funded')
         .gte('converted_at', periodStart.toISOString());
@@ -78,7 +78,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     queryKey: ['company-funded-deals-leads'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, converted_at, lead_responses(loan_amount)')
         .eq('status', 'funded')
         .gte('converted_at', startOfYear(now).toISOString());
@@ -140,7 +140,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     queryKey: ['dashboard-scorecard-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, status, created_at, converted_at')
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString());

@@ -1172,7 +1172,7 @@ const LenderPrograms = () => {
                         const rowBg = isDirty
                           ? 'bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30'
                           : isDetailSelected
-                            ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
+                            ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
                             : isBulkSelected
                               ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
                               : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30';
@@ -1193,7 +1193,7 @@ const LenderPrograms = () => {
                           >
                             {/* Checkbox cell */}
                             <td
-                              className={`w-12 pl-2 pr-4 py-2 text-center sticky left-0 z-[5] transition-colors ${checkboxBg}`}
+                              className={`w-12 pl-2 pr-3 py-2 text-center sticky left-0 z-[5] transition-colors ${checkboxBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`}
                               style={{ border: '1px solid #c8bdd6' }}
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -1244,7 +1244,7 @@ const LenderPrograms = () => {
                                             setEditValue('');
                                           }
                                         }}
-                                        className="w-full h-20 text-[13px] px-2 py-1 border border-[#3b2778] rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-[#3b2778] resize-none"
+                                        className="w-full h-20 text-[16px] px-2 py-1 border border-[#3b2778] rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-[#3b2778] resize-none"
                                       />
                                     ) : (
                                       <Input
@@ -1253,19 +1253,19 @@ const LenderPrograms = () => {
                                         onChange={(e) => setEditValue(e.target.value)}
                                         onBlur={handleCellBlur}
                                         onKeyDown={handleKeyDown}
-                                        className="h-8 text-[13px] px-2 border-[#3b2778] focus-visible:ring-1 focus-visible:ring-[#3b2778] bg-background"
+                                        className="h-8 text-[16px] px-2 border-[#3b2778] focus-visible:ring-1 focus-visible:ring-[#3b2778] bg-background"
                                       />
                                     )
                                   ) : isSticky ? (
-                                    <div className="relative flex items-center">
-                                      <span className="text-[13px] font-semibold text-foreground truncate flex-1 min-w-0">
+                                    <div className="flex items-center">
+                                      <span className="text-[16px] font-semibold text-foreground truncate flex-1 min-w-0">
                                         {value || ''}
                                       </span>
                                       <button
                                         type="button"
                                         title="Open expanded view"
                                         onClick={(e) => { e.stopPropagation(); navigate(`/admin/lender-programs/expanded-view/${row.id}`); }}
-                                        className="absolute right-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                        className="ml-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                       >
                                         <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
                                       </button>
@@ -1274,7 +1274,7 @@ const LenderPrograms = () => {
                                     <a
                                       href={`mailto:${value}`}
                                       onClick={(e) => e.stopPropagation()}
-                                      className="text-[13px] text-blue-600 hover:underline truncate block"
+                                      className="text-[16px] text-blue-600 hover:underline truncate block"
                                     >
                                       {value}
                                     </a>
@@ -1282,12 +1282,12 @@ const LenderPrograms = () => {
                                     <a
                                       href={`tel:${value}`}
                                       onClick={(e) => e.stopPropagation()}
-                                      className="text-[13px] text-blue-600 hover:underline truncate block"
+                                      className="text-[16px] text-blue-600 hover:underline truncate block"
                                     >
                                       {value}
                                     </a>
                                   ) : (
-                                    <span className={`text-[13px] block w-full ${
+                                    <span className={`text-[16px] block w-full ${
                                       col.key === 'call_status' && value === 'Y' ? 'text-green-600 font-medium' : 'text-foreground'
                                     } ${isLookingFor ? 'whitespace-pre-wrap break-words line-clamp-3' : 'truncate'}`}>
                                       {value || ''}

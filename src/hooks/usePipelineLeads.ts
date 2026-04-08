@@ -34,10 +34,10 @@ function groupByStage<T extends { _stageId: string }>(items: T[]) {
 
 export const usePipelineDeals = () => {
   const query = useQuery({
-    queryKey: ['pipeline-deals'],
+    queryKey: ['potential-deals'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('*, stage:pipeline_stages(*)')
         .order('updated_at', { ascending: false });
       if (error) throw error;

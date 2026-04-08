@@ -1,6 +1,6 @@
 import { getLeadDisplayName } from '@/lib/utils';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +26,6 @@ import {
   Settings2,
   ChevronDown,
   ChevronUp,
-  Bookmark,
   Plus,
   DollarSign,
   User,
@@ -38,7 +37,6 @@ import {
   MessageSquare,
   Moon,
   FileSearch,
-  Flame,
   Check,
   X,
   LayoutGrid,
@@ -354,15 +352,6 @@ const Underwriting = () => {
     );
   }, [searchTerm]);
 
-  const uwAutoFitConfig = useMemo(() => ({
-    opportunity: { getText: (l: any) => getLeadDisplayName(l), extraPx: 58 },
-    company: { getText: (l: any) => l.company_name, extraPx: 32 },
-    contact: { getText: (l: any) => l.name },
-    value: { getText: (l: any) => formatValue(fakeValue(l.id)) },
-    ownedBy: { getText: (l: any) => teamMemberMap[l.assigned_to ?? ''] ?? '', extraPx: 32 },
-    stage: { getText: (l: any) => dynamicStageConfig[l._stageId]?.title ?? l.status, charWidth: CHAR_W_SM, extraPx: 40 },
-  }), [teamMemberMap, dynamicStageConfig]);
-
   const columnsMenuRef = useRef<HTMLDivElement>(null);
 
   // Close columns dropdown when clicking outside
@@ -502,6 +491,15 @@ const Underwriting = () => {
     for (const m of teamMembers) map[m.id] = m.name;
     return map;
   }, [teamMembers]);
+
+  const uwAutoFitConfig = useMemo(() => ({
+    opportunity: { getText: (l: any) => getLeadDisplayName(l), extraPx: 58 },
+    company: { getText: (l: any) => l.company_name, extraPx: 32 },
+    contact: { getText: (l: any) => l.name },
+    value: { getText: (l: any) => formatValue(fakeValue(l.id)) },
+    ownedBy: { getText: (l: any) => teamMemberMap[l.assigned_to ?? ''] ?? '', extraPx: 32 },
+    stage: { getText: (l: any) => dynamicStageConfig[l._stageId]?.title ?? l.status, charWidth: CHAR_W_SM, extraPx: 40 },
+  }), [teamMemberMap, dynamicStageConfig]);
 
   const teamAvatarMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -910,7 +908,7 @@ const Underwriting = () => {
           <button
             onClick={() => setSidebarOpen(v => !v)}
             title={sidebarOpen ? 'Hide filters' : 'Show filters'}
-            style={{ left: sidebarOpen ? 'calc(18rem - 1.3125rem)' : 'calc(72px - 21px)', borderRadius: '50%', transition: 'left 200ms ease' }}
+            style={{ left: sidebarOpen ? 'calc(18rem - 1.3125rem + 19px)' : 'calc(72px - 21px + 19px)', borderRadius: '50%', transition: 'left 200ms ease' }}
             className="absolute top-[9px] z-20 h-[42px] w-[42px] border border-gray-300 dark:border-border bg-white dark:bg-card flex items-center justify-center text-black dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted hover:border-gray-400 transition-colors shadow-sm"
           >
             <ArrowLeft className="h-5 w-5" strokeWidth={2.5} style={{ transform: `scale(2) ${sidebarOpen ? '' : 'rotate(180deg)'}`, transition: 'transform 200ms ease' }} />
@@ -918,7 +916,7 @@ const Underwriting = () => {
 
           {/* ── Left Sidebar (Copper style) ── */}
           <aside
-            className={`shrink-0 border-r border-[#e8eaed] dark:border-border flex flex-col overflow-hidden transition-all duration-200 ${
+            className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
               sidebarOpen ? 'w-72 bg-[#f8f9fa] dark:bg-muted/30' : 'w-[72px] bg-[#eef0f2] dark:bg-muted/50'
             }`}
           >
@@ -944,7 +942,7 @@ const Underwriting = () => {
                   <input
                     type="text"
                     placeholder="Search Filters"
-                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#1a73e8] dark:focus:border-blue-500 transition-colors"
+                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#3b2778] dark:focus:border-purple-400 transition-colors"
                   />
                 </div>
               </div>
@@ -963,7 +961,6 @@ const Underwriting = () => {
                       }`}
                     >
                       <span className="flex items-center gap-2">
-                        <Bookmark className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-[#3b2778] dark:text-purple-400' : 'text-[#80868b] dark:text-muted-foreground'}`} />
                         <span className={`text-[14px] font-medium truncate`}>{opt.label}</span>
                       </span>
                       {count > 0 && (
@@ -1029,13 +1026,12 @@ const Underwriting = () => {
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
             {/* ── Copper-Style Content Title Bar ── */}
-            <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-white dark:bg-background">
+            <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-[#f8f9fa] dark:bg-muted/30">
 
               <div className="flex items-center gap-3 ml-24">
                 <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
                   {FILTER_OPTIONS.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Opportunities'}
                 </h2>
-                <Bookmark className="h-4 w-4 text-[#80868b] dark:text-muted-foreground shrink-0" />
                 {!isLoading && (
                   <span className="text-[#5f6368] dark:text-muted-foreground text-sm tabular-nums whitespace-nowrap">
                     # {filteredAndSorted.length.toLocaleString()} opportunities
@@ -1049,8 +1045,8 @@ const Underwriting = () => {
                   <PopoverTrigger asChild>
                     <button
                       title="Sort options"
-                      className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                        isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                      className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
+                        isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                       }`}
                     >
                       <BarChart3 className="h-4 w-4" />
@@ -1084,8 +1080,8 @@ const Underwriting = () => {
                 <button
                   onClick={isFiltersActive ? clearAllFilters : undefined}
                   title={isFiltersActive ? 'Clear all filters' : 'No active filters'}
-                  className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                    isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                  className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
+                    isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                   }`}
                 >
                   {isFiltersActive ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
@@ -1096,8 +1092,8 @@ const Underwriting = () => {
                   <button
                     onClick={() => setShowColumnsMenu(v => !v)}
                     title="Show/hide columns"
-                    className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                      showColumnsMenu ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                    className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
+                      showColumnsMenu ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                     }`}
                   >
                     <LayoutGrid className="h-4 w-4" />
@@ -1309,8 +1305,6 @@ const Underwriting = () => {
                         const interactionCount = interactionCountMap[lead.id] ?? fakeInteractions(lead.id);
                         const daysInStage = daysSince(lead.updated_at);
                         const inactiveDays = daysSince(lead.last_activity_at);
-                        const isStale = inactiveDays !== null && inactiveDays > 7;
-                        const isLingering = daysInStage !== null && daysInStage > 14;
                         const dealValue = fakeValue(lead.id);
                         const isDetailSelected = selectedLead?.id === lead.id;
                         const isBulkSelected = selectedLeadIds.has(lead.id);
@@ -1327,14 +1321,14 @@ const Underwriting = () => {
                             onClick={() => handleRowClick(lead)}
                             className={`cursor-pointer transition-colors duration-100 group ${
                               isDetailSelected
-                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
+                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
                                 : isBulkSelected
                                   ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
                                   : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >
                             {/* Opportunity + Checkbox (sticky) */}
-                            <td className={`pl-2 pr-4 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.opportunity, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                            <td className={`pl-2 pr-3 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.opportunity, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                               <div className="flex items-center gap-2.5">
                                 <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                                   <Checkbox
@@ -1343,177 +1337,159 @@ const Underwriting = () => {
                                     className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                                   />
                                 </div>
-                                <CrmAvatar name={lead.name} />
-                                <div className="min-w-0 flex-1">
-                                  <div className="relative flex items-center">
-                                    <p className="font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight flex-1 min-w-0">
-                                      {getLeadDisplayName(lead)}
-                                    </p>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/underwriting/expanded-view/${lead.id}`); }}
-                                      className="absolute right-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
-                                    >
-                                      <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
-                                    </button>
-                                  </div>
-                                </div>
+                                <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
+                                  <CrmAvatar name={lead.name} />
+                                  <span className="text-[16px] text-[#202124] dark:text-foreground truncate">{getLeadDisplayName(lead)}</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/underwriting/expanded-view/${lead.id}`); }}
+                                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground ml-auto"
+                                >
+                                  <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+                                </button>
                               </div>
                             </td>
 
                             {/* Company */}
                             {columnVisibility.company && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
                                 {lead.company_name ? (
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
-                                      <Building2 className="h-3 w-3 text-muted-foreground" />
-                                    </div>
-                                    <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate">{lead.company_name}</span>
-                                  </div>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{lead.company_name}</span>
                                 ) : (
-                                  <span className="text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Contact */}
                             {columnVisibility.contact && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate block">{lead.name}</span>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
+                                {lead.name ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{lead.name}</span>
+                                ) : (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
+                                )}
                               </td>
                             )}
 
                             {/* Value */}
                             {columnVisibility.value && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[13px] text-[#202124] dark:text-foreground font-semibold tabular-nums tracking-tight">{formatValue(dealValue)}</span>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{formatValue(dealValue)}</span>
                               </td>
                             )}
 
                             {/* Owner */}
                             {columnVisibility.ownedBy && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}>
                                 {assignedName ? (
-                                  <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
                                     <CrmAvatar name={assignedName} imageUrl={assignedAvatar} size="sm" />
-                                    <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate">{assignedName}</span>
-                                  </div>
+                                    <span className="text-[16px] text-[#202124] dark:text-foreground truncate">{assignedName}</span>
+                                  </span>
                                 ) : (
-                                  <span className="text-muted-foreground/40 text-[13px]">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Tasks */}
                             {columnVisibility.tasks && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
-                                {taskCount > 0 ? (
-                                  <span className="inline-flex items-center gap-1 text-[12px] text-[#5f6368] dark:text-muted-foreground">
-                                    <CheckSquare className="h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground" />
-                                    {taskCount}
-                                  </span>
-                                ) : (
-                                  <CheckSquare className="h-3.5 w-3.5 text-[#dadce0] dark:text-muted-foreground/30" />
-                                )}
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{taskCount}</span>
                               </td>
                             )}
 
                             {/* Status */}
                             {columnVisibility.status && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status ?? 100, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground">{lead.status}</span>
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status ?? 100, border: '1px solid #c8bdd6' }}>
+                                {lead.status ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{lead.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                                ) : (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
+                                )}
                               </td>
                             )}
 
                             {/* Stage */}
                             {columnVisibility.stage && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
-                                {stageCfg ? (
-                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${stageCfg.bg} ${stageCfg.textColor}`}>
-                                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
-                                    {stageCfg.label}
-                                  </span>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
+                                {(stageCfg?.label ?? lead._stageName ?? lead.status) ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{stageCfg?.label ?? lead._stageName ?? lead.status}</span>
                                 ) : (
-                                  <span className="text-[#5f6368] dark:text-muted-foreground text-xs">{lead._stageName ?? lead.status}</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Days in Stage */}
                             {columnVisibility.daysInStage && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}>
                                 {daysInStage !== null ? (
-                                  <span className={`inline-flex items-center gap-1 text-[12px] font-medium ${
-                                    isLingering ? 'text-amber-600 dark:text-amber-400' : 'text-[#5f6368] dark:text-muted-foreground'
-                                  }`}>
-                                    {isLingering && <Flame className="h-3 w-3 text-amber-500 shrink-0" />}
-                                    {daysInStage}d
-                                  </span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{daysInStage}d</span>
                                 ) : (
-                                  <span className="text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Stage Updated */}
                             {columnVisibility.stageUpdated && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{formatShortDate(lead.updated_at)}</span>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}>
+                                {formatShortDate(lead.updated_at) ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{formatShortDate(lead.updated_at)}</span>
+                                ) : (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
+                                )}
                               </td>
                             )}
 
                             {/* Last Contacted */}
                             {columnVisibility.lastContacted && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{formatShortDate(lead.last_activity_at)}</span>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
+                                {formatShortDate(lead.last_activity_at) ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{formatShortDate(lead.last_activity_at)}</span>
+                                ) : (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
+                                )}
                               </td>
                             )}
 
                             {/* Interactions */}
                             {columnVisibility.interactions && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
-                                {interactionCount > 0 ? (
-                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-[11px] font-bold text-blue-600 dark:text-blue-400">
-                                    {interactionCount}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground/40 text-[13px]">0</span>
-                                )}
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{interactionCount}</span>
                               </td>
                             )}
 
                             {/* Inactive Days */}
                             {columnVisibility.inactiveDays && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
-                                {isStale ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800">
-                                    {inactiveDays}d
-                                  </span>
-                                ) : inactiveDays !== null ? (
-                                  <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{inactiveDays}d</span>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
+                                {inactiveDays !== null ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{inactiveDays}d</span>
                                 ) : (
-                                  <span className="text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Tags */}
                             {columnVisibility.tags && (
-                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
+                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
                                 {lead.tags && lead.tags.length > 0 ? (
                                   <span className="flex items-center gap-1 flex-wrap">
                                     {lead.tags.slice(0, 2).map((tag) => (
-                                      <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-muted text-muted-foreground border border-border/60">
+                                      <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
                                         {tag}
                                       </span>
                                     ))}
                                     {lead.tags.length > 2 && (
-                                      <span className="text-[10px] text-muted-foreground font-medium">+{lead.tags.length - 2}</span>
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">+{lead.tags.length - 2}</span>
                                     )}
                                   </span>
                                 ) : (
-                                  <span className="text-muted-foreground/40">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
@@ -1813,4 +1789,19 @@ const Underwriting = () => {
   );
 };
 
-export default Underwriting;
+// Temporary error boundary to debug white screen
+class UWErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: React.ErrorInfo) { console.error('UW crash:', error, info); }
+  render() {
+    if (this.state.error) return <div style={{ padding: 40, color: 'red' }}><h2>Underwriting Error</h2><pre>{this.state.error.message}</pre><pre>{this.state.error.stack}</pre></div>;
+    return this.props.children;
+  }
+}
+
+function UWWithBoundary() {
+  return <UWErrorBoundary><Underwriting /></UWErrorBoundary>;
+}
+
+export default UWWithBoundary;

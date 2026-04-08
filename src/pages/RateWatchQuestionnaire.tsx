@@ -152,7 +152,7 @@ const RateWatchQuestionnaire = () => {
 
       try {
         const { data, error } = await supabase
-          .from('pipeline')
+          .from('potential')
           .select('id, name, company_name, ratewatch_questionnaire_completed_at')
           .eq('ratewatch_questionnaire_token', token)
           .maybeSingle();
@@ -224,7 +224,7 @@ const RateWatchQuestionnaire = () => {
       // If this is a "new" questionnaire (no existing lead), create the lead first
       if (token === 'new' || !leadId) {
         const { data: newLead, error: leadError } = await supabase
-          .from('pipeline')
+          .from('potential')
           .insert({
             name: formData.name,
             email: formData.email,
@@ -273,7 +273,7 @@ const RateWatchQuestionnaire = () => {
       // Only update lead if it's an existing lead (not new)
       if (token !== 'new' && lead?.id) {
         await supabase
-          .from('pipeline')
+          .from('potential')
           .update({ ratewatch_questionnaire_completed_at: new Date().toISOString() })
           .eq('id', lead.id);
       }

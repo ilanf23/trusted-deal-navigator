@@ -55,7 +55,7 @@ const pages: PageEntry[] = [
     key: 'pipeline',
     label: 'Pipeline',
     icon: Kanban,
-    component: lazy(() => import('@/pages/admin/Pipeline')),
+    component: lazy(() => import('@/pages/admin/Potential')),
     section: 'CRM',
   },
   {

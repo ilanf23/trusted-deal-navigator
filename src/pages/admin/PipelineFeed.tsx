@@ -133,7 +133,7 @@ const PipelineFeed = () => {
 
   const handleViewLead = useCallback(async (leadId: string) => {
     const { data, error } = await supabase
-      .from('pipeline')
+      .from('potential')
       .select('*')
       .eq('id', leadId)
       .single();

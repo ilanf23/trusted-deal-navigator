@@ -108,7 +108,7 @@ export default function ProjectDetailDialog({
   const { data: allLeads = [] } = useQuery({
     queryKey: ['all-leads-for-project-picker'],
     queryFn: async () => {
-      const { data } = await supabase.from('pipeline').select('id, name, company_name').order('name').limit(500);
+      const { data } = await supabase.from('potential').select('id, name, company_name').order('name').limit(500);
       return (data ?? []) as { id: string; name: string; company_name: string | null }[];
     },
     enabled: open,
