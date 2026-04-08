@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
@@ -39,7 +40,6 @@ import {
   DollarSign,
   Check,
   X,
-  LayoutGrid,
   Table2,
   PanelRightOpen,
   FileSearch,
@@ -303,7 +303,6 @@ const Pipeline = () => {
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedLead, setDraggedLead] = useState<FlatPipelineLead | null>(null);
@@ -349,20 +348,6 @@ const Pipeline = () => {
       <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
     );
   }, [searchTerm]);
-
-  const columnsMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (columnsMenuRef.current && !columnsMenuRef.current.contains(e.target as Node)) {
-        setShowColumnsMenu(false);
-      }
-    }
-    if (showColumnsMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showColumnsMenu]);
 
   // Close column sort menu on outside click
   useEffect(() => {
@@ -1189,16 +1174,20 @@ const Pipeline = () => {
               <div className="flex items-center gap-1">
                 {/* Sort */}
                 <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      title="Sort options"
-                      className={`h-8 w-8 p-0 flex items-center justify-center rounded-lg transition-colors ${
-                        isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
-                      }`}
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                    </button>
-                  </PopoverTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <button
+                          className={`h-8 w-8 !p-0 flex items-center justify-center rounded-lg border transition-colors ${
+                            isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 border-[#c8bdd6] dark:border-purple-700 text-[#3b2778] dark:text-purple-400' : 'bg-[#f5f0fa] hover:bg-[#eee6f6] dark:bg-purple-950/30 dark:hover:bg-purple-950/50 border-[#d4cae3] dark:border-purple-800 text-[#3b2778] dark:text-purple-300'
+                          }`}
+                        >
+                          <BarChart3 className="h-4 w-4" />
+                        </button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">Sort options</TooltipContent>
+                  </Tooltip>
                   <PopoverContent align="end" className="w-56 p-3 space-y-3">
                     <p className="text-xs font-semibold text-foreground">Sort by</p>
                     <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
@@ -1224,67 +1213,22 @@ const Pipeline = () => {
                 </Popover>
 
                 {/* Filter */}
-                <button
-                  onClick={isFiltersActive ? clearAllFilters : undefined}
-                  title={isFiltersActive ? 'Clear all filters' : 'No active filters'}
-                  className={`h-8 w-8 p-0 flex items-center justify-center rounded-lg transition-colors ${
-                    isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
-                  }`}
-                >
-                  {isFiltersActive ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={isFiltersActive ? clearAllFilters : undefined}
+                      className={`h-8 w-8 !p-0 flex items-center justify-center rounded-lg border transition-colors ${
+                        isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 border-[#c8bdd6] dark:border-purple-700 text-[#3b2778] dark:text-purple-400' : 'bg-[#f5f0fa] hover:bg-[#eee6f6] dark:bg-purple-950/30 dark:hover:bg-purple-950/50 border-[#d4cae3] dark:border-purple-800 text-[#3b2778] dark:text-purple-300'
+                      }`}
+                    >
+                      {isFiltersActive ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    {isFiltersActive ? 'Clear all filters' : 'Filters'}
+                  </TooltipContent>
+                </Tooltip>
 
-                {/* Column visibility */}
-                <div className="relative" ref={columnsMenuRef}>
-                  <button
-                    onClick={() => setShowColumnsMenu(v => !v)}
-                    title="Show/hide columns"
-                    className={`h-8 w-8 p-0 flex items-center justify-center rounded-lg transition-colors ${
-                      showColumnsMenu ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
-                    }`}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </button>
-
-                  {showColumnsMenu && (
-                    <div className="absolute right-0 top-full mt-1.5 z-50 bg-white dark:bg-popover border border-[#dadce0] dark:border-border rounded-lg shadow-lg w-52 py-1.5 overflow-hidden">
-                      <div className="px-3 py-1.5 border-b border-[#dadce0] dark:border-border">
-                        <p className="text-[11px] font-semibold text-[#5f6368] dark:text-muted-foreground uppercase tracking-wider">Visible Columns</p>
-                      </div>
-                      <div className="py-1">
-                        {(Object.keys(COLUMN_LABELS) as ColumnKey[]).map((key) => (
-                          <button
-                            key={key}
-                            onClick={() => toggleColumn(key)}
-                            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors"
-                          >
-                            <span className="text-[13px] text-[#1f1f1f] dark:text-foreground">{COLUMN_LABELS[key]}</span>
-                            <span className={`flex items-center justify-center h-4 w-4 rounded border transition-colors ${
-                              columnVisibility[key]
-                                ? 'bg-[#1a73e8] border-[#1a73e8]'
-                                : 'border-[#dadce0] dark:border-border bg-white dark:bg-card'
-                            }`}>
-                              {columnVisibility[key] && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                      <div className="px-3 py-1.5 border-t border-[#dadce0] dark:border-border">
-                        <button
-                          onClick={() => {
-                            const allTrue = Object.fromEntries(
-                              (Object.keys(COLUMN_LABELS) as ColumnKey[]).map(k => [k, true])
-                            ) as Record<ColumnKey, boolean>;
-                            setColumnVisibility(allTrue);
-                          }}
-                          className="text-[11px] text-[#1a73e8] hover:text-[#174ea6] font-medium"
-                        >
-                          Show all columns
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
 
                 {/* Add Opportunity button (Copper dark indigo style) */}
                 <DropdownMenu>
@@ -1486,20 +1430,19 @@ const Pipeline = () => {
                                 <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
                                   <CrmAvatar name={lead.name} />
                                   <InlineEditableCell
-                                    value={lead.opportunity_name && lead.opportunity_name !== lead.name ? lead.opportunity_name : (lead.company_name ? `${lead.name} - ${lead.company_name}` : lead.name)}
+                                    value={lead.opportunity_name || ''}
                                     onChange={(v) => handleInlineCellSave(lead.id, 'opportunity_name', v)}
+                                    placeholder={lead.company_name ? `${lead.name} - ${lead.company_name}` : lead.name}
                                     displayClassName="text-[16px] text-[#202124] dark:text-foreground truncate"
                                   />
                                 </div>
-                                <div className="shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`); }}
-                                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
-                                    >
-                                      <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
-                                    </button>
-                                  </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`); }}
+                                  className="shrink-0 ml-auto -mr-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                >
+                                  <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+                                </button>
                                 </div>
                             </td>
 
@@ -1528,12 +1471,15 @@ const Pipeline = () => {
                             {/* Value */}
                             {columnVisibility.value && (
                               <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}>
-                                <InlineEditableCell
-                                  value={lead.deal_value?.toString() || ''}
-                                  onChange={(v) => handleInlineCellSave(lead.id, 'deal_value', v)}
-                                  placeholder="—"
-                                  displayClassName="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate max-w-full"
-                                />
+                                <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
+                                  {lead.deal_value != null && <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                  <InlineEditableCell
+                                    value={lead.deal_value != null ? lead.deal_value.toLocaleString('en-US') : ''}
+                                    onChange={(v) => handleInlineCellSave(lead.id, 'deal_value', v)}
+                                    placeholder="—"
+                                    displayClassName="text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate"
+                                  />
+                                </div>
                               </td>
                             )}
 

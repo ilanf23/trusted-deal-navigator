@@ -11,6 +11,12 @@ const QUERY_KEY_MAP: Record<CrmTable, string> = {
   lender_management: 'lender-management-deals',
 };
 
+const ENTITY_TYPE_MAP: Record<CrmTable, EntityType> = {
+  potential: 'pipeline',
+  underwriting: 'underwriting',
+  lender_management: 'lender_management',
+};
+
 async function updateDealStage(table: CrmTable, dealId: string, newStageId: string) {
   const updateData = { stage_id: newStageId, updated_at: new Date().toISOString() };
   if (table === 'potential') {
@@ -73,7 +79,7 @@ export const useCrmMutations = (table: CrmTable) => {
       if (dealId && oldStageName && newStageName) {
         await supabase.from('activities').insert({
           entity_id: dealId,
-          entity_type: table as EntityType,
+          entity_type: ENTITY_TYPE_MAP[table],
           activity_type: 'stage_change',
           title: `Moved from ${oldStageName} to ${newStageName}`,
           content: JSON.stringify({ from: oldStageName, to: newStageName }),
