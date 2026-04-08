@@ -12,6 +12,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
+import { InlineEditableCell } from '@/components/admin/InlineEditableCell';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import PipelineDetailPanel from '@/components/admin/PipelineDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
@@ -42,14 +43,11 @@ import {
   Table2,
   PanelRightOpen,
   FileSearch,
-  Building2,
-  Flame,
   Maximize2,
   Download,
   PlusCircle,
   Loader2,
   Search,
-  Bookmark,
   BarChart3,
   Landmark,
   User,
@@ -77,12 +75,11 @@ import { buildStageConfig } from '@/utils/pipelineStageConfig';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
 
-type Lead = Database['public']['Tables']['pipeline']['Row'];
+type Lead = Database['public']['Tables']['potential']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 
 const FILTER_OPTIONS = [
-  { id: 'all', label: 'All Opportunities', group: 'top' },
   { id: 'my_open', label: 'My Open Opportunities', group: 'public' },
   { id: 'open', label: 'Open Opportunities', group: 'public' },
   { id: 'following', label: "Opportunities I'm Following", group: 'public' },
@@ -213,7 +210,7 @@ function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick
           <CrmAvatar name={lead.name} size="sm" />
           <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{lead.name}</p>
           <button
-            onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/pipeline/expanded-view/${lead.id}`); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`); }}
             className="shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity"
           >
             <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
@@ -294,12 +291,13 @@ const Pipeline = () => {
   const { registerUndo } = useUndo();
 
   // Core state
-  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [activeFilter, setActiveFilter] = useState<string>('my_open');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('last_activity_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [leadOwnerOverrides, setLeadOwnerOverrides] = useState<Record<string, string>>({});
 
   // Toolbar state
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
@@ -450,8 +448,12 @@ const Pipeline = () => {
         map[lead.id] = teamMembers[idx].id;
       }
     }
+    // Apply optimistic overrides from inline edits
+    for (const [id, ownerId] of Object.entries(leadOwnerOverrides)) {
+      map[id] = ownerId;
+    }
     return map;
-  }, [leads, teamMembers]);
+  }, [leads, teamMembers, leadOwnerOverrides]);
 
   // Deterministic set of leads the current user is "following" (~25% of leads)
   const followedLeadIds = useMemo(() => {
@@ -522,10 +524,10 @@ const Pipeline = () => {
       registerUndo({
         label: `Created opportunity "${lead.name}"`,
         execute: async () => {
-          const { error } = await supabase.from('pipeline').delete().eq('id', lead.id);
+          const { error } = await supabase.from('potential').delete().eq('id', lead.id);
           if (error) throw error;
           setDetailDialogLead(null);
-          queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+          queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
         },
       });
     },
@@ -585,7 +587,7 @@ const Pipeline = () => {
 
   // Filter counts
   const filterCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: leads.length };
+    const counts: Record<string, number> = {};
     for (const stage of stages) {
       counts[stage.id] = leads.filter((l) => l._stageId === stage.id).length;
     }
@@ -613,7 +615,7 @@ const Pipeline = () => {
   const filteredAndSorted = useMemo(() => {
     let result = leads;
 
-    if (activeFilter !== 'all') {
+    {
       const myId = currentTeamMember?.id;
       if (stages.some(s => s.id === activeFilter)) {
         result = result.filter((l) => l._stageId === activeFilter);
@@ -763,6 +765,32 @@ const Pipeline = () => {
     setDetailDialogLead(lead);
   }
 
+  // Inline cell save handler for direct Supabase updates
+  const handleInlineCellSave = async (leadId: string, field: string, value: string) => {
+    if (field === 'assigned_to') {
+      setLeadOwnerOverrides(prev => ({ ...prev, [leadId]: value }));
+    }
+
+    const { error } = await supabase
+      .from('potential')
+      .update({ [field]: value, updated_at: new Date().toISOString() })
+      .eq('id', leadId);
+
+    if (error) {
+      toast.error(`Failed to update ${field}`);
+      if (field === 'assigned_to') {
+        setLeadOwnerOverrides(prev => {
+          const next = { ...prev };
+          delete next[leadId];
+          return next;
+        });
+      }
+      return;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
+  };
+
   // Selection helpers
   const toggleLeadSelection = (leadId: string) => {
     setSelectedLeadIds(prev => {
@@ -785,18 +813,18 @@ const Pipeline = () => {
     mutationFn: async (dealIds: string[]) => {
       // Capture pipeline records before deleting for undo
       const { data: deletedRecords } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('*')
         .in('id', dealIds);
       const { error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .delete()
         .in('id', dealIds);
       if (error) throw error;
       return { ids: dealIds, deletedRecords: deletedRecords ?? [] };
     },
     onSuccess: ({ ids, deletedRecords }) => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
       toast.success(`${ids.length} lead(s) removed from pipeline`);
       clearSelection();
       setDeleteConfirmOpen(false);
@@ -804,9 +832,9 @@ const Pipeline = () => {
         registerUndo({
           label: `Removed ${ids.length} lead(s) from pipeline`,
           execute: async () => {
-            const { error: e } = await supabase.from('pipeline').insert(deletedRecords);
+            const { error: e } = await supabase.from('potential').insert(deletedRecords);
             if (e) throw e;
-            queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+            queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
           },
         });
       }
@@ -829,19 +857,19 @@ const Pipeline = () => {
     mutationFn: async ({ leadIds, ownerId }: { leadIds: string[]; ownerId: string }) => {
       // Capture previous owners for undo
       const { data: prevLeads } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, assigned_to')
         .in('id', leadIds);
       const previousOwners = (prevLeads ?? []).map(l => ({ id: l.id, assigned_to: l.assigned_to }));
       const { error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .update({ assigned_to: ownerId })
         .in('id', leadIds);
       if (error) throw error;
       return { leadIds, ownerId, previousOwners };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
       const ownerName = teamMemberMap[result.ownerId] || 'team member';
       toast.success(`${result.leadIds.length} lead(s) assigned to ${ownerName}`);
       clearSelection();
@@ -849,10 +877,10 @@ const Pipeline = () => {
         label: `Assigned ${result.leadIds.length} lead(s) to ${ownerName}`,
         execute: async () => {
           for (const prev of result.previousOwners) {
-            const { error: e } = await supabase.from('pipeline').update({ assigned_to: prev.assigned_to }).eq('id', prev.id);
+            const { error: e } = await supabase.from('potential').update({ assigned_to: prev.assigned_to }).eq('id', prev.id);
             if (e) throw e;
           }
-          queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+          queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
         },
       });
     },
@@ -868,7 +896,7 @@ const Pipeline = () => {
     mutationFn: async ({ leadIds, tags }: { leadIds: string[]; tags: string[] }) => {
       // Fetch current tags for selected deals
       const { data: currentLeads, error: fetchError } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, tags')
         .in('id', leadIds);
       if (fetchError) throw fetchError;
@@ -881,7 +909,7 @@ const Pipeline = () => {
         const existingTags: string[] = (lead.tags as string[]) || [];
         const mergedTags = Array.from(new Set([...existingTags, ...tags]));
         const { error } = await supabase
-          .from('pipeline')
+          .from('potential')
           .update({ tags: mergedTags })
           .eq('id', lead.id);
         if (error) throw error;
@@ -889,7 +917,7 @@ const Pipeline = () => {
       return { count: leadIds.length, tags, previousTags };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
       toast.success(`Added ${result.tags.length} tag(s) to ${result.count} lead(s)`);
       clearSelection();
       setAddTagsDialogOpen(false);
@@ -898,10 +926,10 @@ const Pipeline = () => {
         label: `Added tags to ${result.count} lead(s)`,
         execute: async () => {
           for (const prev of result.previousTags) {
-            const { error: e } = await supabase.from('pipeline').update({ tags: prev.tags }).eq('id', prev.id);
+            const { error: e } = await supabase.from('potential').update({ tags: prev.tags }).eq('id', prev.id);
             if (e) throw e;
           }
-          queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+          queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
         },
       });
     },
@@ -1028,7 +1056,7 @@ const Pipeline = () => {
           <button
             onClick={() => setSidebarOpen(v => !v)}
             title={sidebarOpen ? 'Hide filters' : 'Show filters'}
-            style={{ left: sidebarOpen ? 'calc(18rem - 1.3125rem)' : 'calc(72px - 21px)', borderRadius: '50%', transition: 'left 200ms ease' }}
+            style={{ left: sidebarOpen ? 'calc(18rem - 1.3125rem + 19px)' : 'calc(72px - 21px + 19px)', borderRadius: '50%', transition: 'left 200ms ease' }}
             className="absolute top-[9px] z-20 h-[42px] w-[42px] border border-gray-300 dark:border-border bg-white dark:bg-card flex items-center justify-center text-black dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted hover:border-gray-400 transition-colors shadow-sm"
           >
             <ArrowLeft className="h-5 w-5" strokeWidth={2.5} style={{ transform: `scale(2) ${sidebarOpen ? '' : 'rotate(180deg)'}`, transition: 'transform 200ms ease' }} />
@@ -1036,7 +1064,7 @@ const Pipeline = () => {
 
           {/* ── Left Sidebar (Copper style) ── */}
           <aside
-            className={`shrink-0 border-r border-[#e8eaed] dark:border-border flex flex-col overflow-hidden transition-all duration-200 ${
+            className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
               sidebarOpen ? 'w-72 bg-[#f8f9fa] dark:bg-muted/30' : 'w-[72px] bg-[#eef0f2] dark:bg-muted/50'
             }`}
           >
@@ -1062,36 +1090,26 @@ const Pipeline = () => {
                   <input
                     type="text"
                     placeholder="Search Filters"
-                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#1a73e8] dark:focus:border-blue-500 transition-colors"
+                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#3b2778] dark:focus:border-purple-400 transition-colors"
                   />
                 </div>
               </div>
 
               <nav className="flex-1 overflow-y-auto pb-4 px-3">
-                {/* All Opportunities -- top item */}
-                {FILTER_OPTIONS.filter(o => o.group === 'top').map((opt) => {
-                  const isActive = activeFilter === opt.id;
-                  const count = filterCounts[opt.id] ?? 0;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-3 py-3 text-left transition-colors ${
-                        isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Bookmark className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-[#3b2778] dark:text-purple-400' : 'text-[#80868b] dark:text-muted-foreground'}`} />
-                        <span className={`text-[14px] font-medium truncate`}>{opt.label}</span>
-                      </span>
-                      {count > 0 && (
-                        <span className="ml-1 shrink-0 text-[11px] font-medium text-[#5f6368] dark:text-muted-foreground">
-                          {count.toLocaleString()}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                {/* All Opportunities — standalone above sections */}
+                <button
+                  onClick={() => setActiveFilter('all')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-colors ${
+                    activeFilter === 'all'
+                      ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 font-medium'
+                      : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300'
+                  }`}
+                >
+                  <span className="text-[14px] font-medium">All Opportunities</span>
+                  <span className={`text-[13px] tabular-nums ${activeFilter === 'all' ? 'text-[#3b2778] dark:text-purple-400' : 'text-[#80868b] dark:text-muted-foreground'}`}>
+                    {leads.length}
+                  </span>
+                </button>
 
                 {/* Public section */}
                 <button
@@ -1147,13 +1165,12 @@ const Pipeline = () => {
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
             {/* ── Copper-Style Content Title Bar ── */}
-            <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-white dark:bg-background">
+            <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-[#f8f9fa] dark:bg-muted/30">
 
               <div className="flex items-center gap-3 ml-24">
                 <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
                   {FILTER_OPTIONS.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Opportunities'}
                 </h2>
-                <Bookmark className="h-4 w-4 text-[#80868b] dark:text-muted-foreground shrink-0" />
                 {!isLoading && (
                   <span className="text-[#5f6368] dark:text-muted-foreground text-sm tabular-nums whitespace-nowrap">
                     # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'deal' : 'deals'}
@@ -1167,8 +1184,8 @@ const Pipeline = () => {
                   <PopoverTrigger asChild>
                     <button
                       title="Sort options"
-                      className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                        isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                      className={`h-8 w-8 p-0 flex items-center justify-center rounded-lg transition-colors ${
+                        isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                       }`}
                     >
                       <BarChart3 className="h-4 w-4" />
@@ -1202,8 +1219,8 @@ const Pipeline = () => {
                 <button
                   onClick={isFiltersActive ? clearAllFilters : undefined}
                   title={isFiltersActive ? 'Clear all filters' : 'No active filters'}
-                  className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                    isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                  className={`h-8 w-8 p-0 flex items-center justify-center rounded-lg transition-colors ${
+                    isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                   }`}
                 >
                   {isFiltersActive ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
@@ -1214,8 +1231,8 @@ const Pipeline = () => {
                   <button
                     onClick={() => setShowColumnsMenu(v => !v)}
                     title="Show/hide columns"
-                    className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
-                      showColumnsMenu ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                    className={`h-8 w-8 p-0 flex items-center justify-center rounded-lg transition-colors ${
+                      showColumnsMenu ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
                     }`}
                   >
                     <LayoutGrid className="h-4 w-4" />
@@ -1426,8 +1443,6 @@ const Pipeline = () => {
                         const assignedAvatar = effectiveOwnerId ? (teamAvatarMap[effectiveOwnerId] ?? null) : null;
                         const daysInStage = daysSince(lead.updated_at);
                         const inactiveDays = daysSince(lead.last_activity_at);
-                        const isStale = inactiveDays !== null && inactiveDays > 7;
-                        const isLingering = daysInStage !== null && daysInStage > 14;
                         const tp = touchpoints[lead.id];
                         const isDetailOpen = detailDialogLead?.id === lead.id;
                         const isSelected = selectedLeadIds.has(lead.id);
@@ -1444,14 +1459,14 @@ const Pipeline = () => {
                             onClick={() => handleRowClick(lead)}
                             className={`cursor-pointer transition-colors duration-100 group ${
                               isDetailOpen
-                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
+                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
                                 : isSelected
                                   ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
                                   : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >
                             {/* Deal + Checkbox (sticky) */}
-                            <td className={`pl-2 pr-4 ${rowPad} overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                            <td className={`pl-2 pr-3 ${rowPad} overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailOpen ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                               <div className="flex items-center gap-2.5">
                                 <div className={`shrink-0`} onClick={(e) => e.stopPropagation()}>
                                   <Checkbox
@@ -1460,51 +1475,46 @@ const Pipeline = () => {
                                     className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                                   />
                                 </div>
-                                <CrmAvatar name={lead.name} />
-                                <div className="min-w-0 flex-1">
-                                  <div className="relative flex items-center">
-                                    <p className="font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight flex-1 min-w-0">
-                                      {lead.name}
-                                    </p>
+                                <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
+                                  <CrmAvatar name={lead.name} />
+                                  <span className="text-[16px] text-[#202124] dark:text-foreground truncate">
+                                    {lead.name}
+                                  </span>
+                                </div>
+                                <div className="shrink-0">
                                     <button
                                       type="button"
-                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/pipeline/expanded-view/${lead.id}`); }}
-                                      className="absolute right-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`); }}
+                                      className="ml-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                     >
                                       <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
                                     </button>
                                   </div>
                                 </div>
-                              </div>
                             </td>
 
                             {/* Company */}
                             {columnVisibility.company && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
-                                {lead.company_name ? (
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
-                                      <Building2 className="h-3 w-3 text-muted-foreground" />
-                                    </div>
-                                    <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate">{lead.company_name}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground/40">—</span>
-                                )}
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">
+                                  {lead.company_name || '—'}
+                                </span>
                               </td>
                             )}
 
                             {/* Contact */}
                             {columnVisibility.contact && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate block">{lead.name}</span>
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">
+                                  {lead.name}
+                                </span>
                               </td>
                             )}
 
                             {/* Value */}
                             {columnVisibility.value && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate max-w-full">
                                   —
                                 </span>
                               </td>
@@ -1512,123 +1522,90 @@ const Pipeline = () => {
 
                             {/* Owner */}
                             {columnVisibility.ownedBy && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}>
                                 {assignedName ? (
-                                  <div className="flex items-center gap-2">
+                                  <div className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
                                     <CrmAvatar name={assignedName} imageUrl={assignedAvatar} size="sm" />
-                                    <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate">{assignedName}</span>
+                                    <span className="text-[16px] text-[#202124] dark:text-foreground truncate">{assignedName}</span>
                                   </div>
                                 ) : (
-                                  <span className="text-muted-foreground/40 text-[13px]">—</span>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
                             {/* Tasks */}
                             {columnVisibility.tasks && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
-                                {(taskCountMap[lead.id] ?? 0) > 0 ? (
-                                  <span className="inline-flex items-center gap-1 text-[12px] text-[#5f6368] dark:text-muted-foreground">
-                                    <CheckSquare className="h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground" />
-                                    {taskCountMap[lead.id]}
-                                  </span>
-                                ) : (
-                                  <CheckSquare className="h-3.5 w-3.5 text-[#dadce0] dark:text-muted-foreground/30" />
-                                )}
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{taskCountMap[lead.id] ?? 0}</span>
                               </td>
                             )}
 
                             {/* Status */}
                             {columnVisibility.status && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status ?? 100, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground">{lead.status}</span>
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status ?? 100, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{lead.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
                               </td>
                             )}
 
                             {/* Stage */}
                             {columnVisibility.stage && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
-                                {stageCfg ? (
-                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${stageCfg.pill}`}>
-                                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
-                                    {stageCfg.title}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground text-xs">{lead.status}</span>
-                                )}
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{stageCfg?.title ?? lead.status}</span>
                               </td>
                             )}
 
                             {/* Days in Stage */}
                             {columnVisibility.daysInStage && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}>
-                                {daysInStage !== null ? (
-                                  <span className={`inline-flex items-center gap-1 text-[12px] font-medium ${
-                                    isLingering ? 'text-amber-600 dark:text-amber-400' : 'text-[#5f6368] dark:text-muted-foreground'
-                                  }`}>
-                                    {isLingering && <Flame className="h-3 w-3 text-amber-500 shrink-0" />}
-                                    {daysInStage}d
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground/40">—</span>
-                                )}
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
+                                  {daysInStage !== null ? `${daysInStage}d` : '—'}
+                                </span>
                               </td>
                             )}
 
                             {/* Stage Updated */}
                             {columnVisibility.stageUpdated && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{formatShortDate(lead.updated_at)}</span>
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate max-w-full">{formatShortDate(lead.updated_at)}</span>
                               </td>
                             )}
 
                             {/* Last Contacted */}
                             {columnVisibility.lastContacted && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
-                                <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{formatShortDate(lead.last_activity_at)}</span>
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate max-w-full">{formatShortDate(lead.last_activity_at)}</span>
                               </td>
                             )}
 
                             {/* Interactions */}
                             {columnVisibility.interactions && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
-                                {(interactionCountMap[lead.id] ?? 0) > 0 ? (
-                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-[11px] font-bold text-blue-600 dark:text-blue-400">
-                                    {interactionCountMap[lead.id]}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground/40 text-[13px]">0</span>
-                                )}
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{interactionCountMap[lead.id] ?? 0}</span>
                               </td>
                             )}
 
                             {/* Inactive Days */}
                             {columnVisibility.inactiveDays && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
-                                {isStale ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800">
-                                    {inactiveDays}d
-                                  </span>
-                                ) : inactiveDays !== null ? (
-                                  <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{inactiveDays}d</span>
-                                ) : (
-                                  <span className="text-muted-foreground/40">—</span>
-                                )}
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
+                                  {inactiveDays !== null ? `${inactiveDays}d` : '—'}
+                                </span>
                               </td>
                             )}
 
                             {/* Tags */}
                             {columnVisibility.tags && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
                                 {lead.tags && lead.tags.length > 0 ? (
                                   <span className="flex items-center gap-1 flex-wrap">
                                     {lead.tags.slice(0, 2).map((tag) => (
-                                      <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-muted text-muted-foreground border border-border/60">
+                                      <span key={tag} className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
                                         {tag}
                                       </span>
                                     ))}
                                     {lead.tags.length > 2 && (
-                                      <span className="text-[10px] text-muted-foreground font-medium">+{lead.tags.length - 2}</span>
+                                      <span className="text-[11px] text-muted-foreground font-medium">+{lead.tags.length - 2}</span>
                                     )}
                                   </span>
                                 ) : (
@@ -1708,7 +1685,7 @@ const Pipeline = () => {
               
               onClose={() => setDetailDialogLead(null)}
               onExpand={() => {
-                navigate(`/admin/pipeline/pipeline/expanded-view/${detailDialogLead.id}`);
+                navigate(`/admin/pipeline/potential/expanded-view/${detailDialogLead.id}`);
               }}
               onStageChange={(leadId, newStatus) => {
                 // Find the stage ID for this status
@@ -1717,7 +1694,7 @@ const Pipeline = () => {
               }}
               onLeadUpdate={(updatedLead) => {
                 setDetailDialogLead(updatedLead);
-                queryClient.invalidateQueries({ queryKey: ['pipeline-deals'] });
+                queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
               }}
             />
           )}
