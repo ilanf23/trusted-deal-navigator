@@ -41,6 +41,7 @@ import {
   Check,
   X,
   Table2,
+  Columns3,
   PanelRightOpen,
   FileSearch,
   Maximize2,
@@ -197,35 +198,57 @@ function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const effectiveOwnerId = leadOwnerMap[lead.id] ?? lead.assigned_to;
   const assignedName = effectiveOwnerId ? (teamMemberMap[effectiveOwnerId] ?? null) : null;
-  
-  const daysInStage = daysSince(lead.updated_at);
+  const lastActivity = lead.last_activity_at ? format(parseISO(lead.last_activity_at), 'MMM d') : null;
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Card
-        className="group/card p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card"
+        className="group/card cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card overflow-hidden"
         onClick={(e) => { e.stopPropagation(); onClick(); }}
       >
-        <div className="flex items-center gap-2 mb-1.5">
-          <CrmAvatar name={lead.name} size="sm" />
-          <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{lead.name}</p>
-          <button
-            onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`); }}
-            className="shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity"
-          >
-            <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-          </button>
-        </div>
-        {daysInStage !== null && (
-          <div className="flex items-center justify-end mt-1.5">
-            <span className={`text-[10px] font-medium ${daysInStage > 14 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
-              {daysInStage}d
-            </span>
+        {/* Top section */}
+        <div className="p-3 pb-2.5">
+          <div className="flex items-start justify-between gap-1 mb-2">
+            <p className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2">{lead.name}</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`); }}
+              className="shrink-0 mt-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity"
+            >
+              <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+            </button>
           </div>
-        )}
-        {assignedName && (
-          <p className="text-[10px] text-muted-foreground mt-1">{assignedName}</p>
-        )}
+          {lead.company_name && (
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Landmark className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">{lead.company_name}</span>
+            </div>
+          )}
+          {lead.deal_value != null && lead.deal_value > 0 && (
+            <div className="flex items-center gap-1.5">
+              <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs font-medium text-foreground">{formatValue(lead.deal_value)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom bar */}
+        <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/50 bg-muted/20">
+          <div className="flex items-center gap-2 text-muted-foreground min-w-0">
+            {lastActivity && (
+              <div className="flex items-center gap-1">
+                <CalendarDays className="h-3 w-3 shrink-0" />
+                <span className="text-[11px]">{lastActivity}</span>
+              </div>
+            )}
+            {assignedName && (
+              <span className="text-[11px] font-medium truncate">{assignedName.charAt(0)}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {lead.status === 'won' && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">Won</span>}
+            {lead.status === 'lost' && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-red-200 text-red-600 dark:border-red-800 dark:text-red-400">Lost</span>}
+          </div>
+        </div>
       </Card>
     </div>
   );
@@ -243,26 +266,34 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, leadOwne
   onAdd?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
-  
+  const totalValue = leads.reduce((sum, l) => sum + (l.deal_value ?? 0), 0);
+
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col w-64 shrink-0 rounded-xl transition-colors ${isOver ? 'bg-blue-50/70 dark:bg-blue-950/30' : 'bg-muted/30'}`}
+      className={`flex flex-col w-[280px] shrink-0 rounded-xl transition-colors ${isOver ? 'bg-blue-50/70 dark:bg-blue-950/30' : 'bg-muted/30'}`}
     >
-      <div className="px-3 py-2.5 flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full shrink-0 ${color}`} />
-        <span className="text-xs font-semibold text-foreground truncate">{label}</span>
-        <span className="text-[11px] text-muted-foreground font-medium ml-auto">{leads.length}</span>
-        {onAdd && (
-          <button onClick={onAdd} className="text-muted-foreground hover:text-foreground">
-            <Plus className="h-3.5 w-3.5" />
-          </button>
+      <div className="px-3 pt-3 pb-1">
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full shrink-0 ${color}`} />
+          <span className="text-xs font-semibold text-foreground truncate">{label}</span>
+          <span className="text-[11px] text-muted-foreground font-medium">{leads.length}</span>
+          <div className="ml-auto flex items-center gap-1">
+            {onAdd && (
+              <button onClick={onAdd} className="text-muted-foreground hover:text-foreground">
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+        {totalValue > 0 && (
+          <div className="flex items-center gap-1 mt-1 ml-4">
+            <DollarSign className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[11px] text-muted-foreground font-medium">{formatValue(totalValue)}</span>
+          </div>
         )}
       </div>
-      <div className="px-2 pb-1">
-        <span className="text-[10px] text-muted-foreground font-medium">{leads.length} {leads.length === 1 ? 'deal' : 'deals'}</span>
-      </div>
-      <ScrollArea className="flex-1 px-2 pb-2">
+      <ScrollArea className="flex-1 px-2 pb-2 pt-1">
         <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
             {leads.map((lead) => (
@@ -451,11 +482,12 @@ const Pipeline = () => {
 
   // Fetch latest touchpoints
   const { data: touchpoints = {} } = useQuery({
-    queryKey: ['pipeline-touchpoints'],
+    queryKey: ['pipeline-touchpoints', leads.map((l) => l.id)],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('communications')
         .select('lead_id, communication_type, direction, created_at')
+        .in('lead_id', leads.map((l) => l.id))
         .order('created_at', { ascending: false });
       if (error) throw error;
       const map: Record<string, { type: string; direction: string; date: string }> = {};
@@ -470,6 +502,7 @@ const Pipeline = () => {
       }
       return map;
     },
+    enabled: leads.length > 0,
   });
 
   const handleStageMove = (leadId: string, newStageId: string) => {
@@ -537,7 +570,7 @@ const Pipeline = () => {
 
   // Task and interaction count queries
   const { data: taskCountMap = {} } = useQuery({
-    queryKey: ['pipeline-task-counts'],
+    queryKey: ['pipeline-task-counts', leads.map((l) => l.id)],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
@@ -554,7 +587,7 @@ const Pipeline = () => {
   });
 
   const { data: interactionCountMap = {} } = useQuery({
-    queryKey: ['pipeline-interaction-counts'],
+    queryKey: ['pipeline-interaction-counts', leads.map((l) => l.id)],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('communications')
@@ -1229,6 +1262,39 @@ const Pipeline = () => {
                   </TooltipContent>
                 </Tooltip>
 
+                {/* View toggle: Table / Kanban segmented pill */}
+                <div className="flex items-center bg-[#f0ebf5] dark:bg-purple-950/40 rounded-xl p-0.5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setViewMode('table')}
+                        className={`h-8 w-8 !p-0 flex items-center justify-center rounded-lg transition-all ${
+                          viewMode === 'table'
+                            ? 'bg-white dark:bg-card shadow-sm border-2 border-[#3b2778] dark:border-purple-500 text-[#3b2778] dark:text-purple-400'
+                            : 'text-[#8c7bab] dark:text-purple-600 hover:text-[#3b2778] dark:hover:text-purple-400'
+                        }`}
+                      >
+                        <Table2 className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">Table view</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setViewMode('kanban')}
+                        className={`h-8 w-8 !p-0 flex items-center justify-center rounded-lg transition-all ${
+                          viewMode === 'kanban'
+                            ? 'bg-white dark:bg-card shadow-sm border-2 border-[#3b2778] dark:border-purple-500 text-[#3b2778] dark:text-purple-400'
+                            : 'text-[#8c7bab] dark:text-purple-600 hover:text-[#3b2778] dark:hover:text-purple-400'
+                        }`}
+                      >
+                        <Columns3 className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">Kanban view</TooltipContent>
+                  </Tooltip>
+                </div>
 
                 {/* Add Opportunity button (Copper dark indigo style) */}
                 <DropdownMenu>
@@ -1629,10 +1695,21 @@ const Pipeline = () => {
                 </div>
                 <DragOverlay>
                   {draggedLead ? (
-                    <Card className="p-3 shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-56 bg-card">
-                      <div className="flex items-center gap-2 mb-1">
-                        <CrmAvatar name={draggedLead.name} size="xs" />
-                        <p className="text-sm font-semibold text-foreground truncate">{draggedLead.name}</p>
+                    <Card className="shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-[280px] bg-card overflow-hidden">
+                      <div className="p-3">
+                        <p className="text-[13px] font-semibold text-foreground truncate">{draggedLead.name}</p>
+                        {draggedLead.company_name && (
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <Landmark className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs text-muted-foreground truncate">{draggedLead.company_name}</span>
+                          </div>
+                        )}
+                        {draggedLead.deal_value != null && draggedLead.deal_value > 0 && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-medium text-foreground">{formatValue(draggedLead.deal_value)}</span>
+                          </div>
+                        )}
                       </div>
                     </Card>
                   ) : null}
@@ -1780,7 +1857,7 @@ const Pipeline = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {selectedLeadIds.size} {selectedLeadIds.size === 1 ? 'lead' : 'leads'}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove {selectedLeadIds.size === 1 ? 'this lead' : 'these leads'} from the pipeline. This action cannot be undone.
+              This will remove {selectedLeadIds.size === 1 ? 'this lead' : 'these leads'} from the pipeline.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
