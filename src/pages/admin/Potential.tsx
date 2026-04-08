@@ -1477,9 +1477,11 @@ const Pipeline = () => {
                                 </div>
                                 <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
                                   <CrmAvatar name={lead.name} />
-                                  <span className="text-[16px] text-[#202124] dark:text-foreground truncate">
-                                    {lead.name}
-                                  </span>
+                                  <InlineEditableCell
+                                    value={lead.name}
+                                    onChange={(v) => handleInlineCellSave(lead.id, 'name', v)}
+                                    displayClassName="text-[16px] text-[#202124] dark:text-foreground truncate"
+                                  />
                                 </div>
                                 <div className="shrink-0">
                                     <button
@@ -1496,27 +1498,34 @@ const Pipeline = () => {
                             {/* Company */}
                             {columnVisibility.company && (
                               <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">
-                                  {lead.company_name || '—'}
-                                </span>
+                                <InlineEditableCell
+                                  value={lead.company_name || ''}
+                                  onChange={(v) => handleInlineCellSave(lead.id, 'company_name', v)}
+                                  displayClassName="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full"
+                                />
                               </td>
                             )}
 
                             {/* Contact */}
                             {columnVisibility.contact && (
                               <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">
-                                  {lead.name}
-                                </span>
+                                <InlineEditableCell
+                                  value={lead.name}
+                                  onChange={(v) => handleInlineCellSave(lead.id, 'name', v)}
+                                  displayClassName="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full"
+                                />
                               </td>
                             )}
 
                             {/* Value */}
                             {columnVisibility.value && (
                               <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate max-w-full">
-                                  —
-                                </span>
+                                <InlineEditableCell
+                                  value={lead.deal_value?.toString() || ''}
+                                  onChange={(v) => handleInlineCellSave(lead.id, 'deal_value', v)}
+                                  placeholder="—"
+                                  displayClassName="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate max-w-full"
+                                />
                               </td>
                             )}
 

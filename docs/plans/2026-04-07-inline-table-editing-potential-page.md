@@ -46,11 +46,11 @@ Non-editable columns keep their current behavior — any click in those cells bu
 **Files:**
 - Modify: `src/pages/admin/Potential.tsx`
 
-- [ ] Replace the Deal name `<span>` (line ~1449) with `<InlineEditableCell value={lead.name} onChange={(v) => handleInlineCellSave(lead.id, 'name', v)} />` — keep the existing text styling via className props
-- [ ] Replace the Company `<span>` (line ~1468) with `<InlineEditableCell value={lead.company_name || ''} onChange={(v) => handleInlineCellSave(lead.id, 'company_name', v)} />`
-- [ ] Replace the Contact `<span>` (line ~1478) with `<InlineEditableCell value={lead.name} onChange={(v) => handleInlineCellSave(lead.id, 'name', v)} />`
-- [ ] Replace the Value `<span>` (line ~1485) with `<InlineEditableCell value={lead.deal_value?.toString() || ''} onChange={(v) => handleInlineCellSave(lead.id, 'deal_value', v)} placeholder="—" />` — wire up the currently hardcoded "—" to the actual `deal_value` field
-- [ ] Run `npm run build` to verify no type errors
+- [x] Replace the Deal name `<span>` (line ~1449) with `<InlineEditableCell value={lead.name} onChange={(v) => handleInlineCellSave(lead.id, 'name', v)} />` — keep the existing text styling via className props
+- [x] Replace the Company `<span>` (line ~1468) with `<InlineEditableCell value={lead.company_name || ''} onChange={(v) => handleInlineCellSave(lead.id, 'company_name', v)} />`
+- [x] Replace the Contact `<span>` (line ~1478) with `<InlineEditableCell value={lead.name} onChange={(v) => handleInlineCellSave(lead.id, 'name', v)} />`
+- [x] Replace the Value `<span>` (line ~1485) with `<InlineEditableCell value={lead.deal_value?.toString() || ''} onChange={(v) => handleInlineCellSave(lead.id, 'deal_value', v)} placeholder="—" />` — wire up the currently hardcoded "—" to the actual `deal_value` field
+- [x] Run `npm run build` to verify no type errors
 
 ### Task 3: Convert select columns to inline-editable
 
