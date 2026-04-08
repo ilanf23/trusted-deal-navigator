@@ -786,6 +786,12 @@ const Pipeline = () => {
 
   // Inline cell save handler for direct Supabase updates
   const handleInlineCellSave = async (leadId: string, field: string, value: string) => {
+    // Reject empty strings for required fields
+    if (field === 'name' && !value.trim()) {
+      toast.error('Contact name cannot be empty');
+      return;
+    }
+
     if (field === 'assigned_to') {
       setLeadOwnerOverrides(prev => ({ ...prev, [leadId]: value }));
     }
@@ -812,6 +818,15 @@ const Pipeline = () => {
         });
       }
       return;
+    }
+
+    // Clean up optimistic owner override now that the DB is updated
+    if (field === 'assigned_to') {
+      setLeadOwnerOverrides(prev => {
+        const next = { ...prev };
+        delete next[leadId];
+        return next;
+      });
     }
 
     queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
@@ -1205,63 +1220,6 @@ const Pipeline = () => {
               </div>
 
               <div className="flex items-center gap-1">
-                {/* Sort */}
-                <Popover>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <PopoverTrigger asChild>
-                        <button
-                          className={`h-8 w-8 !p-0 flex items-center justify-center rounded-lg border transition-colors ${
-                            isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 border-[#c8bdd6] dark:border-purple-700 text-[#3b2778] dark:text-purple-400' : 'bg-[#f5f0fa] hover:bg-[#eee6f6] dark:bg-purple-950/30 dark:hover:bg-purple-950/50 border-[#d4cae3] dark:border-purple-800 text-[#3b2778] dark:text-purple-300'
-                          }`}
-                        >
-                          <BarChart3 className="h-4 w-4" />
-                        </button>
-                      </PopoverTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs">Sort options</TooltipContent>
-                  </Tooltip>
-                  <PopoverContent align="end" className="w-56 p-3 space-y-3">
-                    <p className="text-xs font-semibold text-foreground">Sort by</p>
-                    <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SORT_FIELD_OPTIONS.map(o => (
-                          <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="asc" className="text-xs">Ascending</SelectItem>
-                        <SelectItem value="desc" className="text-xs">Descending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </PopoverContent>
-                </Popover>
-
-                {/* Filter */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={isFiltersActive ? clearAllFilters : undefined}
-                      className={`h-8 w-8 !p-0 flex items-center justify-center rounded-lg border transition-colors ${
-                        isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 border-[#c8bdd6] dark:border-purple-700 text-[#3b2778] dark:text-purple-400' : 'bg-[#f5f0fa] hover:bg-[#eee6f6] dark:bg-purple-950/30 dark:hover:bg-purple-950/50 border-[#d4cae3] dark:border-purple-800 text-[#3b2778] dark:text-purple-300'
-                      }`}
-                    >
-                      {isFiltersActive ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    {isFiltersActive ? 'Clear all filters' : 'Filters'}
-                  </TooltipContent>
-                </Tooltip>
-
                 {/* View toggle: Table / Kanban segmented pill */}
                 <div className="flex items-center bg-[#f0ebf5] dark:bg-purple-950/40 rounded-xl p-0.5">
                   <Tooltip>
