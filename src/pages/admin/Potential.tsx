@@ -403,7 +403,7 @@ const Pipeline = () => {
   const { data: pipeline } = useSystemPipelineByName('Potential');
   const { data: stages = [] } = usePipelineStages(pipeline?.id);
   const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = usePipelineDeals();
-  const { moveLeadToStage, addLeadToPipeline, removeLeadFromPipeline, bulkRemoveLeadsFromPipeline } = useCrmMutations('pipeline');
+  const { moveLeadToStage, addLeadToPipeline, removeLeadFromPipeline, bulkRemoveLeadsFromPipeline } = useCrmMutations('potential');
   const dynamicStageConfig = useMemo(() => buildStageConfig(stages), [stages]);
 
   const leads = pipelineLeadsList;
@@ -710,7 +710,7 @@ const Pipeline = () => {
   }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap, stages, currentTeamMember, leadOwnerMap, followedLeadIds]);
 
   const pipelineAutoFitConfig = useMemo(() => ({
-    deal: { getText: (l: any) => l.opportunity_name || l.name, extraPx: 58 },
+    deal: { getText: (l: any) => l.opportunity_name && l.opportunity_name !== l.name ? l.opportunity_name : (l.company_name ? `${l.name} - ${l.company_name}` : l.name), extraPx: 58 },
     company: { getText: (l: any) => l.company_name, extraPx: 32 },
     contact: { getText: (l: any) => l.name },
     ownedBy: { getText: (l: any) => teamMemberMap[l.assigned_to ?? ''] ?? '', extraPx: 32 },
@@ -772,9 +772,16 @@ const Pipeline = () => {
       setLeadOwnerOverrides(prev => ({ ...prev, [leadId]: value }));
     }
 
+    // Coerce deal_value to number (or null) since the DB column is numeric
+    let saveValue: any = value;
+    if (field === 'deal_value') {
+      const num = parseFloat(value.replace(/[^0-9.-]/g, ''));
+      saveValue = isNaN(num) ? null : num;
+    }
+
     const { error } = await supabase
       .from('potential')
-      .update({ [field]: value, updated_at: new Date().toISOString() })
+      .update({ [field]: saveValue, updated_at: new Date().toISOString() })
       .eq('id', leadId);
 
     if (error) {
@@ -1467,8 +1474,8 @@ const Pipeline = () => {
                             }`}
                           >
                             {/* Deal + Checkbox (sticky) */}
-                            <td className={`pl-2 pr-3 ${rowPad} overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailOpen ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                              <div className="flex items-center gap-2.5">
+                            <td className={`pl-2 pr-1.5 ${rowPad} overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailOpen ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                              <div className="flex items-center gap-2">
                                 <div className={`shrink-0`} onClick={(e) => e.stopPropagation()}>
                                   <Checkbox
                                     checked={isSelected}
@@ -1479,7 +1486,7 @@ const Pipeline = () => {
                                 <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
                                   <CrmAvatar name={lead.name} />
                                   <InlineEditableCell
-                                    value={lead.opportunity_name || lead.name}
+                                    value={lead.opportunity_name && lead.opportunity_name !== lead.name ? lead.opportunity_name : (lead.company_name ? `${lead.name} - ${lead.company_name}` : lead.name)}
                                     onChange={(v) => handleInlineCellSave(lead.id, 'opportunity_name', v)}
                                     displayClassName="text-[16px] text-[#202124] dark:text-foreground truncate"
                                   />
@@ -1488,7 +1495,7 @@ const Pipeline = () => {
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`); }}
-                                      className="ml-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                     >
                                       <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
                                     </button>

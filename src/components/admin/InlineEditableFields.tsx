@@ -145,6 +145,7 @@ export function useInlineSave(
   currentValue: string,
   onSaved: (field: string, newValue: string) => void,
   transform?: (val: string) => unknown,
+  tableName: string = 'potential',
 ) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(currentValue);
@@ -165,7 +166,7 @@ export function useInlineSave(
     setSaving(true);
     const saveValue = transform ? transform(trimmed) : (trimmed || null);
     const { error } = await supabase
-      .from('pipeline')
+      .from(tableName as any)
       .update({ [field]: saveValue })
       .eq('id', leadId);
     setSaving(false);
@@ -178,14 +179,14 @@ export function useInlineSave(
       label: `Updated ${field}`,
       execute: async () => {
         const restoreValue = transform ? transform(previousValue) : (previousValue || null);
-        const { error: e } = await supabase.from('pipeline').update({ [field]: restoreValue }).eq('id', leadId);
+        const { error: e } = await supabase.from(tableName as any).update({ [field]: restoreValue }).eq('id', leadId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
     });
     onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, currentValue, field, leadId, onSaved, transform, registerUndo]);
+  }, [draft, currentValue, field, leadId, onSaved, transform, registerUndo, tableName]);
 
   const cancel = useCallback(() => {
     setDraft(currentValue);
@@ -197,14 +198,15 @@ export function useInlineSave(
 
 // ── Editable Deal-details row ──
 export function EditableField({
-  icon, label, value, field, leadId, highlight = false, onSaved, transform,
+  icon, label, value, field, leadId, highlight = false, onSaved, transform, tableName = 'potential',
 }: {
   icon: React.ReactNode; label: string; value: string; field: string;
   leadId: string; highlight?: boolean;
   onSaved: (field: string, newValue: string) => void;
   transform?: (val: string) => unknown;
+  tableName?: string;
 }) {
-  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved, transform);
+  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved, transform, tableName);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -213,7 +215,7 @@ export function EditableField({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-50/50">
+      <div className="flex items-center gap-2 px-3 py-2">
         <div className="flex items-center gap-2 text-blue-400 shrink-0">
           {icon}
           <span className="text-xs font-medium text-blue-500">{label}</span>
@@ -226,7 +228,7 @@ export function EditableField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
+            className="w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
         </div>
@@ -252,12 +254,13 @@ export function EditableField({
 
 // ── Select-based editable row (Owned By) ──
 export function EditableSelectField({
-  icon, label, value, displayValue, field, leadId, options, onSaved,
+  icon, label, value, displayValue, field, leadId, options, onSaved, tableName = 'potential',
 }: {
   icon: React.ReactNode; label: string; value: string; displayValue: string;
   field: string; leadId: string;
   options: { value: string; label: string }[];
   onSaved: (field: string, newValue: string) => void;
+  tableName?: string;
 }) {
   const [saving, setSaving] = useState(false);
   const { registerUndo } = useUndo();
@@ -267,7 +270,7 @@ export function EditableSelectField({
     const previousValue = value;
     setSaving(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from(tableName as any)
       .update({ [field]: newValue || null })
       .eq('id', leadId);
     setSaving(false);
@@ -278,7 +281,7 @@ export function EditableSelectField({
     registerUndo({
       label: `Updated ${label}`,
       execute: async () => {
-        const { error: e } = await supabase.from('pipeline').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from(tableName as any).update({ [field]: previousValue || null }).eq('id', leadId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
@@ -313,13 +316,14 @@ export function EditableSelectField({
 
 // ── Editable Contact Row ──
 export function EditableContactRow({
-  icon, value, field, leadId, placeholder, onSaved,
+  icon, value, field, leadId, placeholder, onSaved, tableName = 'potential',
 }: {
   icon: React.ReactNode; value: string; field: string;
   leadId: string; placeholder: string;
   onSaved: (field: string, newValue: string) => void;
+  tableName?: string;
 }) {
-  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved);
+  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved, undefined, tableName);
   const inputRef = useRef<HTMLInputElement>(null);
   const isPhone = field === 'phone';
   const displayValue = isPhone ? formatPhoneNumber(value) : value;
@@ -330,7 +334,7 @@ export function EditableContactRow({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg">
         <div className="text-blue-400 shrink-0">{icon}</div>
         <input
           ref={inputRef}
@@ -360,10 +364,11 @@ export function EditableContactRow({
 
 // ── Editable Tags (with autocomplete) ──
 export function EditableTags({
-  tags, leadId, onSaved,
+  tags, leadId, onSaved, tableName = 'potential',
 }: {
   tags: string[]; leadId: string;
   onSaved: (field: string, newValue: string) => void;
+  tableName?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draftTags, setDraftTags] = useState<string[]>(tags);
@@ -377,9 +382,9 @@ export function EditableTags({
 
   // Fetch all existing tags across leads
   const { data: allExistingTags = [] } = useQuery({
-    queryKey: ['all-lead-tags'],
+    queryKey: ['all-lead-tags', tableName],
     queryFn: async () => {
-      const { data } = await supabase.from('pipeline').select('tags').not('tags', 'is', null);
+      const { data } = await supabase.from(tableName as any).select('tags').not('tags', 'is', null);
       const tagSet = new Set<string>();
       (data ?? []).forEach((row: any) => {
         (row.tags ?? []).forEach((t: string) => tagSet.add(t));
@@ -426,7 +431,7 @@ export function EditableTags({
     const previousTags = [...tags];
     setSaving(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from(tableName as any)
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', leadId);
     setSaving(false);
@@ -437,7 +442,7 @@ export function EditableTags({
     registerUndoTags({
       label: 'Updated tags',
       execute: async () => {
-        const { error: e } = await supabase.from('pipeline').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
+        const { error: e } = await supabase.from(tableName as any).update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
         if (e) throw e;
         onSaved('tags', JSON.stringify(previousTags.length > 0 ? previousTags : null));
       },
@@ -500,7 +505,7 @@ export function EditableTags({
   if (editing) {
     return (
       <>
-        <div ref={containerRef} className="rounded-lg bg-blue-50/50 border border-blue-100 p-2">
+        <div ref={containerRef} className="rounded-lg p-2">
           <div className="flex flex-wrap gap-1.5 items-center">
             {draftTags.map((tag) => (
               <span key={tag} className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-medium">
@@ -589,10 +594,11 @@ export function EditableTags({
 
 // ── Editable Notes ──
 export function EditableNotes({
-  value, leadId, onSaved,
+  value, leadId, onSaved, tableName = 'potential',
 }: {
   value: string; leadId: string;
   onSaved: (field: string, newValue: string) => void;
+  tableName?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -611,7 +617,7 @@ export function EditableNotes({
     const previousValue = value;
     setSaving(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from(tableName as any)
       .update({ notes: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -619,14 +625,14 @@ export function EditableNotes({
     registerUndoNotes({
       label: 'Updated notes',
       execute: async () => {
-        const { error: e } = await supabase.from('pipeline').update({ notes: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from(tableName as any).update({ notes: previousValue || null }).eq('id', leadId);
         if (e) throw e;
         onSaved('notes', previousValue);
       },
     });
     onSaved('notes', trimmed);
     setEditing(false);
-  }, [draft, value, leadId, onSaved, registerUndoNotes]);
+  }, [draft, value, leadId, onSaved, registerUndoNotes, tableName]);
 
   if (editing) {
     return (
@@ -666,10 +672,11 @@ export function EditableNotes({
 
 // ── Editable Notes Field (parameterized — for about, history, bank_relationships) ──
 export function EditableNotesField({
-  value, field, leadId, placeholder, onSaved,
+  value, field, leadId, placeholder, onSaved, tableName = 'potential',
 }: {
   value: string; field: string; leadId: string; placeholder?: string;
   onSaved: (field: string, newValue: string) => void;
+  tableName?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -688,7 +695,7 @@ export function EditableNotesField({
     const previousValue = value;
     setSaving(true);
     const { error } = await supabase
-      .from('pipeline')
+      .from(tableName as any)
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -696,14 +703,14 @@ export function EditableNotesField({
     registerUndoField({
       label: `Updated ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('pipeline').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from(tableName as any).update({ [field]: previousValue || null }).eq('id', leadId);
         if (e) throw e;
         onSaved(field, previousValue);
       },
     });
     onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, value, field, leadId, onSaved, registerUndoField]);
+  }, [draft, value, field, leadId, onSaved, registerUndoField, tableName]);
 
   if (editing) {
     return (

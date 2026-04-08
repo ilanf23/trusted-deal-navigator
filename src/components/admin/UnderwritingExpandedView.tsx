@@ -1511,7 +1511,7 @@ export default function UnderwritingExpandedView() {
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Details — fully editable */}
-        <ScrollArea className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] md:shrink-0 md:min-w-[240px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
+        <ScrollArea className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
           <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
             {/* ── Back Arrow ── */}
@@ -1540,7 +1540,7 @@ export default function UnderwritingExpandedView() {
             </div>
 
             {/* Opportunity Name */}
-            <EditableField label="Opportunity Name" value={lead.opportunity_name || lead.name || ''} field="opportunity_name" leadId={lead.id} placeholder="e.g. Client - Refi 6-unit Apt. Bldg" onSaved={handleFieldSaved} />
+            <EditableField label="Opportunity Name" value={lead.opportunity_name || lead.name || ''} field="opportunity_name" leadId={lead.id} placeholder="e.g. Client - Refi 6-unit Apt. Bldg" onSaved={handleFieldSaved} tableName="underwriting" />
 
             {/* Pipeline */}
             <div>
@@ -1573,15 +1573,15 @@ export default function UnderwritingExpandedView() {
             </div>
 
             {/* CLX File Name */}
-            <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} />
+            <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
 
             {/* Waiting On */}
-            <EditableField icon={<Clock className="h-3.5 w-3.5" />} label="Waiting On" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} />
+            <EditableField icon={<Clock className="h-3.5 w-3.5" />} label="Waiting On" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
 
             {/* Tags */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">Tags</label>
-              <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
+              <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
             </div>
 
             {/* Value */}
@@ -1590,7 +1590,7 @@ export default function UnderwritingExpandedView() {
             {/* Description */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">Description</label>
-              <EditableNotesField value={lead.description ?? ''} field="description" leadId={lead.id} placeholder="Add Description" onSaved={handleFieldSaved} />
+              <EditableNotesField value={lead.description ?? ''} field="description" leadId={lead.id} placeholder="Add Description" onSaved={handleFieldSaved} tableName="underwriting" />
             </div>
 
             {/* Primary Contact */}
@@ -1628,13 +1628,13 @@ export default function UnderwritingExpandedView() {
             </div>
 
             {/* Close Date */}
-            <EditableField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Close Date" value={(lead as any).close_date ? formatDate((lead as any).close_date) : ''} field="close_date" leadId={lead.id} onSaved={handleFieldSaved} />
+            <EditableField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Close Date" value={(lead as any).close_date ? formatDate((lead as any).close_date) : ''} field="close_date" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
 
             {/* Loss Reason */}
-            <EditableField icon={<X className="h-3.5 w-3.5" />} label="Loss Reason" value={(lead as any).loss_reason ?? ''} field="loss_reason" leadId={lead.id} onSaved={handleFieldSaved} />
+            <EditableField icon={<X className="h-3.5 w-3.5" />} label="Loss Reason" value={(lead as any).loss_reason ?? ''} field="loss_reason" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
 
             {/* Company */}
-            <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} />
+            <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
 
             {/* Owner */}
             <div>
@@ -1671,10 +1671,10 @@ export default function UnderwritingExpandedView() {
             </div>
 
             {/* Source */}
-            <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? ''} field="source" leadId={lead.id} onSaved={handleFieldSaved} />
+            <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? ''} field="source" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
 
             {/* Priority */}
-            <EditableField icon={<Flag className="h-3.5 w-3.5" />} label="Priority" value={(lead as any).priority ?? ''} field="priority" leadId={lead.id} onSaved={handleFieldSaved} />
+            <EditableField icon={<Flag className="h-3.5 w-3.5" />} label="Priority" value={(lead as any).priority ?? ''} field="priority" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
 
             {/* Win Percentage */}
             <div>
@@ -1691,7 +1691,7 @@ export default function UnderwritingExpandedView() {
             </div>
 
             {/* Visibility */}
-            <EditableField icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value={(lead as any).visibility ?? 'everyone'} field="visibility" leadId={lead.id} onSaved={handleFieldSaved} />
+            <EditableField icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value={(lead as any).visibility ?? 'everyone'} field="visibility" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
 
             {/* Email */}
             <div>
@@ -1701,7 +1701,7 @@ export default function UnderwritingExpandedView() {
                   <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
                 ))}
                 {showAddEmail ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
                     <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                     <Select value={newEmailType} onValueChange={setNewEmailType}>
                       <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
@@ -1726,7 +1726,7 @@ export default function UnderwritingExpandedView() {
                   <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
                 ))}
                 {showAddPhone ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
                     <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                     <Select value={newPhoneType} onValueChange={setNewPhoneType}>
                       <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
@@ -1752,7 +1752,7 @@ export default function UnderwritingExpandedView() {
                   <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
                 ))}
                 {showAddAddress ? (
-                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+                  <div className="rounded-lg p-2.5 space-y-2">
                     <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
                     <div className="flex gap-1.5">
                       <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
@@ -1782,23 +1782,23 @@ export default function UnderwritingExpandedView() {
             {/* About */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">About</label>
-              <EditableNotesField value={lead.about ?? ''} field="about" leadId={lead.id} placeholder="Add About" onSaved={handleFieldSaved} />
+              <EditableNotesField value={lead.about ?? ''} field="about" leadId={lead.id} placeholder="Add About" onSaved={handleFieldSaved} tableName="underwriting" />
             </div>
 
             {/* History */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">History</label>
-              <EditableNotesField value={lead.history ?? ''} field="history" leadId={lead.id} placeholder="Add History" onSaved={handleFieldSaved} />
+              <EditableNotesField value={lead.history ?? ''} field="history" leadId={lead.id} placeholder="Add History" onSaved={handleFieldSaved} tableName="underwriting" />
             </div>
 
             {/* Bank Relationships */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">Bank Relationships</label>
-              <EditableNotesField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Add Bank Relationships" onSaved={handleFieldSaved} />
+              <EditableNotesField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Add Bank Relationships" onSaved={handleFieldSaved} tableName="underwriting" />
             </div>
 
             {/* #UW */}
-            <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="#UW" value={lead.uw_number ?? ''} field="uw_number" leadId={lead.id} onSaved={handleFieldSaved} />
+            <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="#UW" value={lead.uw_number ?? ''} field="uw_number" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
 
             {/* Client Working with Other Lenders */}
             <div onClick={() => handleBooleanToggle('client_other_lenders', lead.client_other_lenders)} className="flex items-center justify-between py-3 border-b border-border hover:bg-muted/40 transition-colors cursor-pointer">

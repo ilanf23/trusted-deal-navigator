@@ -3,18 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { EntityType } from '@/integrations/supabase/types';
 
-type CrmTable = 'pipeline' | 'underwriting' | 'lender_management';
+type CrmTable = 'potential' | 'underwriting' | 'lender_management';
 
 const QUERY_KEY_MAP: Record<CrmTable, string> = {
-  pipeline: 'pipeline-deals',
+  potential: 'potential-deals',
   underwriting: 'underwriting-deals',
   lender_management: 'lender-management-deals',
 };
 
 async function updateDealStage(table: CrmTable, dealId: string, newStageId: string) {
   const updateData = { stage_id: newStageId, updated_at: new Date().toISOString() };
-  if (table === 'pipeline') {
-    return supabase.from('pipeline').update(updateData).eq('id', dealId);
+  if (table === 'potential') {
+    return supabase.from('potential').update(updateData).eq('id', dealId);
   } else if (table === 'underwriting') {
     return supabase.from('underwriting').update(updateData).eq('id', dealId);
   } else {
@@ -23,8 +23,8 @@ async function updateDealStage(table: CrmTable, dealId: string, newStageId: stri
 }
 
 async function insertDeal(table: CrmTable, data: Record<string, unknown>) {
-  if (table === 'pipeline') {
-    return supabase.from('pipeline').insert(data as any).select().single();
+  if (table === 'potential') {
+    return supabase.from('potential').insert(data as any).select().single();
   } else if (table === 'underwriting') {
     return supabase.from('underwriting').insert(data as any).select().single();
   } else {
@@ -33,8 +33,8 @@ async function insertDeal(table: CrmTable, data: Record<string, unknown>) {
 }
 
 async function deleteDeal(table: CrmTable, dealId: string) {
-  if (table === 'pipeline') {
-    return supabase.from('pipeline').delete().eq('id', dealId);
+  if (table === 'potential') {
+    return supabase.from('potential').delete().eq('id', dealId);
   } else if (table === 'underwriting') {
     return supabase.from('underwriting').delete().eq('id', dealId);
   } else {
@@ -43,8 +43,8 @@ async function deleteDeal(table: CrmTable, dealId: string) {
 }
 
 async function bulkDeleteDeals(table: CrmTable, dealIds: string[]) {
-  if (table === 'pipeline') {
-    return supabase.from('pipeline').delete().in('id', dealIds);
+  if (table === 'potential') {
+    return supabase.from('potential').delete().in('id', dealIds);
   } else if (table === 'underwriting') {
     return supabase.from('underwriting').delete().in('id', dealIds);
   } else {
@@ -148,4 +148,4 @@ export const useCrmMutations = (table: CrmTable) => {
 };
 
 // Backward compat alias
-export const usePipelineMutations = (_pipelineId?: string) => useCrmMutations('pipeline');
+export const usePipelineMutations = (_pipelineId?: string) => useCrmMutations('potential');
