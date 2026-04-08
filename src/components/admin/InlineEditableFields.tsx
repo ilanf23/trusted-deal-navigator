@@ -751,12 +751,12 @@ export function EditableNotesField({
 // ── Read-only row (Pipeline, Created) ──
 export function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2">
-      <div className="flex items-center gap-2 text-muted-foreground">
+    <div className="flex items-center gap-3 px-3 py-2">
+      <div className="flex items-center gap-2 text-muted-foreground w-28 shrink-0">
         {icon}
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
-      <span className="text-[13px] font-medium text-foreground text-right truncate">{value}</span>
+      <span className="text-[13px] font-medium text-foreground truncate">{value}</span>
     </div>
   );
 }

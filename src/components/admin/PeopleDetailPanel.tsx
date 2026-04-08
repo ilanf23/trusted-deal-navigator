@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { usePipelines } from '@/hooks/usePipelines';
 import { sanitizeFileName } from '@/lib/utils';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
@@ -1027,13 +1028,7 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
     },
   });
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
-    queryFn: async () => {
-      const { data } = await supabase.from('users').select('id, name').eq('is_active', true);
-      return (data || []) as { id: string; name: string }[];
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   // ── Pipeline records — people are standalone entities, no longer in pipelines directly ──
   const pipelineRecords: Array<{

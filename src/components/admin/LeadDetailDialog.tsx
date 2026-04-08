@@ -29,6 +29,7 @@ import { TaskDetailDialog } from '@/components/employee/tasks/TaskDetailDialog';
 import { Task } from '@/components/employee/tasks/types';
 import { LeadTodosSection } from '@/components/admin/LeadTodosSection';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { FormattedPhoneInput } from '@/components/admin/FormattedPhoneInput';
 import { LeadFilesSection } from '@/components/admin/LeadFilesSection';
@@ -500,19 +501,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     });
   }, [rawTasks]);
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('users')
-        .select('id, name, avatar_url')
-        .eq('is_active', true)
-        .not('name', 'ilike', 'adam')
-        .not('name', 'ilike', 'ilan');
-      return (data || []) as TeamMember[];
-    },
-    enabled: open,
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   // Query lead's lender associations from database
   const { data: dbLeadLenders = [] } = useQuery({

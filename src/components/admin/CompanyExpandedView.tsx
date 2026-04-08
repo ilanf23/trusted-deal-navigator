@@ -22,6 +22,7 @@ import {
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
@@ -174,7 +175,7 @@ function EditableField({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+    if (editing) setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
   }, [editing]);
 
   if (editing) {
@@ -231,7 +232,7 @@ function EditableContactRow({
   const displayValue = isPhone ? formatPhoneNumber(value) : value;
 
   useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+    if (editing) setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
   }, [editing]);
 
   if (editing) {
@@ -280,7 +281,7 @@ function EditableTags({
   useEffect(() => {
     if (editing) {
       setDraft(tags.join(', '));
-      setTimeout(() => inputRef.current?.focus(), 0);
+      setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
     }
   }, [editing, tags]);
 
@@ -438,12 +439,12 @@ function EditableNotes({
 
 function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2">
-      <div className="flex items-center gap-2 text-muted-foreground">
+    <div className="flex items-center gap-3 px-3 py-2">
+      <div className="flex items-center gap-2 text-muted-foreground w-28 shrink-0">
         {icon}
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
-      <span className="text-[13px] font-medium text-foreground text-right truncate">{value}</span>
+      <span className="text-[13px] font-medium text-foreground truncate">{value}</span>
     </div>
   );
 }
@@ -711,13 +712,7 @@ export default function CompanyExpandedView() {
     enabled: !!companyId,
   });
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
-    queryFn: async () => {
-      const { data } = await supabase.from('users').select('id, name').eq('is_active', true);
-      return (data || []) as { id: string; name: string }[];
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   const teamMemberMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -828,7 +823,13 @@ export default function CompanyExpandedView() {
   }
 
   return (
-    <div data-full-bleed className="flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
+    <div data-full-bleed className="company-expanded-view system-font flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
+      <style>{`
+        .company-expanded-view,
+        .company-expanded-view *:not(svg):not(svg *) {
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        }
+      `}</style>
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
@@ -860,6 +861,9 @@ export default function CompanyExpandedView() {
                 </div>
               </div>
             </div>
+
+            {/* Pipeline */}
+            <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Companies" />
 
             {/* Contact Details */}
             <div className="space-y-1">
@@ -946,7 +950,6 @@ export default function CompanyExpandedView() {
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
               <div className=" bg-muted/50">
-                <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Companies" />
                 <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(company.created_at)} />
                 <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Updated" value={formatDate(company.updated_at)} />
               </div>

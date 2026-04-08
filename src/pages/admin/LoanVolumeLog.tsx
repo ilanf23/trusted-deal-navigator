@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -357,17 +358,7 @@ const LoanVolumeLog = () => {
     return synced[synced.length - 1];
   }, [leads]);
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['vl-team-members'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name, avatar_url')
-        .order('name');
-      if (error) throw error;
-      return data as { id: string; name: string; avatar_url: string | null }[];
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   const teamMemberMap = useMemo(() => {
     const map: Record<string, string> = {};

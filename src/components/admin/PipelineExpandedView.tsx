@@ -27,6 +27,7 @@ import {
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
@@ -240,7 +241,7 @@ function CrmEditableField({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+    if (editing) setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
   }, [editing]);
 
   if (editing) {
@@ -967,13 +968,7 @@ export default function PipelineExpandedView() {
     enabled: !!leadId,
   });
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
-    queryFn: async () => {
-      const { data } = await supabase.from('users').select('id, name').eq('is_active', true);
-      return (data || []) as { id: string; name: string }[];
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   const teamMemberMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -1329,12 +1324,18 @@ export default function PipelineExpandedView() {
   }
 
   return (
-    <div data-full-bleed className="flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
+    <div data-full-bleed className="pipeline-expanded-view system-font flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
+      <style>{`
+        .pipeline-expanded-view,
+        .pipeline-expanded-view *:not(svg):not(svg *) {
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        }
+      `}</style>
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Details — CRM-style contact panel */}
-        <ScrollArea className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
+        <ScrollArea className="system-font w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
             <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
               {/* ── Back Arrow ── */}
@@ -1353,12 +1354,6 @@ export default function PipelineExpandedView() {
                   {lead.company_name && (
                     <p className="text-sm text-muted-foreground mt-0.5 truncate">{lead.company_name}</p>
                   )}
-                  <div className="mt-2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
-                      <DollarSign className="h-3 w-3" />
-                      Opportunity
-                    </span>
-                  </div>
                 </div>
               </div>
 
@@ -1366,6 +1361,12 @@ export default function PipelineExpandedView() {
               <div className="space-y-5">
                 {/* Name */}
                 <CrmEditableField label="Name" value={lead.name} field="name" leadId={lead.id} onSaved={handleFieldSaved} required copyable />
+
+                {/* Pipeline */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">Pipeline</span>
+                  <span className="text-sm font-medium text-foreground">Pipeline</span>
+                </div>
 
                 {/* Company */}
                 <CrmEditableField label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Company" />
@@ -1435,53 +1436,53 @@ export default function PipelineExpandedView() {
                 {/* Owner */}
                 <div>
                   <span className="text-xs font-medium text-muted-foreground block mb-1">Owner</span>
-                  {assignedName ? (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{assignedName}</span>
-                      <button
-                        onClick={async () => {
-                          const previousOwner = lead.assigned_to;
-                          const { error } = await supabase.from('potential').update({ assigned_to: null }).eq('id', lead.id);
-                          if (error) { toast.error('Failed to save'); return; }
-                          registerUndo({
-                            label: 'Owner cleared',
-                            execute: async () => {
-                              const { error: e } = await supabase.from('potential').update({ assigned_to: previousOwner }).eq('id', lead.id);
-                              if (e) throw e;
-                              handleFieldSaved('assigned_to', previousOwner ?? '');
-                            },
-                          });
-                          handleFieldSaved('assigned_to', '');
-                        }}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                  {ownerOptions.length > 0 ? (
+                    <div className="flex items-center gap-1">
+                      <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
+                        const previousOwner = lead.assigned_to;
+                        const { error } = await supabase.from('potential').update({ assigned_to: v || null }).eq('id', lead.id);
+                        if (error) { toast.error('Failed to save'); return; }
+                        registerUndo({
+                          label: `Owner changed`,
+                          execute: async () => {
+                            const { error: e } = await supabase.from('potential').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
+                            if (e) throw e;
+                            handleFieldSaved('assigned_to', previousOwner ?? '');
+                          },
+                        });
+                        handleFieldSaved('assigned_to', v);
+                      }}>
+                        <SelectTrigger className={`h-auto w-full text-sm font-medium bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0 ${assignedName ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'}`}>
+                          <SelectValue placeholder="Add Owner" />
+                        </SelectTrigger>
+                        <SelectContent className="min-w-[200px]">
+                          {ownerOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-[13px]">{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {assignedName && (
+                        <button
+                          onClick={async () => {
+                            const previousOwner = lead.assigned_to;
+                            const { error } = await supabase.from('potential').update({ assigned_to: null }).eq('id', lead.id);
+                            if (error) { toast.error('Failed to save'); return; }
+                            registerUndo({
+                              label: 'Owner cleared',
+                              execute: async () => {
+                                const { error: e } = await supabase.from('potential').update({ assigned_to: previousOwner }).eq('id', lead.id);
+                                if (e) throw e;
+                                handleFieldSaved('assigned_to', previousOwner ?? '');
+                              },
+                            });
+                            handleFieldSaved('assigned_to', '');
+                          }}
+                          className="text-muted-foreground hover:text-foreground shrink-0"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
-                  ) : ownerOptions.length > 0 ? (
-                    <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
-                      const previousOwner = lead.assigned_to;
-                      const { error } = await supabase.from('potential').update({ assigned_to: v || null }).eq('id', lead.id);
-                      if (error) { toast.error('Failed to save'); return; }
-                      registerUndo({
-                        label: `Owner changed`,
-                        execute: async () => {
-                          const { error: e } = await supabase.from('potential').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
-                          if (e) throw e;
-                          handleFieldSaved('assigned_to', previousOwner ?? '');
-                        },
-                      });
-                      handleFieldSaved('assigned_to', v);
-                    }}>
-                      <SelectTrigger className="h-auto w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0">
-                        <SelectValue placeholder="Add Owner" />
-                      </SelectTrigger>
-                      <SelectContent className="min-w-[200px]">
-                        {ownerOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value} className="text-[13px]">{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   ) : (
                     <CrmEditableField label="" value="" field="assigned_to" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Owner" noLabel />
                   )}
@@ -1677,17 +1678,13 @@ export default function PipelineExpandedView() {
               <div>
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">Pipeline</span>
-                    <span className="text-sm font-medium text-foreground">Pipeline</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">Created</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">Created</span>
                     <span className="text-sm font-medium text-foreground">{formatDate(lead.created_at)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">Source</span>
-                    <span className="text-sm font-medium text-foreground">{lead.source ?? '\u2014'}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">Source</span>
+                    <span className="text-sm font-medium text-foreground">{lead.source ?? '—'}</span>
                   </div>
                 </div>
               </div>
@@ -1704,7 +1701,7 @@ export default function PipelineExpandedView() {
         </ScrollArea>
 
         {/* CENTER: Activity */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
+        <div className="system-font flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
           <ScrollArea className="flex-1">
             <div className="px-3 md:px-4 lg:px-6 pt-5">
               {/* Stats — floating card */}
@@ -2037,7 +2034,7 @@ export default function PipelineExpandedView() {
         </div>
 
         {/* RIGHT: Related */}
-        <div className="w-full md:w-[260px] lg:w-[310px] xl:w-[340px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-hidden">
+        <div className="system-font w-full md:w-[260px] lg:w-[310px] xl:w-[340px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-hidden">
         <ScrollArea className="h-full">
           <div className="py-4 px-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>

@@ -102,6 +102,7 @@ const ProfileSection = () => {
     toast.success('Profile updated');
     queryClient.invalidateQueries({ queryKey: ['team-member'] });
     queryClient.invalidateQueries({ queryKey: ['team-members'] });
+    queryClient.invalidateQueries({ queryKey: ['assignable-users'] });
     queryClient.invalidateQueries({ queryKey: ['user-profile', teamMember.id] });
   };
 

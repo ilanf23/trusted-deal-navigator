@@ -24,6 +24,7 @@ import {
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
@@ -684,13 +685,7 @@ export default function LenderManagementExpandedView() {
     enabled: !!leadId,
   });
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
-    queryFn: async () => {
-      const { data } = await supabase.from('users').select('id, name').eq('is_active', true);
-      return (data || []) as { id: string; name: string }[];
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   const teamMemberMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -1046,7 +1041,13 @@ export default function LenderManagementExpandedView() {
   }
 
   return (
-    <div data-full-bleed className="flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
+    <div data-full-bleed className="lender-management-expanded-view system-font flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
+      <style>{`
+        .lender-management-expanded-view,
+        .lender-management-expanded-view *:not(svg):not(svg *) {
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        }
+      `}</style>
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
@@ -1082,6 +1083,9 @@ export default function LenderManagementExpandedView() {
                 </div>
               </div>
             </div>
+
+            {/* Pipeline */}
+            <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Pipeline" />
 
             {/* Contact */}
             <div className="space-y-1">
@@ -1332,7 +1336,6 @@ export default function LenderManagementExpandedView() {
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
               <div className=" bg-muted/50">
-                <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Pipeline" />
                 <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
                 <ReadOnlyField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? '\u2014'} />
                 <ReadOnlyField icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value="\u2014" />

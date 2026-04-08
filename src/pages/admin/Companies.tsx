@@ -6,11 +6,13 @@ import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { useUndo } from '@/contexts/UndoContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanies } from '@/hooks/useAllPipelineLeads';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import CompanyDetailPanel, { contactTypeConfigDefault } from '@/components/admin/CompanyDetailPanel';
@@ -23,7 +25,7 @@ import {
   Building2, Tag, Check, X, LayoutGrid, FileSearch,
   PanelRightOpen, Sparkles, Loader2, Download, PlusCircle, Globe, Maximize2,
   Search, BarChart3, AtSign, User, CalendarDays,
-  MessageSquare, Moon, Phone, DollarSign,
+  MessageSquare, Moon, Phone, DollarSign, Table2, Columns3,
 } from 'lucide-react';
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
@@ -192,28 +194,45 @@ function KanbanCompanyCard({ company, isDragging, onClick }: {
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Card
-        className="group/card p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card"
+        className="group/card cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card overflow-hidden"
         onClick={(e) => { e.stopPropagation(); onClick(); }}
       >
-        <div className="flex items-center gap-2 mb-1.5">
-          <CrmAvatar name={company.company_name} size="sm" />
-          <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{company.company_name}</p>
-          <button
-            onClick={(e) => { e.stopPropagation(); navigate(`/admin/companies/company/${company.id}`); }}
-            className="shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity"
-          >
-            <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-          </button>
+        <div className="p-3 pb-2.5">
+          <div className="flex items-start justify-between gap-1 mb-2">
+            <p className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2">{company.company_name}</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/admin/companies/company/${company.id}`); }}
+              className="shrink-0 mt-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity"
+            >
+              <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+            </button>
+          </div>
+          {company.contact_name && (
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">{company.contact_name}</span>
+            </div>
+          )}
+          {company.website && (
+            <div className="flex items-center gap-1.5">
+              <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">{company.website}</span>
+            </div>
+          )}
         </div>
-        {company.contact_name && (
-          <p className="text-[11px] text-muted-foreground mb-0.5 truncate">{company.contact_name}</p>
-        )}
-        {company.email_domain && (
-          <p className="text-[11px] text-muted-foreground mb-1.5 truncate">{company.email_domain}</p>
-        )}
-        {company.phone && (
-          <p className="text-[11px] text-muted-foreground truncate">{company.phone}</p>
-        )}
+        <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/50 bg-muted/20">
+          <div className="flex items-center gap-2 text-muted-foreground min-w-0">
+            {company.phone && (
+              <div className="flex items-center gap-1">
+                <Phone className="h-3 w-3 shrink-0" />
+                <span className="text-[11px] truncate">{company.phone}</span>
+              </div>
+            )}
+          </div>
+          {company.deals_count > 0 && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">{company.deals_count} deals</span>
+          )}
+        </div>
       </Card>
     </div>
   );
@@ -495,17 +514,7 @@ const Companies = () => {
   const { data: rawCompanies = [], isLoading } = useCompanies();
   const companies = rawCompanies as unknown as Company[];
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members-companies'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name, avatar_url')
-        .order('name');
-      if (error) throw error;
-      return data as { id: string; name: string; avatar_url: string | null }[];
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   const teamMemberMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -818,103 +827,38 @@ const Companies = () => {
               </div>
 
               <div className="flex items-center gap-1">
-                {/* Sort */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      title="Sort options"
-                      className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
-                        isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
-                      }`}
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-56 p-3 space-y-3">
-                    <p className="text-xs font-semibold text-foreground">Sort by</p>
-                    <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SORT_FIELD_OPTIONS.map(o => (
-                          <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="asc" className="text-xs">Ascending</SelectItem>
-                        <SelectItem value="desc" className="text-xs">Descending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </PopoverContent>
-                </Popover>
-
-                {/* Filter */}
-                <button
-                  onClick={isFiltersActive ? clearAllFilters : undefined}
-                  title={isFiltersActive ? 'Clear all filters' : 'No active filters'}
-                  className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
-                    isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
-                  }`}
-                >
-                  {isFiltersActive ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
-                </button>
-
-                {/* Column visibility */}
-                <div className="relative" ref={columnsMenuRef}>
-                  <button
-                    onClick={() => setShowColumnsMenu(v => !v)}
-                    title="Show/hide columns"
-                    className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
-                      showColumnsMenu ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
-                    }`}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </button>
-
-                  {showColumnsMenu && (
-                    <div className="absolute right-0 top-full mt-1.5 z-50 bg-white dark:bg-popover border border-[#dadce0] dark:border-border rounded-lg shadow-lg w-52 py-1.5 overflow-hidden">
-                      <div className="px-3 py-1.5 border-b border-[#dadce0] dark:border-border">
-                        <p className="text-[11px] font-semibold text-[#5f6368] dark:text-muted-foreground uppercase tracking-wider">Visible Columns</p>
-                      </div>
-                      <div className="py-1">
-                        {(Object.keys(COLUMN_LABELS) as ColumnKey[]).map((key) => (
-                          <button
-                            key={key}
-                            onClick={() => toggleColumn(key)}
-                            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors"
-                          >
-                            <span className="text-[13px] text-[#1f1f1f] dark:text-foreground">{COLUMN_LABELS[key]}</span>
-                            <span className={`flex items-center justify-center h-4 w-4 rounded border transition-colors ${
-                              columnVisibility[key]
-                                ? 'bg-[#1a73e8] border-[#1a73e8]'
-                                : 'border-[#dadce0] dark:border-border bg-white dark:bg-card'
-                            }`}>
-                              {columnVisibility[key] && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                      <div className="px-3 py-1.5 border-t border-[#dadce0] dark:border-border">
-                        <button
-                          onClick={() => {
-                            const allTrue = Object.fromEntries(
-                              (Object.keys(COLUMN_LABELS) as ColumnKey[]).map(k => [k, true])
-                            ) as Record<ColumnKey, boolean>;
-                            setColumnVisibility(allTrue);
-                          }}
-                          className="text-[11px] text-[#1a73e8] hover:text-[#174ea6] font-medium"
-                        >
-                          Show all columns
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                {/* View toggle: Table / Kanban segmented pill */}
+                <div className="flex items-center bg-[#f0ebf5] dark:bg-purple-950/40 rounded-xl p-0.5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setViewMode('table')}
+                        className={`h-8 w-8 !p-0 flex items-center justify-center rounded-lg transition-all ${
+                          viewMode === 'table'
+                            ? 'bg-white dark:bg-card shadow-sm border-2 border-[#3b2778] dark:border-purple-500 text-[#3b2778] dark:text-purple-400'
+                            : 'text-[#8c7bab] dark:text-purple-600 hover:text-[#3b2778] dark:hover:text-purple-400'
+                        }`}
+                      >
+                        <Table2 className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">Table view</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setViewMode('kanban')}
+                        className={`h-8 w-8 !p-0 flex items-center justify-center rounded-lg transition-all ${
+                          viewMode === 'kanban'
+                            ? 'bg-white dark:bg-card shadow-sm border-2 border-[#3b2778] dark:border-purple-500 text-[#3b2778] dark:text-purple-400'
+                            : 'text-[#8c7bab] dark:text-purple-600 hover:text-[#3b2778] dark:hover:text-purple-400'
+                        }`}
+                      >
+                        <Columns3 className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">Kanban view</TooltipContent>
+                  </Tooltip>
                 </div>
 
                 {/* Add Company button (Copper dark indigo style) */}
@@ -1065,18 +1009,18 @@ const Companies = () => {
                             </td>
 
                             {/* Company (sticky) */}
-                            <td className={`px-3 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                              <div className="flex items-center gap-1.5">
-                                <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
+                            <td className={`pl-2 pr-1.5 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
                                   <CrmAvatar name={company.company_name} />
                                   <span className="text-[16px] text-[#202124] dark:text-foreground truncate">
                                     {company.company_name}
                                   </span>
-                                </span>
+                                </div>
                                 <button
                                   type="button"
                                   onClick={(e) => { e.stopPropagation(); navigate(`/admin/contacts/companies/expanded-view/${company.id}`); }}
-                                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                  className="shrink-0 ml-auto -mr-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                 >
                                   <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
                                 </button>

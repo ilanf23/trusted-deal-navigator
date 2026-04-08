@@ -78,7 +78,7 @@ function EditableCardField({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (editing) setTimeout(() => (multiline ? textareaRef : inputRef).current?.focus(), 0);
+    if (editing) setTimeout(() => (multiline ? textareaRef : inputRef).current?.focus({ preventScroll: true }), 0);
   }, [editing, multiline]);
 
   if (editing) {
@@ -286,7 +286,13 @@ export default function LenderExpandedView() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="lender-expanded-view system-font flex flex-col h-full bg-background">
+      <style>{`
+        .lender-expanded-view,
+        .lender-expanded-view *:not(svg):not(svg *) {
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        }
+      `}</style>
       {/* Header */}
       <div className="shrink-0 border-b border-border bg-card">
         <div className="flex items-center gap-3 px-6 py-4">

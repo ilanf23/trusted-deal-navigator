@@ -33,7 +33,8 @@ export const InlineEditableCell = ({
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
-      inputRef.current.select();
+      inputRef.current.setSelectionRange(0, 0);
+      inputRef.current.scrollLeft = 0;
     }
   }, [isEditing]);
 

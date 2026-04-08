@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useFeedData, type FeedActivityType } from '@/hooks/useFeedData';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { Bell, CheckCircle, AlertTriangle } from 'lucide-react';
@@ -42,18 +43,7 @@ const PipelineFeed = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['feed-team-members'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name, avatar_url')
-        .in('name', ['Evan', 'Wendy', 'Maura', 'Brad'])
-        .order('name');
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   // ── Notification queries ──
   const { data: unreadNotifications = [] } = useQuery({

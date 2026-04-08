@@ -1265,7 +1265,7 @@ const LenderPrograms = () => {
                                         type="button"
                                         title="Open expanded view"
                                         onClick={(e) => { e.stopPropagation(); navigate(`/admin/lender-programs/expanded-view/${row.id}`); }}
-                                        className="ml-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                        className="shrink-0 ml-auto -mr-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                       >
                                         <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
                                       </button>

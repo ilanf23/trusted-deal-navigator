@@ -56,7 +56,13 @@ const VolumeLogExpandedView = () => {
 
   return (
     <EmployeeLayout>
-      <div className="h-full flex flex-col">
+      <div className="volume-log-expanded-view system-font h-full flex flex-col">
+        <style>{`
+          .volume-log-expanded-view,
+          .volume-log-expanded-view *:not(svg):not(svg *) {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+          }
+        `}</style>
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b bg-card">
           <Button

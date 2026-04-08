@@ -23,6 +23,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { sanitizeFileName } from '@/lib/utils';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
@@ -197,13 +198,7 @@ export default function ProjectExpandedView() {
     enabled: !!project?.entity_id,
   });
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
-    queryFn: async () => {
-      const { data } = await supabase.from('users').select('id, name');
-      return (data ?? []) as { id: string; name: string }[];
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
   const teamMemberMap = useMemo(() => {
     const m: Record<string, string> = {};
     for (const t of teamMembers) m[t.id] = t.name;
@@ -676,11 +671,17 @@ export default function ProjectExpandedView() {
   }
 
   return (
-    <div data-full-bleed className="flex flex-col bg-background h-[calc(100vh-3.5rem)] md:overflow-hidden overflow-y-auto">
+    <div data-full-bleed className="project-expanded-view system-font flex flex-col bg-background h-[calc(100vh-3.5rem)] md:overflow-hidden overflow-y-auto">
+      <style>{`
+        .project-expanded-view,
+        .project-expanded-view *:not(svg):not(svg *) {
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        }
+      `}</style>
       {/* Project name header */}
       <div className="shrink-0 px-6 pt-4 pb-2 bg-card">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-foreground">{project.name}</h1>
+          <h1 className="text-xl font-semibold text-foreground truncate">{project.name}</h1>
           {ownerName && (
             <span className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground uppercase" title={ownerName}>
               {ownerName.charAt(0)}
@@ -969,7 +970,7 @@ export default function ProjectExpandedView() {
           {/* LEFT: Details */}
           <div className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
             <ScrollArea className="md:h-full">
-              <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6 overflow-x-hidden">
+              <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
                 {/* ── Back Arrow ── */}
                 <button onClick={() => navigate(-1)} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">

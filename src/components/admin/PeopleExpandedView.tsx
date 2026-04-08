@@ -26,6 +26,7 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
@@ -357,7 +358,7 @@ function EditableField({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+    if (editing) setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
   }, [editing]);
 
   if (editing) {
@@ -424,7 +425,7 @@ function EditableContactRow({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+    if (editing) setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
   }, [editing]);
 
   const handleClear = async (e: React.MouseEvent) => {
@@ -516,7 +517,7 @@ function EditableTags({
     if (editing) {
       setDraftTags(tags);
       setInputValue('');
-      setTimeout(() => inputRef.current?.focus(), 0);
+      setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
     }
   }, [editing, tags]);
 
@@ -565,12 +566,12 @@ function EditableTags({
     setDraftTags(prev => [...prev, trimmed]);
     setInputValue('');
     setActiveIndex(-1);
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   };
 
   const removeTag = (tag: string) => {
     setDraftTags(prev => prev.filter(t => t !== tag));
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1336,13 +1337,7 @@ export default function PeopleExpandedView() {
     enabled: !!personId,
   });
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
-    queryFn: async () => {
-      const { data } = await supabase.from('users').select('id, name').eq('is_active', true);
-      return (data || []) as { id: string; name: string }[];
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   const teamMemberMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -1885,7 +1880,13 @@ export default function PeopleExpandedView() {
 
   return (
     <>
-    <div data-full-bleed className="flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
+    <div data-full-bleed className="people-expanded-view system-font flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
+      <style>{`
+        .people-expanded-view,
+        .people-expanded-view *:not(svg):not(svg *) {
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        }
+      `}</style>
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 

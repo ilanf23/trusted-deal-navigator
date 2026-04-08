@@ -18,6 +18,7 @@ import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -54,21 +55,8 @@ const CRMBoard = () => {
     return () => { setPageTitle(null); };
   }, []);
 
-  // Fetch all team members for owner filter (exclude Adam and Ilan)
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('is_active', true)
-        .not('name', 'ilike', 'adam')
-        .not('name', 'ilike', 'ilan')
-        .order('name');
-      if (error) throw error;
-      return data as TeamMember[];
-    },
-  });
+  // Fetch team members for owner filter — only assignable users
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   const teamMemberMap = teamMembers.reduce((acc, tm) => {
     acc[tm.id] = tm.name;

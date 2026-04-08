@@ -4233,6 +4233,7 @@ export type Database = {
           email: string | null
           id: string
           is_active: boolean
+          is_assignable: boolean
           is_owner: boolean | null
           name: string
           phone: string | null
@@ -4253,6 +4254,7 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          is_assignable?: boolean
           is_owner?: boolean | null
           name: string
           phone?: string | null
@@ -4273,6 +4275,7 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          is_assignable?: boolean
           is_owner?: boolean | null
           name?: string
           phone?: string | null

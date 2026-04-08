@@ -74,6 +74,7 @@ import { usePipelineDeals, type FlatPipelineLead } from '@/hooks/usePipelineLead
 import { useCrmMutations } from '@/hooks/usePipelineMutations';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 
 type Lead = Database['public']['Tables']['potential']['Row'];
@@ -426,17 +427,7 @@ const Pipeline = () => {
   const isLoading = isPipelineLeadsLoading;
 
   // Fetch team members
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members-pipeline'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name, avatar_url')
-        .order('name');
-      if (error) throw error;
-      return data as { id: string; name: string; avatar_url: string | null }[];
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   const teamMemberMap = useMemo(() => {
     const map: Record<string, string> = {};

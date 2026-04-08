@@ -19,6 +19,7 @@ import ProjectsFilterPanel, { type ProjectFilterValues } from '@/components/admi
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
@@ -168,13 +169,7 @@ const Projects = () => {
   });
 
   // Fetch team members for owner display
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
-    queryFn: async () => {
-      const { data } = await supabase.from('users').select('id, name');
-      return (data ?? []) as { id: string; name: string }[];
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
   const teamMemberMap = useMemo(() => {
     const m: Record<string, string> = {};
     for (const t of teamMembers) m[t.id] = t.name;
@@ -651,24 +646,24 @@ const Projects = () => {
                       </td>
 
                       {/* Name (sticky) */}
-                      <td className={`px-4 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ left: 48, width: columnWidths.name, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0">
-                            <Briefcase className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div className="flex items-center min-w-0 flex-1">
-                            <span className="font-bold text-foreground truncate text-[16px] flex-1 min-w-0">
+                      <td className={`pl-2 pr-1.5 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ left: 48, width: columnWidths.name, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
+                            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                              <Briefcase className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <span className="font-bold text-foreground truncate text-[16px]">
                               {p.name}
                             </span>
-                            <button
-                              type="button"
-                              title="Open expanded view"
-                              onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/projects/expanded-view/${p.id}`); }}
-                              className="ml-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
-                            >
-                              <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
-                            </button>
                           </div>
+                          <button
+                            type="button"
+                            title="Open expanded view"
+                            onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/projects/expanded-view/${p.id}`); }}
+                            className="shrink-0 ml-auto -mr-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                          >
+                            <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+                          </button>
                         </div>
                       </td>
 

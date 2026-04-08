@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
@@ -39,6 +40,7 @@ import {
   X,
   LayoutGrid,
   Table2,
+  Columns3,
   PanelRightOpen,
   FileSearch,
   Building2,
@@ -70,6 +72,7 @@ import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
 import { usePipelineStages } from '@/hooks/usePipelineStages';
 import { useLenderManagementDeals, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
 import { useCrmMutations } from '@/hooks/usePipelineMutations';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 
@@ -214,38 +217,54 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: lead.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? null) : null;
-  const dealValue = fakeValue(lead.id);
-  const daysInStage = daysSince(lead.updated_at);
+  const lastActivity = lead.last_activity_at ? format(parseISO(lead.last_activity_at), 'MMM d') : null;
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Card
-        className="group/card p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card"
+        className="group/card cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card overflow-hidden"
         onClick={(e) => { e.stopPropagation(); onClick(); }}
       >
-        <div className="flex items-center gap-2 mb-1.5">
-          <CrmAvatar name={lead.name} size="sm" />
-          <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{getLeadDisplayName(lead)}</p>
-          <button
-            onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/lender-management/expanded-view/${lead.id}`); }}
-            className="shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity"
-          >
-            <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-          </button>
-        </div>
-        <div className="flex items-center justify-between mt-1.5">
-          <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-            {formatValue(dealValue)}
-          </span>
-          {daysInStage !== null && (
-            <span className={`text-[10px] font-medium ${daysInStage > 14 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
-              {daysInStage}d
-            </span>
+        <div className="p-3 pb-2.5">
+          <div className="flex items-start justify-between gap-1 mb-2">
+            <p className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2">{getLeadDisplayName(lead)}</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/lender-management/expanded-view/${lead.id}`); }}
+              className="shrink-0 mt-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity"
+            >
+              <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+            </button>
+          </div>
+          {lead.company_name && (
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Landmark className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">{lead.company_name}</span>
+            </div>
+          )}
+          {lead.deal_value != null && lead.deal_value > 0 && (
+            <div className="flex items-center gap-1.5">
+              <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs font-medium text-foreground">{formatValue(lead.deal_value)}</span>
+            </div>
           )}
         </div>
-        {assignedName && (
-          <p className="text-[10px] text-muted-foreground mt-1">{assignedName}</p>
-        )}
+        <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/50 bg-muted/20">
+          <div className="flex items-center gap-2 text-muted-foreground min-w-0">
+            {lastActivity && (
+              <div className="flex items-center gap-1">
+                <CalendarDays className="h-3 w-3 shrink-0" />
+                <span className="text-[11px]">{lastActivity}</span>
+              </div>
+            )}
+            {assignedName && (
+              <span className="text-[11px] font-medium truncate">{assignedName.charAt(0)}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {lead.status === 'won' && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">Won</span>}
+            {lead.status === 'lost' && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-red-200 text-red-600 dark:border-red-800 dark:text-red-400">Lost</span>}
+          </div>
+        </div>
       </Card>
     </div>
   );
@@ -416,17 +435,7 @@ const LenderManagement = () => {
   const isLoading = isPipelineLeadsLoading;
 
   // Fetch team members
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['lm-team-members'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name, avatar_url')
-        .order('name');
-      if (error) throw error;
-      return data as { id: string; name: string; avatar_url: string | null }[];
-    },
-  });
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   const teamMemberMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -954,103 +963,38 @@ const LenderManagement = () => {
               </div>
 
               <div className="flex items-center gap-1">
-                {/* Sort */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      title="Sort options"
-                      className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
-                        isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
-                      }`}
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-56 p-3 space-y-3">
-                    <p className="text-xs font-semibold text-foreground">Sort by</p>
-                    <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SORT_FIELD_OPTIONS.map(o => (
-                          <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="asc" className="text-xs">Ascending</SelectItem>
-                        <SelectItem value="desc" className="text-xs">Descending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </PopoverContent>
-                </Popover>
-
-                {/* Filter */}
-                <button
-                  onClick={isFiltersActive ? clearAllFilters : undefined}
-                  title={isFiltersActive ? 'Clear all filters' : 'No active filters'}
-                  className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
-                    isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
-                  }`}
-                >
-                  {isFiltersActive ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
-                </button>
-
-                {/* Column visibility */}
-                <div className="relative" ref={columnsMenuRef}>
-                  <button
-                    onClick={() => setShowColumnsMenu(v => !v)}
-                    title="Show/hide columns"
-                    className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-colors ${
-                      showColumnsMenu ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#e8eaed] dark:hover:bg-muted text-[#1f1f1f] dark:text-muted-foreground'
-                    }`}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </button>
-
-                  {showColumnsMenu && (
-                    <div className="absolute right-0 top-full mt-1.5 z-50 bg-white dark:bg-popover border border-[#dadce0] dark:border-border rounded-lg shadow-lg w-52 py-1.5 overflow-hidden">
-                      <div className="px-3 py-1.5 border-b border-[#dadce0] dark:border-border">
-                        <p className="text-[11px] font-semibold text-[#5f6368] dark:text-muted-foreground uppercase tracking-wider">Visible Columns</p>
-                      </div>
-                      <div className="py-1">
-                        {(Object.keys(COLUMN_LABELS) as ColumnKey[]).map((key) => (
-                          <button
-                            key={key}
-                            onClick={() => toggleColumn(key)}
-                            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors"
-                          >
-                            <span className="text-[13px] text-[#1f1f1f] dark:text-foreground">{COLUMN_LABELS[key]}</span>
-                            <span className={`flex items-center justify-center h-4 w-4 rounded border transition-colors ${
-                              columnVisibility[key]
-                                ? 'bg-[#1a73e8] border-[#1a73e8]'
-                                : 'border-[#dadce0] dark:border-border bg-white dark:bg-card'
-                            }`}>
-                              {columnVisibility[key] && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                      <div className="px-3 py-1.5 border-t border-[#dadce0] dark:border-border">
-                        <button
-                          onClick={() => {
-                            const allTrue = Object.fromEntries(
-                              (Object.keys(COLUMN_LABELS) as ColumnKey[]).map(k => [k, true])
-                            ) as Record<ColumnKey, boolean>;
-                            setColumnVisibility(allTrue);
-                          }}
-                          className="text-[11px] text-[#1a73e8] hover:text-[#174ea6] font-medium"
-                        >
-                          Show all columns
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                {/* View toggle: Table / Kanban segmented pill */}
+                <div className="flex items-center bg-[#f0ebf5] dark:bg-purple-950/40 rounded-xl p-0.5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setViewMode('table')}
+                        className={`h-8 w-8 !p-0 flex items-center justify-center rounded-lg transition-all ${
+                          viewMode === 'table'
+                            ? 'bg-white dark:bg-card shadow-sm border-2 border-[#3b2778] dark:border-purple-500 text-[#3b2778] dark:text-purple-400'
+                            : 'text-[#8c7bab] dark:text-purple-600 hover:text-[#3b2778] dark:hover:text-purple-400'
+                        }`}
+                      >
+                        <Table2 className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">Table view</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setViewMode('kanban')}
+                        className={`h-8 w-8 !p-0 flex items-center justify-center rounded-lg transition-all ${
+                          viewMode === 'kanban'
+                            ? 'bg-white dark:bg-card shadow-sm border-2 border-[#3b2778] dark:border-purple-500 text-[#3b2778] dark:text-purple-400'
+                            : 'text-[#8c7bab] dark:text-purple-600 hover:text-[#3b2778] dark:hover:text-purple-400'
+                        }`}
+                      >
+                        <Columns3 className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">Kanban view</TooltipContent>
+                  </Tooltip>
                 </div>
 
                 {/* Add Opportunity button (Copper dark indigo style) */}
@@ -1237,8 +1181,8 @@ const LenderManagement = () => {
                             }`}
                           >
                             {/* Deal + Checkbox (sticky) */}
-                            <td className={`pl-2 pr-3 ${rowPad} overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailOpen ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                              <div className="flex items-center gap-2.5">
+                            <td className={`pl-2 pr-1.5 ${rowPad} overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailOpen ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                              <div className="flex items-center gap-2">
                                 <div className={`shrink-0`} onClick={(e) => e.stopPropagation()}>
                                   <Checkbox
                                     checked={isSelected}
@@ -1246,14 +1190,14 @@ const LenderManagement = () => {
                                     className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                                   />
                                 </div>
-                                <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
+                                <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
                                   <CrmAvatar name={lead.name} />
                                   <span className="text-[16px] text-[#202124] dark:text-foreground truncate">{getLeadDisplayName(lead)}</span>
-                                </span>
+                                </div>
                                 <button
                                   type="button"
                                   onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/lender-management/expanded-view/${lead.id}`); }}
-                                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground ml-auto"
+                                  className="shrink-0 ml-auto -mr-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                 >
                                   <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
                                 </button>

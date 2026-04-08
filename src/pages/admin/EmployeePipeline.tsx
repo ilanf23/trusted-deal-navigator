@@ -8,6 +8,7 @@ import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loade
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { Link, useNavigate } from 'react-router-dom';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
@@ -447,18 +448,8 @@ const EmployeePipeline = () => {
   // Use current team member from auth context instead of hardcoded Evan lookup
   const currentMemberId = teamMember?.id ?? null;
 
-  // Fetch all team members for the owner filter
-  const { data: allTeamMembers = [] } = useQuery({
-    queryKey: ['all-team-members-for-filter'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name')
-        .order('name');
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Fetch team members for the owner filter — only assignable users
+  const { data: allTeamMembers = [] } = useAssignableUsers();
 
   // Create a map of team member names to IDs for filtering
   const teamMemberNameToId = useMemo(() => {
@@ -524,19 +515,8 @@ const EmployeePipeline = () => {
     enabled: leads.length > 0,
   });
 
-  // Fetch team members for "Assigned To" column (exclude Adam and Ilan from ownership)
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members-list'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name')
-        .not('name', 'ilike', 'adam')
-        .not('name', 'ilike', 'ilan');
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Fetch team members for "Assigned To" column — only assignable users
+  const { data: teamMembers = [] } = useAssignableUsers();
 
   const teamMemberMap = teamMembers.reduce((acc, tm) => {
     acc[tm.id] = tm.name;
