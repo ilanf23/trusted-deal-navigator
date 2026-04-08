@@ -57,9 +57,9 @@ Non-editable columns keep their current behavior — any click in those cells bu
 **Files:**
 - Modify: `src/pages/admin/Potential.tsx`
 
-- [ ] Replace the Owner cell content with `<InlineEditableCell type="select" value={effectiveOwnerId || ''} options={teamMembers.map(m => ({ id: m.id, label: m.name }))} onChange={(v) => handleInlineCellSave(lead.id, 'assigned_to', v)} placeholder="—" />` — keep the avatar display in the non-editing state or simplify to name-only for the select
-- [ ] Replace the Stage cell content with `<InlineEditableCell type="select" value={lead._stageId || ''} options={stages.map(s => ({ id: s.id, label: dynamicStageConfig[s.id]?.title || s.name }))} onChange={(v) => handleInlineCellSave(lead.id, 'stage_id', v)} />` — reuse the existing stage configuration
-- [ ] Run `npm run build` to verify no type errors
+- [x] Replace the Owner cell content with `<InlineEditableCell type="select" value={effectiveOwnerId || ''} options={teamMembers.map(m => ({ id: m.id, label: m.name }))} onChange={(v) => handleInlineCellSave(lead.id, 'assigned_to', v)} placeholder="—" />` — keep the avatar display in the non-editing state or simplify to name-only for the select
+- [x] Replace the Stage cell content with `<InlineEditableCell type="select" value={lead._stageId || ''} options={stages.map(s => ({ id: s.id, label: dynamicStageConfig[s.id]?.title || s.name }))} onChange={(v) => handleStageMove(lead.id, v)} />` — reuse the existing stage configuration and mutation
+- [x] Run `npm run build` to verify no type errors
 
 ### Task 4: Verify acceptance criteria
 

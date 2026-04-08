@@ -127,7 +127,7 @@ function formatValue(v: number): string {
   return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-type SortField = 'name' | 'company_name' | 'status' | 'last_activity_at' | 'assigned_to' | 'updated_at';
+type SortField = 'name' | 'opportunity_name' | 'company_name' | 'status' | 'last_activity_at' | 'assigned_to' | 'updated_at';
 type SortDir = 'asc' | 'desc';
 
 type ColumnKey = 'company' | 'contact' | 'value' | 'ownedBy' | 'tasks' | 'status' | 'stage' | 'daysInStage' | 'stageUpdated' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
@@ -159,8 +159,8 @@ const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
 
 const COLUMN_SORT_OPTIONS: Record<string, { label: string; field: SortField; dir: SortDir }[]> = {
   deal: [
-    { label: 'Name ascending', field: 'name', dir: 'asc' },
-    { label: 'Name descending', field: 'name', dir: 'desc' },
+    { label: 'Deal name ascending', field: 'opportunity_name', dir: 'asc' },
+    { label: 'Deal name descending', field: 'opportunity_name', dir: 'desc' },
   ],
   company: [
     { label: 'Company ascending', field: 'company_name', dir: 'asc' },
@@ -682,6 +682,7 @@ const Pipeline = () => {
       result = result.filter(
         (l) =>
           l.name.toLowerCase().includes(q) ||
+          (l.opportunity_name ?? '').toLowerCase().includes(q) ||
           (l.company_name ?? '').toLowerCase().includes(q) ||
           (l.email ?? '').toLowerCase().includes(q) ||
           (l.phone ?? '').toLowerCase().includes(q) ||
@@ -709,7 +710,7 @@ const Pipeline = () => {
   }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap, stages, currentTeamMember, leadOwnerMap, followedLeadIds]);
 
   const pipelineAutoFitConfig = useMemo(() => ({
-    deal: { getText: (l: any) => l.name, extraPx: 58 },
+    deal: { getText: (l: any) => l.opportunity_name || l.name, extraPx: 58 },
     company: { getText: (l: any) => l.company_name, extraPx: 32 },
     contact: { getText: (l: any) => l.name },
     ownedBy: { getText: (l: any) => teamMemberMap[l.assigned_to ?? ''] ?? '', extraPx: 32 },
@@ -1478,8 +1479,8 @@ const Pipeline = () => {
                                 <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
                                   <CrmAvatar name={lead.name} />
                                   <InlineEditableCell
-                                    value={lead.name}
-                                    onChange={(v) => handleInlineCellSave(lead.id, 'name', v)}
+                                    value={lead.opportunity_name || lead.name}
+                                    onChange={(v) => handleInlineCellSave(lead.id, 'opportunity_name', v)}
                                     displayClassName="text-[16px] text-[#202124] dark:text-foreground truncate"
                                   />
                                 </div>
@@ -1532,14 +1533,13 @@ const Pipeline = () => {
                             {/* Owner */}
                             {columnVisibility.ownedBy && (
                               <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}>
-                                {assignedName ? (
-                                  <div className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
-                                    <CrmAvatar name={assignedName} imageUrl={assignedAvatar} size="sm" />
-                                    <span className="text-[16px] text-[#202124] dark:text-foreground truncate">{assignedName}</span>
-                                  </div>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
+                                <InlineEditableCell
+                                  type="select"
+                                  value={effectiveOwnerId || ''}
+                                  options={teamMembers.map(m => ({ id: m.id, label: m.name }))}
+                                  onChange={(v) => handleInlineCellSave(lead.id, 'assigned_to', v)}
+                                  placeholder="—"
+                                />
                               </td>
                             )}
 
@@ -1560,7 +1560,13 @@ const Pipeline = () => {
                             {/* Stage */}
                             {columnVisibility.stage && (
                               <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{stageCfg?.title ?? lead.status}</span>
+                                <InlineEditableCell
+                                  type="select"
+                                  value={lead._stageId || ''}
+                                  options={stages.map(s => ({ id: s.id, label: dynamicStageConfig[s.id]?.title || s.name }))}
+                                  onChange={(v) => handleStageMove(lead.id, v)}
+                                  placeholder="—"
+                                />
                               </td>
                             )}
 
