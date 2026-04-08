@@ -480,31 +480,6 @@ const Pipeline = () => {
     return set;
   }, [leads]);
 
-  // Fetch latest touchpoints
-  const { data: touchpoints = {} } = useQuery({
-    queryKey: ['pipeline-touchpoints', leads.map((l) => l.id)],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('communications')
-        .select('lead_id, communication_type, direction, created_at')
-        .in('lead_id', leads.map((l) => l.id))
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      const map: Record<string, { type: string; direction: string; date: string }> = {};
-      for (const row of data || []) {
-        if (row.lead_id && !map[row.lead_id]) {
-          map[row.lead_id] = {
-            type: row.communication_type,
-            direction: row.direction,
-            date: row.created_at,
-          };
-        }
-      }
-      return map;
-    },
-    enabled: leads.length > 0,
-  });
-
   const handleStageMove = (leadId: string, newStageId: string) => {
     const lead = leads.find(l => l.id === leadId);
     if (!lead) return;
@@ -652,7 +627,7 @@ const Pipeline = () => {
         if (cf) {
           const v = cf.values;
           result = result.filter((l) => {
-            if (v.stage.length > 0 && !v.stage.includes(l.status)) return false;
+            if (v.stage.length > 0 && !v.stage.includes(l._stageId)) return false;
             if (v.status.length > 0 && !v.status.includes(l.status)) return false;
             if (v.source.length > 0 && !v.source.includes(l.source ?? '')) return false;
             if (v.ownedBy.length > 0 && !v.ownedBy.includes(leadOwnerMap[l.id] ?? '')) return false;
@@ -718,8 +693,14 @@ const Pipeline = () => {
     }
 
     result = [...result].sort((a, b) => {
-      const aVal = ((a[sortField] ?? '') as string);
-      const bVal = ((b[sortField] ?? '') as string);
+      let aVal: string, bVal: string;
+      if (sortField === 'assigned_to') {
+        aVal = teamMemberMap[leadOwnerMap[a.id] ?? a.assigned_to ?? ''] ?? '';
+        bVal = teamMemberMap[leadOwnerMap[b.id] ?? b.assigned_to ?? ''] ?? '';
+      } else {
+        aVal = String(a[sortField] ?? '');
+        bVal = String(b[sortField] ?? '');
+      }
       const cmp = aVal.localeCompare(bVal);
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -1419,7 +1400,6 @@ const Pipeline = () => {
                         const assignedAvatar = effectiveOwnerId ? (teamAvatarMap[effectiveOwnerId] ?? null) : null;
                         const daysInStage = daysSince(lead.updated_at);
                         const inactiveDays = daysSince(lead.last_activity_at);
-                        const tp = touchpoints[lead.id];
                         const isDetailOpen = detailDialogLead?.id === lead.id;
                         const isSelected = selectedLeadIds.has(lead.id);
 
