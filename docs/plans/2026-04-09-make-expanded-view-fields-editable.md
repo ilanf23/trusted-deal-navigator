@@ -55,8 +55,8 @@ Replace static/read-only field renders (Phone, Email, LinkedIn) with inline-edit
 **Files:**
 - Modify: `src/components/admin/PeopleDetailPanel.tsx`
 
-- [ ] Replace the static Owner display (lines ~1736-1749) with an `EditableSelectField` or owner dropdown select, matching the pattern used in PipelineDetailPanel for owner assignment
-- [ ] Verify the owner field is editable as a dropdown with team member options
+- [x] Replace the static Owner display (lines ~1736-1749) with an `EditableSelectField` or owner dropdown select, matching the pattern used in PipelineDetailPanel for owner assignment
+- [x] Verify the owner field is editable as a dropdown with team member options
 
 ### Task 5: Verify all expanded views
 

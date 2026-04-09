@@ -1736,16 +1736,33 @@ export default function PeopleDetailPanel({
             {/* Owner */}
             <div>
               <span className="text-[12px] font-semibold text-muted-foreground">Owner</span>
-              <div className="flex items-center justify-between mt-0.5">
-                <p className="text-[15px] text-blue-700 dark:text-blue-400">
-                  {person.assigned_to ? (teamMemberMap[person.assigned_to] ?? 'Unknown') : <span className="text-muted-foreground/50">Unassigned</span>}
-                </p>
-                {person.assigned_to && (
-                  <button onClick={() => handleFieldSaved({ ...person, assigned_to: null })} className="text-muted-foreground hover:text-foreground">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
+              {teamMembers.length > 0 ? (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <Select
+                    value={person.assigned_to ?? '__unassigned__'}
+                    onValueChange={async (v) => {
+                      const newVal = v === '__unassigned__' ? null : v;
+                      const { error } = await supabase.from('people').update({ assigned_to: newVal }).eq('id', person.id);
+                      if (error) { toast.error('Failed to save'); return; }
+                      handleFieldSaved('assigned_to', newVal ?? '');
+                    }}
+                  >
+                    <SelectTrigger className="h-9 w-full text-[15px] font-medium border-0 bg-transparent shadow-none p-0 focus:ring-0">
+                      <SelectValue>
+                        {person.assigned_to ? (teamMemberMap[person.assigned_to] ?? 'Unknown') : <span className="text-muted-foreground/50">Unassigned</span>}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__unassigned__">Unassigned</SelectItem>
+                      {teamMembers.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <p className="text-[15px] text-muted-foreground/50 mt-0.5">Unassigned</p>
+              )}
             </div>
 
             {/* Work Website */}
