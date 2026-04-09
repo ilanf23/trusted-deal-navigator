@@ -1408,6 +1408,7 @@ export default function PeopleExpandedView() {
         queryClient.invalidateQueries({ queryKey: ['people'] });
       },
     });
+    toast.success('Contact type updated');
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
     // Log an activity for the type change
     await supabase.from('activities').insert({
