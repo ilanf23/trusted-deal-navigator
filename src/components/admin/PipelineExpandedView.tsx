@@ -3,6 +3,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
+import { PipelineSelectField } from '@/components/admin/PipelineSelectField';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -227,7 +228,7 @@ function useCrmInlineSave(
 
 /* ─── CRM Editable Field (label above value) ─── */
 function CrmEditableField({
-  label, value, field, leadId, onSaved, placeholder, required, copyable, noLabel,
+  label, value, field, leadId, onSaved, placeholder, required, copyable, noLabel, linkHref,
 }: {
   label: string; value: string; field: string;
   leadId: string;
@@ -236,6 +237,7 @@ function CrmEditableField({
   required?: boolean;
   copyable?: boolean;
   noLabel?: boolean;
+  linkHref?: string;
 }) {
   const { editing, setEditing, draft, setDraft, saving, save, cancel } = useCrmInlineSave(leadId, field, value, onSaved);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -278,14 +280,27 @@ function CrmEditableField({
             {label}
             {required && <span className="text-red-500 ml-0.5">*</span>}
           </span>
-          {copyable && value && (
-            <button
-              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(value); toast.success('Copied'); }}
-              className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Copy className="h-3.5 w-3.5" />
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {linkHref && value && (
+              <a
+                href={linkHref}
+                target={linkHref.startsWith('mailto:') ? undefined : '_blank'}
+                rel={linkHref.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
+                onClick={(e) => e.stopPropagation()}
+                className="text-muted-foreground hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Globe className="h-3.5 w-3.5" />
+              </a>
+            )}
+            {copyable && value && (
+              <button
+                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(value); toast.success('Copied'); }}
+                className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       )}
       <span className={`text-sm font-medium block ${value ? 'text-foreground' : 'text-muted-foreground/50'}`}>
@@ -1508,10 +1523,7 @@ export default function PipelineExpandedView() {
                 <CrmEditableField label="Name" value={lead.name} field="name" leadId={lead.id} onSaved={handleFieldSaved} required copyable />
 
                 {/* Pipeline */}
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">Pipeline</span>
-                  <span className="text-sm font-medium text-foreground">Pipeline</span>
-                </div>
+                <PipelineSelectField dealId={lead.id} currentPipeline="potential" />
 
                 {/* Company */}
                 <CrmEditableField label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Company" />
@@ -1521,9 +1533,6 @@ export default function PipelineExpandedView() {
 
                 {/* CLX - File Name */}
                 <CrmEditableField label="CLX - File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add CLX - File Name" />
-
-                {/* Title */}
-                <CrmEditableField label="Title" value={lead.opportunity_name ?? ''} field="opportunity_name" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Title" />
 
                 {/* Stage */}
                 <div>
@@ -1637,7 +1646,7 @@ export default function PipelineExpandedView() {
                 <CrmEditableField label="Waiting On" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Waiting On" />
 
                 {/* Work Email */}
-                <CrmEditableField label="Work Email" value={lead.email ?? ''} field="email" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Email" copyable />
+                <CrmEditableField label="Work Email" value={lead.email ?? ''} field="email" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Email" copyable linkHref={lead.email ? `mailto:${lead.email}` : undefined} />
 
                 {/* Phone */}
                 <div className="relative group/phone">
