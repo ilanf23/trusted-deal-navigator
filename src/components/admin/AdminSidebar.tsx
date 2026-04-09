@@ -349,17 +349,21 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
     return email.charAt(0).toUpperCase();
   };
 
-  // Determine home page based on user role
+  // Determine home page based on user role.
+  // Sales reps (userRole === 'admin') always link to /admin/dashboard, even
+  // before the team_members record finishes loading — otherwise the logo
+  // briefly points at /superadmin and a fast click lands them on the
+  // SuperAdmin Dashboard. Owners go to /superadmin; founders get a personal
+  // /admin/dashboard view once their team record loads.
   const homeUrl = useMemo(() => {
-    if (!teamMember) return '/superadmin';
-    
-    const founderUsers = ['ilan', 'brad', 'adam'];
-    const isFounder = founderUsers.includes(teamMember.name.toLowerCase());
-    
-    if (isFounder) return '/admin/dashboard';
-    if (isOwner && !isFounder) return '/superadmin';
+    if (teamMember) {
+      const founderUsers = ['ilan', 'brad', 'adam'];
+      const isFounder = founderUsers.includes(teamMember.name.toLowerCase());
+      if (isFounder) return '/admin/dashboard';
+    }
+    if (isOwner || userRole === 'super_admin') return '/superadmin';
     return '/admin/dashboard';
-  }, [isOwner, teamMember]);
+  }, [isOwner, teamMember, userRole]);
 
   return (
     <Sidebar 
