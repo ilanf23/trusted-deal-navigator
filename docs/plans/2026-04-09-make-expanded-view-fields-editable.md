@@ -60,5 +60,5 @@ Replace static/read-only field renders (Phone, Email, LinkedIn) with inline-edit
 
 ### Task 5: Verify all expanded views
 
-- [ ] Run `npm run build` to confirm no TypeScript or build errors
-- [ ] Run `npm run lint` to confirm no linting issues
+- [x] Run `npm run build` to confirm no TypeScript or build errors
+- [x] Run `npm run lint` to confirm no linting issues (pre-existing warnings only, no new issues)
