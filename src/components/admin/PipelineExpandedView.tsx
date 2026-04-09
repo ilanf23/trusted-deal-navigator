@@ -1492,37 +1492,10 @@ export default function PipelineExpandedView() {
                 <CrmEditableField label="Waiting On" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Waiting On" />
 
                 {/* Work Email */}
-                {lead.email ? (
-                  <div>
-                    <span className="text-xs font-medium text-muted-foreground block mb-1">Work Email</span>
-                    <div className="flex items-center justify-between">
-                      <a href={`mailto:${lead.email}`} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate">{lead.email}</a>
-                      <button
-                        onClick={() => { navigator.clipboard.writeText(lead.email!); toast.success('Email copied'); }}
-                        className="text-muted-foreground hover:text-foreground shrink-0 ml-2"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <CrmEditableField label="Work Email" value="" field="email" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Email" />
-                )}
+                <CrmEditableField label="Work Email" value={lead.email ?? ''} field="email" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Email" copyable />
 
                 {/* Phone */}
-                {lead.phone ? (
-                  <div>
-                    <span className="text-xs font-medium text-muted-foreground block mb-1">Phone</span>
-                    <button
-                      onClick={() => navigate(`/admin/calls?phone=${encodeURIComponent(lead.phone!.replace(/\D/g, ''))}&leadId=${lead.id}`)}
-                      className="text-sm font-medium text-foreground hover:text-blue-600 transition-colors"
-                    >
-                      {formatPhoneNumber(lead.phone)}
-                    </button>
-                  </div>
-                ) : (
-                  <CrmEditableField label="Phone" value="" field="phone" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Phone" />
-                )}
+                <CrmEditableField label="Phone" value={lead.phone ?? ''} field="phone" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Phone" />
               </div>
 
               {/* ── Description ── */}
