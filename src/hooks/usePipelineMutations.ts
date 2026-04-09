@@ -3,16 +3,37 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { EntityType } from '@/integrations/supabase/types';
 
-type CrmTable = 'potential' | 'underwriting' | 'lender_management';
+export type CrmTable = 'potential' | 'underwriting' | 'lender_management';
 
-const QUERY_KEY_MAP: Record<CrmTable, string> = {
+export const QUERY_KEY_MAP: Record<CrmTable, string> = {
   potential: 'potential-deals',
   underwriting: 'underwriting-deals',
   lender_management: 'lender-management-deals',
 };
 
+export const PIPELINE_LABELS: Record<CrmTable, string> = {
+  potential: 'Potential',
+  underwriting: 'Underwriting',
+  lender_management: 'Lender Management',
+};
+
+export async function moveDealBetweenPipelines(
+  dealId: string,
+  source: CrmTable,
+  target: CrmTable,
+): Promise<void> {
+  if (source === target) return;
+  // RPC is not in auto-generated types.ts yet — cast until types are regenerated.
+  const { error } = await (supabase.rpc as any)('move_deal_between_pipelines', {
+    p_deal_id: dealId,
+    p_source: source,
+    p_target: target,
+  });
+  if (error) throw error;
+}
+
 const ENTITY_TYPE_MAP: Record<CrmTable, EntityType> = {
-  potential: 'pipeline',
+  potential: 'potential',
   underwriting: 'underwriting',
   lender_management: 'lender_management',
 };
