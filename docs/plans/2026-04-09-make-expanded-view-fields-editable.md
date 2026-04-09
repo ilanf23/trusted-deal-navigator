@@ -46,9 +46,9 @@ Replace static/read-only field renders (Phone, Email, LinkedIn) with inline-edit
 **Files:**
 - Modify: `src/components/admin/LenderDetailPanel.tsx`
 
-- [ ] Replace the static Email row (lines ~255-274) with `EditableField` using `field="email"`, `lenderId`, and the existing icon/label pattern
-- [ ] Replace the static Phone row (lines ~275-294) with `EditableField` using `field="phone"`, `lenderId`, and the existing icon/label pattern
-- [ ] Verify both fields render as editable whether populated or empty
+- [x] Replace the static Email row (lines ~255-274) with `EditableField` using `field="email"`, `lenderId`, and the existing icon/label pattern
+- [x] Replace the static Phone row (lines ~275-294) with `EditableField` using `field="phone"`, `lenderId`, and the existing icon/label pattern
+- [x] Verify both fields render as editable whether populated or empty
 
 ### Task 4: PeopleDetailPanel - Make Owner editable
 

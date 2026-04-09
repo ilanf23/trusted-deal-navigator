@@ -252,46 +252,8 @@ export default function LenderDetailPanel({
         <SectionHeader title="Contact Info" />
         <div className="divide-y divide-border/40">
           <EditableField icon={<User className="h-3.5 w-3.5" />} label="Contact" value={lender.contact_name ?? ''} field="contact_name" lenderId={lender.id} onSaved={handleFieldSaved} />
-          <div className="flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors group">
-            <div className="flex items-center gap-2 text-muted-foreground shrink-0">
-              <Mail className="h-3.5 w-3.5" />
-              <span className="text-xs font-medium text-muted-foreground">Email</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {lender.email ? (
-                <>
-                  <a href={`mailto:${lender.email}`} className="text-[13px] font-medium text-blue-600 hover:underline truncate max-w-[180px]">
-                    {lender.email}
-                  </a>
-                  <button onClick={() => { navigator.clipboard.writeText(lender.email!); toast.success('Copied email'); }} className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Copy className="h-3 w-3" />
-                  </button>
-                </>
-              ) : (
-                <span className="text-[13px] font-medium text-foreground">{'\u2014'}</span>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors group">
-            <div className="flex items-center gap-2 text-muted-foreground shrink-0">
-              <Phone className="h-3.5 w-3.5" />
-              <span className="text-xs font-medium text-muted-foreground">Phone</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {lender.phone ? (
-                <>
-                  <a href={`tel:${lender.phone}`} className="text-[13px] font-medium text-blue-600 hover:underline">
-                    {lender.phone}
-                  </a>
-                  <button onClick={() => { navigator.clipboard.writeText(lender.phone!); toast.success('Copied phone'); }} className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Copy className="h-3 w-3" />
-                  </button>
-                </>
-              ) : (
-                <span className="text-[13px] font-medium text-foreground">{'\u2014'}</span>
-              )}
-            </div>
-          </div>
+          <EditableField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={lender.email ?? ''} field="email" lenderId={lender.id} onSaved={handleFieldSaved} />
+          <EditableField icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={lender.phone ?? ''} field="phone" lenderId={lender.id} onSaved={handleFieldSaved} />
           <EditableField icon={<MapPin className="h-3.5 w-3.5" />} label="Location" value={lender.location ?? ''} field="location" lenderId={lender.id} onSaved={handleFieldSaved} />
         </div>
 
