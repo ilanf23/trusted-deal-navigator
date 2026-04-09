@@ -3,25 +3,30 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
+import { ExpandedLeftColumn, type LeadEmail, type LeadPhone, type LeadAddress } from '@/components/admin/ExpandedLeftColumn';
+import LeadRelatedSidebar from '@/components/admin/shared/LeadRelatedSidebar';
+import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
+import { CONTACT_TYPE_CONFIG } from '@/components/admin/shared/contactTypeConfig';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
-import { sanitizeFileName, getLeadDisplayName } from '@/lib/utils';
+import { getLeadDisplayName } from '@/lib/utils';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  X, DollarSign, ChevronDown, ChevronRight, ChevronUp,
-  Users, Building2, CheckSquare, FileText,
-  CalendarDays, FolderOpen, Layers, Plus,
-  MessageSquare, Pencil, Activity, Clock, AlertCircle, TrendingUp,
-  User, Mail, Phone, PhoneCall, Hash, Tag, Briefcase, Loader2,
-  Globe, Linkedin, AtSign, MapPin, Trash2, Flag, Eye, Upload, Download, Send,
+  X, ChevronDown, ChevronRight, ChevronUp,
+  Users, CheckSquare,
+  CalendarDays, Plus,
+  MessageSquare, Pencil, Activity,
+  Mail, Phone, Loader2,
+  Check, List,
 } from 'lucide-react';
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
@@ -31,63 +36,9 @@ import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 
-import {
-  EditableField,
-  EditableSelectField,
-  EditableContactRow,
-  EditableTags,
-  EditableNotes,
-  EditableNotesField,
-  ReadOnlyField,
-  formatPhoneNumber,
-} from './InlineEditableFields';
 
 type Lead = Database['public']['Tables']['lender_management']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
-
-interface LeadEmail {
-  id: string;
-  entity_id: string;
-  entity_type: string;
-  email: string;
-  email_type: string;
-  is_primary: boolean;
-}
-
-interface LeadPhone {
-  id: string;
-  entity_id: string;
-  entity_type: string;
-  phone_number: string;
-  phone_type: string;
-  is_primary: boolean;
-}
-
-interface LeadAddress {
-  id: string;
-  entity_id: string;
-  entity_type: string;
-  address_type: string;
-  address_line_1: string | null;
-  address_line_2: string | null;
-  city: string | null;
-  state: string | null;
-  zip_code: string | null;
-  country: string | null;
-  is_primary: boolean;
-}
-
-interface LeadFile {
-  id: string;
-  entity_id: string;
-  entity_type: string;
-  file_name: string;
-  file_url: string;
-  file_type: string | null;
-  file_size: number | null;
-  uploaded_by: string | null;
-  created_at: string;
-}
 
 // ── Pipeline stage config (7 stages) ──
 const PIPELINE_STATUSES: LeadStatus[] = [
@@ -110,32 +61,6 @@ const pipelineStageConfig: Record<string, { title: string; color: string; bg: st
   won: { title: 'Won', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800', dot: 'bg-emerald-500', pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' },
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-function formatFileSize(bytes: number | null): string {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getFileIcon(fileType: string | null): string {
-  if (!fileType) return '📄';
-  if (fileType.startsWith('image/')) return '🖼️';
-  if (fileType === 'application/pdf') return '📕';
-  if (fileType.includes('spreadsheet') || fileType.includes('excel') || fileType.includes('csv')) return '📊';
-  if (fileType.includes('word') || fileType.includes('document')) return '📝';
-  if (fileType.includes('zip') || fileType.includes('compressed')) return '📦';
-  return '📄';
-}
-
-const CONTACT_TYPE_OPTIONS = [
-  { value: 'potential_customer', label: 'Potential Customer' },
-  { value: 'current_customer', label: 'Current Customer' },
-  { value: 'referral_source', label: 'Referral Source' },
-  { value: 'bank_relationship', label: 'Bank Relationship' },
-];
-
 const VALUE_BUCKETS = [25000, 50000, 75000, 100000, 150000, 200000, 250000, 350000, 500000, 750000];
 
 function seededRand(seed: string, index: number): number {
@@ -152,10 +77,6 @@ function fakeValue(id: string): number {
   return VALUE_BUCKETS[Math.floor(seededRand(id, 1) * VALUE_BUCKETS.length)];
 }
 
-function formatValue(v: number): string {
-  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
   try { return differenceInDays(new Date(), parseISO(dateStr)); } catch { return null; }
@@ -166,11 +87,6 @@ function formatShortDate(dateStr: string | null): string {
   try { return format(parseISO(dateStr), 'M/d/yyyy'); } catch { return '—'; }
 }
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
-  try { return format(parseISO(dateStr), 'MMM d, yyyy'); } catch { return '—'; }
-}
-
 const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string }> = {
   call: { icon: Phone, color: 'text-blue-500' },
   email: { icon: Mail, color: 'text-emerald-500' },
@@ -179,6 +95,18 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   todo: { icon: CheckSquare, color: 'text-muted-foreground' },
   follow_up: { icon: Users, color: 'text-blue-500' },
 };
+
+// Filterable activity types shown in the "Earlier" Filters dropdown.
+// Types not listed here (todo, follow_up, comment, stage_change, etc.) always show.
+const TIMELINE_TYPE_FILTERS = [
+  { label: 'Notes',           value: 'note',           icon: Pencil },
+  { label: 'Emails',          value: 'email',          icon: Mail },
+  { label: 'Phone Calls',     value: 'call',           icon: Phone },
+  { label: 'Meetings',        value: 'meeting',        icon: Users },
+  { label: 'SMSs',            value: 'sms',            icon: MessageSquare },
+  { label: 'Calendar Events', value: 'calendar_event', icon: CalendarDays },
+] as const;
+const ALL_TIMELINE_TYPE_VALUES = new Set<string>(TIMELINE_TYPE_FILTERS.map((f) => f.value));
 
 /* ─── Stats Card (accent card style) ─── */
 function StatBox({ value, label, icon, bg, border, valueColor, iconBg }: {
@@ -234,79 +162,6 @@ function RelatedSection({ icon, label, count, iconColor, onAdd, children }: {
   );
 }
 
-/* ─── Contact Email Row ─── */
-function ContactEmailRow({ entry, onDelete }: { entry: LeadEmail; onDelete: (id: string) => void }) {
-  const navigate = useNavigate();
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-      <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
-        {entry.email_type}
-      </Badge>
-      <button
-        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.email)}`); }}
-        className="text-[13px] text-foreground font-medium truncate flex-1 text-left hover:underline hover:text-blue-600 transition-colors"
-      >
-        {entry.email}
-      </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.email)}`); }}
-        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-        title="Compose in Gmail"
-      >
-        <Send className="h-3 w-3 text-blue-500 hover:text-blue-600" />
-      </button>
-      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-      </button>
-    </div>
-  );
-}
-
-/* ─── Contact Phone Row ─── */
-function ContactPhoneRow({ entry, onDelete, onCall }: { entry: LeadPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-      <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
-        {entry.phone_type}
-      </Badge>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.phone_number)}</span>
-      {onCall && (
-        <button onClick={() => onCall(entry.phone_number)} title="Call this number" className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <PhoneCall className="h-3 w-3 text-green-600 hover:text-green-700" />
-        </button>
-      )}
-      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-      </button>
-    </div>
-  );
-}
-
-/* ─── Address Block ─── */
-function AddressBlock({ entry, onDelete }: { entry: LeadAddress; onDelete: (id: string) => void }) {
-  const parts = [entry.address_line_1, entry.address_line_2].filter(Boolean);
-  const cityLine = [entry.city, entry.state, entry.zip_code].filter(Boolean).join(', ');
-  return (
-    <div className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-muted/40 transition-colors group">
-      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-      <div className="flex-1 min-w-0">
-        {parts.map((p, i) => (
-          <p key={i} className="text-[13px] text-foreground font-medium truncate">{p}</p>
-        ))}
-        {cityLine && <p className="text-[12px] text-muted-foreground truncate">{cityLine}</p>}
-        <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize mt-1">
-          {entry.address_type}
-        </Badge>
-      </div>
-      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-      </button>
-    </div>
-  );
-}
-
 export default function LenderManagementExpandedView() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
@@ -331,53 +186,17 @@ export default function LenderManagementExpandedView() {
   const [savingActivity, setSavingActivity] = useState(false);
   const [activityDropdownOpen, setActivityDropdownOpen] = useState(false);
 
-  // Task inline add state
-  const [addingTask, setAddingTask] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [savingTask, setSavingTask] = useState(false);
-  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
-
-  // File upload state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingFile, setUploadingFile] = useState(false);
-
-  // Contact inline add state (Related sidebar)
-  const [addingContact, setAddingContact] = useState(false);
-  const [newContactName, setNewContactName] = useState('');
-  const [newContactTitle, setNewContactTitle] = useState('');
-  const [savingContact, setSavingContact] = useState(false);
-
-  // Company inline add state (Related sidebar)
-  const [addingCompany, setAddingCompany] = useState(false);
-  const [newCompanyName, setNewCompanyName] = useState('');
-  const [savingCompany, setSavingCompany] = useState(false);
-
-  // Milestone inline add state (Related sidebar)
-  const [addingMilestone, setAddingMilestone] = useState(false);
-  const [newMilestoneName, setNewMilestoneName] = useState('');
-  const [savingMilestone, setSavingMilestone] = useState(false);
-
   // Activity expand / comments state
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
   const [expandedThreads, setExpandedThreads] = useState<Record<string, boolean>>({});
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [savingComment, setSavingComment] = useState<string | null>(null);
+  const [selectedTimelineMembers, setSelectedTimelineMembers] = useState<Set<string>>(new Set());
+  const [selectedTimelineTypes, setSelectedTimelineTypes] = useState<Set<string>>(
+    () => new Set(TIMELINE_TYPE_FILTERS.map((f) => f.value))
+  );
 
   const { teamMember } = useTeamMember();
-
-  // Satellite table inline add state
-  const [showAddEmail, setShowAddEmail] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
-  const [newEmailType, setNewEmailType] = useState('work');
-  const [showAddPhone, setShowAddPhone] = useState(false);
-  const [newPhone, setNewPhone] = useState('');
-  const [newPhoneType, setNewPhoneType] = useState('work');
-  const [showAddAddress, setShowAddAddress] = useState(false);
-  const [newAddressLine1, setNewAddressLine1] = useState('');
-  const [newAddressCity, setNewAddressCity] = useState('');
-  const [newAddressState, setNewAddressState] = useState('');
-  const [newAddressZip, setNewAddressZip] = useState('');
-  const [newAddressType, setNewAddressType] = useState('business');
 
   // ── Stage change handler ──
   const handleStageChange = useCallback(async (newStatus: LeadStatus) => {
@@ -483,193 +302,6 @@ export default function LenderManagementExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['lm-activity-comments', leadId] });
   }, [leadId, commentTexts, teamMember, queryClient]);
 
-  // ── Save task ──
-  const handleSaveTask = useCallback(async () => {
-    if (!leadId || !newTaskTitle.trim()) return;
-    setSavingTask(true);
-    const { error } = await supabase.from('tasks').insert({
-      lead_id: leadId,
-      title: newTaskTitle.trim(),
-      status: 'todo',
-      priority: 'medium',
-    });
-    setSavingTask(false);
-    if (error) {
-      toast.error('Failed to create task');
-      return;
-    }
-    toast.success('Task created');
-    setNewTaskTitle('');
-    setAddingTask(false);
-    queryClient.invalidateQueries({ queryKey: ['lm-lead-tasks', leadId] });
-  }, [leadId, newTaskTitle, queryClient]);
-
-  // ── Save contact (Related sidebar) ──
-  const handleSaveContact = useCallback(async () => {
-    if (!leadId || !newContactName.trim()) return;
-    setSavingContact(true);
-    const { error } = await supabase.from('entity_contacts').insert({
-      entity_id: leadId,
-      entity_type: 'lender_management',
-      name: newContactName.trim(),
-      title: newContactTitle.trim() || null,
-    });
-    setSavingContact(false);
-    if (error) {
-      toast.error('Failed to add contact');
-      return;
-    }
-    toast.success('Contact added');
-    setNewContactName('');
-    setNewContactTitle('');
-    setAddingContact(false);
-    queryClient.invalidateQueries({ queryKey: ['lm-lead-contacts', leadId] });
-  }, [leadId, newContactName, newContactTitle, queryClient]);
-
-  // ── Save company (Related sidebar) ──
-  const handleSaveCompany = useCallback(async () => {
-    if (!leadId || !newCompanyName.trim()) return;
-    setSavingCompany(true);
-    const { error } = await supabase
-      .from('lender_management')
-      .update({ company_name: newCompanyName.trim() })
-      .eq('id', leadId);
-    setSavingCompany(false);
-    if (error) {
-      toast.error('Failed to update company');
-      return;
-    }
-    toast.success('Company updated');
-    setNewCompanyName('');
-    setAddingCompany(false);
-    queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
-  }, [leadId, newCompanyName, queryClient]);
-
-  // ── Save milestone (Related sidebar) ──
-  const handleSaveMilestone = useCallback(async (milestoneCount: number) => {
-    if (!leadId || !newMilestoneName.trim()) return;
-    setSavingMilestone(true);
-    const { error } = await supabase.from('deal_milestones').insert({
-      lead_id: leadId,
-      milestone_name: newMilestoneName.trim(),
-      position: milestoneCount,
-    });
-    setSavingMilestone(false);
-    if (error) {
-      toast.error('Failed to add milestone');
-      return;
-    }
-    toast.success('Milestone added');
-    setNewMilestoneName('');
-    setAddingMilestone(false);
-    queryClient.invalidateQueries({ queryKey: ['lm-lead-milestones', leadId] });
-  }, [leadId, newMilestoneName, queryClient]);
-
-  // ── Toggle milestone complete ──
-  const handleToggleMilestone = useCallback(async (milestoneId: string, currentlyCompleted: boolean) => {
-    const { error } = await supabase
-      .from('deal_milestones')
-      .update({
-        completed: !currentlyCompleted,
-        completed_at: !currentlyCompleted ? new Date().toISOString() : null,
-      })
-      .eq('id', milestoneId);
-    if (error) {
-      toast.error('Failed to update milestone');
-      return;
-    }
-    queryClient.invalidateQueries({ queryKey: ['lm-lead-milestones', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── File upload ──
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !leadId) return;
-    e.target.value = '';
-
-    console.log('[FileUpload] Pipeline: starting upload', { name: file.name, size: file.size, type: file.type });
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      console.error('[FileUpload] Pipeline: no active session', sessionError);
-      toast.error('You must be logged in to upload files. Please refresh and sign in again.');
-      return;
-    }
-
-    setUploadingFile(true);
-    const filePath = `${leadId}/${Date.now()}_${sanitizeFileName(file.name)}`;
-    const { error: uploadError } = await supabase.storage
-      .from('lead-files')
-      .upload(filePath, file, {
-        contentType: file.type || 'application/octet-stream',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error('[FileUpload] Pipeline: storage upload error', uploadError);
-      setUploadingFile(false);
-      const reason = uploadError.message?.includes('security')
-        ? 'Permission denied — check your login session'
-        : uploadError.message || 'Storage error';
-      toast.error(`Upload failed for ${file.name}: ${reason}`);
-      return;
-    }
-
-    const { error: dbError } = await supabase.from('entity_files').insert({
-      entity_id: leadId,
-      entity_type: 'lender_management',
-      file_name: file.name,
-      file_url: filePath,
-      file_type: file.type || null,
-      file_size: file.size,
-    });
-
-    setUploadingFile(false);
-    if (dbError) {
-      console.error('[FileUpload] Pipeline: DB insert error', dbError);
-      const reason = dbError.message?.includes('row-level security')
-        ? 'Permission denied — admin role required'
-        : dbError.message || 'Database error';
-      toast.error(`Failed to save ${file.name}: ${reason}`);
-      await supabase.storage.from('lead-files').remove([filePath]);
-      return;
-    }
-    console.log('[FileUpload] Pipeline: upload success', { filePath });
-    toast.success('File uploaded');
-    queryClient.invalidateQueries({ queryKey: ['lm-lead-files', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── File delete ──
-  const handleDeleteFile = useCallback(async (file: LeadFile) => {
-    await supabase.storage.from('lead-files').remove([file.file_url]);
-    const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
-    if (error) {
-      toast.error('Failed to delete file');
-      return;
-    }
-    toast.success('File deleted');
-    queryClient.invalidateQueries({ queryKey: ['lm-lead-files', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── File download (signed URL) ──
-  const handleDownloadFile = useCallback(async (file: LeadFile) => {
-    const { data, error } = await supabase.storage
-      .from('lead-files')
-      .createSignedUrl(file.file_url, 60);
-    if (error || !data?.signedUrl) {
-      toast.error('Failed to generate download link');
-      return;
-    }
-    const a = document.createElement('a');
-    a.href = data.signedUrl;
-    a.download = file.file_name;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, []);
-
   // ── Queries ──
   const { data: lead, isLoading } = useQuery({
     queryKey: ['lm-expanded-lead', leadId],
@@ -692,6 +324,14 @@ export default function LenderManagementExpandedView() {
     for (const m of teamMembers) map[m.id] = m.name;
     return map;
   }, [teamMembers]);
+
+  // Selected person for person detail panel — sidebar's `onPersonSelect`
+  // toggles this; when non-null we render <PeopleDetailPanel> in the right
+  // column in place of <LeadRelatedSidebar>. `any` here mirrors
+  // UnderwritingExpandedView — the sidebar returns a loose shape merged
+  // from multiple sources that PeopleDetailPanel's Person type narrows.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedPerson, setSelectedPerson] = useState<any>(null);
 
   const { data: interactionCount = 0 } = useQuery({
     queryKey: ['lm-lead-interactions', leadId],
@@ -718,56 +358,6 @@ export default function LenderManagementExpandedView() {
         .maybeSingle();
       if (error || !data) return null;
       return data.communication_type;
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['lm-lead-contacts', leadId],
-    queryFn: async () => {
-      const { data } = await supabase.from('entity_contacts').select('*').eq('entity_id', leadId!).eq('entity_type', 'lender_management');
-      return data ?? [];
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: tasks = [] } = useQuery({
-    queryKey: ['lm-lead-tasks', leadId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('tasks')
-        .select('id, title, status, priority')
-        .eq('lead_id', leadId!)
-        .order('created_at', { ascending: false });
-      return data ?? [];
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: milestones = [] } = useQuery({
-    queryKey: ['lm-lead-milestones', leadId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('deal_milestones')
-        .select('id, milestone_name, completed, completed_at, position')
-        .eq('lead_id', leadId!)
-        .order('position', { ascending: true });
-      return data ?? [];
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: leadFiles = [] } = useQuery({
-    queryKey: ['lm-lead-files', leadId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('entity_files')
-        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('entity_id', leadId!)
-        .eq('entity_type', 'lender_management')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as LeadFile[];
     },
     enabled: !!leadId,
   });
@@ -929,17 +519,53 @@ export default function LenderManagementExpandedView() {
     return items.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
   }, [activities, allEmailThreads]);
 
+  // Timeline filtered by selected team members AND selected activity types.
+  // Empty member selection = show all members. Types default to all 6 selected.
+  const filteredTimelineItems = useMemo(() => {
+    // Pass 1: filter by team member
+    let memberFiltered = timelineItems;
+    if (selectedTimelineMembers.size > 0) {
+      const selectedNames = new Set<string>();
+      const selectedEmails = new Set<string>();
+      for (const m of teamMembers) {
+        if (selectedTimelineMembers.has(m.id)) {
+          if (m.name) selectedNames.add(m.name);
+          if (m.email) selectedEmails.add(m.email.toLowerCase());
+        }
+      }
+      memberFiltered = timelineItems.filter((item) => {
+        if (item.type === 'activity') {
+          return !!item.data.created_by && selectedNames.has(item.data.created_by);
+        }
+        const thread = item.data;
+        return (thread.messages ?? []).some((msg: { from?: string }) => {
+          if (!msg.from) return false;
+          const match = msg.from.match(/<([^>]+)>/);
+          const email = (match ? match[1] : msg.from).toLowerCase();
+          return selectedEmails.has(email);
+        });
+      });
+    }
+    // Pass 2: filter by activity type. Types not in the filterable set always show.
+    return memberFiltered.filter((item) => {
+      if (item.type === 'email_thread') {
+        return selectedTimelineTypes.has('email');
+      }
+      const t = item.data.activity_type;
+      if (!ALL_TIMELINE_TYPE_VALUES.has(t)) return true;
+      return selectedTimelineTypes.has(t);
+    });
+  }, [timelineItems, selectedTimelineMembers, selectedTimelineTypes, teamMembers]);
+
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
-    mutationFn: async (email: string) => {
+    mutationFn: async ({ email, type }: { email: string; type: string }) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'lender_management', email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'lender_management', email, email_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lm-lead-emails', leadId] });
-      setNewEmail('');
-      setShowAddEmail(false);
       toast.success('Email added');
     },
   });
@@ -956,15 +582,13 @@ export default function LenderManagementExpandedView() {
   });
 
   const addPhoneMutation = useMutation({
-    mutationFn: async (phone: string) => {
+    mutationFn: async ({ phone, type }: { phone: string; type: string }) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'lender_management', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'lender_management', phone_number: phone, phone_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lm-lead-phones', leadId] });
-      setNewPhone('');
-      setShowAddPhone(false);
       toast.success('Phone added');
     },
   });
@@ -981,27 +605,21 @@ export default function LenderManagementExpandedView() {
   });
 
   const addAddressMutation = useMutation({
-    mutationFn: async () => {
-      if (!leadId || !newAddressLine1.trim()) return;
+    mutationFn: async ({ line1, city, state, zip, type }: { line1: string; city: string; state: string; zip: string; type: string }) => {
+      if (!leadId || !line1) return;
       const { error } = await supabase.from('entity_addresses').insert({
         entity_id: leadId,
         entity_type: 'lender_management',
-        address_line_1: newAddressLine1.trim(),
-        city: newAddressCity.trim() || null,
-        state: newAddressState.trim() || null,
-        zip_code: newAddressZip.trim() || null,
-        address_type: newAddressType,
+        address_line_1: line1,
+        city: city || null,
+        state: state || null,
+        zip_code: zip || null,
+        address_type: type,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lm-lead-addresses', leadId] });
-      setNewAddressLine1('');
-      setNewAddressCity('');
-      setNewAddressState('');
-      setNewAddressZip('');
-      setNewAddressType('business');
-      setShowAddAddress(false);
       toast.success('Address added');
     },
   });
@@ -1016,6 +634,23 @@ export default function LenderManagementExpandedView() {
       toast.success('Address removed');
     },
   });
+
+  // ── Owner change handler (passed to shared left column) ──
+  const handleOwnerChange = useCallback(async (newOwnerId: string) => {
+    if (!leadId) return;
+    const previousOwner = lead?.assigned_to ?? null;
+    const { error } = await supabase.from('lender_management').update({ assigned_to: newOwnerId || null }).eq('id', leadId);
+    if (error) { toast.error('Failed to save'); return; }
+    registerUndo({
+      label: 'Owner changed',
+      execute: async () => {
+        const { error: e } = await supabase.from('lender_management').update({ assigned_to: previousOwner || null }).eq('id', leadId);
+        if (e) throw e;
+        handleFieldSaved('assigned_to', previousOwner ?? '');
+      },
+    });
+    handleFieldSaved('assigned_to', newOwnerId);
+  }, [leadId, lead?.assigned_to, registerUndo, handleFieldSaved]);
 
   if (isLoading || !lead) {
     return (
@@ -1051,298 +686,22 @@ export default function LenderManagementExpandedView() {
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
-        {/* LEFT: Details — fully editable */}
-        <ScrollArea className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
-          <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
-
-            {/* ── Back Arrow ── */}
-            <button onClick={goBack} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
-              <svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="30" y1="8" x2="2" y2="8" />
-                <polyline points="8,2 2,8 8,14" />
-              </svg>
-            </button>
-
-            {/* ── Contact Card Header ── */}
-            <div className="flex items-start gap-4">
-              <div className="h-14 w-14 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center shrink-0">
-                <span className="text-lg font-bold text-white">
-                  {lead.name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
-                </span>
-              </div>
-              <div className="min-w-0 pt-0.5">
-                <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{getLeadDisplayName(lead)}</h2>
-                <p className="text-sm text-muted-foreground mt-0.5 truncate">
-                  {[lead.company_name, formatValue(dealValue)].filter(Boolean).join(' / ')}
-                </p>
-                <div className="mt-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
-                    <DollarSign className="h-3 w-3" />
-                    Opportunity
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Pipeline */}
-            <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Pipeline" />
-
-            {/* Contact */}
-            <div className="space-y-1">
-              {lead.phone ? (
-                <button
-                  onClick={() => navigate(`/admin/calls?phone=${encodeURIComponent(lead.phone!.replace(/\D/g, ''))}&leadId=${lead.id}`)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors group cursor-pointer w-full"
-                >
-                  <Phone className="h-3.5 w-3.5 text-muted-foreground group-hover:text-green-600 shrink-0" />
-                  <span className="text-[13px] text-foreground font-medium truncate flex-1 text-left">{formatPhoneNumber(lead.phone)}</span>
-                  <PhoneCall className="h-3.5 w-3.5 text-green-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                </button>
-              ) : (
-                <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value="" field="phone" leadId={lead.id} placeholder="Add phone..." onSaved={handleFieldSaved} tableName="lender_management" />
-              )}
-              {lead.email ? (
-                <button
-                  onClick={() => navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(lead.email!)}`)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group cursor-pointer w-full"
-                >
-                  <Mail className="h-3.5 w-3.5 text-muted-foreground group-hover:text-blue-600 shrink-0" />
-                  <span className="text-[13px] text-foreground font-medium truncate flex-1 text-left">{lead.email}</span>
-                  <Send className="h-3.5 w-3.5 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                </button>
-              ) : (
-                <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value="" field="email" leadId={lead.id} placeholder="Add email..." onSaved={handleFieldSaved} tableName="lender_management" />
-              )}
-            </div>
-
-            {/* Deal Info (editable — white box) */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Deal Info</span>
-              <div className=" bg-card">
-                <div className="px-3 py-2 space-y-1.5">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Layers className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium text-muted-foreground">Stage</span>
-                  </div>
-                  <Select value={lead.status} onValueChange={(v) => handleStageChange(v as LeadStatus)}>
-                    <SelectTrigger className={`h-8 w-full text-[13px] rounded-lg ${stageCfg?.bg ?? 'bg-muted'} ${stageCfg?.color ?? 'text-foreground'} border-border shadow-none px-2.5 gap-1`}>
-                      <SelectValue>{stageCfg?.title ?? lead.status}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="min-w-[220px]">
-                      {PIPELINE_STATUSES.map((s) => {
-                        const cfg = pipelineStageConfig[s];
-                        return (
-                          <SelectItem key={s} value={s} className="text-[13px]">
-                            <div className="flex items-center gap-2">
-                              <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-muted-foreground'}`} />
-                              {cfg?.title ?? s}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} tableName="lender_management" />
-                <EditableField icon={<Clock className="h-3.5 w-3.5" />} label="Waiting On" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} tableName="lender_management" />
-              </div>
-            </div>
-
-            {/* Tags */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Tags</span>
-              <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} tableName="lender_management" />
-            </div>
-
-            {/* Description */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Description</span>
-              <EditableNotesField value={lead.description ?? ''} field="description" leadId={lead.id} placeholder={"Deal referred by ____\nLoan Amount $____M\nAdditional deal/collateral details..."} onSaved={handleFieldSaved} tableName="lender_management" />
-            </div>
-
-            {/* Details (editable — white box) */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Details</span>
-              <div className=" bg-card">
-                <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} tableName="lender_management" />
-                {ownerOptions.length > 0 ? (
-                  <EditableSelectField
-                    icon={<User className="h-3.5 w-3.5" />}
-                    label="Owner"
-                    value={lead.assigned_to ?? ''}
-                    displayValue={assignedName}
-                    field="assigned_to"
-                    leadId={lead.id}
-                    options={ownerOptions}
-                    onSaved={handleFieldSaved}
-                    tableName="lender_management"
-                  />
-                ) : (
-                  <EditableField icon={<User className="h-3.5 w-3.5" />} label="Owner" value={assignedName} field="assigned_to" leadId={lead.id} onSaved={handleFieldSaved} tableName="lender_management" />
-                )}
-                <EditableField icon={<Briefcase className="h-3.5 w-3.5" />} label="Opportunity Name" value={lead.opportunity_name ?? ''} field="opportunity_name" leadId={lead.id} onSaved={handleFieldSaved} tableName="lender_management" />
-                <EditableSelectField
-                  icon={<Users className="h-3.5 w-3.5" />}
-                  label="Contact Type"
-                  value={lead.contact_type ?? ''}
-                  displayValue={CONTACT_TYPE_OPTIONS.find(o => o.value === lead.contact_type)?.label ?? lead.contact_type ?? '\u2014'}
-                  field="contact_type"
-                  leadId={lead.id}
-                  options={CONTACT_TYPE_OPTIONS}
-                  onSaved={handleFieldSaved}
-                  tableName="lender_management"
-                />
-                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={lead.known_as ?? ''} field="known_as" leadId={lead.id} onSaved={handleFieldSaved} tableName="lender_management" />
-              </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Email</span>
-              <div className="space-y-1">
-                {leadEmails.map((e) => (
-                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
-                ))}
-                {showAddEmail ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
-                    <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                    <Select value={newEmailType} onValueChange={setNewEmailType}>
-                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="work" className="text-xs">Work</SelectItem>
-                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
-                  </div>
-                ) : (
-                  <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Email</button>
-                )}
-              </div>
-            </div>
-
-            {/* Phone */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Phone</span>
-              <div className="space-y-1">
-                {leadPhones.map((p) => (
-                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
-                ))}
-                {showAddPhone ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
-                    <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                    <Select value={newPhoneType} onValueChange={setNewPhoneType}>
-                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="work" className="text-xs">Work</SelectItem>
-                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                        <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
-                  </div>
-                ) : (
-                  <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Phone</button>
-                )}
-              </div>
-            </div>
-
-            {/* Address */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Address</span>
-              <div className="space-y-1">
-                {leadAddresses.map((a) => (
-                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
-                ))}
-                {showAddAddress ? (
-                  <div className="rounded-lg p-2.5 space-y-2">
-                    <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                    <div className="flex gap-1.5">
-                      <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                      <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                      <input value={newAddressZip} onChange={(e) => setNewAddressZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Select value={newAddressType} onValueChange={setNewAddressType}>
-                        <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="business" className="text-xs">Business</SelectItem>
-                          <SelectItem value="home" className="text-xs">Home</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="flex gap-1.5">
-                        <button onClick={() => { setShowAddAddress(false); setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip(''); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
-                        <button onClick={() => addAddressMutation.mutate()} disabled={!newAddressLine1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Address</button>
-                )}
-              </div>
-            </div>
-
-            {/* About */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">About</span>
-              <EditableNotesField value={lead.about ?? ''} field="about" leadId={lead.id} placeholder="Details from initial contact..." onSaved={handleFieldSaved} tableName="lender_management" />
-            </div>
-
-            {/* History */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">History</span>
-              <EditableNotesField value={lead.history ?? ''} field="history" leadId={lead.id} placeholder="Old CRM carryover info..." onSaved={handleFieldSaved} tableName="lender_management" />
-            </div>
-
-            {/* Bank Relationships */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Bank Relationships</span>
-              <EditableNotesField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Excluded lender names from CLX agreement..." onSaved={handleFieldSaved} tableName="lender_management" />
-            </div>
-
-            {/* Client Working with Other Lenders */}
-            <div onClick={() => handleBooleanToggle('client_other_lenders', lead.client_other_lenders)} className="flex items-center justify-between px-4 py-3.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
-              <div className="flex items-center gap-2">
-                <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground">Client Working with Other Lenders</span>
-              </div>
-              <div className={`h-5 w-9 rounded-full transition-colors relative ${lead.client_other_lenders ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}>
-                <div className={`h-4 w-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${lead.client_other_lenders ? 'translate-x-4' : 'translate-x-0.5'}`} />
-              </div>
-            </div>
-
-            {/* Weekly's */}
-            <div onClick={() => handleBooleanToggle('flagged_for_weekly', lead.flagged_for_weekly)} className="flex items-center justify-between px-4 py-3.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
-              <div className="flex items-center gap-2">
-                <Flag className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground">Weekly's</span>
-              </div>
-              <div className={`h-5 w-9 rounded-full transition-colors relative ${lead.flagged_for_weekly ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}>
-                <div className={`h-4 w-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${lead.flagged_for_weekly ? 'translate-x-4' : 'translate-x-0.5'}`} />
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Notes</span>
-              <EditableNotes value={lead.notes ?? ''} leadId={lead.id} onSaved={handleFieldSaved} tableName="lender_management" />
-            </div>
-
-            {/* Fixed (read-only info) */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
-              <div className=" bg-muted/50">
-                <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
-                <ReadOnlyField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? '\u2014'} />
-                <ReadOnlyField icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value="\u2014" />
-              </div>
-            </div>
-          </div>
-        </ScrollArea>
+        {/* LEFT: Details — shared component */}
+        <ExpandedLeftColumn
+          lead={lead}
+          tableName="lender_management"
+          currentPipeline="lender_management"
+          stages={PIPELINE_STATUSES}
+          stageConfig={pipelineStageConfig}
+          ownerOptions={ownerOptions}
+          assignedName={assignedName}
+          dealValue={dealValue}
+          goBack={goBack}
+          onStageChange={handleStageChange}
+          onFieldSaved={handleFieldSaved}
+          onBooleanToggle={handleBooleanToggle}
+          onOwnerChange={handleOwnerChange}
+        />
 
         {/* CENTER: Activity */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
@@ -1487,7 +846,107 @@ export default function LenderManagementExpandedView() {
               </div>
 
               {/* Earlier — Activity History + Email Threads */}
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
+              <div className="flex items-center justify-between mb-4 gap-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Earlier</h3>
+                <div className="flex items-center gap-3">
+                  {teamMembers.length > 0 && (
+                    <div className="flex items-center -space-x-1.5">
+                      {teamMembers.map((member) => {
+                        const isSelected = selectedTimelineMembers.has(member.id);
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() => {
+                              const next = new Set(selectedTimelineMembers);
+                              if (next.has(member.id)) next.delete(member.id);
+                              else next.add(member.id);
+                              setSelectedTimelineMembers(next);
+                            }}
+                            style={{ borderRadius: '9999px' }}
+                            className={`w-7 h-7 aspect-square shrink-0 border-2 font-semibold text-[10px] leading-none flex items-center justify-center transition-all ${
+                              isSelected
+                                ? 'border-violet-500 text-white bg-violet-500 z-10'
+                                : 'border-slate-300 text-violet-700 bg-violet-50 hover:border-violet-400'
+                            }`}
+                            title={member.name}
+                            aria-label={member.name}
+                          >
+                            {member.name.charAt(0).toUpperCase()}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs font-semibold text-foreground hover:text-violet-700 transition-colors"
+                      >
+                        <span>Filters ({filteredTimelineItems.length})</span>
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-64 p-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allSelected = selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length;
+                          setSelectedTimelineTypes(
+                            allSelected ? new Set() : new Set(TIMELINE_TYPE_FILTERS.map((f) => f.value))
+                          );
+                        }}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                      >
+                        <List className="h-4 w-4 text-muted-foreground" />
+                        <span className="flex-1 text-left text-sm text-foreground">All Activities</span>
+                        <div
+                          className={`w-4 h-4 rounded flex items-center justify-center ${
+                            selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length
+                              ? 'bg-violet-600 text-white'
+                              : 'border border-slate-300'
+                          }`}
+                        >
+                          {selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length && (
+                            <Check className="h-3 w-3" />
+                          )}
+                        </div>
+                      </button>
+                      <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-t border-border">
+                        Default Filters
+                      </div>
+                      {TIMELINE_TYPE_FILTERS.map((f) => {
+                        const Icon = f.icon;
+                        const isSelected = selectedTimelineTypes.has(f.value);
+                        return (
+                          <button
+                            key={f.value}
+                            type="button"
+                            onClick={() => {
+                              const next = new Set(selectedTimelineTypes);
+                              if (next.has(f.value)) next.delete(f.value);
+                              else next.add(f.value);
+                              setSelectedTimelineTypes(next);
+                            }}
+                            className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                          >
+                            <Icon className="h-4 w-4 text-foreground" />
+                            <span className="flex-1 text-left text-sm text-foreground">{f.label}</span>
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center ${
+                                isSelected ? 'bg-violet-600 text-white' : 'border border-slate-300'
+                              }`}
+                            >
+                              {isSelected && <Check className="h-3 w-3" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
               {gmailEmailsLoading && (
                 <div className="flex items-center gap-2 py-2 mb-3">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
@@ -1495,8 +954,8 @@ export default function LenderManagementExpandedView() {
                 </div>
               )}
               <div className="space-y-3">
-                {timelineItems.length > 0 ? (
-                  timelineItems.map((item) => {
+                {filteredTimelineItems.length > 0 ? (
+                  filteredTimelineItems.map((item) => {
                     if (item.type === 'email_thread') {
                       const thread = item.data;
                       const isThreadExpanded = !!expandedThreads[thread.id];
@@ -1677,316 +1136,39 @@ export default function LenderManagementExpandedView() {
           </ScrollArea>
         </div>
 
-        {/* RIGHT: Related */}
-        <div className="w-full md:w-[260px] lg:w-[310px] xl:w-[340px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="py-4 px-1">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>
-            {/* People */}
-            <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} onAdd={() => setAddingContact(true)}>
-              <div className="space-y-2 py-1">
-                {contacts.map((c) => (
-                  <div key={c.id} className="text-xs text-foreground flex items-center gap-2">
-                    <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
-                      {c.name[0]?.toUpperCase()}
-                    </div>
-                    <span className="font-medium">{c.name}</span>
-                    {c.title && <span className="text-muted-foreground">· {c.title}</span>}
-                  </div>
-                ))}
-                {contacts.length === 0 && !addingContact && (
-                  <p className="text-xs text-muted-foreground">No contacts</p>
-                )}
-                {addingContact ? (
-                  <div className="space-y-1.5 mt-1">
-                    <input
-                      autoFocus
-                      value={newContactName}
-                      onChange={(e) => setNewContactName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newContactName.trim()) handleSaveContact();
-                        if (e.key === 'Escape') { setAddingContact(false); setNewContactName(''); setNewContactTitle(''); }
-                      }}
-                      placeholder="Name (required)"
-                      disabled={savingContact}
-                      className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    <input
-                      value={newContactTitle}
-                      onChange={(e) => setNewContactTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newContactName.trim()) handleSaveContact();
-                        if (e.key === 'Escape') { setAddingContact(false); setNewContactName(''); setNewContactTitle(''); }
-                      }}
-                      placeholder="Title (optional)"
-                      disabled={savingContact}
-                      className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingContact && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingContact(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + Add person...
-                  </button>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Companies */}
-            <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Companies" count={lead.company_name ? 1 : 0} onAdd={() => setAddingCompany(true)}>
-              <div className="space-y-2 py-1">
-                {lead.company_name && (
-                  <div className="text-xs text-foreground flex items-center gap-2">
-                    <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
-                      {lead.company_name[0]?.toUpperCase()}
-                    </div>
-                    {lead.company_name}
-                  </div>
-                )}
-                {!lead.company_name && !addingCompany && (
-                  <p className="text-xs text-muted-foreground">No companies</p>
-                )}
-                {addingCompany ? (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <input
-                      autoFocus
-                      value={newCompanyName}
-                      onChange={(e) => setNewCompanyName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newCompanyName.trim()) handleSaveCompany();
-                        if (e.key === 'Escape') { setAddingCompany(false); setNewCompanyName(''); }
-                      }}
-                      placeholder="Company name..."
-                      disabled={savingCompany}
-                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingCompany && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingCompany(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + {lead.company_name ? 'Change' : 'Add'} company...
-                  </button>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Tasks */}
-            <RelatedSection
-              icon={<CheckSquare className="h-3.5 w-3.5" />}
-              label="Tasks"
-              count={tasks.filter(t => t.status !== 'completed' && t.status !== 'done').length}
-              onAdd={() => setAddingTask(true)}
-            >
-              <div className="space-y-2 py-1">
-                {tasks.filter(t => t.status !== 'completed' && t.status !== 'done').map((t) => (
-                  <div key={t.id} className="flex items-center gap-2 text-xs">
-                    <CheckSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
-                    <span className="flex-1 truncate text-foreground font-medium">{t.title}</span>
-                    {t.priority && (
-                      <Badge variant="outline" className={`text-[9px] px-1.5 py-0 rounded-full ${
-                        t.priority === 'high' ? 'border-red-200 text-red-600 bg-red-50' :
-                        t.priority === 'medium' ? 'border-amber-200 text-amber-600 bg-amber-50' :
-                        'border-border text-muted-foreground'
-                      }`}>
-                        {t.priority}
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-                {addingTask ? (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <input
-                      autoFocus
-                      value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newTaskTitle.trim()) handleSaveTask();
-                        if (e.key === 'Escape') { setAddingTask(false); setNewTaskTitle(''); }
-                      }}
-                      placeholder="Task title..."
-                      disabled={savingTask}
-                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingTask && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingTask(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + Add task...
-                  </button>
-                )}
-                {/* Show completed tasks toggle */}
-                {(() => {
-                  const completedTasks = tasks.filter(t => t.status === 'completed' || t.status === 'done');
-                  if (completedTasks.length === 0) return null;
-                  return (
-                    <>
-                      <button
-                        onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 w-full"
-                      >
-                        {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                        Show completed tasks ({completedTasks.length})
-                      </button>
-                      {showCompletedTasks && completedTasks.map((t) => (
-                        <div key={t.id} className="flex items-center gap-2 text-xs">
-                          <CheckSquare className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                          <span className="flex-1 truncate line-through text-muted-foreground">{t.title}</span>
-                        </div>
-                      ))}
-                    </>
-                  );
-                })()}
-                {/* View in List link */}
-                {tasks.length > 0 && (
-                  <button
-                    onClick={() => toast.info('View in List coming soon')}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 flex items-center gap-1"
-                  >
-                    <Layers className="h-3 w-3" /> View in List
-                  </button>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Milestones */}
-            <RelatedSection
-              icon={<Flag className="h-3.5 w-3.5" />}
-              label="Milestones"
-              count={milestones.length}
-              onAdd={() => setAddingMilestone(true)}
-            >
-              <div className="space-y-2 py-1">
-                {milestones.map((m) => (
-                  <div
-                    key={m.id}
-                    className="flex items-center gap-2 text-xs cursor-pointer"
-                    onClick={() => handleToggleMilestone(m.id, m.completed)}
-                  >
-                    <CheckSquare className={`h-3.5 w-3.5 shrink-0 ${m.completed ? 'text-emerald-500' : 'text-muted-foreground/50'}`} />
-                    <span className={`flex-1 truncate font-medium ${m.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                      {m.milestone_name}
-                    </span>
-                  </div>
-                ))}
-                {milestones.length === 0 && !addingMilestone && (
-                  <p className="text-xs text-muted-foreground">No milestones</p>
-                )}
-                {addingMilestone ? (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <input
-                      autoFocus
-                      value={newMilestoneName}
-                      onChange={(e) => setNewMilestoneName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newMilestoneName.trim()) handleSaveMilestone(milestones.length);
-                        if (e.key === 'Escape') { setAddingMilestone(false); setNewMilestoneName(''); }
-                      }}
-                      placeholder="Milestone name..."
-                      disabled={savingMilestone}
-                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingMilestone && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingMilestone(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + Add milestone...
-                  </button>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Files */}
-            <RelatedSection
-              icon={<FileText className="h-3.5 w-3.5" />}
-              label="Files"
-              count={leadFiles.length}
-              onAdd={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <div className="space-y-1.5 py-1">
-                {leadFiles.map((f) => (
-                  <div key={f.id} className="flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-                    <span className="text-sm shrink-0">{getFileIcon(f.file_type)}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">{f.file_name}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }}
-                        className="p-1 rounded hover:bg-muted"
-                        title="Download"
-                      >
-                        <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteFile(f)}
-                        className="p-1 rounded hover:bg-muted"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {uploadingFile && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                    <Loader2 className="h-3 w-3 animate-spin text-orange-500" />
-                    Uploading...
-                  </div>
-                )}
-                {leadFiles.length === 0 && !uploadingFile && (
-                  <p className="text-xs text-muted-foreground">No files</p>
-                )}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                >
-                  + Upload file...
-                </button>
-              </div>
-            </RelatedSection>
-
-            {/* Calendar Events */}
-            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0}>
-              <p className="text-xs text-muted-foreground py-1">No events</p>
-            </RelatedSection>
-
-            {/* Projects */}
-            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={0}>
-              <p className="text-xs text-muted-foreground py-1">No projects</p>
-            </RelatedSection>
-
-            {/* Pipeline Records */}
-            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1}>
-              <div className="text-xs py-1">
-                <Badge variant="secondary" className={`text-[11px] ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
-                  {stageCfg?.title ?? lead.status}
-                </Badge>
-              </div>
-            </RelatedSection>
-          </div>
-        </ScrollArea>
-        </div>
+        {/* RIGHT: Related — shared component, or Person Detail Panel when a
+            contact row is expanded via the sidebar's chevron button. */}
+        {selectedPerson ? (
+          <PeopleDetailPanel
+            person={selectedPerson}
+            contactTypeConfig={CONTACT_TYPE_CONFIG}
+            teamMemberMap={teamMemberMap}
+            teamMembers={teamMembers}
+            onClose={() => setSelectedPerson(null)}
+            onExpand={() => navigate(`/admin/contacts/people/expanded-view/${selectedPerson.id}`)}
+            onPersonUpdate={(updated) => setSelectedPerson(updated)}
+          />
+        ) : (
+          <LeadRelatedSidebar
+            entityType="lender_management"
+            leadId={leadId!}
+            lead={{
+              id: lead.id,
+              name: lead.name,
+              email: lead.email,
+              company_name: lead.company_name,
+              status: lead.status,
+            }}
+            leadEmails={leadEmails}
+            stageCfg={stageCfg ? { label: stageCfg.title, bg: stageCfg.bg, color: stageCfg.color } : null}
+            teamMembers={teamMembers}
+            currentUserName={teamMember?.name ?? null}
+            leadQueryKey={['lm-expanded-lead', leadId]}
+            leadsListQueryKey={['lm-leads']}
+            onPersonSelect={(person) => setSelectedPerson(person)}
+            onProjectClick={(projectId) => navigate(`/admin/pipeline/projects/expanded-view/${projectId}`)}
+          />
+        )}
       </div>
     </div>
   );

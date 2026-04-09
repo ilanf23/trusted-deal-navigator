@@ -7,7 +7,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -702,20 +701,37 @@ const Pipeline = () => {
   const pipelineAutoFitConfig = useMemo(() => ({
     deal: { getText: (l: any) => l.opportunity_name && l.opportunity_name !== l.name ? l.opportunity_name : (l.company_name ? `${l.name} - ${l.company_name}` : l.name), extraPx: 58 },
     company: { getText: (l: any) => l.company_name, extraPx: 32 },
-    contact: { getText: (l: any) => l.name },
+    contact: { getText: (l: any) => l.name, extraPx: 32 },
+    value: { getText: (l: any) => l.deal_value != null ? `$${l.deal_value.toLocaleString('en-US')}` : '', extraPx: 32 },
     ownedBy: { getText: (l: any) => teamMemberMap[l.assigned_to ?? ''] ?? '', extraPx: 32 },
+    status: { getText: (l: any) => (l.status ?? '').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()), extraPx: 32 },
     stage: { getText: (l: any) => dynamicStageConfig[l._stageId]?.title ?? l.status, charWidth: CHAR_W_SM, extraPx: 40 },
+    daysInStage: { getText: (l: any) => { const d = daysSince(l.updated_at); return d !== null ? `${d}d` : '—'; }, extraPx: 32 },
+    stageUpdated: { getText: (l: any) => formatShortDate(l.updated_at), extraPx: 32 },
+    lastContacted: { getText: (l: any) => formatShortDate(l.last_activity_at), extraPx: 32 },
+    inactiveDays: { getText: (l: any) => { const d = daysSince(l.last_activity_at); return d !== null ? `${d}d` : '—'; }, extraPx: 32 },
+    tags: {
+      getText: (l: any) => {
+        const tags = (l.tags as string[] | null) ?? [];
+        if (tags.length === 0) return '';
+        const visible = tags.slice(0, 2);
+        const overflow = tags.length > 2 ? `+${tags.length - 2}` : '';
+        return [...visible, overflow].filter(Boolean).join('  ');
+      },
+      charWidth: CHAR_W_SM,
+      extraPx: 64,
+    },
   }), [teamMemberMap, dynamicStageConfig]);
 
   const { columnWidths, handleColumnResize } = useAutoFitColumns({
     minWidths: {
-      deal: 200, company: 130, contact: 110, value: 90, ownedBy: 80,
-      tasks: 55, status: 100, stage: 160, daysInStage: 55, stageUpdated: 85,
-      lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+      deal: 220, company: 140, contact: 120, value: 110, ownedBy: 90,
+      tasks: 60, status: 130, stage: 170, daysInStage: 75, stageUpdated: 105,
+      lastContacted: 110, interactions: 70, inactiveDays: 85, tags: 120,
     },
     autoFitConfig: pipelineAutoFitConfig,
     data: filteredAndSorted,
-    storageKey: 'pipeline-col-widths-v2',
+    storageKey: 'pipeline-col-widths-v3',
   });
 
   // Group leads by stage for Kanban
@@ -1273,6 +1289,11 @@ const Pipeline = () => {
                     />
                   </div>
                 )}
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-24">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#eee6f6' }}>
@@ -1329,35 +1350,7 @@ const Pipeline = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {isLoading ? (
-                      Array.from({ length: 7 }).map((_, i) => (
-                        <tr key={i} className="bg-white dark:bg-card">
-                          <td className="pl-2 pr-4 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                            <div className="flex items-center gap-2.5">
-                              <Skeleton className="h-4 w-4 rounded shrink-0" />
-                              <Skeleton className="h-7 w-7 rounded-full shrink-0" />
-                              <div className="space-y-1.5">
-                                <Skeleton className="h-3.5 w-36" />
-                                <Skeleton className="h-2.5 w-24" />
-                              </div>
-                            </div>
-                          </td>
-                          {columnVisibility.company && <td className="px-4 py-1.5" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.contact && <td className="px-4 py-1.5" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.value && <td className="px-4 py-1.5" style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                          {columnVisibility.ownedBy && <td className="px-4 py-1.5" style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.tasks && <td className="px-4 py-1.5" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.status && <td className="px-4 py-1.5" style={{ width: columnWidths.status, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                          {columnVisibility.stage && <td className="px-4 py-1.5" style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
-                          {columnVisibility.daysInStage && <td className="px-4 py-1.5" style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.stageUpdated && <td className="px-4 py-1.5" style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.lastContacted && <td className="px-4 py-1.5" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.interactions && <td className="px-4 py-1.5" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.inactiveDays && <td className="px-4 py-1.5" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.tags && <td className="px-4 py-1.5" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        </tr>
-                      ))
-                    ) : filteredAndSorted.length === 0 ? (
+                    {filteredAndSorted.length === 0 ? (
                       <tr>
                         <td colSpan={15} style={{ border: '1px solid #c8bdd6' }}>
                           <div className="flex flex-col items-center justify-center py-24 gap-4">
@@ -1413,7 +1406,7 @@ const Pipeline = () => {
                             }`}
                           >
                             {/* Deal + Checkbox (sticky) */}
-                            <td className={`pl-2 pr-1.5 ${rowPad} overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailOpen ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                            <td className={`pl-2 pr-1.5 ${rowPad} overflow-hidden whitespace-nowrap sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailOpen ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                               <div className="flex items-center gap-2">
                                 <div className={`shrink-0`} onClick={(e) => e.stopPropagation()}>
                                   <Checkbox
@@ -1443,7 +1436,7 @@ const Pipeline = () => {
 
                             {/* Company */}
                             {columnVisibility.company && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
                                 <InlineEditableCell
                                   value={lead.company_name || ''}
                                   onChange={(v) => handleInlineCellSave(lead.id, 'company_name', v)}
@@ -1454,7 +1447,7 @@ const Pipeline = () => {
 
                             {/* Contact */}
                             {columnVisibility.contact && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
                                 <InlineEditableCell
                                   value={lead.name}
                                   onChange={(v) => handleInlineCellSave(lead.id, 'name', v)}
@@ -1465,7 +1458,7 @@ const Pipeline = () => {
 
                             {/* Value */}
                             {columnVisibility.value && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}>
                                 <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
                                   {lead.deal_value != null && <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                                   <InlineEditableCell
@@ -1480,7 +1473,7 @@ const Pipeline = () => {
 
                             {/* Owner */}
                             {columnVisibility.ownedBy && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}>
                                 <InlineEditableCell
                                   type="select"
                                   value={effectiveOwnerId || ''}
@@ -1493,21 +1486,21 @@ const Pipeline = () => {
 
                             {/* Tasks */}
                             {columnVisibility.tasks && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
                                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{taskCountMap[lead.id] ?? 0}</span>
                               </td>
                             )}
 
                             {/* Status */}
                             {columnVisibility.status && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status ?? 100, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.status ?? 100, border: '1px solid #c8bdd6' }}>
                                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{lead.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
                               </td>
                             )}
 
                             {/* Stage */}
                             {columnVisibility.stage && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
                                 <InlineEditableCell
                                   type="select"
                                   value={lead._stageId || ''}
@@ -1520,7 +1513,7 @@ const Pipeline = () => {
 
                             {/* Days in Stage */}
                             {columnVisibility.daysInStage && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}>
                                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
                                   {daysInStage !== null ? `${daysInStage}d` : '—'}
                                 </span>
@@ -1529,28 +1522,28 @@ const Pipeline = () => {
 
                             {/* Stage Updated */}
                             {columnVisibility.stageUpdated && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}>
                                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate max-w-full">{formatShortDate(lead.updated_at)}</span>
                               </td>
                             )}
 
                             {/* Last Contacted */}
                             {columnVisibility.lastContacted && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
                                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate max-w-full">{formatShortDate(lead.last_activity_at)}</span>
                               </td>
                             )}
 
                             {/* Interactions */}
                             {columnVisibility.interactions && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
                                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{interactionCountMap[lead.id] ?? 0}</span>
                               </td>
                             )}
 
                             {/* Inactive Days */}
                             {columnVisibility.inactiveDays && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
                                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
                                   {inactiveDays !== null ? `${inactiveDays}d` : '—'}
                                 </span>
@@ -1559,16 +1552,16 @@ const Pipeline = () => {
 
                             {/* Tags */}
                             {columnVisibility.tags && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
+                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
                                 {lead.tags && lead.tags.length > 0 ? (
-                                  <span className="flex items-center gap-1 flex-wrap">
+                                  <span className="flex items-center gap-1 flex-nowrap min-w-0">
                                     {lead.tags.slice(0, 2).map((tag) => (
-                                      <span key={tag} className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
+                                      <span key={tag} className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground whitespace-nowrap shrink-0">
                                         {tag}
                                       </span>
                                     ))}
                                     {lead.tags.length > 2 && (
-                                      <span className="text-[11px] text-muted-foreground font-medium">+{lead.tags.length - 2}</span>
+                                      <span className="text-[11px] text-muted-foreground font-medium whitespace-nowrap shrink-0">+{lead.tags.length - 2}</span>
                                     )}
                                   </span>
                                 ) : (
@@ -1591,6 +1584,7 @@ const Pipeline = () => {
                     )}
                   </tbody>
                 </table>
+                )}
               </div>
             ) : (
               /* Kanban View */

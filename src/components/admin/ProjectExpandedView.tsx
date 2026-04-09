@@ -166,7 +166,7 @@ export default function ProjectExpandedView() {
   const [savingTask, setSavingTask] = useState(false);
 
   const [addingCompany, setAddingCompany] = useState(false);
-  const [newCompanyName, setNewCompanyName] = useState('');
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [savingCompany, setSavingCompany] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -240,7 +240,8 @@ export default function ProjectExpandedView() {
       const { data } = await supabase
         .from('entity_contacts')
         .select('*')
-        .eq('entity_id', project!.entity_id);
+        .eq('entity_id', project!.entity_id)
+        .eq('entity_type', 'potential');
       return data ?? [];
     },
     enabled: !!project?.entity_id,
@@ -294,6 +295,70 @@ export default function ProjectExpandedView() {
     }
     return list.slice(0, 10);
   }, [allLeadsForPicker, ppLeadIds, peopleSearch]);
+
+  // Company search-to-link — queries master `companies` + distinct company_names from `potential` and `people`
+  const { data: companiesSearchResults = [] } = useQuery<Array<{
+    id: string;
+    company_name: string;
+    website: string | null;
+    source: 'companies' | 'derived';
+  }>>({
+    queryKey: ['project-companies-search', companySearchQuery],
+    queryFn: async () => {
+      const q = companySearchQuery.trim();
+      if (!q) return [];
+      const [companiesRes, potentialRes, peopleRes] = await Promise.all([
+        supabase
+          .from('companies')
+          .select('id, company_name, website')
+          .ilike('company_name', `%${q}%`)
+          .order('company_name', { ascending: true })
+          .limit(20),
+        supabase
+          .from('potential')
+          .select('id, company_name')
+          .ilike('company_name', `%${q}%`)
+          .not('company_name', 'is', null)
+          .limit(20),
+        supabase
+          .from('people')
+          .select('id, company_name')
+          .ilike('company_name', `%${q}%`)
+          .not('company_name', 'is', null)
+          .limit(20),
+      ]);
+      const merged = new Map<string, {
+        id: string;
+        company_name: string;
+        website: string | null;
+        source: 'companies' | 'derived';
+      }>();
+      (companiesRes.data || []).forEach((c) => {
+        const key = (c.company_name || '').toLowerCase();
+        if (key) merged.set(key, { ...c, source: 'companies' });
+      });
+      (potentialRes.data || []).forEach((row) => {
+        const name = (row.company_name || '').trim();
+        const key = name.toLowerCase();
+        if (!name || !key) return;
+        if (!merged.has(key)) {
+          merged.set(key, { id: `pot:${row.id}`, company_name: name, website: null, source: 'derived' });
+        }
+      });
+      (peopleRes.data || []).forEach((row) => {
+        const name = (row.company_name || '').trim();
+        const key = name.toLowerCase();
+        if (!name || !key) return;
+        if (!merged.has(key)) {
+          merged.set(key, { id: `ppl:${row.id}`, company_name: name, website: null, source: 'derived' });
+        }
+      });
+      return Array.from(merged.values()).sort((a, b) =>
+        a.company_name.localeCompare(b.company_name, undefined, { sensitivity: 'base' })
+      );
+    },
+    enabled: addingCompany && companySearchQuery.trim().length > 0,
+  });
 
   // Files for this lead
   const { data: leadFiles = [] } = useQuery({
@@ -374,7 +439,7 @@ export default function ProjectExpandedView() {
     setSavingNote(true);
     await supabase.from('activities').insert({
       entity_id: project.entity_id,
-      entity_type: 'deal',
+      entity_type: 'potential',
       activity_type: activityTab === 'note' ? 'note' : activityType,
       content: noteContent.trim(),
       title: activityTab === 'note' ? 'Note' : activityType.replace(/_/g, ' '),
@@ -494,7 +559,7 @@ export default function ProjectExpandedView() {
       if (isFollowing) {
         await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('team_member_id', teamMemberId!);
       } else {
-        await supabase.from('entity_followers').insert({ entity_id: leadId!, team_member_id: teamMemberId! });
+        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'potential', team_member_id: teamMemberId! });
       }
     },
     onSuccess: () => {
@@ -572,17 +637,29 @@ export default function ProjectExpandedView() {
     }
   }, [project?.entity_id, newSidebarTaskTitle, teamMember, queryClient, registerUndo]);
 
-  // ── Save company (Related sidebar) ──
-  const handleSaveCompany = useCallback(async () => {
-    if (!project?.entity_id || !newCompanyName.trim()) return;
+  // ── Link company (Related sidebar) — used by search result clicks & Enter ──
+  const handleLinkCompany = useCallback(async (companyName: string) => {
+    if (!project?.entity_id || !companyName.trim()) return;
     setSavingCompany(true);
-    const { error } = await supabase.from('potential').update({ company_name: newCompanyName.trim() }).eq('id', project.entity_id);
+    const { error } = await supabase.from('potential').update({ company_name: companyName.trim() }).eq('id', project.entity_id);
     setSavingCompany(false);
     if (error) { toast.error('Failed to update company'); return; }
-    toast.success('Company updated');
-    setNewCompanyName(''); setAddingCompany(false);
+    toast.success('Company linked');
+    setCompanySearchQuery('');
+    setAddingCompany(false);
     queryClient.invalidateQueries({ queryKey: ['project-lead', project.entity_id] });
-  }, [project?.entity_id, newCompanyName, queryClient]);
+  }, [project?.entity_id, queryClient]);
+
+  // ── Remove company (Related sidebar) ──
+  const handleRemoveCompany = useCallback(async () => {
+    if (!project?.entity_id) return;
+    setSavingCompany(true);
+    const { error } = await supabase.from('potential').update({ company_name: null }).eq('id', project.entity_id);
+    setSavingCompany(false);
+    if (error) { toast.error('Failed to remove company'); return; }
+    toast.success('Company removed');
+    queryClient.invalidateQueries({ queryKey: ['project-lead', project.entity_id] });
+  }, [project?.entity_id, queryClient]);
 
   // ── File upload ──
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -607,7 +684,7 @@ export default function ProjectExpandedView() {
 
     const { error: dbError } = await supabase.from('entity_files').insert({
       entity_id: project.entity_id,
-      entity_type: 'deal',
+      entity_type: 'potential',
       file_name: file.name,
       file_url: filePath,
       file_type: file.type || null,
@@ -1373,29 +1450,83 @@ export default function ProjectExpandedView() {
                 <RelatedSection icon={<Briefcase className="h-3.5 w-3.5" />} label="Companies" count={lead?.company_name ? 1 : 0} onAdd={() => setAddingCompany(true)}>
                   <div className="space-y-2 py-1">
                     {lead?.company_name && (
-                      <div className="text-xs text-foreground flex items-center gap-2">
+                      <div className="text-xs text-foreground flex items-center gap-2 group">
                         <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
                           {lead.company_name[0]?.toUpperCase()}
                         </div>
-                        {lead.company_name}
+                        <span className="flex-1 truncate">{lead.company_name}</span>
+                        <button
+                          onClick={handleRemoveCompany}
+                          disabled={savingCompany}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 disabled:opacity-50"
+                          title="Remove company"
+                        >
+                          {savingCompany ? (
+                            <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+                          ) : (
+                            <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                          )}
+                        </button>
                       </div>
                     )}
                     {!lead?.company_name && !addingCompany && <p className="text-xs text-muted-foreground">No companies</p>}
                     {addingCompany ? (
-                      <div className="flex items-center gap-1.5 mt-1">
+                      <div className="relative mt-1">
                         <input
                           autoFocus
-                          value={newCompanyName}
-                          onChange={(e) => setNewCompanyName(e.target.value)}
+                          value={companySearchQuery}
+                          onChange={(e) => setCompanySearchQuery(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter' && newCompanyName.trim()) handleSaveCompany();
-                            if (e.key === 'Escape') { setAddingCompany(false); setNewCompanyName(''); }
+                            if (e.key === 'Enter') {
+                              const q = companySearchQuery.trim();
+                              if (!q) return;
+                              const first = companiesSearchResults[0];
+                              if (first) {
+                                handleLinkCompany(first.company_name);
+                              } else {
+                                handleLinkCompany(q);
+                              }
+                            }
+                            if (e.key === 'Escape') { setAddingCompany(false); setCompanySearchQuery(''); }
                           }}
-                          placeholder="Company name..."
+                          placeholder="Search companies..."
                           disabled={savingCompany}
-                          className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                          className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                         />
-                        {savingCompany && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
+                        {savingCompany && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
+                        {companySearchQuery.trim().length > 0 && companiesSearchResults.length > 0 && (
+                          <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                            {companiesSearchResults.map((c) => (
+                              <button
+                                key={c.id}
+                                onClick={() => handleLinkCompany(c.company_name)}
+                                className="w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-muted/60 transition-colors"
+                              >
+                                <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
+                                  {c.company_name[0]?.toUpperCase()}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-xs font-medium text-foreground">{c.company_name}</span>
+                                  {c.website && <p className="text-[10px] text-muted-foreground truncate">{c.website}</p>}
+                                </div>
+                                <span className="text-[9px] uppercase tracking-wide text-muted-foreground shrink-0">
+                                  {c.source === 'companies' ? 'Company' : 'Lead'}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {companySearchQuery.trim().length > 0 && companiesSearchResults.length === 0 && (
+                          <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg px-2 py-2">
+                            <p className="text-xs text-muted-foreground mb-1">No matching companies</p>
+                            <button
+                              onClick={() => handleLinkCompany(companySearchQuery.trim())}
+                              className="w-full text-left text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                            >
+                              + Use "{companySearchQuery.trim()}" as company
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <button onClick={() => setAddingCompany(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1">

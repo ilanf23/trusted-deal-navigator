@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
-import { CrmAvatar } from '@/components/admin/CrmAvatar';
+import { ExpandedLeftColumn } from '@/components/admin/ExpandedLeftColumn';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -21,13 +21,13 @@ import { Calendar } from '@/components/ui/calendar';
 import ChecklistBuilder, { type ChecklistItem } from './ChecklistBuilder';
 import SavedChecklistCard, { type SavedChecklist } from './SavedChecklistCard';
 import {
-  X, DollarSign, ChevronDown, ChevronRight, ChevronUp,
+  X, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, CheckSquare, FileText,
   CalendarDays, FolderOpen, Layers, Plus,
-  MessageSquare, Pencil, Activity, Clock, AlertCircle, TrendingUp,
-  User, Mail, Phone, PhoneCall, Hash, Tag, Briefcase, Loader2,
-  Globe, Linkedin, AtSign, MapPin, Trash2, Flag, Eye, Upload, Download, Send, Bookmark, Maximize2,
-  MoreHorizontal, Copy, Check,
+  MessageSquare, Pencil, Activity, AlertCircle, TrendingUp,
+  User, Mail, Phone, PhoneCall, Briefcase, Loader2,
+  Globe, Linkedin, Trash2, Eye, Upload, Download, Send, Bookmark, Maximize2,
+  MoreHorizontal, Copy, Check, List,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -39,20 +39,12 @@ import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { parseISO, format, differenceInDays } from 'date-fns';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
-import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
-import { type LeadProject } from './ProjectDetailDialog';
+import { CONTACT_TYPE_CONFIG } from '@/components/admin/shared/contactTypeConfig';
+import LeadRelatedSidebar from '@/components/admin/shared/LeadRelatedSidebar';
 
 import {
   UNDERWRITING_STATUSES,
   stageConfig as canonicalStageConfig,
-  EditableField,
-  EditableSelectField,
-  EditableContactRow,
-  EditableTags,
-  EditableNotes,
-  EditableNotesField,
-  ReadOnlyField,
-  formatPhoneNumber,
 } from './InlineEditableFields';
 
 type Lead = Database['public']['Tables']['underwriting']['Row'];
@@ -144,18 +136,9 @@ function fakeValue(id: string): number {
   return VALUE_BUCKETS[Math.floor(seededRand(id, 1) * VALUE_BUCKETS.length)];
 }
 
-function formatValue(v: number): string {
-  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
 function formatShortDate(dateStr: string | null): string {
   if (!dateStr) return '—';
   try { return format(parseISO(dateStr), 'M/d/yyyy'); } catch { return '—'; }
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
-  try { return format(parseISO(dateStr), 'MMM d, yyyy'); } catch { return '—'; }
 }
 
 const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string }> = {
@@ -167,6 +150,18 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   checklist: { icon: CheckSquare, color: 'text-violet-500' },
   follow_up: { icon: Users, color: 'text-blue-500' },
 };
+
+// Filterable activity types shown in the "Earlier" Filters dropdown.
+// Types not listed here (todo, follow_up, comment, stage_change, etc.) always show.
+const TIMELINE_TYPE_FILTERS = [
+  { label: 'Notes',           value: 'note',           icon: Pencil },
+  { label: 'Emails',          value: 'email',          icon: Mail },
+  { label: 'Phone Calls',     value: 'call',           icon: Phone },
+  { label: 'Meetings',        value: 'meeting',        icon: Users },
+  { label: 'SMSs',            value: 'sms',            icon: MessageSquare },
+  { label: 'Calendar Events', value: 'calendar_event', icon: CalendarDays },
+] as const;
+const ALL_TIMELINE_TYPE_VALUES = new Set<string>(TIMELINE_TYPE_FILTERS.map((f) => f.value));
 
 
 /* ─── Related Section ─── */
@@ -218,90 +213,6 @@ function RelatedSection({ icon, label, count, iconColor, onAdd, onExpand, childr
   );
 }
 
-/* ─── Contact Email Row ─── */
-function ContactEmailRow({ entry, onDelete }: { entry: LeadEmail; onDelete: (id: string) => void }) {
-  const navigate = useNavigate();
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-      <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
-        {entry.email_type}
-      </Badge>
-      <button
-        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.email)}`); }}
-        className="text-[13px] text-foreground font-medium truncate flex-1 text-left hover:underline hover:text-blue-600 transition-colors"
-      >
-        {entry.email}
-      </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.email)}`); }}
-        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-        title="Compose in Gmail"
-      >
-        <Send className="h-3 w-3 text-blue-500 hover:text-blue-600" />
-      </button>
-      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-      </button>
-    </div>
-  );
-}
-
-/* ─── Contact Phone Row ─── */
-function ContactPhoneRow({ entry, onDelete, onCall }: { entry: LeadPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-      <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
-        {entry.phone_type}
-      </Badge>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.phone_number)}</span>
-      {onCall && (
-        <button onClick={() => onCall(entry.phone_number)} title="Call this number" className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <PhoneCall className="h-3 w-3 text-green-600 hover:text-green-700" />
-        </button>
-      )}
-      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-      </button>
-    </div>
-  );
-}
-
-/* ─── Address Block ─── */
-function AddressBlock({ entry, onDelete }: { entry: LeadAddress; onDelete: (id: string) => void }) {
-  const parts = [entry.address_line_1, entry.address_line_2].filter(Boolean);
-  const cityLine = [entry.city, entry.state, entry.zip_code].filter(Boolean).join(', ');
-  return (
-    <div className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-muted/40 transition-colors group">
-      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-      <div className="flex-1 min-w-0">
-        {parts.map((p, i) => (
-          <p key={i} className="text-[13px] text-foreground font-medium truncate">{p}</p>
-        ))}
-        {cityLine && <p className="text-[12px] text-muted-foreground truncate">{cityLine}</p>}
-        <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize mt-1">
-          {entry.address_type}
-        </Badge>
-      </div>
-      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-      </button>
-    </div>
-  );
-}
-
-const CONTACT_TYPE_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; pill: string }> = {
-  Client: { label: 'Client', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800', dot: 'bg-emerald-500', pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' },
-  Prospect: { label: 'Prospect', color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800', dot: 'bg-blue-500', pill: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' },
-  'Referral Partner': { label: 'Referral Partner', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800', dot: 'bg-amber-500', pill: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300' },
-  Lender: { label: 'Lender', color: 'text-indigo-700 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800', dot: 'bg-indigo-500', pill: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' },
-  Attorney: { label: 'Attorney', color: 'text-rose-700 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800', dot: 'bg-rose-500', pill: 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300' },
-  CPA: { label: 'CPA', color: 'text-teal-700 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800', dot: 'bg-teal-500', pill: 'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300' },
-  Vendor: { label: 'Vendor', color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800', dot: 'bg-orange-500', pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' },
-  Other: { label: 'Other', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700', dot: 'bg-slate-400', pill: 'bg-slate-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300' },
-};
-
 export default function UnderwritingExpandedView() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
@@ -340,47 +251,18 @@ export default function UnderwritingExpandedView() {
   const [templateName, setTemplateName] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
 
-  // Task state
-  const [addingTask, setAddingTask] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
-  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
-  const [showAddProject, setShowAddProject] = useState(false);
-  const [newProjectName, setNewProjectName] = useState('');
-  const [savingProject, setSavingProject] = useState(false);
-
-  // File upload state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingFile, setUploadingFile] = useState(false);
-
-  // Contact search-to-add state (Related sidebar)
-  const [addingContact, setAddingContact] = useState(false);
-  const [contactSearchQuery, setContactSearchQuery] = useState('');
-  const [savingContact, setSavingContact] = useState(false);
+  // Selected person for person detail panel (kept — sidebar `onPersonSelect` sets this)
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
-
-  // Contact inline edit state (Related sidebar)
-  const [editingContactId, setEditingContactId] = useState<string | null>(null);
-  const [editContactName, setEditContactName] = useState('');
-  const [editContactTitle, setEditContactTitle] = useState('');
-
-  // Calendar event dialog state
-  const [eventDialogOpen, setEventDialogOpen] = useState(false);
-  const [eventTitle, setEventTitle] = useState('');
-  const [eventDate, setEventDate] = useState<Date | undefined>(undefined);
-  const [eventTime, setEventTime] = useState('09:00');
-  const [eventEndTime, setEventEndTime] = useState('10:00');
-  const [eventType, setEventType] = useState('meeting');
-  const [eventDescription, setEventDescription] = useState('');
-  const [eventSaving, setEventSaving] = useState(false);
-  const [eventDatePickerOpen, setEventDatePickerOpen] = useState(false);
 
   // Activity expand / comments state
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
   const [expandedThreads, setExpandedThreads] = useState<Record<string, boolean>>({});
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [savingComment, setSavingComment] = useState<string | null>(null);
+  const [selectedTimelineMembers, setSelectedTimelineMembers] = useState<Set<string>>(new Set());
+  const [selectedTimelineTypes, setSelectedTimelineTypes] = useState<Set<string>>(
+    () => new Set(TIMELINE_TYPE_FILTERS.map((f) => f.value))
+  );
 
   const { teamMember } = useTeamMember();
 
@@ -422,11 +304,6 @@ export default function UnderwritingExpandedView() {
     navigate(-1);
   }, [leadId, queryClient, navigate]);
 
-  // Company inline add state (Related sidebar)
-  const [addingCompany, setAddingCompany] = useState(false);
-  const [newCompanyName, setNewCompanyName] = useState('');
-  const [savingCompany, setSavingCompany] = useState(false);
-
   // Milestone inline add state (Related sidebar)
   const [addingMilestone, setAddingMilestone] = useState(false);
   const [newMilestoneName, setNewMilestoneName] = useState('');
@@ -437,20 +314,6 @@ export default function UnderwritingExpandedView() {
   const [newWaitingOwner, setNewWaitingOwner] = useState('');
   const [newWaitingDesc, setNewWaitingDesc] = useState('');
   const [savingWaitingOn, setSavingWaitingOn] = useState(false);
-
-  // Satellite table inline add state
-  const [showAddEmail, setShowAddEmail] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
-  const [newEmailType, setNewEmailType] = useState('work');
-  const [showAddPhone, setShowAddPhone] = useState(false);
-  const [newPhone, setNewPhone] = useState('');
-  const [newPhoneType, setNewPhoneType] = useState('work');
-  const [showAddAddress, setShowAddAddress] = useState(false);
-  const [newAddressLine1, setNewAddressLine1] = useState('');
-  const [newAddressCity, setNewAddressCity] = useState('');
-  const [newAddressState, setNewAddressState] = useState('');
-  const [newAddressZip, setNewAddressZip] = useState('');
-  const [newAddressType, setNewAddressType] = useState('business');
 
   // ── Team members (must be before handlers that reference it) ──
   const { data: teamMembers = [] } = useAssignableUsers();
@@ -677,197 +540,10 @@ export default function UnderwritingExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['underwriting-activity-comments', leadId] });
   }, [leadId, commentTexts, teamMember, queryClient]);
 
-  // ── Toggle task completion ──
-  const toggleTaskCompletion = useCallback(async (task: LeadTask) => {
-    const isCompleting = !task.completed_at;
-    await supabase.from('tasks').update({
-      completed_at: isCompleting ? new Date().toISOString() : null,
-      is_completed: isCompleting,
-      status: isCompleting ? 'done' : 'todo',
-      updated_at: new Date().toISOString(),
-    }).eq('id', task.id);
-    queryClient.invalidateQueries({ queryKey: ['person-tasks', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── Save calendar event ──
-  const handleSaveEvent = useCallback(async () => {
-    if (!leadId || !eventTitle.trim() || !eventDate) return;
-    setEventSaving(true);
-    const dateStr = format(eventDate, 'yyyy-MM-dd');
-    const startTime = `${dateStr}T${eventTime}:00`;
-    const endTime = `${dateStr}T${eventEndTime}:00`;
-    const { error } = await supabase.from('appointments').insert({
-      lead_id: leadId,
-      title: eventTitle.trim(),
-      description: eventDescription.trim() || null,
-      start_time: startTime,
-      end_time: endTime,
-      appointment_type: eventType,
-    });
-    setEventSaving(false);
-    if (error) {
-      toast.error('Failed to create event');
-      return;
-    }
-    toast.success('Event created');
-    setEventDialogOpen(false);
-    setEventTitle('');
-    setEventDate(undefined);
-    setEventTime('09:00');
-    setEventEndTime('10:00');
-    setEventType('meeting');
-    setEventDescription('');
-    queryClient.invalidateQueries({ queryKey: ['underwriting-appointments', leadId] });
-  }, [leadId, eventTitle, eventDate, eventTime, eventEndTime, eventType, eventDescription, queryClient]);
-
-  // ── Delete calendar event ──
-  const handleDeleteEvent = useCallback(async (eventId: string) => {
-    const { data: eventData } = await supabase.from('appointments').select('*').eq('id', eventId).single();
-    const { error } = await supabase.from('appointments').delete().eq('id', eventId);
-    if (error) {
-      toast.error('Failed to delete event');
-      return;
-    }
-    if (eventData) {
-      registerUndo({
-        label: `Deleted event "${eventData.title}"`,
-        execute: async () => {
-          const { error: e } = await supabase.from('appointments').insert(eventData);
-          if (e) throw e;
-          queryClient.invalidateQueries({ queryKey: ['underwriting-appointments', leadId] });
-        },
-      });
-    }
-    toast.success('Event deleted');
-    queryClient.invalidateQueries({ queryKey: ['underwriting-appointments', leadId] });
-  }, [leadId, queryClient, registerUndo]);
-
-  const handleInlineCreateProject = useCallback(async () => {
-    if (!newProjectName.trim() || !leadId) return;
-    setSavingProject(true);
-    try {
-      const { error } = await supabase.from('entity_projects').insert({
-        entity_id: leadId,
-        entity_type: 'underwriting',
-        name: newProjectName.trim(),
-        status: 'open',
-        project_stage: 'open',
-        visibility: 'everyone',
-        created_by: teamMember?.name || null,
-      });
-      if (error) throw error;
-      toast.success('Project created');
-      queryClient.invalidateQueries({ queryKey: ['underwriting-projects', leadId] });
-      setNewProjectName('');
-      setShowAddProject(false);
-    } catch {
-      toast.error('Failed to create project');
-    } finally {
-      setSavingProject(false);
-    }
-  }, [newProjectName, leadId, teamMember, queryClient]);
-
-  // ── Link existing person as contact (Related sidebar) ──
-  const handleLinkPerson = useCallback(async (person: { id: string; name: string; title: string | null; email?: string | null }) => {
-    if (!leadId) return;
-    setSavingContact(true);
-    const { error } = await supabase.from('entity_contacts').insert({
-      entity_id: leadId,
-      entity_type: 'underwriting',
-      name: person.name,
-      title: person.title || null,
-      email: person.email || null,
-    });
-    setSavingContact(false);
-    if (error) {
-      toast.error('Failed to add contact');
-      return;
-    }
-    toast.success('Contact added');
-    setContactSearchQuery('');
-    setAddingContact(false);
-    queryClient.invalidateQueries({ queryKey: ['underwriting-contacts', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── Update contact (Related sidebar) ──
-  const updateContactMutation = useMutation({
-    mutationFn: async ({ contactId, name, title }: { contactId: string; name: string; title: string }) => {
-      const { error } = await supabase.from('entity_contacts').update({ name, title: title || null }).eq('id', contactId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['underwriting-contacts', leadId] });
-      toast.success('Contact updated');
-    },
-    onError: () => toast.error('Failed to update contact'),
-  });
-
-  // ── Delete contact (Related sidebar) ──
-  const deleteContactMutation = useMutation({
-    mutationFn: async (contactId: string) => {
-      const { error } = await supabase.from('entity_contacts').delete().eq('id', contactId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['underwriting-contacts', leadId] });
-      toast.success('Contact removed');
-    },
-    onError: () => toast.error('Failed to remove contact'),
-  });
-
-  const handleStartEditContact = useCallback((contact: { id: string; name: string; title: string | null }) => {
-    setEditingContactId(contact.id);
-    setEditContactName(contact.name);
-    setEditContactTitle(contact.title || '');
-  }, []);
-
-  const handleOpenPersonPanel = useCallback(async (personName: string) => {
-    const { data } = await supabase
-      .from('underwriting')
-      .select('*')
-      .ilike('name', personName)
-      .limit(1)
-      .maybeSingle();
-    if (data) {
-      setSelectedPerson(data);
-    } else {
-      toast.info('No matching person record found');
-    }
-  }, []);
-
-  const handleSaveEditContact = useCallback(() => {
-    if (!editingContactId || !editContactName.trim()) return;
-    updateContactMutation.mutate({ contactId: editingContactId, name: editContactName.trim(), title: editContactTitle.trim() });
-    setEditingContactId(null);
-    setEditContactName('');
-    setEditContactTitle('');
-  }, [editingContactId, editContactName, editContactTitle, updateContactMutation]);
-
-  const handleCancelEditContact = useCallback(() => {
-    setEditingContactId(null);
-    setEditContactName('');
-    setEditContactTitle('');
-  }, []);
-
-  // ── Save company (Related sidebar) ──
-  const handleSaveCompany = useCallback(async () => {
-    if (!leadId || !newCompanyName.trim()) return;
-    setSavingCompany(true);
-    const { error } = await supabase
-      .from('underwriting')
-      .update({ company_name: newCompanyName.trim() })
-      .eq('id', leadId);
-    setSavingCompany(false);
-    if (error) {
-      toast.error('Failed to update company');
-      return;
-    }
-    toast.success('Company updated');
-    setNewCompanyName('');
-    setAddingCompany(false);
-    queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
-  }, [leadId, newCompanyName, queryClient]);
+  // NOTE: Sidebar handlers (toggleTaskCompletion, handleSaveEvent, handleDeleteEvent,
+  // handleInlineCreateProject, handleLinkPerson, updateContactMutation, deleteContactMutation,
+  // handleStartEditContact, handleOpenPersonPanel, handleSaveEditContact, handleCancelEditContact,
+  // handleLinkCompany, handleRemoveCompany) have moved to <LeadRelatedSidebar>.
 
   // ── Save milestone (Related sidebar) ──
   const handleSaveMilestone = useCallback(async (milestoneCount: number) => {
@@ -940,80 +616,8 @@ export default function UnderwritingExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['underwriting-waiting-on', leadId] });
   }, [leadId, queryClient]);
 
-  // ── File upload ──
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !leadId) return;
-    // Reset the input so the same file can be re-selected
-    e.target.value = '';
-
-    console.log('[FileUpload] Underwriting: starting upload', { name: file.name, size: file.size, type: file.type });
-
-    // Auth check
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      console.error('[FileUpload] Underwriting: no active session', sessionError);
-      toast.error('You must be logged in to upload files. Please refresh and sign in again.');
-      return;
-    }
-
-    setUploadingFile(true);
-    const filePath = `${leadId}/${Date.now()}_${sanitizeFileName(file.name)}`;
-    const { error: uploadError } = await supabase.storage
-      .from('lead-files')
-      .upload(filePath, file, {
-        contentType: file.type || 'application/octet-stream',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error('[FileUpload] Underwriting: storage upload error', uploadError);
-      setUploadingFile(false);
-      const reason = uploadError.message?.includes('security')
-        ? 'Permission denied — check your login session'
-        : uploadError.message || 'Storage error';
-      toast.error(`Upload failed for ${file.name}: ${reason}`);
-      return;
-    }
-
-    const { error: dbError } = await supabase.from('entity_files').insert({
-      entity_id: leadId,
-      entity_type: 'underwriting',
-      file_name: file.name,
-      file_url: filePath,
-      file_type: file.type || null,
-      file_size: file.size,
-    });
-
-    setUploadingFile(false);
-    if (dbError) {
-      console.error('[FileUpload] Underwriting: DB insert error', dbError);
-      const reason = dbError.message?.includes('row-level security')
-        ? 'Permission denied — admin role required'
-        : dbError.message || 'Database error';
-      toast.error(`Failed to save ${file.name}: ${reason}`);
-      // Clean up orphaned storage file
-      await supabase.storage.from('lead-files').remove([filePath]);
-      return;
-    }
-    console.log('[FileUpload] Underwriting: upload success', { filePath });
-    toast.success('File uploaded');
-    queryClient.invalidateQueries({ queryKey: ['underwriting-files', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── File delete ──
-  const handleDeleteFile = useCallback(async (file: LeadFile) => {
-    // file_url stores the storage path directly
-    await supabase.storage.from('lead-files').remove([file.file_url]);
-
-    const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
-    if (error) {
-      toast.error('Failed to delete file');
-      return;
-    }
-    toast.success('File deleted');
-    queryClient.invalidateQueries({ queryKey: ['underwriting-files', leadId] });
-  }, [leadId, queryClient]);
+  // NOTE: File upload / delete, plus contacts / tasks / projects / files / appointments queries
+  // and related-people / people-search / companies-search have all moved into <LeadRelatedSidebar>.
 
   // ── Queries ──
   const { data: lead, isLoading } = useQuery({
@@ -1030,54 +634,7 @@ export default function UnderwritingExpandedView() {
     enabled: !!leadId,
   });
 
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['underwriting-contacts', leadId],
-    queryFn: async () => {
-      const { data } = await supabase.from('entity_contacts').select('*').eq('entity_id', leadId!).eq('entity_type', 'underwriting');
-      return data ?? [];
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: tasks = [] } = useQuery({
-    queryKey: ['person-tasks', leadId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('lead_id', leadId!)
-        .order('created_at', { ascending: false });
-      return (data ?? []) as LeadTask[];
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: projects = [] } = useQuery({
-    queryKey: ['underwriting-projects', leadId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('entity_projects')
-        .select('*')
-        .eq('entity_id', leadId!)
-        .eq('entity_type', 'underwriting')
-        .order('created_at', { ascending: false });
-      return (data ?? []) as LeadProject[];
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: leadAppointments = [] } = useQuery({
-    queryKey: ['underwriting-appointments', leadId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('appointments')
-        .select('id, title, description, start_time, end_time, appointment_type')
-        .eq('lead_id', leadId!)
-        .order('start_time', { ascending: true });
-      return data ?? [];
-    },
-    enabled: !!leadId,
-  });
+  // contacts / tasks / projects / appointments / files queries moved into <LeadRelatedSidebar>.
 
   const { data: milestones = [] } = useQuery({
     queryKey: ['underwriting-milestones', leadId],
@@ -1102,21 +659,6 @@ export default function UnderwritingExpandedView() {
         .is('resolved_at', null)
         .order('created_at', { ascending: false });
       return data ?? [];
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: leadFiles = [] } = useQuery({
-    queryKey: ['underwriting-files', leadId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('entity_files')
-        .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('entity_id', leadId!)
-        .eq('entity_type', 'underwriting')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as LeadFile[];
     },
     enabled: !!leadId,
   });
@@ -1193,50 +735,7 @@ export default function UnderwritingExpandedView() {
     enabled: !!leadId,
   });
 
-  const COMMON_DOMAINS = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'mail.com', 'protonmail.com'];
-
-  // Related people from `people` table — matched by company name or business email domain
-  const { data: relatedPeople = [] } = useQuery({
-    queryKey: ['underwriting-related-people', lead?.company_name, lead?.email, leadEmails],
-    queryFn: async () => {
-      if (!lead) return [];
-      const results: { id: string; name: string; title: string | null; email: string | null; phone: string | null; company_name: string | null }[] = [];
-
-      // Match by company name
-      if (lead.company_name) {
-        const { data } = await supabase
-          .from('underwriting')
-          .select('id, name, title, email, phone, company_name')
-          .eq('company_name', lead.company_name)
-          .order('name')
-          .limit(20);
-        if (data) results.push(...data);
-      }
-
-      // Collect all business email domains from lead email + entity_emails
-      const allEmails = [lead.email, ...leadEmails.map(e => e.email)].filter(Boolean) as string[];
-      const domains = new Set<string>();
-      for (const email of allEmails) {
-        const domain = email.split('@')[1]?.toLowerCase();
-        if (domain && !COMMON_DOMAINS.includes(domain)) domains.add(domain);
-      }
-
-      // Match by email domain
-      for (const domain of domains) {
-        const { data } = await supabase
-          .from('underwriting')
-          .select('id, name, title, email, phone, company_name')
-          .ilike('email', `%@${domain}`)
-          .limit(20);
-        if (data) results.push(...data);
-      }
-
-      // Deduplicate by id
-      const seen = new Set<string>();
-      return results.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
-    },
-    enabled: !!lead,
-  });
+  // related-people query moved into <LeadRelatedSidebar>.
 
   // ── Gmail email queries ──
   const { data: gmailConnection } = useQuery({
@@ -1254,22 +753,7 @@ export default function UnderwritingExpandedView() {
     enabled: !!leadId,
   });
 
-  // People search for adding contacts
-  const { data: peopleSearchResults = [] } = useQuery({
-    queryKey: ['people-search', contactSearchQuery],
-    queryFn: async () => {
-      const q = contactSearchQuery.trim();
-      if (!q) return [];
-      const { data } = await supabase
-        .from('underwriting')
-        .select('id, name, title, email, company_name')
-        .ilike('name', `%${q}%`)
-        .order('name', { ascending: true })
-        .limit(20);
-      return (data || []).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-    },
-    enabled: addingContact && contactSearchQuery.trim().length > 0,
-  });
+  // people / companies search queries moved into <LeadRelatedSidebar>.
 
   const leadEmailAddresses = useMemo(() => {
     if (!lead) return [];
@@ -1348,6 +832,44 @@ export default function UnderwritingExpandedView() {
     return items.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
   }, [activities, allEmailThreads]);
 
+  // Timeline filtered by selected team members AND selected activity types.
+  // Empty member selection = show all members. Types default to all 6 selected.
+  const filteredTimelineItems = useMemo(() => {
+    // Pass 1: filter by team member
+    let memberFiltered = timelineItems;
+    if (selectedTimelineMembers.size > 0) {
+      const selectedNames = new Set<string>();
+      const selectedEmails = new Set<string>();
+      for (const m of teamMembers) {
+        if (selectedTimelineMembers.has(m.id)) {
+          if (m.name) selectedNames.add(m.name);
+          if (m.email) selectedEmails.add(m.email.toLowerCase());
+        }
+      }
+      memberFiltered = timelineItems.filter((item) => {
+        if (item.type === 'activity') {
+          return !!item.data.created_by && selectedNames.has(item.data.created_by);
+        }
+        const thread = item.data;
+        return (thread.messages ?? []).some((msg: { from?: string }) => {
+          if (!msg.from) return false;
+          const match = msg.from.match(/<([^>]+)>/);
+          const email = (match ? match[1] : msg.from).toLowerCase();
+          return selectedEmails.has(email);
+        });
+      });
+    }
+    // Pass 2: filter by activity type. Types not in the filterable set always show.
+    return memberFiltered.filter((item) => {
+      if (item.type === 'email_thread') {
+        return selectedTimelineTypes.has('email');
+      }
+      const t = item.data.activity_type;
+      if (!ALL_TIMELINE_TYPE_VALUES.has(t)) return true;
+      return selectedTimelineTypes.has(t);
+    });
+  }, [timelineItems, selectedTimelineMembers, selectedTimelineTypes, teamMembers]);
+
   // ── Stats for the 4-box row ──
   const leadStats = useMemo(() => {
     const now = new Date();
@@ -1391,15 +913,13 @@ export default function UnderwritingExpandedView() {
 
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
-    mutationFn: async (email: string) => {
+    mutationFn: async ({ email, type }: { email: string; type: string }) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'underwriting', email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'underwriting', email, email_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['underwriting-emails', leadId] });
-      setNewEmail('');
-      setShowAddEmail(false);
       toast.success('Email added');
     },
   });
@@ -1416,15 +936,13 @@ export default function UnderwritingExpandedView() {
   });
 
   const addPhoneMutation = useMutation({
-    mutationFn: async (phone: string) => {
+    mutationFn: async ({ phone, type }: { phone: string; type: string }) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'underwriting', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'underwriting', phone_number: phone, phone_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['underwriting-phones', leadId] });
-      setNewPhone('');
-      setShowAddPhone(false);
       toast.success('Phone added');
     },
   });
@@ -1441,27 +959,21 @@ export default function UnderwritingExpandedView() {
   });
 
   const addAddressMutation = useMutation({
-    mutationFn: async () => {
-      if (!leadId || !newAddressLine1.trim()) return;
+    mutationFn: async ({ line1, city, state, zip, type }: { line1: string; city: string; state: string; zip: string; type: string }) => {
+      if (!leadId || !line1) return;
       const { error } = await supabase.from('entity_addresses').insert({
         entity_id: leadId,
         entity_type: 'underwriting',
-        address_line_1: newAddressLine1.trim(),
-        city: newAddressCity.trim() || null,
-        state: newAddressState.trim() || null,
-        zip_code: newAddressZip.trim() || null,
-        address_type: newAddressType,
+        address_line_1: line1,
+        city: city || null,
+        state: state || null,
+        zip_code: zip || null,
+        address_type: type,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['underwriting-addresses', leadId] });
-      setNewAddressLine1('');
-      setNewAddressCity('');
-      setNewAddressState('');
-      setNewAddressZip('');
-      setNewAddressType('business');
-      setShowAddAddress(false);
       toast.success('Address added');
     },
   });
@@ -1477,6 +989,23 @@ export default function UnderwritingExpandedView() {
     },
   });
 
+  // ── Owner change handler (passed to shared left column) ──
+  const handleOwnerChange = useCallback(async (newOwnerId: string) => {
+    if (!leadId) return;
+    const previousOwner = lead?.assigned_to ?? null;
+    const { error } = await supabase.from('underwriting').update({ assigned_to: newOwnerId || null }).eq('id', leadId);
+    if (error) { toast.error('Failed to save'); return; }
+    registerUndo({
+      label: 'Owner changed',
+      execute: async () => {
+        const { error: e } = await supabase.from('underwriting').update({ assigned_to: previousOwner || null }).eq('id', leadId);
+        if (e) throw e;
+        handleFieldSaved('assigned_to', previousOwner ?? '');
+      },
+    });
+    handleFieldSaved('assigned_to', newOwnerId);
+  }, [leadId, lead?.assigned_to, registerUndo, handleFieldSaved]);
+
   if (isLoading || !lead) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -1484,9 +1013,6 @@ export default function UnderwritingExpandedView() {
       </div>
     );
   }
-
-  const pendingTasks = tasks.filter((t: LeadTask) => !t.completed_at);
-  const completedTasks = tasks.filter((t: LeadTask) => !!t.completed_at);
 
   const dealValue = lead.deal_value ?? fakeValue(lead.id);
   const dealValueStr = lead.deal_value != null ? String(lead.deal_value) : '';
@@ -1511,314 +1037,22 @@ export default function UnderwritingExpandedView() {
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
-        {/* LEFT: Details — fully editable */}
-        <ScrollArea className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
-          <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
-
-            {/* ── Back Arrow ── */}
-            <button onClick={goBack} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
-              <svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="30" y1="8" x2="2" y2="8" />
-                <polyline points="8,2 2,8 8,14" />
-              </svg>
-            </button>
-
-            {/* ── Contact Card Header ── */}
-            <div className="flex items-start gap-4">
-              <CrmAvatar name={lead.name} size="xl" />
-              <div className="min-w-0 pt-0.5">
-                <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{getLeadDisplayName(lead)}</h2>
-                <p className="text-sm text-muted-foreground mt-0.5 truncate">
-                  {[lead.company_name, formatValue(dealValue)].filter(Boolean).join(' / ')}
-                </p>
-                <div className="mt-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
-                    <DollarSign className="h-3 w-3" />
-                    Opportunity
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Opportunity Name */}
-            <EditableField label="Opportunity Name" value={lead.opportunity_name || lead.name || ''} field="opportunity_name" leadId={lead.id} placeholder="e.g. Client - Refi 6-unit Apt. Bldg" onSaved={handleFieldSaved} tableName="underwriting" />
-
-            {/* Pipeline */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Pipeline</label>
-              <div className="border-b border-border pb-1">
-                <p className="text-base text-foreground py-1.5 px-1">Underwriting</p>
-              </div>
-            </div>
-
-            {/* Stage */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Stage</label>
-              <div className="border-b border-border pb-1">
-                <Select value={lead.status} onValueChange={(v) => handleStageChange(v as LeadStatus)}>
-                  <SelectTrigger className="h-10 w-full text-base text-foreground border-0 bg-transparent shadow-none px-1 rounded-none">
-                    <SelectValue>{stageCfg?.label ?? lead.status}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="min-w-[220px]">
-                    {UNDERWRITING_STATUSES.map((s) => {
-                      const cfg = canonicalStageConfig[s];
-                      return (
-                        <SelectItem key={s} value={s} className="text-sm">
-                          {cfg?.label ?? s}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* CLX File Name */}
-            <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
-
-            {/* Waiting On */}
-            <EditableField icon={<Clock className="h-3.5 w-3.5" />} label="Waiting On" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
-
-            {/* Tags */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Tags</label>
-              <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
-            </div>
-
-            {/* Value */}
-            <EditableField icon={<DollarSign className="h-3.5 w-3.5" />} label="Value" value={lead.deal_value != null ? formatValue(lead.deal_value) : ''} field="deal_value" leadId={lead.id} onSaved={handleFieldSaved} transform={(v) => v ? Number(v.replace(/[^0-9.$,]/g, '')) : null} tableName="underwriting" />
-
-            {/* Description */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Description</label>
-              <EditableNotesField value={lead.description ?? ''} field="description" leadId={lead.id} placeholder="Add Description" onSaved={handleFieldSaved} tableName="underwriting" />
-            </div>
-
-            {/* Primary Contact */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Primary Contact</label>
-              <div className="border-b border-border pb-3">
-                <div className="flex items-center gap-3 px-1 py-1.5">
-                  <CrmAvatar name={lead.name} size="lg" />
-                  <div className="min-w-0">
-                    <p className="text-base text-foreground truncate">{lead.name}</p>
-                    {lead.title && <p className="text-xs text-muted-foreground truncate">{lead.title}</p>}
-                  </div>
-                </div>
-                {lead.phone && (
-                  <div className="flex items-center gap-2 px-1 py-1 min-w-0">
-                    <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-foreground truncate">{formatPhoneNumber(lead.phone)}</span>
-                  </div>
-                )}
-                {lead.email && (
-                  <div className="flex items-center gap-2 px-1 py-1 min-w-0">
-                    <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-foreground truncate">{lead.email}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Created */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Created</label>
-              <div className="border-b border-border pb-1">
-                <p className="text-base text-foreground py-1.5 px-1">{formatDate(lead.created_at)}</p>
-              </div>
-            </div>
-
-            {/* Close Date */}
-            <EditableField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Close Date" value={(lead as any).close_date ? formatDate((lead as any).close_date) : ''} field="close_date" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
-
-            {/* Loss Reason */}
-            <EditableField icon={<X className="h-3.5 w-3.5" />} label="Loss Reason" value={(lead as any).loss_reason ?? ''} field="loss_reason" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
-
-            {/* Company */}
-            <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
-
-            {/* Owner */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Owner</label>
-              <div className="border-b border-border pb-1">
-                {ownerOptions.length > 0 ? (
-                  <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
-                    const previousOwner = lead.assigned_to;
-                    const { error } = await supabase.from('underwriting').update({ assigned_to: v || null }).eq('id', lead.id);
-                    if (error) { toast.error('Failed to save'); return; }
-                    registerUndo({
-                      label: 'Owner changed',
-                      execute: async () => {
-                        const { error: e } = await supabase.from('underwriting').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
-                        if (e) throw e;
-                        handleFieldSaved('assigned_to', previousOwner ?? '');
-                      },
-                    });
-                    handleFieldSaved('assigned_to', v);
-                  }}>
-                    <SelectTrigger className="h-10 w-full text-base text-foreground border-0 bg-transparent shadow-none px-1 rounded-none">
-                      <SelectValue>{assignedName}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ownerOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value} className="text-sm">{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-base text-foreground py-1.5 px-1">{assignedName}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Source */}
-            <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? ''} field="source" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
-
-            {/* Priority */}
-            <EditableField icon={<Flag className="h-3.5 w-3.5" />} label="Priority" value={(lead as any).priority ?? ''} field="priority" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
-
-            {/* Win Percentage */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Win Percentage</label>
-              <div className="border-b border-border pb-1">
-                <p className="text-base text-foreground py-1.5 px-1 tabular-nums">
-                  {(lead as any).win_percentage != null ? (
-                    <>{(lead as any).win_percentage}<br /><span className="text-sm text-muted-foreground">{(lead as any).win_percentage}%</span></>
-                  ) : (
-                    <span className="text-muted-foreground italic">{'\u2014'}</span>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            {/* Visibility */}
-            <EditableField icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value={(lead as any).visibility ?? 'everyone'} field="visibility" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
-
-            {/* Email */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Email</label>
-              <div className="space-y-1">
-                {leadEmails.map((e) => (
-                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
-                ))}
-                {showAddEmail ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
-                    <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                    <Select value={newEmailType} onValueChange={setNewEmailType}>
-                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="work" className="text-xs">Work</SelectItem>
-                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
-                  </div>
-                ) : (
-                  <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-1 py-1">+ Add Email</button>
-                )}
-              </div>
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Phone</label>
-              <div className="space-y-1">
-                {leadPhones.map((p) => (
-                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
-                ))}
-                {showAddPhone ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
-                    <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                    <Select value={newPhoneType} onValueChange={setNewPhoneType}>
-                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="work" className="text-xs">Work</SelectItem>
-                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                        <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
-                  </div>
-                ) : (
-                  <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-1 py-1">+ Add Phone</button>
-                )}
-              </div>
-            </div>
-
-            {/* Address */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Address</label>
-              <div className="space-y-1">
-                {leadAddresses.map((a) => (
-                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
-                ))}
-                {showAddAddress ? (
-                  <div className="rounded-lg p-2.5 space-y-2">
-                    <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                    <div className="flex gap-1.5">
-                      <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                      <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                      <input value={newAddressZip} onChange={(e) => setNewAddressZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Select value={newAddressType} onValueChange={setNewAddressType}>
-                        <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="business" className="text-xs">Business</SelectItem>
-                          <SelectItem value="home" className="text-xs">Home</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="flex gap-1.5">
-                        <button onClick={() => { setShowAddAddress(false); setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip(''); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
-                        <button onClick={() => addAddressMutation.mutate()} disabled={!newAddressLine1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-1 py-1">+ Add Address</button>
-                )}
-              </div>
-            </div>
-
-            {/* About */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">About</label>
-              <EditableNotesField value={lead.about ?? ''} field="about" leadId={lead.id} placeholder="Add About" onSaved={handleFieldSaved} tableName="underwriting" />
-            </div>
-
-            {/* History */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">History</label>
-              <EditableNotesField value={lead.history ?? ''} field="history" leadId={lead.id} placeholder="Add History" onSaved={handleFieldSaved} tableName="underwriting" />
-            </div>
-
-            {/* Bank Relationships */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Bank Relationships</label>
-              <EditableNotesField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Add Bank Relationships" onSaved={handleFieldSaved} tableName="underwriting" />
-            </div>
-
-            {/* #UW */}
-            <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="#UW" value={lead.uw_number ?? ''} field="uw_number" leadId={lead.id} onSaved={handleFieldSaved} tableName="underwriting" />
-
-            {/* Client Working with Other Lenders */}
-            <div onClick={() => handleBooleanToggle('client_other_lenders', lead.client_other_lenders)} className="flex items-center justify-between py-3 border-b border-border hover:bg-muted/40 transition-colors cursor-pointer">
-              <label className="text-sm text-muted-foreground">Client Working with Other Lenders</label>
-              <div className={`h-5 w-9 rounded-full transition-colors relative ${lead.client_other_lenders ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}>
-                <div className={`h-4 w-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${lead.client_other_lenders ? 'translate-x-4' : 'translate-x-0.5'}`} />
-              </div>
-            </div>
-
-            {/* Weekly's */}
-            <div onClick={() => handleBooleanToggle('flagged_for_weekly', lead.flagged_for_weekly)} className="flex items-center justify-between py-3 border-b border-border hover:bg-muted/40 transition-colors cursor-pointer">
-              <label className="text-sm text-muted-foreground">Weekly's</label>
-              <div className={`h-5 w-9 rounded-full transition-colors relative ${lead.flagged_for_weekly ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}>
-                <div className={`h-4 w-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${lead.flagged_for_weekly ? 'translate-x-4' : 'translate-x-0.5'}`} />
-              </div>
-            </div>
-
-          </div>
-        </ScrollArea>
+        {/* LEFT: Details — fully editable (shared component) */}
+        <ExpandedLeftColumn
+          lead={lead}
+          tableName="underwriting"
+          currentPipeline="underwriting"
+          stages={UNDERWRITING_STATUSES}
+          stageConfig={canonicalStageConfig}
+          ownerOptions={ownerOptions}
+          assignedName={assignedName}
+          dealValue={dealValue}
+          goBack={goBack}
+          onStageChange={handleStageChange}
+          onFieldSaved={handleFieldSaved}
+          onBooleanToggle={handleBooleanToggle}
+          onOwnerChange={handleOwnerChange}
+        />
 
         {/* CENTER: Activity */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
@@ -2021,7 +1255,107 @@ export default function UnderwritingExpandedView() {
               </div>
 
               {/* Earlier — Activity History + Email Threads */}
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
+              <div className="flex items-center justify-between mb-4 gap-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Earlier</h3>
+                <div className="flex items-center gap-3">
+                  {teamMembers.length > 0 && (
+                    <div className="flex items-center -space-x-1.5">
+                      {teamMembers.map((member) => {
+                        const isSelected = selectedTimelineMembers.has(member.id);
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() => {
+                              const next = new Set(selectedTimelineMembers);
+                              if (next.has(member.id)) next.delete(member.id);
+                              else next.add(member.id);
+                              setSelectedTimelineMembers(next);
+                            }}
+                            style={{ borderRadius: '9999px' }}
+                            className={`w-7 h-7 aspect-square shrink-0 border-2 font-semibold text-[10px] leading-none flex items-center justify-center transition-all ${
+                              isSelected
+                                ? 'border-violet-500 text-white bg-violet-500 z-10'
+                                : 'border-slate-300 text-violet-700 bg-violet-50 hover:border-violet-400'
+                            }`}
+                            title={member.name}
+                            aria-label={member.name}
+                          >
+                            {member.name.charAt(0).toUpperCase()}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs font-semibold text-foreground hover:text-violet-700 transition-colors"
+                      >
+                        <span>Filters ({filteredTimelineItems.length})</span>
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-64 p-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allSelected = selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length;
+                          setSelectedTimelineTypes(
+                            allSelected ? new Set() : new Set(TIMELINE_TYPE_FILTERS.map((f) => f.value))
+                          );
+                        }}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                      >
+                        <List className="h-4 w-4 text-muted-foreground" />
+                        <span className="flex-1 text-left text-sm text-foreground">All Activities</span>
+                        <div
+                          className={`w-4 h-4 rounded flex items-center justify-center ${
+                            selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length
+                              ? 'bg-violet-600 text-white'
+                              : 'border border-slate-300'
+                          }`}
+                        >
+                          {selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length && (
+                            <Check className="h-3 w-3" />
+                          )}
+                        </div>
+                      </button>
+                      <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-t border-border">
+                        Default Filters
+                      </div>
+                      {TIMELINE_TYPE_FILTERS.map((f) => {
+                        const Icon = f.icon;
+                        const isSelected = selectedTimelineTypes.has(f.value);
+                        return (
+                          <button
+                            key={f.value}
+                            type="button"
+                            onClick={() => {
+                              const next = new Set(selectedTimelineTypes);
+                              if (next.has(f.value)) next.delete(f.value);
+                              else next.add(f.value);
+                              setSelectedTimelineTypes(next);
+                            }}
+                            className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                          >
+                            <Icon className="h-4 w-4 text-foreground" />
+                            <span className="flex-1 text-left text-sm text-foreground">{f.label}</span>
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center ${
+                                isSelected ? 'bg-violet-600 text-white' : 'border border-slate-300'
+                              }`}
+                            >
+                              {isSelected && <Check className="h-3 w-3" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
               {gmailEmailsLoading && (
                 <div className="flex items-center gap-2 py-2 mb-3">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
@@ -2029,8 +1363,8 @@ export default function UnderwritingExpandedView() {
                 </div>
               )}
               <div className="space-y-3">
-                {timelineItems.length > 0 ? (
-                  timelineItems.map((item) => {
+                {filteredTimelineItems.length > 0 ? (
+                  filteredTimelineItems.map((item) => {
                     // Skip checklist activities — they're rendered above as interactive cards
                     if (item.type === 'activity' && item.data?.activity_type === 'checklist') return null;
                     if (item.type === 'email_thread') {
@@ -2232,567 +1566,27 @@ export default function UnderwritingExpandedView() {
             onPersonUpdate={(updated) => setSelectedPerson(updated)}
           />
         ) : (
-        <div className="w-full md:w-[280px] xl:w-[320px] md:shrink-0 md:min-w-[220px] min-w-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
-          <div className="px-4 py-3 border-b border-border">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Related</span>
-          </div>
-          <ScrollArea className="md:flex-1">
-          <div className="py-4 px-3 pr-4 overflow-hidden">
-            {/* People */}
-            <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length + relatedPeople.filter(rp => !contacts.some(c => c.name.toLowerCase() === rp.name.toLowerCase())).length} onAdd={() => setAddingContact(true)}>
-              <div className="space-y-3 py-1">
-                {/* Linked contacts */}
-                {contacts.map((c) => (
-                  editingContactId === c.id ? (
-                    <div key={c.id} className="space-y-1.5">
-                      <input
-                        autoFocus
-                        value={editContactName}
-                        onChange={(e) => setEditContactName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && editContactName.trim()) handleSaveEditContact();
-                          if (e.key === 'Escape') handleCancelEditContact();
-                        }}
-                        placeholder="Name (required)"
-                        className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                      />
-                      <input
-                        value={editContactTitle}
-                        onChange={(e) => setEditContactTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && editContactName.trim()) handleSaveEditContact();
-                          if (e.key === 'Escape') handleCancelEditContact();
-                        }}
-                        placeholder="Title (optional)"
-                        className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                      />
-                    </div>
-                  ) : (
-                    <div key={c.id} className="flex items-start gap-2.5 group cursor-pointer" onClick={() => handleOpenPersonPanel(c.name)}>
-                      <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300 shrink-0 mt-0.5">
-                        {c.name.split(' ').map((n: string) => n[0]?.toUpperCase()).join('').slice(0, 2)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-semibold text-foreground truncate hover:text-blue-600 dark:hover:text-blue-400 hover:underline">{c.name}</span>
-                          {c.is_primary && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-foreground font-medium shrink-0">
-                              <Bookmark className="h-3 w-3 fill-current" /> Primary
-                            </span>
-                          )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); deleteContactMutation.mutate(c.id); }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-auto"
-                          >
-                            <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                          </button>
-                        </div>
-                        {(c.title || lead.company_name) && (
-                          <p className="text-[11px] text-muted-foreground truncate">
-                            {c.title && <span className="text-blue-600 dark:text-blue-400">{c.title}</span>}
-                            {c.title && lead.company_name && ' at '}
-                            {lead.company_name && <span className="text-blue-600 dark:text-blue-400">{lead.company_name}</span>}
-                          </p>
-                        )}
-                        {(c.phone || c.email) && (
-                          <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                            {c.phone && <span>{c.phone}</span>}
-                            {c.phone && c.email && <span className="mx-1">|</span>}
-                            {c.email && <span>{c.email}</span>}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )
-                ))}
-
-                {/* Related people from people table */}
-                {relatedPeople.filter(rp => !contacts.some(c => c.name.toLowerCase() === rp.name.toLowerCase())).length > 0 && (
-                  <>
-                    {contacts.length > 0 && <div className="border-t border-border" />}
-                    {relatedPeople
-                      .filter(rp => !contacts.some(c => c.name.toLowerCase() === rp.name.toLowerCase()))
-                      .map((rp) => (
-                        <div key={rp.id} className="flex items-start gap-2.5 cursor-pointer" onClick={() => setSelectedPerson(rp)}>
-                          <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300 shrink-0 mt-0.5">
-                            {rp.name.split(' ').map((n: string) => n[0]?.toUpperCase()).join('').slice(0, 2)}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <span className="text-xs font-semibold text-foreground truncate block hover:text-blue-600 dark:hover:text-blue-400 hover:underline">{rp.name}</span>
-                            {(rp.title || rp.company_name) && (
-                              <p className="text-[11px] text-muted-foreground truncate">
-                                {rp.title && <span className="text-blue-600 dark:text-blue-400">{rp.title}</span>}
-                                {rp.title && rp.company_name && ' at '}
-                                {rp.company_name && <span className="text-blue-600 dark:text-blue-400">{rp.company_name}</span>}
-                              </p>
-                            )}
-                            {(rp.phone || rp.email) && (
-                              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                                {rp.phone && <span>{rp.phone}</span>}
-                                {rp.phone && rp.email && <span className="mx-1">|</span>}
-                                {rp.email && <span>{rp.email}</span>}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                  </>
-                )}
-
-                {contacts.length === 0 && !addingContact && relatedPeople.filter(rp => !contacts.some(c => c.name.toLowerCase() === rp.name.toLowerCase())).length === 0 && (
-                  <p className="text-xs text-muted-foreground">No contacts</p>
-                )}
-
-                {/* Add person */}
-                {addingContact ? (
-                  <div className="relative mt-1">
-                    <input
-                      autoFocus
-                      value={contactSearchQuery}
-                      onChange={(e) => setContactSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') { setAddingContact(false); setContactSearchQuery(''); }
-                      }}
-                      placeholder="Search people..."
-                      disabled={savingContact}
-                      className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingContact && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
-                    {contactSearchQuery.trim().length > 0 && peopleSearchResults.length > 0 && (
-                      <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
-                        {peopleSearchResults
-                          .filter(p => !contacts.some(c => c.name.toLowerCase() === p.name.toLowerCase()))
-                          .map((p) => (
-                          <button
-                            key={p.id}
-                            onClick={() => handleLinkPerson(p)}
-                            className="w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-muted/60 transition-colors"
-                          >
-                            <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
-                              {p.name[0]?.toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <span className="text-xs font-medium text-foreground">{p.name}</span>
-                              {p.title && <span className="text-xs text-muted-foreground ml-1">· {p.title}</span>}
-                              {p.company_name && <p className="text-[10px] text-muted-foreground truncate">{p.company_name}</p>}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {contactSearchQuery.trim().length > 0 && peopleSearchResults.filter(p => !contacts.some(c => c.name.toLowerCase() === p.name.toLowerCase())).length === 0 && (
-                      <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg px-2 py-2">
-                        <p className="text-xs text-muted-foreground">No matching people found</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingContact(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + Add person...
-                  </button>
-                )}
-
-              </div>
-            </RelatedSection>
-
-            {/* Tasks */}
-            <RelatedSection
-              icon={<CheckSquare className="h-3.5 w-3.5" />}
-              label="Tasks"
-              count={pendingTasks.length}
-              iconColor="text-emerald-500"
-              onAdd={() => { setEditingTask(null); setNewTaskTitle(''); setTaskDialogOpen(true); }}
-            >
-              <div className="space-y-1 py-1">
-                {pendingTasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded-md px-1 py-1 -mx-1 transition-colors group"
-                    onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
-                  >
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
-                      className="shrink-0"
-                    >
-                      <div className="h-3.5 w-3.5 rounded-sm border border-muted-foreground/40 group-hover:border-emerald-400 transition-colors" />
-                    </button>
-                    <span className="flex-1 truncate text-foreground font-medium">{t.title}</span>
-                    {t.due_date && (
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        {format(parseISO(t.due_date), 'MMM d')}
-                      </span>
-                    )}
-                  </div>
-                ))}
-                <button
-                  onClick={() => { setEditingTask(null); setNewTaskTitle(''); setTaskDialogOpen(true); }}
-                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                >
-                  + Add task...
-                </button>
-                {completedTasks.length > 0 && (
-                  <>
-                    <button
-                      onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 w-full"
-                    >
-                      {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                      Show completed tasks ({completedTasks.length})
-                    </button>
-                    {showCompletedTasks && completedTasks.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded-md px-1 py-1 -mx-1 transition-colors"
-                        onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
-                      >
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
-                          className="shrink-0"
-                        >
-                          <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />
-                        </button>
-                        <span className="flex-1 truncate line-through text-muted-foreground">{t.title}</span>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Pipeline Records */}
-            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1}>
-              <div className="text-xs py-1">
-                <Badge variant="secondary" className={`text-[11px] ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
-                  {stageCfg?.label ?? lead.status}
-                </Badge>
-              </div>
-            </RelatedSection>
-
-            {/* Companies */}
-            <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Companies" count={lead.company_name ? 1 : 0} onAdd={() => setAddingCompany(true)}>
-              <div className="space-y-2 py-1">
-                {lead.company_name && (
-                  <div className="text-xs text-foreground flex items-center gap-2">
-                    <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
-                      {lead.company_name[0]?.toUpperCase()}
-                    </div>
-                    {lead.company_name}
-                  </div>
-                )}
-                {!lead.company_name && !addingCompany && (
-                  <p className="text-xs text-muted-foreground">No companies</p>
-                )}
-                {addingCompany ? (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <input
-                      autoFocus
-                      value={newCompanyName}
-                      onChange={(e) => setNewCompanyName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newCompanyName.trim()) handleSaveCompany();
-                        if (e.key === 'Escape') { setAddingCompany(false); setNewCompanyName(''); }
-                      }}
-                      placeholder="Company name..."
-                      disabled={savingCompany}
-                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingCompany && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingCompany(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + {lead.company_name ? 'Change' : 'Add'} company...
-                  </button>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Files */}
-            <RelatedSection
-              icon={<FileText className="h-3.5 w-3.5" />}
-              label="Files"
-              count={leadFiles.length}
-              onAdd={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <div className="space-y-1.5 py-1">
-                {leadFiles.map((f) => (
-                  <div key={f.id} className="flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-                    <span className="text-sm shrink-0">{getFileIcon(f.file_type)}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">{f.file_name}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const { data, error } = await supabase.storage
-                            .from('lead-files')
-                            .createSignedUrl(f.file_url, 60);
-                          if (error || !data?.signedUrl) {
-                            toast.error('Failed to generate download link');
-                            return;
-                          }
-                          const a = document.createElement('a');
-                          a.href = data.signedUrl;
-                          a.download = f.file_name;
-                          a.target = '_blank';
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                        }}
-                        className="p-1 rounded hover:bg-muted"
-                        title="Download"
-                      >
-                        <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteFile(f)}
-                        className="p-1 rounded hover:bg-muted"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {uploadingFile && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                    <Loader2 className="h-3 w-3 animate-spin text-orange-500" />
-                    Uploading...
-                  </div>
-                )}
-                {leadFiles.length === 0 && !uploadingFile && (
-                  <p className="text-xs text-muted-foreground">No files</p>
-                )}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                >
-                  + Upload file...
-                </button>
-              </div>
-            </RelatedSection>
-
-            {/* Calendar Events */}
-            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={leadAppointments.length} onAdd={() => setEventDialogOpen(true)}>
-              <div className="space-y-1.5 py-1">
-                {leadAppointments.map((evt: any) => {
-                  const startDate = evt.start_time ? parseISO(evt.start_time) : null;
-                  const isPast = startDate ? startDate < new Date() : false;
-                  return (
-                    <div key={evt.id} className={`group flex items-start gap-2 text-xs rounded-lg px-1.5 py-1.5 -mx-1 hover:bg-muted/60 transition-colors ${isPast ? 'opacity-60' : ''}`}>
-                      <div className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                        evt.appointment_type === 'call' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
-                        evt.appointment_type === 'video' ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600' :
-                        'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
-                      }`}>
-                        {evt.appointment_type === 'call' ? <Phone className="h-3 w-3" /> :
-                         evt.appointment_type === 'video' ? <Eye className="h-3 w-3" /> :
-                         <CalendarDays className="h-3 w-3" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">{evt.title}</p>
-                        {startDate && (
-                          <p className="text-[10px] text-muted-foreground">
-                            {format(startDate, 'MMM d, yyyy')} · {format(startDate, 'h:mm a')}
-                            {evt.end_time && ` – ${format(parseISO(evt.end_time), 'h:mm a')}`}
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleDeleteEvent(evt.id)}
-                        className="shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-all mt-0.5"
-                        title="Delete event"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  );
-                })}
-                {leadAppointments.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No events</p>
-                )}
-                <button
-                  onClick={() => setEventDialogOpen(true)}
-                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                >
-                  + Add event...
-                </button>
-              </div>
-            </RelatedSection>
-
-            {/* Projects */}
-            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={projects.length} iconColor="text-amber-500" onAdd={() => setShowAddProject(true)}>
-              <div className="space-y-1 py-1">
-                {projects.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded-md px-1.5 py-1.5 -mx-1 transition-colors group"
-                    onClick={() => navigate(`/admin/pipeline/projects/expanded-view/${p.id}`)}
-                  >
-                    <FolderOpen className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                    <span className="flex-1 truncate text-foreground font-medium">{p.name}</span>
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 rounded-full capitalize shrink-0">
-                      {(p.status || 'open').replace(/_/g, ' ')}
-                    </Badge>
-                  </div>
-                ))}
-                {projects.length === 0 && !showAddProject && (
-                  <p className="text-xs text-muted-foreground py-1">No projects</p>
-                )}
-                {showAddProject ? (
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      value={newProjectName}
-                      onChange={(e) => setNewProjectName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newProjectName.trim()) handleInlineCreateProject();
-                        if (e.key === 'Escape') { setShowAddProject(false); setNewProjectName(''); }
-                      }}
-                      placeholder="Add Project"
-                      className="flex-1 text-xs bg-transparent border-b-2 border-blue-500 outline-none py-1 placeholder:text-muted-foreground/50"
-                      autoFocus
-                      disabled={savingProject}
-                    />
-                    <button onClick={() => { setShowAddProject(false); setNewProjectName(''); }}>
-                      <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setShowAddProject(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + Add project...
-                  </button>
-                )}
-              </div>
-            </RelatedSection>
-          </div>
-          </ScrollArea>
-        </div>
+          <LeadRelatedSidebar
+            entityType="underwriting"
+            leadId={leadId!}
+            lead={{
+              id: lead.id,
+              name: lead.name,
+              email: lead.email,
+              company_name: lead.company_name,
+              status: lead.status,
+            }}
+            leadEmails={leadEmails}
+            stageCfg={stageCfg ? { label: stageCfg.label, bg: stageCfg.bg, color: stageCfg.color } : null}
+            teamMembers={teamMembers}
+            currentUserName={teamMember?.name ?? null}
+            leadQueryKey={['underwriting-expanded', leadId]}
+            leadsListQueryKey={['underwriting-deals']}
+            onPersonSelect={(person) => setSelectedPerson(person)}
+            onProjectClick={(projectId) => navigate(`/admin/pipeline/projects/expanded-view/${projectId}`)}
+          />
         )}
       </div>
-
-      {/* Task Detail Dialog */}
-      {leadId && (
-        <PeopleTaskDetailDialog
-          task={editingTask}
-          open={taskDialogOpen}
-          onClose={() => { setTaskDialogOpen(false); setEditingTask(null); }}
-          leadId={leadId}
-          leadName={lead?.opportunity_name || lead?.name || ''}
-          teamMembers={teamMembers}
-          currentUserName={teamMember?.name ?? null}
-          initialTitle={editingTask ? undefined : newTaskTitle}
-          onSaved={() => queryClient.invalidateQueries({ queryKey: ['person-tasks', leadId] })}
-        />
-      )}
-
-
-      {/* Calendar Event Dialog */}
-      <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
-        <DialogContent className="sm:max-w-[440px]">
-          <DialogHeader>
-            <DialogTitle>New Event</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
-              <input
-                autoFocus
-                value={eventTitle}
-                onChange={(e) => setEventTitle(e.target.value)}
-                placeholder="Event title..."
-                className="w-full text-sm text-foreground bg-muted border border-border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
-              <Select value={eventType} onValueChange={setEventType}>
-                <SelectTrigger className="w-full text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="meeting">Meeting</SelectItem>
-                  <SelectItem value="call">Phone Call</SelectItem>
-                  <SelectItem value="video">Video Call</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
-              <Popover open={eventDatePickerOpen} onOpenChange={setEventDatePickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left text-sm font-normal">
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    {eventDate ? format(eventDate, 'MMM d, yyyy') : 'Pick a date...'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={eventDate}
-                    onSelect={(date) => { setEventDate(date); setEventDatePickerOpen(false); }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Start Time</label>
-                <input
-                  type="time"
-                  value={eventTime}
-                  onChange={(e) => setEventTime(e.target.value)}
-                  className="w-full text-sm text-foreground bg-muted border border-border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">End Time</label>
-                <input
-                  type="time"
-                  value={eventEndTime}
-                  onChange={(e) => setEventEndTime(e.target.value)}
-                  className="w-full text-sm text-foreground bg-muted border border-border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
-              <textarea
-                value={eventDescription}
-                onChange={(e) => setEventDescription(e.target.value)}
-                placeholder="Add details..."
-                rows={2}
-                className="w-full text-sm text-foreground bg-muted border border-border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 resize-none"
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setEventDialogOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleSaveEvent} disabled={eventSaving || !eventTitle.trim() || !eventDate}>
-              {eventSaving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-              Create Event
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
     <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
       <DialogContent className="sm:max-w-[400px]">

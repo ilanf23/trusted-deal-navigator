@@ -59,6 +59,16 @@ async function insertDeal(table: CrmTable, data: Record<string, unknown>) {
   }
 }
 
+async function selectDealById(table: CrmTable, dealId: string) {
+  if (table === 'potential') {
+    return supabase.from('potential').select('*').eq('id', dealId).single();
+  } else if (table === 'underwriting') {
+    return supabase.from('underwriting').select('*').eq('id', dealId).single();
+  } else {
+    return supabase.from('lender_management').select('*').eq('id', dealId).single();
+  }
+}
+
 async function deleteDeal(table: CrmTable, dealId: string) {
   if (table === 'potential') {
     return supabase.from('potential').delete().eq('id', dealId);
@@ -142,6 +152,129 @@ export const useCrmMutations = (table: CrmTable) => {
     },
   });
 
+  const duplicateDealForSamePerson = useMutation({
+    mutationFn: async ({ sourceId, dealOverrides, newOwnerId }: {
+      sourceId: string;
+      dealOverrides: {
+        opportunity_name?: string | null;
+        deal_value?: number | null;
+        description?: string | null;
+        close_date?: string | null;
+        stage_id: string;
+      };
+      newOwnerId: string | null;
+    }) => {
+      // 1. Fetch source row
+      const { data: source, error: srcErr } = await selectDealById(table, sourceId);
+      if (srcErr) throw srcErr;
+      if (!source) throw new Error('Source opportunity not found');
+
+      // 2. Build insert payload — identity fields only, plus deal overrides.
+      // Everything else falls back to DB defaults (nulls / DB-generated).
+      // The three pipeline tables share these identity columns; potential also
+      // has prospect-only social fields, handled below.
+      const sourceRow = source as Record<string, unknown>;
+      const insertPayload: Record<string, unknown> = {
+        // Identity (common to potential / underwriting / lender_management)
+        name: sourceRow.name,
+        company_name: sourceRow.company_name ?? null,
+        email: sourceRow.email ?? null,
+        phone: sourceRow.phone ?? null,
+        title: sourceRow.title ?? null,
+        known_as: sourceRow.known_as ?? null,
+        // Deal overrides from the dialog
+        opportunity_name: dealOverrides.opportunity_name ?? null,
+        deal_value: dealOverrides.deal_value ?? null,
+        description: dealOverrides.description ?? null,
+        close_date: dealOverrides.close_date ?? null,
+        stage_id: dealOverrides.stage_id,
+        status: 'initial_review',
+        // Owner = current user (per product decision; do not inherit source owner)
+        assigned_to: newOwnerId,
+      };
+
+      // Prospect-only identity columns (only `potential` has these)
+      if (table === 'potential') {
+        insertPayload.linkedin = sourceRow.linkedin ?? null;
+        insertPayload.twitter = sourceRow.twitter ?? null;
+        insertPayload.website = sourceRow.website ?? null;
+        insertPayload.work_website = sourceRow.work_website ?? null;
+      }
+
+      // 3. Insert the new opportunity
+      const { data: newDeal, error: insErr } = await insertDeal(table, insertPayload);
+      if (insErr) throw insErr;
+      if (!newDeal) throw new Error('Insert returned no row');
+
+      // 4. Best-effort copy of contact satellite rows. If any of these fails we
+      // still consider the duplication a success — the new opportunity exists,
+      // and the user will see a soft warning so they can re-add manually.
+      let satelliteWarning = false;
+      try {
+        const entityTypeValue = ENTITY_TYPE_MAP[table];
+        const newId = (newDeal as { id: string }).id;
+
+        const [emailsRes, phonesRes, addressesRes] = await Promise.all([
+          supabase
+            .from('entity_emails')
+            .select('email, email_type, is_primary')
+            .eq('entity_id', sourceId)
+            .eq('entity_type', entityTypeValue),
+          supabase
+            .from('entity_phones')
+            .select('phone_number, phone_type, is_primary')
+            .eq('entity_id', sourceId)
+            .eq('entity_type', entityTypeValue),
+          supabase
+            .from('entity_addresses')
+            .select('address_line_1, address_line_2, address_type, city, state, zip_code, country, is_primary')
+            .eq('entity_id', sourceId)
+            .eq('entity_type', entityTypeValue),
+        ]);
+
+        if (emailsRes.error) throw emailsRes.error;
+        if (phonesRes.error) throw phonesRes.error;
+        if (addressesRes.error) throw addressesRes.error;
+
+        if (emailsRes.data && emailsRes.data.length > 0) {
+          const { error } = await supabase.from('entity_emails').insert(
+            emailsRes.data.map((e) => ({ ...e, entity_id: newId, entity_type: entityTypeValue })),
+          );
+          if (error) throw error;
+        }
+        if (phonesRes.data && phonesRes.data.length > 0) {
+          const { error } = await supabase.from('entity_phones').insert(
+            phonesRes.data.map((p) => ({ ...p, entity_id: newId, entity_type: entityTypeValue })),
+          );
+          if (error) throw error;
+        }
+        if (addressesRes.data && addressesRes.data.length > 0) {
+          const { error } = await supabase.from('entity_addresses').insert(
+            addressesRes.data.map((a) => ({ ...a, entity_id: newId, entity_type: entityTypeValue })),
+          );
+          if (error) throw error;
+        }
+      } catch (err) {
+        console.warn('Failed to copy contact satellite rows on duplicate:', err);
+        satelliteWarning = true;
+      }
+
+      return { newDeal, satelliteWarning };
+    },
+    onSuccess: ({ satelliteWarning }) => {
+      queryClient.invalidateQueries({ queryKey: [queryKey] });
+      if (satelliteWarning) {
+        toast.warning("Opportunity created, but contact info wasn't fully copied");
+      } else {
+        toast.success('Opportunity duplicated');
+      }
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Failed to duplicate opportunity';
+      toast.error(msg);
+    },
+  });
+
   const removeLeadFromPipeline = useMutation({
     mutationFn: async (dealId: string) => {
       const { error } = await deleteDeal(table, dealId);
@@ -171,7 +304,7 @@ export const useCrmMutations = (table: CrmTable) => {
     },
   });
 
-  return { moveLeadToStage, addLeadToPipeline, removeLeadFromPipeline, bulkRemoveLeadsFromPipeline };
+  return { moveLeadToStage, addLeadToPipeline, duplicateDealForSamePerson, removeLeadFromPipeline, bulkRemoveLeadsFromPipeline };
 };
 
 // Backward compat alias

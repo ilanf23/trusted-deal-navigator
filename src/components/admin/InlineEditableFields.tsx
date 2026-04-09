@@ -2,11 +2,10 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Pencil, Check, Loader2, X, Tag,
+  Pencil, Check, Loader2, X, Tag, Lock,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -252,6 +251,201 @@ export function EditableField({
   );
 }
 
+// ── Stacked editable field: label on top, large value/placeholder below ──
+export function StackedEditableField({
+  label, value, field, leadId, onSaved, transform, tableName = 'potential', emptyText, secondaryValue,
+}: {
+  label: string; value: string; field: string;
+  leadId: string;
+  onSaved: (field: string, newValue: string) => void;
+  transform?: (val: string) => unknown;
+  tableName?: string;
+  /** When the value is empty: if provided, shown as a dark-foreground placeholder ("No Source"). Otherwise falls back to a muted "Add {label}" prompt. */
+  emptyText?: string;
+  /** Optional second line shown below the primary value in muted text (e.g., the formatted dollars below the raw number). Only rendered when value is non-empty and not editing. */
+  secondaryValue?: string;
+}) {
+  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved, transform, tableName);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+  }, [editing]);
+
+  return (
+    <div>
+      <label className="block text-sm text-muted-foreground mb-3">{label}</label>
+      {editing ? (
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { void save(); } if (e.key === 'Escape') cancel(); }}
+          onBlur={() => { void save(); }}
+          disabled={saving}
+          placeholder={emptyText ?? `Add ${label}`}
+          className="w-full text-[22px] font-normal text-foreground bg-transparent border-0 p-0 outline-none placeholder:text-muted-foreground/60"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="block w-full text-left text-[22px] font-normal leading-tight"
+        >
+          {value ? (
+            <>
+              <span className="block text-foreground">{value}</span>
+              {secondaryValue && (
+                <span className="block text-base font-normal leading-tight text-muted-foreground mt-1">{secondaryValue}</span>
+              )}
+            </>
+          ) : emptyText ? (
+            <span className="text-foreground">{emptyText}</span>
+          ) : (
+            <span className="text-muted-foreground/60">Add {label}</span>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Stacked Select field: label on top, dropdown trigger styled as large text + chevron on right ──
+export function StackedSelectField({
+  label, value, options, onChange, placeholder,
+}: {
+  label: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-sm text-muted-foreground mb-3">{label}</label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-auto min-h-0 w-full gap-2 rounded-none border-0 bg-transparent p-0 text-[22px] font-normal leading-tight text-foreground shadow-none hover:bg-transparent focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:shrink-0 [&>svg]:text-muted-foreground [&>svg]:opacity-60">
+          <SelectValue placeholder={placeholder ?? `Select ${label}`} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value} className="text-sm">{opt.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+// ── Stacked Owner field: label on top, blue value text, X clear button on the right ──
+export function StackedOwnerField({
+  label, value, displayValue, options, onChange,
+}: {
+  label: string;
+  value: string;
+  displayValue: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  const hasValue = Boolean(value);
+  return (
+    <div>
+      <label className="block text-sm text-muted-foreground mb-3">{label}</label>
+      <div className="flex items-center gap-2">
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger
+            className={`h-auto min-h-0 w-full gap-2 rounded-none border-0 bg-transparent p-0 text-[22px] font-normal leading-tight shadow-none hover:bg-transparent focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 [&>svg]:hidden ${hasValue ? 'text-blue-700' : 'text-muted-foreground'}`}
+          >
+            <SelectValue placeholder="Unassigned">{displayValue || 'Unassigned'}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value} className="text-sm">{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {hasValue && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onChange(''); }}
+            className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+            aria-label={`Clear ${label}`}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Stacked read-only field: label (with optional padlock) on top, large value below ──
+export function StackedReadOnlyField({
+  label, value, locked = false, secondaryValue,
+}: {
+  label: string;
+  value: string;
+  locked?: boolean;
+  /** Optional second line shown below the primary value in muted text. */
+  secondaryValue?: string;
+}) {
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-1.5">
+        <label className="text-sm text-muted-foreground">{label}</label>
+        {locked && <Lock className="h-3 w-3 text-muted-foreground" aria-label="Read-only" />}
+      </div>
+      <p className="text-[22px] font-normal leading-tight text-foreground">{value || '—'}</p>
+      {secondaryValue && (
+        <p className="text-base font-normal leading-tight text-muted-foreground mt-1">{secondaryValue}</p>
+      )}
+    </div>
+  );
+}
+
+// ── Stacked toggle field: label on the left, switch on the right, full row clickable ──
+export function StackedToggleField({
+  label, value, onToggle,
+}: {
+  label: string;
+  /** Current boolean value (drives the switch position). */
+  value: boolean;
+  /** Called with the *new* boolean value when the user activates the switch. */
+  onToggle: (next: boolean) => void | Promise<void>;
+}) {
+  // Local optimistic state — flips immediately on click so the visual responds even
+  // before the parent's DB save / refetch round-trip completes. We re-sync to the
+  // controlled `value` whenever it changes (incl. undo).
+  const [optimistic, setOptimistic] = useState(value);
+  useEffect(() => { setOptimistic(value); }, [value]);
+
+  const handleClick = useCallback(() => {
+    const next = !optimistic;
+    setOptimistic(next);
+    void onToggle(next);
+  }, [optimistic, onToggle]);
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={optimistic}
+      aria-label={label}
+      onClick={handleClick}
+      className="flex w-full items-center justify-between py-3 border-b border-border hover:bg-muted/40 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+    >
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span
+        className={`h-5 w-9 rounded-full transition-colors relative shrink-0 ${optimistic ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}
+      >
+        <span
+          className={`block h-4 w-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${optimistic ? 'translate-x-4' : 'translate-x-0.5'}`}
+        />
+      </span>
+    </button>
+  );
+}
+
 // ── Select-based editable row (Owned By) ──
 export function EditableSelectField({
   icon, label, value, displayValue, field, leadId, options, onSaved, tableName = 'potential',
@@ -352,12 +546,12 @@ export function EditableContactRow({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/40 transition-colors group cursor-pointer">
-      <div className="text-muted-foreground group-hover:text-foreground shrink-0">{icon}</div>
-      <span className={`text-[13px] truncate flex-1 ${value ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
+    <div onClick={() => setEditing(true)} className="flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/40 transition-colors group cursor-pointer">
+      <div className="text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">{icon}</div>
+      <span className={`text-[13px] break-words min-w-0 flex-1 ${value ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
         {displayValue || placeholder}
       </span>
-      <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+      <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1" />
     </div>
   );
 }
@@ -505,34 +699,38 @@ export function EditableTags({
   if (editing) {
     return (
       <>
-        <div ref={containerRef} className="rounded-lg p-2">
-          <div className="flex flex-wrap gap-1.5 items-center">
-            {draftTags.map((tag) => (
-              <span key={tag} className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-medium">
-                {tag}
-                <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors ml-0.5">
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
+        <div ref={containerRef} className="block w-full">
+          {draftTags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {draftTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-muted px-4 py-1 text-sm text-foreground"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(tag)}
+                    className="text-muted-foreground/60 hover:text-foreground transition-colors"
+                    aria-label={`Remove ${tag}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
             <input
               ref={inputRef}
               value={inputValue}
               onChange={(e) => { setInputValue(e.target.value); setActiveIndex(-1); }}
               onKeyDown={handleKeyDown}
-              placeholder={draftTags.length === 0 ? 'Type to add tags...' : 'Add more...'}
+              placeholder="Add Tag"
               disabled={saving}
-              className="flex-1 min-w-[80px] text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50 py-0.5"
+              className="flex-1 min-w-0 block text-[18px] font-normal leading-tight text-foreground bg-transparent border-0 p-0 outline-none placeholder:text-muted-foreground/60"
             />
-          </div>
-          <div className="flex items-center justify-between mt-1.5">
-            <p className="text-[10px] text-muted-foreground">Enter to add. Backspace to remove.</p>
-            <div className="flex items-center gap-1.5">
-              {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
-              <button onClick={() => saveTags(draftTags)} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">
-                Save
-              </button>
-            </div>
+            {saving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
           </div>
         </div>
 
@@ -572,23 +770,27 @@ export function EditableTags({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="cursor-pointer group">
-      {tags.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5 items-center">
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="block w-full text-left cursor-pointer"
+    >
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
           {tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 font-medium">
+            <span
+              key={tag}
+              className="inline-flex items-center rounded-full bg-muted px-4 py-1 text-sm text-foreground"
+            >
               {tag}
-            </Badge>
+            </span>
           ))}
-          <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1" />
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5">
-          <p className="text-xs text-muted-foreground italic">No tags</p>
-          <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
         </div>
       )}
-    </div>
+      <span className="block text-[18px] font-normal leading-tight text-muted-foreground/60">
+        Add Tag
+      </span>
+    </button>
   );
 }
 

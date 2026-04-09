@@ -8,7 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -59,6 +58,7 @@ import {
   Tag,
   Clock,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
@@ -1041,6 +1041,11 @@ const LenderManagement = () => {
                     />
                   </div>
                 )}
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-24">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#eee6f6' }}>
@@ -1097,35 +1102,7 @@ const LenderManagement = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {isLoading ? (
-                      Array.from({ length: 7 }).map((_, i) => (
-                        <tr key={i} className="bg-white dark:bg-card">
-                          <td className="pl-2 pr-4 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                            <div className="flex items-center gap-2.5">
-                              <Skeleton className="h-4 w-4 rounded shrink-0" />
-                              <Skeleton className="h-7 w-7 rounded-full shrink-0" />
-                              <div className="space-y-1.5">
-                                <Skeleton className="h-3.5 w-36" />
-                                <Skeleton className="h-2.5 w-24" />
-                              </div>
-                            </div>
-                          </td>
-                          {columnVisibility.company && <td className="px-4 py-1.5" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.contact && <td className="px-4 py-1.5" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.value && <td className="px-4 py-1.5" style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                          {columnVisibility.ownedBy && <td className="px-4 py-1.5" style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.tasks && <td className="px-4 py-1.5" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.status && <td className="px-4 py-1.5" style={{ width: columnWidths.status, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                          {columnVisibility.stage && <td className="px-4 py-1.5" style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
-                          {columnVisibility.daysInStage && <td className="px-4 py-1.5" style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.stageUpdated && <td className="px-4 py-1.5" style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.lastContacted && <td className="px-4 py-1.5" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.interactions && <td className="px-4 py-1.5" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.inactiveDays && <td className="px-4 py-1.5" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.tags && <td className="px-4 py-1.5" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        </tr>
-                      ))
-                    ) : filteredAndSorted.length === 0 ? (
+                    {filteredAndSorted.length === 0 ? (
                       <tr>
                         <td colSpan={15}>
                           <div className="flex flex-col items-center justify-center py-24 gap-4">
@@ -1372,6 +1349,7 @@ const LenderManagement = () => {
                     )}
                   </tbody>
                 </table>
+                )}
               </div>
             ) : (
               /* Kanban View */

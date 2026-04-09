@@ -3,7 +3,10 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
-import { PipelineSelectField } from '@/components/admin/PipelineSelectField';
+import { ExpandedLeftColumn, type LeadEmail, type LeadPhone, type LeadAddress } from '@/components/admin/ExpandedLeftColumn';
+import LeadRelatedSidebar from '@/components/admin/shared/LeadRelatedSidebar';
+import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
+import { CONTACT_TYPE_CONFIG } from '@/components/admin/shared/contactTypeConfig';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,21 +17,22 @@ import { sanitizeFileName, getLeadDisplayName } from '@/lib/utils';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/address-autocomplete';
-import { CrmAvatar } from '@/components/admin/CrmAvatar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   X, DollarSign, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, CheckSquare, FileText,
   CalendarDays, FolderOpen, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle, TrendingUp,
-  User, Mail, Phone, PhoneCall, Hash, Tag, Briefcase, Loader2,
-  Globe, Linkedin, AtSign, MapPin, Trash2, Flag, Eye, Upload, Download, Send,
-  Copy, MoreHorizontal, Check,
+  User, Mail, Phone, Briefcase, Loader2,
+  Linkedin, Trash2, Flag, Eye, Upload, Download,
+  MoreHorizontal, Check, List,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
+import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
+import { usePipelineStages } from '@/hooks/usePipelineStages';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
@@ -40,36 +44,6 @@ import {
 } from './InlineEditableFields';
 
 type Lead = Database['public']['Tables']['potential']['Row'];
-type LeadStatus = Database['public']['Enums']['lead_status'];
-
-interface LeadEmail {
-  id: string;
-  entity_id: string;
-  email: string;
-  email_type: string;
-  is_primary: boolean;
-}
-
-interface LeadPhone {
-  id: string;
-  entity_id: string;
-  phone_number: string;
-  phone_type: string;
-  is_primary: boolean;
-}
-
-interface LeadAddress {
-  id: string;
-  entity_id: string;
-  address_type: string;
-  address_line_1: string | null;
-  address_line_2: string | null;
-  city: string | null;
-  state: string | null;
-  zip_code: string | null;
-  country: string | null;
-  is_primary: boolean;
-}
 
 interface LeadFile {
   id: string;
@@ -82,26 +56,9 @@ interface LeadFile {
   created_at: string;
 }
 
-// ── Pipeline stage config (7 stages) ──
-const PIPELINE_STATUSES: LeadStatus[] = [
-  'initial_review',
-  'moving_to_underwriting',
-  'onboarding',
-  'underwriting',
-  'ready_for_wu_approval',
-  'pre_approval_issued',
-  'won',
-];
-
-const pipelineStageConfig: Record<string, { title: string; color: string; bg: string; dot: string; pill: string }> = {
-  initial_review: { title: 'Initial Review', color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800', dot: 'bg-blue-500', pill: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' },
-  moving_to_underwriting: { title: 'Moving to UW', color: 'text-cyan-700 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800', dot: 'bg-cyan-500', pill: 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300' },
-  onboarding: { title: 'Onboarding', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800', dot: 'bg-amber-500', pill: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300' },
-  underwriting: { title: 'Underwriting', color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800', dot: 'bg-orange-500', pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' },
-  ready_for_wu_approval: { title: 'Ready for Approval', color: 'text-violet-700 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800', dot: 'bg-violet-500', pill: 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300' },
-  pre_approval_issued: { title: 'Pre-Approval Issued', color: 'text-purple-700 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800', dot: 'bg-purple-500', pill: 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300' },
-  won: { title: 'Won', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800', dot: 'bg-emerald-500', pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' },
-};
+// Stage dropdown options for the Potential pipeline are loaded from the
+// `pipeline_stages` DB table at runtime (see useSystemPipelineByName +
+// usePipelineStages inside the component). There is no hardcoded stage list.
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -122,13 +79,6 @@ function getFileIcon(fileType: string | null): string {
   return '📄';
 }
 
-const CONTACT_TYPE_OPTIONS = [
-  { value: 'potential_customer', label: 'Potential Customer' },
-  { value: 'current_customer', label: 'Current Customer' },
-  { value: 'referral_source', label: 'Referral Source' },
-  { value: 'bank_relationship', label: 'Bank Relationship' },
-];
-
 const VALUE_BUCKETS = [25000, 50000, 75000, 100000, 150000, 200000, 250000, 350000, 500000, 750000];
 
 function seededRand(seed: string, index: number): number {
@@ -145,10 +95,6 @@ function fakeValue(id: string): number {
   return VALUE_BUCKETS[Math.floor(seededRand(id, 1) * VALUE_BUCKETS.length)];
 }
 
-function formatValue(v: number): string {
-  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
   try { return differenceInDays(new Date(), parseISO(dateStr)); } catch { return null; }
@@ -157,11 +103,6 @@ function daysSince(dateStr: string | null): number | null {
 function formatShortDate(dateStr: string | null): string {
   if (!dateStr) return '—';
   try { return format(parseISO(dateStr), 'M/d/yyyy'); } catch { return '—'; }
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
-  try { return format(parseISO(dateStr), 'MMM d, yyyy'); } catch { return '—'; }
 }
 
 const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string }> = {
@@ -173,310 +114,17 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   follow_up: { icon: Users, color: 'text-blue-500' },
 };
 
-/* ─── CRM-style inline-save helper (for stacked label fields) ─── */
-function useCrmInlineSave(
-  leadId: string,
-  field: string,
-  currentValue: string,
-  onSaved: (field: string, newValue: string) => void,
-) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(currentValue);
-  const [saving, setSaving] = useState(false);
-  const { registerUndo } = useUndo();
-
-  useEffect(() => {
-    if (editing) setDraft(currentValue);
-  }, [editing, currentValue]);
-
-  const save = useCallback(async () => {
-    const trimmed = draft.trim();
-    if (trimmed === currentValue) {
-      setEditing(false);
-      return;
-    }
-    const previousValue = currentValue;
-    setSaving(true);
-    const { error } = await supabase
-      .from('potential')
-      .update({ [field]: trimmed || null })
-      .eq('id', leadId);
-    setSaving(false);
-    if (error) {
-      toast.error('Failed to save');
-      return;
-    }
-    registerUndo({
-      label: `Updated ${field}`,
-      execute: async () => {
-        const { error: e } = await supabase.from('potential').update({ [field]: previousValue || null }).eq('id', leadId);
-        if (e) throw e;
-        onSaved(field, previousValue);
-      },
-    });
-    onSaved(field, trimmed);
-    setEditing(false);
-  }, [draft, currentValue, field, leadId, onSaved, registerUndo]);
-
-  const cancel = useCallback(() => {
-    setDraft(currentValue);
-    setEditing(false);
-  }, [currentValue]);
-
-  return { editing, setEditing, draft, setDraft, saving, save, cancel };
-}
-
-/* ─── CRM Editable Field (label above value) ─── */
-function CrmEditableField({
-  label, value, field, leadId, onSaved, placeholder, required, copyable, noLabel, linkHref,
-}: {
-  label: string; value: string; field: string;
-  leadId: string;
-  onSaved: (field: string, newValue: string) => void;
-  placeholder?: string;
-  required?: boolean;
-  copyable?: boolean;
-  noLabel?: boolean;
-  linkHref?: string;
-}) {
-  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useCrmInlineSave(leadId, field, value, onSaved);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
-  }, [editing]);
-
-  if (editing) {
-    return (
-      <div>
-        {!noLabel && label && (
-          <span className="text-xs font-medium text-muted-foreground block mb-1">
-            {label}
-            {required && <span className="text-red-500 ml-0.5">*</span>}
-          </span>
-        )}
-        <div className="flex items-center gap-1.5">
-          <input
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
-            onBlur={save}
-            disabled={saving}
-            placeholder={placeholder}
-            className="w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
-          />
-          {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div onClick={() => setEditing(true)} className="cursor-pointer group">
-      {!noLabel && label && (
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-medium text-muted-foreground">
-            {label}
-            {required && <span className="text-red-500 ml-0.5">*</span>}
-          </span>
-          <div className="flex items-center gap-1">
-            {linkHref && value && (
-              <a
-                href={linkHref}
-                target={linkHref.startsWith('mailto:') ? undefined : '_blank'}
-                rel={linkHref.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
-                onClick={(e) => e.stopPropagation()}
-                className="text-muted-foreground hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Globe className="h-3.5 w-3.5" />
-              </a>
-            )}
-            {copyable && value && (
-              <button
-                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(value); toast.success('Copied'); }}
-                className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-      <span className={`text-sm font-medium block ${value ? 'text-foreground' : 'text-muted-foreground/50'}`}>
-        {(field === 'phone' && value ? formatPhoneNumber(value) : value) || placeholder || '\u2014'}
-      </span>
-    </div>
-  );
-}
-
-/* ─── CRM Editable Rich Text Field ─── */
-function CrmEditableRichTextField({
-  value, leadId, field, onSaved, placeholder,
-}: {
-  value: string; leadId: string; field: string;
-  onSaved: (field: string, newValue: string) => void;
-  placeholder?: string;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (editing) setDraft(value);
-  }, [editing, value]);
-
-  const { registerUndo: registerUndoRich } = useUndo();
-
-  const save = useCallback(async () => {
-    const trimmed = draft.trim();
-    if (trimmed === value) { setEditing(false); return; }
-    const previousValue = value;
-    setSaving(true);
-    const { error } = await supabase
-      .from('potential')
-      .update({ [field]: trimmed || null })
-      .eq('id', leadId);
-    setSaving(false);
-    if (error) { toast.error('Failed to save'); return; }
-    registerUndoRich({
-      label: `Updated ${field}`,
-      execute: async () => {
-        const { error: e } = await supabase.from('potential').update({ [field]: previousValue || null }).eq('id', leadId);
-        if (e) throw e;
-        onSaved(field, previousValue);
-      },
-    });
-    onSaved(field, trimmed);
-    setEditing(false);
-  }, [draft, value, field, leadId, onSaved, registerUndoRich]);
-
-  if (editing) {
-    return (
-      <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-3">
-        <RichTextEditor
-          value={draft}
-          onChange={setDraft}
-          placeholder={placeholder || "Add content..."}
-          minHeight="60px"
-          disabled={saving}
-        />
-        <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-blue-100">
-          {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
-          <button onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">Cancel</button>
-          <button onClick={save} disabled={saving} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1">
-            <Check className="h-3 w-3" />Save
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div onClick={() => setEditing(true)} className="rounded-lg border border-border p-3 cursor-pointer hover:border-border hover:bg-muted/50 transition-all group">
-      {value ? (
-        <HtmlContent value={value} />
-      ) : (
-        <p className="text-[13px] text-muted-foreground italic">{placeholder || "Click to add content..."}</p>
-      )}
-      <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Pencil className="h-3 w-3 text-muted-foreground" />
-        <span className="text-[11px] text-muted-foreground">Click to edit</span>
-      </div>
-    </div>
-  );
-}
-
-/* ─── CRM Editable Tags ─── */
-function CrmEditableTags({
-  tags, leadId, onSaved,
-}: {
-  tags: string[]; leadId: string;
-  onSaved: (field: string, newValue: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(tags.join(', '));
-  const [saving, setSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editing) {
-      setDraft(tags.join(', '));
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  }, [editing, tags]);
-
-  const { registerUndo: registerUndoTags } = useUndo();
-
-  const save = async () => {
-    const newTags = draft.split(',').map(t => t.trim()).filter(Boolean);
-    const currentStr = tags.join(',');
-    const newStr = newTags.join(',');
-    if (newStr === currentStr) {
-      setEditing(false);
-      return;
-    }
-    const previousTags = [...tags];
-    setSaving(true);
-    const { error } = await supabase
-      .from('potential')
-      .update({ tags: newTags.length > 0 ? newTags : null })
-      .eq('id', leadId);
-    setSaving(false);
-    if (error) {
-      toast.error('Failed to save');
-      return;
-    }
-    registerUndoTags({
-      label: 'Updated tags',
-      execute: async () => {
-        const { error: e } = await supabase.from('potential').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
-        if (e) throw e;
-        onSaved('tags', previousTags.join(','));
-      },
-    });
-    onSaved('tags', newStr);
-    setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5">
-        <input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(tags.join(', ')); setEditing(false); } }}
-          onBlur={save}
-          disabled={saving}
-          placeholder="tag1, tag2, ..."
-          className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
-        />
-        {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-      </div>
-    );
-  }
-
-  return (
-    <div onClick={() => setEditing(true)} className="cursor-pointer group">
-      {tags.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5 items-center">
-          {tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 font-medium">
-              {tag}
-            </Badge>
-          ))}
-          <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1" />
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5">
-          <p className="text-xs text-muted-foreground italic">No tags</p>
-          <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-        </div>
-      )}
-    </div>
-  );
-}
+// Filterable activity types shown in the "Earlier" Filters dropdown.
+// Types not listed here (todo, follow_up, comment, stage_change, etc.) always show.
+const TIMELINE_TYPE_FILTERS = [
+  { label: 'Notes',           value: 'note',           icon: Pencil },
+  { label: 'Emails',          value: 'email',          icon: Mail },
+  { label: 'Phone Calls',     value: 'call',           icon: Phone },
+  { label: 'Meetings',        value: 'meeting',        icon: Users },
+  { label: 'SMSs',            value: 'sms',            icon: MessageSquare },
+  { label: 'Calendar Events', value: 'calendar_event', icon: CalendarDays },
+] as const;
+const ALL_TIMELINE_TYPE_VALUES = new Set<string>(TIMELINE_TYPE_FILTERS.map((f) => f.value));
 
 /* ─── Stats Card (accent card style) ─── */
 function StatBox({ value, label, icon, bg, border, valueColor, iconBg }: {
@@ -532,79 +180,6 @@ function RelatedSection({ icon, label, count, iconColor, onAdd, children }: {
   );
 }
 
-/* ─── Contact Email Row ─── */
-function ContactEmailRow({ entry, onDelete }: { entry: LeadEmail; onDelete: (id: string) => void }) {
-  const navigate = useNavigate();
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-      <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
-        {entry.email_type}
-      </Badge>
-      <button
-        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.email)}`); }}
-        className="text-[13px] text-foreground font-medium truncate flex-1 text-left hover:underline hover:text-blue-600 transition-colors"
-      >
-        {entry.email}
-      </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.email)}`); }}
-        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-        title="Compose in Gmail"
-      >
-        <Send className="h-3 w-3 text-blue-500 hover:text-blue-600" />
-      </button>
-      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-      </button>
-    </div>
-  );
-}
-
-/* ─── Contact Phone Row ─── */
-function ContactPhoneRow({ entry, onDelete, onCall }: { entry: LeadPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-      <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
-        {entry.phone_type}
-      </Badge>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.phone_number)}</span>
-      {onCall && (
-        <button onClick={() => onCall(entry.phone_number)} title="Call this number" className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <PhoneCall className="h-3 w-3 text-green-600 hover:text-green-700" />
-        </button>
-      )}
-      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-      </button>
-    </div>
-  );
-}
-
-/* ─── Address Block ─── */
-function AddressBlock({ entry, onDelete }: { entry: LeadAddress; onDelete: (id: string) => void }) {
-  const parts = [entry.address_line_1, entry.address_line_2].filter(Boolean);
-  const cityLine = [entry.city, entry.state, entry.zip_code].filter(Boolean).join(', ');
-  return (
-    <div className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-muted/40 transition-colors group">
-      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-      <div className="flex-1 min-w-0">
-        {parts.map((p, i) => (
-          <p key={i} className="text-[13px] text-foreground font-medium truncate">{p}</p>
-        ))}
-        {cityLine && <p className="text-[12px] text-muted-foreground truncate">{cityLine}</p>}
-        <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize mt-1">
-          {entry.address_type}
-        </Badge>
-      </div>
-      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-      </button>
-    </div>
-  );
-}
-
 export default function PipelineExpandedView() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
@@ -629,79 +204,17 @@ export default function PipelineExpandedView() {
   const [savingActivity, setSavingActivity] = useState(false);
   const [activityDropdownOpen, setActivityDropdownOpen] = useState(false);
 
-  // Task inline add state
-  const [addingTask, setAddingTask] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [savingTask, setSavingTask] = useState(false);
-  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
-
-  // File upload state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingFile, setUploadingFile] = useState(false);
-
-  // Contact search-to-add state (Related sidebar)
-  const [addingContact, setAddingContact] = useState(false);
-  const [contactSearchQuery, setContactSearchQuery] = useState('');
-  const [savingContact, setSavingContact] = useState(false);
-
-  // Company search-to-add state (Related sidebar)
-  const [addingCompany, setAddingCompany] = useState(false);
-  const [companySearchQuery, setCompanySearchQuery] = useState('');
-  const [savingCompany, setSavingCompany] = useState(false);
-
-  // Milestone inline add state (Related sidebar)
-  const [addingMilestone, setAddingMilestone] = useState(false);
-  const [newMilestoneName, setNewMilestoneName] = useState('');
-  const [savingMilestone, setSavingMilestone] = useState(false);
-
   // Activity expand / comments state
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
   const [expandedThreads, setExpandedThreads] = useState<Record<string, boolean>>({});
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [savingComment, setSavingComment] = useState<string | null>(null);
+  const [selectedTimelineMembers, setSelectedTimelineMembers] = useState<Set<string>>(new Set());
+  const [selectedTimelineTypes, setSelectedTimelineTypes] = useState<Set<string>>(
+    () => new Set(TIMELINE_TYPE_FILTERS.map((f) => f.value))
+  );
 
   const { teamMember } = useTeamMember();
-
-  // Satellite table inline add state
-  const [showAddEmail, setShowAddEmail] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
-  const [newEmailType, setNewEmailType] = useState('work');
-  const [showAddPhone, setShowAddPhone] = useState(false);
-  const [newPhone, setNewPhone] = useState('');
-  const [newPhoneType, setNewPhoneType] = useState('work');
-  const [showAddAddress, setShowAddAddress] = useState(false);
-  const [newAddressLine1, setNewAddressLine1] = useState('');
-  const [newAddressCity, setNewAddressCity] = useState('');
-  const [newAddressState, setNewAddressState] = useState('');
-  const [newAddressZip, setNewAddressZip] = useState('');
-  const [newAddressType, setNewAddressType] = useState('business');
-
-  // ── Stage change handler ──
-  const handleStageChange = useCallback(async (newStatus: LeadStatus) => {
-    if (!leadId) return;
-    const { data: current } = await supabase.from('potential').select('status').eq('id', leadId).single();
-    const previousStatus = current?.status as LeadStatus | null;
-    const { error } = await supabase
-      .from('potential')
-      .update({ status: newStatus })
-      .eq('id', leadId);
-    if (error) {
-      toast.error('Failed to update stage');
-      return;
-    }
-    registerUndo({
-      label: `Stage changed to ${pipelineStageConfig[newStatus]?.title ?? newStatus}`,
-      execute: async () => {
-        const { error: e } = await supabase.from('potential').update({ status: previousStatus }).eq('id', leadId);
-        if (e) throw e;
-        queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-        queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
-      },
-    });
-    toast.success('Stage updated');
-    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
-  }, [leadId, queryClient, registerUndo]);
 
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
@@ -780,247 +293,6 @@ export default function PipelineExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['pipeline-activity-comments', leadId] });
   }, [leadId, commentTexts, teamMember, queryClient]);
 
-  // ── Save task ──
-  const handleSaveTask = useCallback(async () => {
-    if (!leadId || !newTaskTitle.trim()) return;
-    setSavingTask(true);
-    const { error } = await supabase.from('tasks').insert({
-      lead_id: leadId,
-      title: newTaskTitle.trim(),
-      status: 'todo',
-      priority: 'medium',
-    });
-    setSavingTask(false);
-    if (error) {
-      toast.error('Failed to create task');
-      return;
-    }
-    toast.success('Task created');
-    setNewTaskTitle('');
-    setAddingTask(false);
-    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-tasks', leadId] });
-  }, [leadId, newTaskTitle, queryClient]);
-
-  // ── Link existing person as contact (Related sidebar) ──
-  const handleLinkPerson = useCallback(async (person: { id: string; name: string; title: string | null; email?: string | null; phone?: string | null }) => {
-    if (!leadId) return;
-    setSavingContact(true);
-    const { error } = await supabase.from('entity_contacts').insert({
-      entity_id: leadId,
-      entity_type: 'potential',
-      name: person.name,
-      title: person.title || null,
-      email: person.email || null,
-      phone: person.phone || null,
-    });
-    setSavingContact(false);
-    if (error) {
-      toast.error('Failed to add contact');
-      return;
-    }
-    toast.success('Contact added');
-    setContactSearchQuery('');
-    setAddingContact(false);
-    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-contacts', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── Create + link a brand-new person (falls back when no search match) ──
-  const handleCreateAndLinkPerson = useCallback(async (name: string) => {
-    const trimmed = name.trim();
-    if (!leadId || !trimmed) return;
-    setSavingContact(true);
-    const { error } = await supabase.from('entity_contacts').insert({
-      entity_id: leadId,
-      entity_type: 'potential',
-      name: trimmed,
-    });
-    setSavingContact(false);
-    if (error) {
-      toast.error('Failed to add contact');
-      return;
-    }
-    toast.success('Contact added');
-    setContactSearchQuery('');
-    setAddingContact(false);
-    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-contacts', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── Remove a linked contact (Related sidebar) ──
-  const deleteContactMutation = useMutation({
-    mutationFn: async (contactId: string) => {
-      const { error } = await supabase.from('entity_contacts').delete().eq('id', contactId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-lead-contacts', leadId] });
-      toast.success('Contact removed');
-    },
-    onError: () => toast.error('Failed to remove contact'),
-  });
-
-  // ── Link existing company (Related sidebar) ──
-  const handleLinkCompany = useCallback(async (companyName: string) => {
-    const trimmed = companyName.trim();
-    if (!leadId || !trimmed) return;
-    setSavingCompany(true);
-    const { error } = await supabase
-      .from('potential')
-      .update({ company_name: trimmed })
-      .eq('id', leadId);
-    setSavingCompany(false);
-    if (error) {
-      toast.error('Failed to update company');
-      return;
-    }
-    toast.success('Company updated');
-    setCompanySearchQuery('');
-    setAddingCompany(false);
-    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
-  }, [leadId, queryClient]);
-
-  // ── Remove linked company (Related sidebar) ──
-  const handleRemoveCompany = useCallback(async () => {
-    if (!leadId) return;
-    setSavingCompany(true);
-    const { error } = await supabase
-      .from('potential')
-      .update({ company_name: null })
-      .eq('id', leadId);
-    setSavingCompany(false);
-    if (error) {
-      toast.error('Failed to remove company');
-      return;
-    }
-    toast.success('Company removed');
-    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
-  }, [leadId, queryClient]);
-
-  // ── Save milestone (Related sidebar) ──
-  const handleSaveMilestone = useCallback(async (milestoneCount: number) => {
-    if (!leadId || !newMilestoneName.trim()) return;
-    setSavingMilestone(true);
-    const { error } = await supabase.from('deal_milestones').insert({
-      lead_id: leadId,
-      milestone_name: newMilestoneName.trim(),
-      position: milestoneCount,
-    });
-    setSavingMilestone(false);
-    if (error) {
-      toast.error('Failed to add milestone');
-      return;
-    }
-    toast.success('Milestone added');
-    setNewMilestoneName('');
-    setAddingMilestone(false);
-    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-milestones', leadId] });
-  }, [leadId, newMilestoneName, queryClient]);
-
-  // ── Toggle milestone complete ──
-  const handleToggleMilestone = useCallback(async (milestoneId: string, currentlyCompleted: boolean) => {
-    const { error } = await supabase
-      .from('deal_milestones')
-      .update({
-        completed: !currentlyCompleted,
-        completed_at: !currentlyCompleted ? new Date().toISOString() : null,
-      })
-      .eq('id', milestoneId);
-    if (error) {
-      toast.error('Failed to update milestone');
-      return;
-    }
-    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-milestones', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── File upload ──
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !leadId) return;
-    e.target.value = '';
-
-    console.log('[FileUpload] Pipeline: starting upload', { name: file.name, size: file.size, type: file.type });
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      console.error('[FileUpload] Pipeline: no active session', sessionError);
-      toast.error('You must be logged in to upload files. Please refresh and sign in again.');
-      return;
-    }
-
-    setUploadingFile(true);
-    const filePath = `${leadId}/${Date.now()}_${sanitizeFileName(file.name)}`;
-    const { error: uploadError } = await supabase.storage
-      .from('lead-files')
-      .upload(filePath, file, {
-        contentType: file.type || 'application/octet-stream',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error('[FileUpload] Pipeline: storage upload error', uploadError);
-      setUploadingFile(false);
-      const reason = uploadError.message?.includes('security')
-        ? 'Permission denied — check your login session'
-        : uploadError.message || 'Storage error';
-      toast.error(`Upload failed for ${file.name}: ${reason}`);
-      return;
-    }
-
-    const { error: dbError } = await supabase.from('entity_files').insert({
-      entity_id: leadId,
-      entity_type: 'potential',
-      file_name: file.name,
-      file_url: filePath,
-      file_type: file.type || null,
-      file_size: file.size,
-    });
-
-    setUploadingFile(false);
-    if (dbError) {
-      console.error('[FileUpload] Pipeline: DB insert error', dbError);
-      const reason = dbError.message?.includes('row-level security')
-        ? 'Permission denied — admin role required'
-        : dbError.message || 'Database error';
-      toast.error(`Failed to save ${file.name}: ${reason}`);
-      await supabase.storage.from('lead-files').remove([filePath]);
-      return;
-    }
-    console.log('[FileUpload] Pipeline: upload success', { filePath });
-    toast.success('File uploaded');
-    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-files', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── File delete ──
-  const handleDeleteFile = useCallback(async (file: LeadFile) => {
-    await supabase.storage.from('lead-files').remove([file.file_url]);
-    const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
-    if (error) {
-      toast.error('Failed to delete file');
-      return;
-    }
-    toast.success('File deleted');
-    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-files', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── File download (signed URL) ──
-  const handleDownloadFile = useCallback(async (file: LeadFile) => {
-    const { data, error } = await supabase.storage
-      .from('lead-files')
-      .createSignedUrl(file.file_url, 60);
-    if (error || !data?.signedUrl) {
-      toast.error('Failed to generate download link');
-      return;
-    }
-    const a = document.createElement('a');
-    a.href = data.signedUrl;
-    a.download = file.file_name;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, []);
-
   // ── Queries ──
   const { data: lead, isLoading } = useQuery({
     queryKey: ['pipeline-lead-expanded', leadId],
@@ -1043,6 +315,83 @@ export default function PipelineExpandedView() {
     for (const m of teamMembers) map[m.id] = m.name;
     return map;
   }, [teamMembers]);
+
+  // Selected person for person detail panel — sidebar's `onPersonSelect`
+  // toggles this; when non-null we render <PeopleDetailPanel> in the right
+  // column in place of <LeadRelatedSidebar>. `any` here mirrors
+  // UnderwritingExpandedView — the sidebar returns a loose shape merged
+  // from multiple sources that PeopleDetailPanel's Person type narrows.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedPerson, setSelectedPerson] = useState<any>(null);
+
+  // ── Potential pipeline stages (from pipeline_stages DB table) ──
+  const { data: potentialPipeline } = useSystemPipelineByName('Potential');
+  const { data: dbPotentialStages = [] } = usePipelineStages(potentialPipeline?.id);
+
+  /** Stage IDs in display order — fed to ExpandedLeftColumn as the list of options. */
+  const pipelineStageOptions = useMemo<string[]>(
+    () => dbPotentialStages.map((s: { id: string }) => s.id),
+    [dbPotentialStages],
+  );
+
+  /** Map of stage.id → { label, title, bg, color, dot, pill } for both the
+   *  ExpandedLeftColumn select and the LeadRelatedSidebar badge. All Potential
+   *  stages render with a neutral muted palette; the source of truth is the
+   *  pipeline_stages.name text. */
+  const pipelineStageConfig = useMemo<Record<string, { label: string; title: string; bg: string; color: string; dot: string; pill: string }>>(
+    () => {
+      const cfg: Record<string, { label: string; title: string; bg: string; color: string; dot: string; pill: string }> = {};
+      for (const stage of dbPotentialStages as Array<{ id: string; name: string }>) {
+        cfg[stage.id] = {
+          label: stage.name,
+          title: stage.name,
+          bg: 'bg-muted/50 border-border',
+          color: 'text-foreground',
+          dot: 'bg-muted-foreground',
+          pill: 'bg-muted text-muted-foreground',
+        };
+      }
+      return cfg;
+    },
+    [dbPotentialStages],
+  );
+
+  /** Default stage_id used when a lead has no stage_id yet — picks the first
+   *  stage (Initial Contact) so the dropdown always has a selected value. */
+  const defaultStageId = useMemo<string>(
+    () => (dbPotentialStages[0] as { id: string } | undefined)?.id ?? '',
+    [dbPotentialStages],
+  );
+
+  // ── Stage change handler ──
+  // Writes to `potential.stage_id` (FK → pipeline_stages.id). The legacy
+  // `status` enum column is left untouched. Declared after `pipelineStageConfig`
+  // so the dep array can reference it without a temporal-dead-zone ReferenceError.
+  const handleStageChange = useCallback(async (newStageId: string) => {
+    if (!leadId) return;
+    const { data: current } = await supabase.from('potential').select('stage_id').eq('id', leadId).single();
+    const previousStageId = current?.stage_id ?? null;
+    const { error } = await supabase
+      .from('potential')
+      .update({ stage_id: newStageId })
+      .eq('id', leadId);
+    if (error) {
+      toast.error('Failed to update stage');
+      return;
+    }
+    registerUndo({
+      label: `Stage changed to ${pipelineStageConfig[newStageId]?.title ?? 'stage'}`,
+      execute: async () => {
+        const { error: e } = await supabase.from('potential').update({ stage_id: previousStageId }).eq('id', leadId);
+        if (e) throw e;
+        queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
+      },
+    });
+    toast.success('Stage updated');
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
+  }, [leadId, queryClient, registerUndo, pipelineStageConfig]);
 
   const { data: interactionCount = 0 } = useQuery({
     queryKey: ['pipeline-lead-interactions', leadId],
@@ -1069,148 +418,6 @@ export default function PipelineExpandedView() {
         .maybeSingle();
       if (error || !data) return null;
       return data.communication_type;
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['pipeline-lead-contacts', leadId],
-    queryFn: async () => {
-      const { data } = await supabase.from('entity_contacts').select('*').eq('entity_id', leadId!).eq('entity_type', 'potential');
-      return data ?? [];
-    },
-    enabled: !!leadId,
-  });
-
-  // ── People search for linking contacts (Related sidebar) ──
-  const { data: peopleSearchResults = [] } = useQuery({
-    queryKey: ['pipeline-people-search', contactSearchQuery],
-    queryFn: async () => {
-      const q = contactSearchQuery.trim();
-      if (!q) return [];
-      const like = `%${q}%`;
-      // Search the master `people` table first (canonical source), then `potential` as fallback,
-      // and merge by case-insensitive name so we don't duplicate results.
-      const [peopleRes, potentialRes] = await Promise.all([
-        supabase
-          .from('people')
-          .select('id, name, title, email, phone, company_name')
-          .or(`name.ilike.${like},email.ilike.${like},company_name.ilike.${like}`)
-          .order('name', { ascending: true })
-          .limit(20),
-        supabase
-          .from('potential')
-          .select('id, name, title, email, phone, company_name')
-          .or(`name.ilike.${like},email.ilike.${like},company_name.ilike.${like}`)
-          .order('name', { ascending: true })
-          .limit(20),
-      ]);
-      const merged: { id: string; name: string; title: string | null; email: string | null; phone: string | null; company_name: string | null; source: 'people' | 'potential' }[] = [];
-      const seen = new Set<string>();
-      for (const row of (peopleRes.data ?? [])) {
-        const key = row.name.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        merged.push({ ...row, source: 'people' });
-      }
-      for (const row of (potentialRes.data ?? [])) {
-        const key = row.name.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        merged.push({ ...row, source: 'potential' });
-      }
-      return merged.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })).slice(0, 20);
-    },
-    enabled: addingContact && contactSearchQuery.trim().length > 0,
-  });
-
-  // ── Company search for linking (Related sidebar) ──
-  const { data: companiesSearchResults = [] } = useQuery({
-    queryKey: ['pipeline-companies-search', companySearchQuery],
-    queryFn: async () => {
-      const q = companySearchQuery.trim();
-      if (!q) return [];
-      const like = `%${q}%`;
-      // Canonical `companies` table + distinct company_name values from potential/people.
-      const [companiesRes, potentialRes, peopleRes] = await Promise.all([
-        supabase
-          .from('companies')
-          .select('id, company_name, website')
-          .ilike('company_name', like)
-          .order('company_name', { ascending: true })
-          .limit(20),
-        supabase
-          .from('potential')
-          .select('company_name')
-          .ilike('company_name', like)
-          .not('company_name', 'is', null)
-          .limit(40),
-        supabase
-          .from('people')
-          .select('company_name')
-          .ilike('company_name', like)
-          .not('company_name', 'is', null)
-          .limit(40),
-      ]);
-      const merged: { id: string; company_name: string; website: string | null; source: 'companies' | 'derived' }[] = [];
-      const seen = new Set<string>();
-      for (const row of (companiesRes.data ?? [])) {
-        const key = row.company_name.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        merged.push({ id: row.id, company_name: row.company_name, website: row.website ?? null, source: 'companies' });
-      }
-      for (const row of [...(potentialRes.data ?? []), ...(peopleRes.data ?? [])]) {
-        if (!row.company_name) continue;
-        const key = row.company_name.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        merged.push({ id: `derived:${row.company_name}`, company_name: row.company_name, website: null, source: 'derived' });
-      }
-      return merged
-        .sort((a, b) => a.company_name.localeCompare(b.company_name, undefined, { sensitivity: 'base' }))
-        .slice(0, 20);
-    },
-    enabled: addingCompany && companySearchQuery.trim().length > 0,
-  });
-
-  const { data: tasks = [] } = useQuery({
-    queryKey: ['pipeline-lead-tasks', leadId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('tasks')
-        .select('id, title, status, priority')
-        .eq('lead_id', leadId!)
-        .order('created_at', { ascending: false });
-      return data ?? [];
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: milestones = [] } = useQuery({
-    queryKey: ['pipeline-lead-milestones', leadId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('deal_milestones')
-        .select('id, milestone_name, completed, completed_at, position')
-        .eq('lead_id', leadId!)
-        .order('position', { ascending: true });
-      return data ?? [];
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: leadFiles = [] } = useQuery({
-    queryKey: ['pipeline-lead-files', leadId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('entity_files')
-        .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('entity_id', leadId!)
-        .eq('entity_type', 'potential')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as LeadFile[];
     },
     enabled: !!leadId,
   });
@@ -1372,17 +579,53 @@ export default function PipelineExpandedView() {
     return items.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
   }, [activities, allEmailThreads]);
 
+  // Timeline filtered by selected team members AND selected activity types.
+  // Empty member selection = show all members. Types default to all 6 selected.
+  const filteredTimelineItems = useMemo(() => {
+    // Pass 1: filter by team member
+    let memberFiltered = timelineItems;
+    if (selectedTimelineMembers.size > 0) {
+      const selectedNames = new Set<string>();
+      const selectedEmails = new Set<string>();
+      for (const m of teamMembers) {
+        if (selectedTimelineMembers.has(m.id)) {
+          if (m.name) selectedNames.add(m.name);
+          if (m.email) selectedEmails.add(m.email.toLowerCase());
+        }
+      }
+      memberFiltered = timelineItems.filter((item) => {
+        if (item.type === 'activity') {
+          return !!item.data.created_by && selectedNames.has(item.data.created_by);
+        }
+        const thread = item.data;
+        return (thread.messages ?? []).some((msg: { from?: string }) => {
+          if (!msg.from) return false;
+          const match = msg.from.match(/<([^>]+)>/);
+          const email = (match ? match[1] : msg.from).toLowerCase();
+          return selectedEmails.has(email);
+        });
+      });
+    }
+    // Pass 2: filter by activity type. Types not in the filterable set always show.
+    return memberFiltered.filter((item) => {
+      if (item.type === 'email_thread') {
+        return selectedTimelineTypes.has('email');
+      }
+      const t = item.data.activity_type;
+      if (!ALL_TIMELINE_TYPE_VALUES.has(t)) return true;
+      return selectedTimelineTypes.has(t);
+    });
+  }, [timelineItems, selectedTimelineMembers, selectedTimelineTypes, teamMembers]);
+
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
-    mutationFn: async (email: string) => {
+    mutationFn: async ({ email, type }: { email: string; type: string }) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'potential', email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'potential', email, email_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pipeline-lead-emails', leadId] });
-      setNewEmail('');
-      setShowAddEmail(false);
       toast.success('Email added');
     },
   });
@@ -1399,15 +642,13 @@ export default function PipelineExpandedView() {
   });
 
   const addPhoneMutation = useMutation({
-    mutationFn: async (phone: string) => {
+    mutationFn: async ({ phone, type }: { phone: string; type: string }) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'potential', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'potential', phone_number: phone, phone_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pipeline-lead-phones', leadId] });
-      setNewPhone('');
-      setShowAddPhone(false);
       toast.success('Phone added');
     },
   });
@@ -1424,27 +665,21 @@ export default function PipelineExpandedView() {
   });
 
   const addAddressMutation = useMutation({
-    mutationFn: async () => {
-      if (!leadId || !newAddressLine1.trim()) return;
+    mutationFn: async ({ line1, city, state, zip, type }: { line1: string; city: string; state: string; zip: string; type: string }) => {
+      if (!leadId || !line1) return;
       const { error } = await supabase.from('entity_addresses').insert({
         entity_id: leadId,
         entity_type: 'potential',
-        address_line_1: newAddressLine1.trim(),
-        city: newAddressCity.trim() || null,
-        state: newAddressState.trim() || null,
-        zip_code: newAddressZip.trim() || null,
-        address_type: newAddressType,
+        address_line_1: line1,
+        city: city || null,
+        state: state || null,
+        zip_code: zip || null,
+        address_type: type,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pipeline-lead-addresses', leadId] });
-      setNewAddressLine1('');
-      setNewAddressCity('');
-      setNewAddressState('');
-      setNewAddressZip('');
-      setNewAddressType('business');
-      setShowAddAddress(false);
       toast.success('Address added');
     },
   });
@@ -1459,6 +694,23 @@ export default function PipelineExpandedView() {
       toast.success('Address removed');
     },
   });
+
+  // ── Owner change handler (passed to shared left column) ──
+  const handleOwnerChange = useCallback(async (newOwnerId: string) => {
+    if (!leadId) return;
+    const previousOwner = lead?.assigned_to ?? null;
+    const { error } = await supabase.from('potential').update({ assigned_to: newOwnerId || null }).eq('id', leadId);
+    if (error) { toast.error('Failed to save'); return; }
+    registerUndo({
+      label: 'Owner changed',
+      execute: async () => {
+        const { error: e } = await supabase.from('potential').update({ assigned_to: previousOwner || null }).eq('id', leadId);
+        if (e) throw e;
+        handleFieldSaved('assigned_to', previousOwner ?? '');
+      },
+    });
+    handleFieldSaved('assigned_to', newOwnerId);
+  }, [leadId, lead?.assigned_to, registerUndo, handleFieldSaved]);
 
   if (isLoading || !lead) {
     return (
@@ -1475,7 +727,8 @@ export default function PipelineExpandedView() {
   const daysInStage = daysSince(lead.updated_at);
   const inactiveDays = daysSince(lead.last_activity_at);
   const lastContacted = formatShortDate(lead.last_activity_at);
-  const stageCfg = pipelineStageConfig[lead.status];
+  const currentStageId = lead.stage_id ?? defaultStageId;
+  const stageCfg = pipelineStageConfig[currentStageId];
   const inactiveColor = (inactiveDays ?? 0) > 30 ? 'text-red-600' : 'text-amber-600';
   const ownerOptions = teamMembers.map((m) => ({ value: m.id, label: m.name }));
 
@@ -1494,349 +747,25 @@ export default function PipelineExpandedView() {
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
-        {/* LEFT: Details — CRM-style contact panel */}
-        <ScrollArea className="system-font w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
-            <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
-
-              {/* ── Back Arrow ── */}
-              <button onClick={goBack} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
-                <svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="30" y1="8" x2="2" y2="8" />
-                  <polyline points="8,2 2,8 8,14" />
-                </svg>
-              </button>
-
-              {/* ── Contact Card Header ── */}
-              <div className="flex items-start gap-4">
-                <CrmAvatar name={lead.name} imageUrl={lead.image_url} size="xl" />
-                <div className="min-w-0 pt-0.5">
-                  <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{getLeadDisplayName(lead)}</h2>
-                  {lead.company_name && (
-                    <p className="text-sm text-muted-foreground mt-0.5 truncate">{lead.company_name}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Copper-style Fields ── */}
-              <div className="space-y-5">
-                {/* Name */}
-                <CrmEditableField label="Name" value={lead.name} field="name" leadId={lead.id} onSaved={handleFieldSaved} required copyable />
-
-                {/* Pipeline */}
-                <PipelineSelectField dealId={lead.id} currentPipeline="potential" />
-
-                {/* Company */}
-                <CrmEditableField label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Company" />
-
-                {/* Known As (Nick Name) */}
-                <CrmEditableField label="Known As (Nick Name)" value={lead.known_as ?? ''} field="known_as" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Known As (Nick Name)" />
-
-                {/* CLX - File Name */}
-                <CrmEditableField label="CLX - File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add CLX - File Name" />
-
-                {/* Stage */}
-                <div>
-                  <span className="text-xs font-medium text-muted-foreground block mb-1">Stage</span>
-                  <Select value={lead.status} onValueChange={(v) => handleStageChange(v as LeadStatus)}>
-                    <SelectTrigger className={`h-auto w-full text-sm font-medium bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0 ${stageCfg?.color ?? 'text-foreground'}`}>
-                      <SelectValue>{stageCfg?.title ?? lead.status}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="min-w-[220px]">
-                      {PIPELINE_STATUSES.map((s) => {
-                        const cfg = pipelineStageConfig[s];
-                        return (
-                          <SelectItem key={s} value={s} className="text-[13px]">
-                            <div className="flex items-center gap-2">
-                              <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-muted-foreground'}`} />
-                              {cfg?.title ?? s}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Contact Type */}
-                <div>
-                  <span className="text-xs font-medium text-muted-foreground block mb-1">Contact Type</span>
-                  <Select value={lead.contact_type ?? ''} onValueChange={async (v) => {
-                    const previousType = lead.contact_type;
-                    const { error } = await supabase.from('potential').update({ contact_type: v || null }).eq('id', lead.id);
-                    if (error) { toast.error('Failed to save'); return; }
-                    registerUndo({
-                      label: `Contact type changed to ${v}`,
-                      execute: async () => {
-                        const { error: e } = await supabase.from('potential').update({ contact_type: previousType || null }).eq('id', lead.id);
-                        if (e) throw e;
-                        handleFieldSaved('contact_type', previousType ?? '');
-                      },
-                    });
-                    handleFieldSaved('contact_type', v);
-                  }}>
-                    <SelectTrigger className="h-auto w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0">
-                      <SelectValue>{CONTACT_TYPE_OPTIONS.find(o => o.value === lead.contact_type)?.label ?? lead.contact_type ?? '\u2014'}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="min-w-[220px]">
-                      {CONTACT_TYPE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value} className="text-[13px]">
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Owner */}
-                <div>
-                  <span className="text-xs font-medium text-muted-foreground block mb-1">Owner</span>
-                  {ownerOptions.length > 0 ? (
-                    <div className="flex items-center gap-1">
-                      <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
-                        const previousOwner = lead.assigned_to;
-                        const { error } = await supabase.from('potential').update({ assigned_to: v || null }).eq('id', lead.id);
-                        if (error) { toast.error('Failed to save'); return; }
-                        registerUndo({
-                          label: `Owner changed`,
-                          execute: async () => {
-                            const { error: e } = await supabase.from('potential').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
-                            if (e) throw e;
-                            handleFieldSaved('assigned_to', previousOwner ?? '');
-                          },
-                        });
-                        handleFieldSaved('assigned_to', v);
-                      }}>
-                        <SelectTrigger className={`h-auto w-full text-sm font-medium bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0 ${assignedName ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'}`}>
-                          <SelectValue placeholder="Add Owner" />
-                        </SelectTrigger>
-                        <SelectContent className="min-w-[200px]">
-                          {ownerOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value} className="text-[13px]">{opt.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {assignedName && (
-                        <button
-                          onClick={async () => {
-                            const previousOwner = lead.assigned_to;
-                            const { error } = await supabase.from('potential').update({ assigned_to: null }).eq('id', lead.id);
-                            if (error) { toast.error('Failed to save'); return; }
-                            registerUndo({
-                              label: 'Owner cleared',
-                              execute: async () => {
-                                const { error: e } = await supabase.from('potential').update({ assigned_to: previousOwner }).eq('id', lead.id);
-                                if (e) throw e;
-                                handleFieldSaved('assigned_to', previousOwner ?? '');
-                              },
-                            });
-                            handleFieldSaved('assigned_to', '');
-                          }}
-                          className="text-muted-foreground hover:text-foreground shrink-0"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <CrmEditableField label="" value="" field="assigned_to" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Owner" noLabel />
-                  )}
-                </div>
-
-                {/* Waiting On */}
-                <CrmEditableField label="Waiting On" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Waiting On" />
-
-                {/* Work Email */}
-                <CrmEditableField label="Work Email" value={lead.email ?? ''} field="email" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Email" copyable linkHref={lead.email ? `mailto:${lead.email}` : undefined} />
-
-                {/* Phone */}
-                <div className="relative group/phone">
-                  <CrmEditableField label="Phone" value={lead.phone ?? ''} field="phone" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Phone" />
-                  {lead.phone && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/calls?phone=${encodeURIComponent(lead.phone!.replace(/\D/g, ''))}&leadId=${lead.id}`); }}
-                      className="absolute top-0 right-0 p-1 rounded text-muted-foreground hover:text-blue-600 opacity-0 group-hover/phone:opacity-100 transition-opacity"
-                      title="Call"
-                    >
-                      <PhoneCall className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Description ── */}
-              <div>
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Description</span>
-                <CrmEditableRichTextField value={lead.description ?? ''} leadId={lead.id} field="description" onSaved={handleFieldSaved} placeholder={"Deal referred by ____\nLoan Amount $____M\nAdditional deal/collateral details..."} />
-              </div>
-
-              {/* ── Tags ── */}
-              <div>
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Tags</span>
-                <CrmEditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
-              </div>
-
-              {/* ── Email List ── */}
-              <div>
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Email</span>
-                <div className="space-y-1">
-                  {leadEmails.map((e) => (
-                    <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
-                  ))}
-                  {showAddEmail ? (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
-                      <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                      <Select value={newEmailType} onValueChange={setNewEmailType}>
-                        <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="work" className="text-xs">Work</SelectItem>
-                          <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
-                    </div>
-                  ) : (
-                    <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Email</button>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Phone List ── */}
-              <div>
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Phone</span>
-                <div className="space-y-1">
-                  {leadPhones.map((p) => (
-                    <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
-                  ))}
-                  {showAddPhone ? (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
-                      <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                      <Select value={newPhoneType} onValueChange={setNewPhoneType}>
-                        <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="work" className="text-xs">Work</SelectItem>
-                          <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                          <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
-                    </div>
-                  ) : (
-                    <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Phone</button>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Address ── */}
-              <div>
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Address</span>
-                <div className="space-y-1">
-                  {leadAddresses.map((a) => (
-                    <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
-                  ))}
-                  {showAddAddress ? (
-                    <div className="rounded-lg p-2.5 space-y-2">
-                      <AddressAutocompleteInput
-                        value={newAddressLine1}
-                        onChange={setNewAddressLine1}
-                        onSelect={(parsed: ParsedAddress) => {
-                          setNewAddressLine1(parsed.address_line_1);
-                          setNewAddressCity(parsed.city);
-                          setNewAddressState(parsed.state);
-                          setNewAddressZip(parsed.zip_code);
-                        }}
-                        placeholder="Start typing an address..."
-                        autoFocus
-                        className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300"
-                      />
-                      <div className="flex gap-1.5">
-                        <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                        <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                        <input value={newAddressZip} onChange={(e) => setNewAddressZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Select value={newAddressType} onValueChange={setNewAddressType}>
-                          <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="business" className="text-xs">Business</SelectItem>
-                            <SelectItem value="home" className="text-xs">Home</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <div className="flex gap-1.5">
-                          <button onClick={() => { setShowAddAddress(false); setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip(''); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
-                          <button onClick={() => addAddressMutation.mutate()} disabled={!newAddressLine1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Address</button>
-                  )}
-                </div>
-              </div>
-
-              {/* ── About ── */}
-              <div>
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">About</span>
-                <CrmEditableRichTextField value={lead.about ?? ''} leadId={lead.id} field="about" onSaved={handleFieldSaved} placeholder="Details from initial contact..." />
-              </div>
-
-              {/* ── History ── */}
-              <div>
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">History</span>
-                <CrmEditableRichTextField value={lead.history ?? ''} leadId={lead.id} field="history" onSaved={handleFieldSaved} placeholder="Old CRM carryover info..." />
-              </div>
-
-              {/* ── Bank Relationships ── */}
-              <div>
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Bank Relationships</span>
-                <CrmEditableRichTextField value={lead.bank_relationships ?? ''} leadId={lead.id} field="bank_relationships" onSaved={handleFieldSaved} placeholder="Excluded lender names from CLX agreement..." />
-              </div>
-
-              {/* Client Working with Other Lenders */}
-              <div onClick={() => handleBooleanToggle('client_other_lenders', lead.client_other_lenders)} className="flex items-center justify-between px-4 py-3.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
-                <div className="flex items-center gap-2">
-                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground">Client Working with Other Lenders</span>
-                </div>
-                <div className={`h-5 w-9 rounded-full transition-colors relative ${lead.client_other_lenders ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}>
-                  <div className={`h-4 w-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${lead.client_other_lenders ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Notes</span>
-                <CrmEditableRichTextField value={lead.notes ?? ''} leadId={lead.id} field="notes" onSaved={handleFieldSaved} placeholder="Add notes..." />
-              </div>
-
-              {/* Fixed (read-only info) */}
-              <div>
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">Created</span>
-                    <span className="text-sm font-medium text-foreground">{formatDate(lead.created_at)}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">Source</span>
-                    <span className="text-sm font-medium text-foreground">{lead.source ?? '—'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* + Add new field */}
-              <button
-                onClick={() => toast.info('Custom fields coming soon')}
-                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors py-2 border-t border-border w-full justify-center mt-2"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add new field
-              </button>
-            </div>
-        </ScrollArea>
+        {/* LEFT: Details — shared component.
+            For the Potential pipeline we pass the pipeline_stages.id as the
+            selected stage via `status`, so the dropdown stays in sync with
+            potential.stage_id instead of the legacy lead_status enum. */}
+        <ExpandedLeftColumn
+          lead={{ ...lead, status: currentStageId }}
+          tableName="potential"
+          currentPipeline="potential"
+          stages={pipelineStageOptions}
+          stageConfig={pipelineStageConfig}
+          ownerOptions={ownerOptions}
+          assignedName={assignedName}
+          dealValue={dealValue}
+          goBack={goBack}
+          onStageChange={handleStageChange}
+          onFieldSaved={handleFieldSaved}
+          onBooleanToggle={handleBooleanToggle}
+          onOwnerChange={handleOwnerChange}
+        />
 
         {/* CENTER: Activity */}
         <div className="system-font flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
@@ -1981,7 +910,107 @@ export default function PipelineExpandedView() {
               </div>
 
               {/* Earlier — Activity History + Email Threads */}
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
+              <div className="flex items-center justify-between mb-4 gap-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Earlier</h3>
+                <div className="flex items-center gap-3">
+                  {teamMembers.length > 0 && (
+                    <div className="flex items-center -space-x-1.5">
+                      {teamMembers.map((member) => {
+                        const isSelected = selectedTimelineMembers.has(member.id);
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() => {
+                              const next = new Set(selectedTimelineMembers);
+                              if (next.has(member.id)) next.delete(member.id);
+                              else next.add(member.id);
+                              setSelectedTimelineMembers(next);
+                            }}
+                            style={{ borderRadius: '9999px' }}
+                            className={`w-7 h-7 aspect-square shrink-0 border-2 font-semibold text-[10px] leading-none flex items-center justify-center transition-all ${
+                              isSelected
+                                ? 'border-violet-500 text-white bg-violet-500 z-10'
+                                : 'border-slate-300 text-violet-700 bg-violet-50 hover:border-violet-400'
+                            }`}
+                            title={member.name}
+                            aria-label={member.name}
+                          >
+                            {member.name.charAt(0).toUpperCase()}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs font-semibold text-foreground hover:text-violet-700 transition-colors"
+                      >
+                        <span>Filters ({filteredTimelineItems.length})</span>
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-64 p-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allSelected = selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length;
+                          setSelectedTimelineTypes(
+                            allSelected ? new Set() : new Set(TIMELINE_TYPE_FILTERS.map((f) => f.value))
+                          );
+                        }}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                      >
+                        <List className="h-4 w-4 text-muted-foreground" />
+                        <span className="flex-1 text-left text-sm text-foreground">All Activities</span>
+                        <div
+                          className={`w-4 h-4 rounded flex items-center justify-center ${
+                            selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length
+                              ? 'bg-violet-600 text-white'
+                              : 'border border-slate-300'
+                          }`}
+                        >
+                          {selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length && (
+                            <Check className="h-3 w-3" />
+                          )}
+                        </div>
+                      </button>
+                      <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-t border-border">
+                        Default Filters
+                      </div>
+                      {TIMELINE_TYPE_FILTERS.map((f) => {
+                        const Icon = f.icon;
+                        const isSelected = selectedTimelineTypes.has(f.value);
+                        return (
+                          <button
+                            key={f.value}
+                            type="button"
+                            onClick={() => {
+                              const next = new Set(selectedTimelineTypes);
+                              if (next.has(f.value)) next.delete(f.value);
+                              else next.add(f.value);
+                              setSelectedTimelineTypes(next);
+                            }}
+                            className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                          >
+                            <Icon className="h-4 w-4 text-foreground" />
+                            <span className="flex-1 text-left text-sm text-foreground">{f.label}</span>
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center ${
+                                isSelected ? 'bg-violet-600 text-white' : 'border border-slate-300'
+                              }`}
+                            >
+                              {isSelected && <Check className="h-3 w-3" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
               {gmailEmailsLoading && (
                 <div className="flex items-center gap-2 py-2 mb-3">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
@@ -1989,8 +1018,8 @@ export default function PipelineExpandedView() {
                 </div>
               )}
               <div className="space-y-3">
-                {timelineItems.length > 0 ? (
-                  timelineItems.map((item) => {
+                {filteredTimelineItems.length > 0 ? (
+                  filteredTimelineItems.map((item) => {
                     if (item.type === 'email_thread') {
                       const thread = item.data;
                       const isThreadExpanded = !!expandedThreads[thread.id];
@@ -2171,429 +1200,39 @@ export default function PipelineExpandedView() {
           </ScrollArea>
         </div>
 
-        {/* RIGHT: Related */}
-        <div className="system-font w-full md:w-[260px] lg:w-[310px] xl:w-[340px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="py-4 px-1">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>
-            {/* People */}
-            <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} onAdd={() => setAddingContact(true)}>
-              <div className="space-y-2 py-1">
-                {contacts.map((c) => (
-                  <div key={c.id} className="text-xs text-foreground flex items-center gap-2 group">
-                    <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
-                      {c.name[0]?.toUpperCase()}
-                    </div>
-                    <span className="font-medium truncate">{c.name}</span>
-                    {c.title && <span className="text-muted-foreground truncate">· {c.title}</span>}
-                    <button
-                      onClick={() => deleteContactMutation.mutate(c.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-auto"
-                      title="Remove contact"
-                    >
-                      <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                    </button>
-                  </div>
-                ))}
-                {contacts.length === 0 && !addingContact && (
-                  <p className="text-xs text-muted-foreground">No contacts</p>
-                )}
-                {addingContact ? (
-                  <div className="relative mt-1">
-                    <input
-                      autoFocus
-                      value={contactSearchQuery}
-                      onChange={(e) => setContactSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') { setAddingContact(false); setContactSearchQuery(''); }
-                        if (e.key === 'Enter') {
-                          const query = contactSearchQuery.trim();
-                          if (!query) return;
-                          const filtered = peopleSearchResults.filter(p => !contacts.some(c => c.name.toLowerCase() === p.name.toLowerCase()));
-                          if (filtered.length > 0) {
-                            handleLinkPerson(filtered[0]);
-                          } else {
-                            handleCreateAndLinkPerson(query);
-                          }
-                        }
-                      }}
-                      placeholder="Search people..."
-                      disabled={savingContact}
-                      className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingContact && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
-                    {contactSearchQuery.trim().length > 0 && (() => {
-                      const filtered = peopleSearchResults.filter(p => !contacts.some(c => c.name.toLowerCase() === p.name.toLowerCase()));
-                      if (filtered.length > 0) {
-                        return (
-                          <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-56 overflow-y-auto">
-                            {filtered.map((p) => (
-                              <button
-                                key={`${p.source}:${p.id}`}
-                                onClick={() => handleLinkPerson(p)}
-                                className="w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-muted/60 transition-colors"
-                              >
-                                <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
-                                  {p.name[0]?.toUpperCase()}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-medium text-foreground truncate">{p.name}</span>
-                                    {p.title && <span className="text-[10px] text-muted-foreground truncate">· {p.title}</span>}
-                                  </div>
-                                  {p.company_name && <p className="text-[10px] text-muted-foreground truncate">{p.company_name}</p>}
-                                </div>
-                                <span className="text-[9px] uppercase tracking-wider text-muted-foreground shrink-0">
-                                  {p.source === 'people' ? 'Contact' : 'Lead'}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg">
-                          <button
-                            onClick={() => handleCreateAndLinkPerson(contactSearchQuery)}
-                            className="w-full text-left flex items-center gap-2 px-2 py-2 hover:bg-muted/60 transition-colors"
-                          >
-                            <Plus className="h-3.5 w-3.5 text-blue-600" />
-                            <span className="text-xs text-foreground">
-                              Create <span className="font-semibold">&quot;{contactSearchQuery.trim()}&quot;</span>
-                            </span>
-                          </button>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingContact(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + Add person...
-                  </button>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Companies */}
-            <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Companies" count={lead.company_name ? 1 : 0} onAdd={() => setAddingCompany(true)}>
-              <div className="space-y-2 py-1">
-                {lead.company_name && (
-                  <div className="text-xs text-foreground flex items-center gap-2 group">
-                    <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
-                      {lead.company_name[0]?.toUpperCase()}
-                    </div>
-                    <span className="flex-1 truncate">{lead.company_name}</span>
-                    <button
-                      onClick={handleRemoveCompany}
-                      disabled={savingCompany}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 disabled:opacity-50"
-                      title="Remove company"
-                    >
-                      {savingCompany ? (
-                        <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-                      ) : (
-                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                      )}
-                    </button>
-                  </div>
-                )}
-                {!lead.company_name && !addingCompany && (
-                  <p className="text-xs text-muted-foreground">No companies</p>
-                )}
-                {addingCompany ? (
-                  <div className="relative mt-1">
-                    <input
-                      autoFocus
-                      value={companySearchQuery}
-                      onChange={(e) => setCompanySearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') { setAddingCompany(false); setCompanySearchQuery(''); }
-                        if (e.key === 'Enter') {
-                          const query = companySearchQuery.trim();
-                          if (!query) return;
-                          const first = companiesSearchResults[0];
-                          handleLinkCompany(first ? first.company_name : query);
-                        }
-                      }}
-                      placeholder="Search companies..."
-                      disabled={savingCompany}
-                      className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingCompany && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
-                    {companySearchQuery.trim().length > 0 && (() => {
-                      if (companiesSearchResults.length > 0) {
-                        return (
-                          <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-56 overflow-y-auto">
-                            {companiesSearchResults.map((co) => (
-                              <button
-                                key={`${co.source}:${co.id}`}
-                                onClick={() => handleLinkCompany(co.company_name)}
-                                className="w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-muted/60 transition-colors"
-                              >
-                                <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
-                                  {co.company_name[0]?.toUpperCase()}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <span className="text-xs font-medium text-foreground truncate block">{co.company_name}</span>
-                                  {co.website && <p className="text-[10px] text-muted-foreground truncate">{co.website}</p>}
-                                </div>
-                                {co.source === 'companies' && (
-                                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground shrink-0">Company</span>
-                                )}
-                              </button>
-                            ))}
-                            <button
-                              onClick={() => handleLinkCompany(companySearchQuery)}
-                              className="w-full text-left flex items-center gap-2 px-2 py-2 border-t border-border hover:bg-muted/60 transition-colors"
-                            >
-                              <Plus className="h-3.5 w-3.5 text-blue-600" />
-                              <span className="text-xs text-foreground">
-                                Use <span className="font-semibold">&quot;{companySearchQuery.trim()}&quot;</span> as new company
-                              </span>
-                            </button>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg">
-                          <button
-                            onClick={() => handleLinkCompany(companySearchQuery)}
-                            className="w-full text-left flex items-center gap-2 px-2 py-2 hover:bg-muted/60 transition-colors"
-                          >
-                            <Plus className="h-3.5 w-3.5 text-blue-600" />
-                            <span className="text-xs text-foreground">
-                              Create <span className="font-semibold">&quot;{companySearchQuery.trim()}&quot;</span>
-                            </span>
-                          </button>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingCompany(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + {lead.company_name ? 'Change' : 'Add'} company...
-                  </button>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Tasks */}
-            <RelatedSection
-              icon={<CheckSquare className="h-3.5 w-3.5" />}
-              label="Tasks"
-              count={tasks.filter(t => t.status !== 'completed' && t.status !== 'done').length}
-              onAdd={() => setAddingTask(true)}
-            >
-              <div className="space-y-2 py-1">
-                {tasks.filter(t => t.status !== 'completed' && t.status !== 'done').map((t) => (
-                  <div key={t.id} className="flex items-center gap-2 text-xs">
-                    <CheckSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
-                    <span className="flex-1 truncate text-foreground font-medium">{t.title}</span>
-                    {t.priority && (
-                      <Badge variant="outline" className={`text-[9px] px-1.5 py-0 rounded-full ${
-                        t.priority === 'high' ? 'border-red-200 text-red-600 bg-red-50' :
-                        t.priority === 'medium' ? 'border-amber-200 text-amber-600 bg-amber-50' :
-                        'border-border text-muted-foreground'
-                      }`}>
-                        {t.priority}
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-                {addingTask ? (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <input
-                      autoFocus
-                      value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newTaskTitle.trim()) handleSaveTask();
-                        if (e.key === 'Escape') { setAddingTask(false); setNewTaskTitle(''); }
-                      }}
-                      placeholder="Task title..."
-                      disabled={savingTask}
-                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingTask && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingTask(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + Add task...
-                  </button>
-                )}
-                {/* Show completed tasks toggle */}
-                {(() => {
-                  const completedTasks = tasks.filter(t => t.status === 'completed' || t.status === 'done');
-                  if (completedTasks.length === 0) return null;
-                  return (
-                    <>
-                      <button
-                        onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 w-full"
-                      >
-                        {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                        Show completed tasks ({completedTasks.length})
-                      </button>
-                      {showCompletedTasks && completedTasks.map((t) => (
-                        <div key={t.id} className="flex items-center gap-2 text-xs">
-                          <CheckSquare className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                          <span className="flex-1 truncate line-through text-muted-foreground">{t.title}</span>
-                        </div>
-                      ))}
-                    </>
-                  );
-                })()}
-                {/* View in List link */}
-                {tasks.length > 0 && (
-                  <button
-                    onClick={() => toast.info('View in List coming soon')}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 flex items-center gap-1"
-                  >
-                    <Layers className="h-3 w-3" /> View in List
-                  </button>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Milestones */}
-            <RelatedSection
-              icon={<Flag className="h-3.5 w-3.5" />}
-              label="Milestones"
-              count={milestones.length}
-              onAdd={() => setAddingMilestone(true)}
-            >
-              <div className="space-y-2 py-1">
-                {milestones.map((m) => (
-                  <div
-                    key={m.id}
-                    className="flex items-center gap-2 text-xs cursor-pointer"
-                    onClick={() => handleToggleMilestone(m.id, m.completed)}
-                  >
-                    <CheckSquare className={`h-3.5 w-3.5 shrink-0 ${m.completed ? 'text-emerald-500' : 'text-muted-foreground/50'}`} />
-                    <span className={`flex-1 truncate font-medium ${m.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                      {m.milestone_name}
-                    </span>
-                  </div>
-                ))}
-                {milestones.length === 0 && !addingMilestone && (
-                  <p className="text-xs text-muted-foreground">No milestones</p>
-                )}
-                {addingMilestone ? (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <input
-                      autoFocus
-                      value={newMilestoneName}
-                      onChange={(e) => setNewMilestoneName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newMilestoneName.trim()) handleSaveMilestone(milestones.length);
-                        if (e.key === 'Escape') { setAddingMilestone(false); setNewMilestoneName(''); }
-                      }}
-                      placeholder="Milestone name..."
-                      disabled={savingMilestone}
-                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingMilestone && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingMilestone(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + Add milestone...
-                  </button>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Files */}
-            <RelatedSection
-              icon={<FileText className="h-3.5 w-3.5" />}
-              label="Files"
-              count={leadFiles.length}
-              onAdd={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <div className="space-y-1.5 py-1">
-                {leadFiles.map((f) => (
-                  <div key={f.id} className="flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-                    <span className="text-sm shrink-0">{getFileIcon(f.file_type)}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">{f.file_name}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }}
-                        className="p-1 rounded hover:bg-muted"
-                        title="Download"
-                      >
-                        <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteFile(f)}
-                        className="p-1 rounded hover:bg-muted"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {uploadingFile && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                    <Loader2 className="h-3 w-3 animate-spin text-orange-500" />
-                    Uploading...
-                  </div>
-                )}
-                {leadFiles.length === 0 && !uploadingFile && (
-                  <p className="text-xs text-muted-foreground">No files</p>
-                )}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                >
-                  + Upload file...
-                </button>
-              </div>
-            </RelatedSection>
-
-            {/* Calendar Events */}
-            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0}>
-              <p className="text-xs text-muted-foreground py-1">No events</p>
-            </RelatedSection>
-
-            {/* Projects */}
-            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={0}>
-              <p className="text-xs text-muted-foreground py-1">No projects</p>
-            </RelatedSection>
-
-            {/* Pipeline Records */}
-            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1}>
-              <div className="text-xs py-1">
-                <Badge variant="secondary" className={`text-[11px] ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
-                  {stageCfg?.title ?? lead.status}
-                </Badge>
-              </div>
-            </RelatedSection>
-          </div>
-        </ScrollArea>
-        </div>
+        {/* RIGHT: Related — shared component, or Person Detail Panel when a
+            contact row is expanded via the sidebar's chevron button. */}
+        {selectedPerson ? (
+          <PeopleDetailPanel
+            person={selectedPerson}
+            contactTypeConfig={CONTACT_TYPE_CONFIG}
+            teamMemberMap={teamMemberMap}
+            teamMembers={teamMembers}
+            onClose={() => setSelectedPerson(null)}
+            onExpand={() => navigate(`/admin/contacts/people/expanded-view/${selectedPerson.id}`)}
+            onPersonUpdate={(updated) => setSelectedPerson(updated)}
+          />
+        ) : (
+          <LeadRelatedSidebar
+            entityType="potential"
+            leadId={leadId!}
+            lead={{
+              id: lead.id,
+              name: lead.name,
+              email: lead.email,
+              company_name: lead.company_name,
+              status: lead.status,
+            }}
+            leadEmails={leadEmails}
+            stageCfg={stageCfg ? { label: stageCfg.title, bg: stageCfg.bg, color: stageCfg.color } : null}
+            teamMembers={teamMembers}
+            currentUserName={teamMember?.name ?? null}
+            leadQueryKey={['pipeline-lead-expanded', leadId]}
+            leadsListQueryKey={['potential-deals']}
+            onPersonSelect={(person) => setSelectedPerson(person)}
+            onProjectClick={(projectId) => navigate(`/admin/pipeline/projects/expanded-view/${projectId}`)}
+          />
+        )}
       </div>
     </div>
   );
