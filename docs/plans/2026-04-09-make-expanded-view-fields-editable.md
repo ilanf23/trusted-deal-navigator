@@ -36,10 +36,10 @@ Replace static/read-only field renders (Phone, Email, LinkedIn) with inline-edit
 **Files:**
 - Modify: `src/components/admin/PeopleExpandedView.tsx`
 
-- [ ] Replace the static Email block (lines ~2080-2105) with `EditableField` or `EditableContactRow` using `field="email"` and `personId`, removing the conditional guard that only renders when email exists
-- [ ] Replace the static Phone block (lines ~2107-2125) with `EditableField` using `field="phone"` and `personId`, removing the conditional guard
-- [ ] Replace the static LinkedIn block (lines ~2127-2145) with `EditableField` using `field="linkedin"` and `personId`, removing the conditional guard
-- [ ] Verify all three fields render as editable whether populated or empty
+- [x] Replace the static Email block (lines ~2080-2105) with `EditableField` or `EditableContactRow` using `field="email"` and `personId`, removing the conditional guard that only renders when email exists
+- [x] Replace the static Phone block (lines ~2107-2125) with `EditableField` using `field="phone"` and `personId`, removing the conditional guard
+- [x] Replace the static LinkedIn block (lines ~2127-2145) with `EditableField` using `field="linkedin"` and `personId`, removing the conditional guard
+- [x] Verify all three fields render as editable whether populated or empty
 
 ### Task 3: LenderDetailPanel - Make Email and Phone editable
 

@@ -2077,72 +2077,13 @@ export default function PeopleExpandedView() {
               </div>
 
               {/* Work Email */}
-              {person.email && (
-                <div className="group/field">
-                  <span className="text-xs font-medium text-muted-foreground block mb-1">Work Email</span>
-                  <div className="flex items-center justify-between">
-                    <a href={`mailto:${person.email}`} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate">{person.email}</a>
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
-                      <button
-                        onClick={() => { navigator.clipboard.writeText(person.email!); toast.success('Email copied'); }}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={async () => {
-                          const { error } = await supabase.from('people').update({ email: null }).eq('id', person.id);
-                          if (error) { toast.error('Failed to clear'); return; }
-                          handleFieldSaved('email', '');
-                        }}
-                        className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover/field:opacity-100 transition-all"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <EditableField label="Work Email" value={person.email ?? ''} field="email" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Email" copyable />
 
               {/* Phone */}
-              {person.phone && (
-                <div className="group/field">
-                  <span className="text-xs font-medium text-muted-foreground block mb-1">Phone</span>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">{formatPhoneNumber(person.phone)}</span>
-                    <button
-                      onClick={async () => {
-                        const { error } = await supabase.from('people').update({ phone: null }).eq('id', person.id);
-                        if (error) { toast.error('Failed to clear'); return; }
-                        handleFieldSaved('phone', '');
-                      }}
-                      className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover/field:opacity-100 transition-all shrink-0 ml-2"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-              )}
+              <EditableField label="Phone" value={person.phone ?? ''} field="phone" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Phone" />
 
               {/* LinkedIn */}
-              {person.linkedin && (
-                <div className="group/field">
-                  <span className="text-xs font-medium text-muted-foreground block mb-1">LinkedIn</span>
-                  <div className="flex items-center justify-between">
-                    <a href={person.linkedin.startsWith('http') ? person.linkedin : `https://${person.linkedin}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate block">{person.linkedin}</a>
-                    <button
-                      onClick={async () => {
-                        const { error } = await supabase.from('people').update({ linkedin: null }).eq('id', person.id);
-                        if (error) { toast.error('Failed to clear'); return; }
-                        handleFieldSaved('linkedin', '');
-                      }}
-                      className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover/field:opacity-100 transition-all shrink-0 ml-2"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-              )}
+              <EditableField label="LinkedIn" value={person.linkedin ?? ''} field="linkedin" personId={person.id} onSaved={handleFieldSaved} placeholder="Add LinkedIn" />
 
               {/* Twitter */}
               <EditableField label="Twitter" value={person.twitter ?? ''} field="twitter" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Twitter" />
