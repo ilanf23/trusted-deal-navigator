@@ -357,6 +357,7 @@ function EditableField({
   linkHref?: string;
 }) {
   const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(personId, field, value, onSaved);
+  const { registerUndo } = useUndo();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -393,8 +394,17 @@ function EditableField({
 
   const handleClear = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    const previousValue = value;
     const { error } = await supabase.from('people').update({ [field]: null }).eq('id', personId);
     if (error) { toast.error('Failed to clear'); return; }
+    registerUndo({
+      label: `Cleared ${field.replace('_', ' ')}`,
+      execute: async () => {
+        const { error: e } = await supabase.from('people').update({ [field]: previousValue || null }).eq('id', personId);
+        if (e) throw e;
+        onSaved(field, previousValue);
+      },
+    });
     onSaved(field, '');
   };
 
