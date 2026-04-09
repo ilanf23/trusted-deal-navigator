@@ -289,7 +289,7 @@ function CrmEditableField({
         </div>
       )}
       <span className={`text-sm font-medium block ${value ? 'text-foreground' : 'text-muted-foreground/50'}`}>
-        {value || placeholder || '\u2014'}
+        {(field === 'phone' && value ? formatPhoneNumber(value) : value) || placeholder || '\u2014'}
       </span>
     </div>
   );
@@ -624,15 +624,14 @@ export default function PipelineExpandedView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
 
-  // Contact inline add state (Related sidebar)
+  // Contact search-to-add state (Related sidebar)
   const [addingContact, setAddingContact] = useState(false);
-  const [newContactName, setNewContactName] = useState('');
-  const [newContactTitle, setNewContactTitle] = useState('');
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
   const [savingContact, setSavingContact] = useState(false);
 
-  // Company inline add state (Related sidebar)
+  // Company search-to-add state (Related sidebar)
   const [addingCompany, setAddingCompany] = useState(false);
-  const [newCompanyName, setNewCompanyName] = useState('');
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [savingCompany, setSavingCompany] = useState(false);
 
   // Milestone inline add state (Related sidebar)
@@ -787,15 +786,17 @@ export default function PipelineExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-tasks', leadId] });
   }, [leadId, newTaskTitle, queryClient]);
 
-  // ── Save contact (Related sidebar) ──
-  const handleSaveContact = useCallback(async () => {
-    if (!leadId || !newContactName.trim()) return;
+  // ── Link existing person as contact (Related sidebar) ──
+  const handleLinkPerson = useCallback(async (person: { id: string; name: string; title: string | null; email?: string | null; phone?: string | null }) => {
+    if (!leadId) return;
     setSavingContact(true);
     const { error } = await supabase.from('entity_contacts').insert({
       entity_id: leadId,
       entity_type: 'potential',
-      name: newContactName.trim(),
-      title: newContactTitle.trim() || null,
+      name: person.name,
+      title: person.title || null,
+      email: person.email || null,
+      phone: person.phone || null,
     });
     setSavingContact(false);
     if (error) {
@@ -803,19 +804,53 @@ export default function PipelineExpandedView() {
       return;
     }
     toast.success('Contact added');
-    setNewContactName('');
-    setNewContactTitle('');
+    setContactSearchQuery('');
     setAddingContact(false);
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-contacts', leadId] });
-  }, [leadId, newContactName, newContactTitle, queryClient]);
+  }, [leadId, queryClient]);
 
-  // ── Save company (Related sidebar) ──
-  const handleSaveCompany = useCallback(async () => {
-    if (!leadId || !newCompanyName.trim()) return;
+  // ── Create + link a brand-new person (falls back when no search match) ──
+  const handleCreateAndLinkPerson = useCallback(async (name: string) => {
+    const trimmed = name.trim();
+    if (!leadId || !trimmed) return;
+    setSavingContact(true);
+    const { error } = await supabase.from('entity_contacts').insert({
+      entity_id: leadId,
+      entity_type: 'potential',
+      name: trimmed,
+    });
+    setSavingContact(false);
+    if (error) {
+      toast.error('Failed to add contact');
+      return;
+    }
+    toast.success('Contact added');
+    setContactSearchQuery('');
+    setAddingContact(false);
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-contacts', leadId] });
+  }, [leadId, queryClient]);
+
+  // ── Remove a linked contact (Related sidebar) ──
+  const deleteContactMutation = useMutation({
+    mutationFn: async (contactId: string) => {
+      const { error } = await supabase.from('entity_contacts').delete().eq('id', contactId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-lead-contacts', leadId] });
+      toast.success('Contact removed');
+    },
+    onError: () => toast.error('Failed to remove contact'),
+  });
+
+  // ── Link existing company (Related sidebar) ──
+  const handleLinkCompany = useCallback(async (companyName: string) => {
+    const trimmed = companyName.trim();
+    if (!leadId || !trimmed) return;
     setSavingCompany(true);
     const { error } = await supabase
       .from('potential')
-      .update({ company_name: newCompanyName.trim() })
+      .update({ company_name: trimmed })
       .eq('id', leadId);
     setSavingCompany(false);
     if (error) {
@@ -823,11 +858,29 @@ export default function PipelineExpandedView() {
       return;
     }
     toast.success('Company updated');
-    setNewCompanyName('');
+    setCompanySearchQuery('');
     setAddingCompany(false);
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
     queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
-  }, [leadId, newCompanyName, queryClient]);
+  }, [leadId, queryClient]);
+
+  // ── Remove linked company (Related sidebar) ──
+  const handleRemoveCompany = useCallback(async () => {
+    if (!leadId) return;
+    setSavingCompany(true);
+    const { error } = await supabase
+      .from('potential')
+      .update({ company_name: null })
+      .eq('id', leadId);
+    setSavingCompany(false);
+    if (error) {
+      toast.error('Failed to remove company');
+      return;
+    }
+    toast.success('Company removed');
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
+  }, [leadId, queryClient]);
 
   // ── Save milestone (Related sidebar) ──
   const handleSaveMilestone = useCallback(async (milestoneCount: number) => {
@@ -1012,6 +1065,98 @@ export default function PipelineExpandedView() {
       return data ?? [];
     },
     enabled: !!leadId,
+  });
+
+  // ── People search for linking contacts (Related sidebar) ──
+  const { data: peopleSearchResults = [] } = useQuery({
+    queryKey: ['pipeline-people-search', contactSearchQuery],
+    queryFn: async () => {
+      const q = contactSearchQuery.trim();
+      if (!q) return [];
+      const like = `%${q}%`;
+      // Search the master `people` table first (canonical source), then `potential` as fallback,
+      // and merge by case-insensitive name so we don't duplicate results.
+      const [peopleRes, potentialRes] = await Promise.all([
+        supabase
+          .from('people')
+          .select('id, name, title, email, phone, company_name')
+          .or(`name.ilike.${like},email.ilike.${like},company_name.ilike.${like}`)
+          .order('name', { ascending: true })
+          .limit(20),
+        supabase
+          .from('potential')
+          .select('id, name, title, email, phone, company_name')
+          .or(`name.ilike.${like},email.ilike.${like},company_name.ilike.${like}`)
+          .order('name', { ascending: true })
+          .limit(20),
+      ]);
+      const merged: { id: string; name: string; title: string | null; email: string | null; phone: string | null; company_name: string | null; source: 'people' | 'potential' }[] = [];
+      const seen = new Set<string>();
+      for (const row of (peopleRes.data ?? [])) {
+        const key = row.name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push({ ...row, source: 'people' });
+      }
+      for (const row of (potentialRes.data ?? [])) {
+        const key = row.name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push({ ...row, source: 'potential' });
+      }
+      return merged.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })).slice(0, 20);
+    },
+    enabled: addingContact && contactSearchQuery.trim().length > 0,
+  });
+
+  // ── Company search for linking (Related sidebar) ──
+  const { data: companiesSearchResults = [] } = useQuery({
+    queryKey: ['pipeline-companies-search', companySearchQuery],
+    queryFn: async () => {
+      const q = companySearchQuery.trim();
+      if (!q) return [];
+      const like = `%${q}%`;
+      // Canonical `companies` table + distinct company_name values from potential/people.
+      const [companiesRes, potentialRes, peopleRes] = await Promise.all([
+        supabase
+          .from('companies')
+          .select('id, company_name, website')
+          .ilike('company_name', like)
+          .order('company_name', { ascending: true })
+          .limit(20),
+        supabase
+          .from('potential')
+          .select('company_name')
+          .ilike('company_name', like)
+          .not('company_name', 'is', null)
+          .limit(40),
+        supabase
+          .from('people')
+          .select('company_name')
+          .ilike('company_name', like)
+          .not('company_name', 'is', null)
+          .limit(40),
+      ]);
+      const merged: { id: string; company_name: string; website: string | null; source: 'companies' | 'derived' }[] = [];
+      const seen = new Set<string>();
+      for (const row of (companiesRes.data ?? [])) {
+        const key = row.company_name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push({ id: row.id, company_name: row.company_name, website: row.website ?? null, source: 'companies' });
+      }
+      for (const row of [...(potentialRes.data ?? []), ...(peopleRes.data ?? [])]) {
+        if (!row.company_name) continue;
+        const key = row.company_name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push({ id: `derived:${row.company_name}`, company_name: row.company_name, website: null, source: 'derived' });
+      }
+      return merged
+        .sort((a, b) => a.company_name.localeCompare(b.company_name, undefined, { sensitivity: 'base' }))
+        .slice(0, 20);
+    },
+    enabled: addingCompany && companySearchQuery.trim().length > 0,
   });
 
   const { data: tasks = [] } = useQuery({
@@ -1495,7 +1640,18 @@ export default function PipelineExpandedView() {
                 <CrmEditableField label="Work Email" value={lead.email ?? ''} field="email" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Email" copyable />
 
                 {/* Phone */}
-                <CrmEditableField label="Phone" value={lead.phone ?? ''} field="phone" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Phone" />
+                <div className="relative group/phone">
+                  <CrmEditableField label="Phone" value={lead.phone ?? ''} field="phone" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Phone" />
+                  {lead.phone && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/calls?phone=${encodeURIComponent(lead.phone!.replace(/\D/g, ''))}&leadId=${lead.id}`); }}
+                      className="absolute top-0 right-0 p-1 rounded text-muted-foreground hover:text-blue-600 opacity-0 group-hover/phone:opacity-100 transition-opacity"
+                      title="Call"
+                    >
+                      <PhoneCall className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* ── Description ── */}
@@ -2015,43 +2171,91 @@ export default function PipelineExpandedView() {
             <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} onAdd={() => setAddingContact(true)}>
               <div className="space-y-2 py-1">
                 {contacts.map((c) => (
-                  <div key={c.id} className="text-xs text-foreground flex items-center gap-2">
+                  <div key={c.id} className="text-xs text-foreground flex items-center gap-2 group">
                     <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
                       {c.name[0]?.toUpperCase()}
                     </div>
-                    <span className="font-medium">{c.name}</span>
-                    {c.title && <span className="text-muted-foreground">· {c.title}</span>}
+                    <span className="font-medium truncate">{c.name}</span>
+                    {c.title && <span className="text-muted-foreground truncate">· {c.title}</span>}
+                    <button
+                      onClick={() => deleteContactMutation.mutate(c.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-auto"
+                      title="Remove contact"
+                    >
+                      <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                    </button>
                   </div>
                 ))}
                 {contacts.length === 0 && !addingContact && (
                   <p className="text-xs text-muted-foreground">No contacts</p>
                 )}
                 {addingContact ? (
-                  <div className="space-y-1.5 mt-1">
+                  <div className="relative mt-1">
                     <input
                       autoFocus
-                      value={newContactName}
-                      onChange={(e) => setNewContactName(e.target.value)}
+                      value={contactSearchQuery}
+                      onChange={(e) => setContactSearchQuery(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newContactName.trim()) handleSaveContact();
-                        if (e.key === 'Escape') { setAddingContact(false); setNewContactName(''); setNewContactTitle(''); }
+                        if (e.key === 'Escape') { setAddingContact(false); setContactSearchQuery(''); }
+                        if (e.key === 'Enter') {
+                          const query = contactSearchQuery.trim();
+                          if (!query) return;
+                          const filtered = peopleSearchResults.filter(p => !contacts.some(c => c.name.toLowerCase() === p.name.toLowerCase()));
+                          if (filtered.length > 0) {
+                            handleLinkPerson(filtered[0]);
+                          } else {
+                            handleCreateAndLinkPerson(query);
+                          }
+                        }
                       }}
-                      placeholder="Name (required)"
+                      placeholder="Search people..."
                       disabled={savingContact}
                       className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                     />
-                    <input
-                      value={newContactTitle}
-                      onChange={(e) => setNewContactTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newContactName.trim()) handleSaveContact();
-                        if (e.key === 'Escape') { setAddingContact(false); setNewContactName(''); setNewContactTitle(''); }
-                      }}
-                      placeholder="Title (optional)"
-                      disabled={savingContact}
-                      className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingContact && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+                    {savingContact && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
+                    {contactSearchQuery.trim().length > 0 && (() => {
+                      const filtered = peopleSearchResults.filter(p => !contacts.some(c => c.name.toLowerCase() === p.name.toLowerCase()));
+                      if (filtered.length > 0) {
+                        return (
+                          <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-56 overflow-y-auto">
+                            {filtered.map((p) => (
+                              <button
+                                key={`${p.source}:${p.id}`}
+                                onClick={() => handleLinkPerson(p)}
+                                className="w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-muted/60 transition-colors"
+                              >
+                                <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
+                                  {p.name[0]?.toUpperCase()}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-medium text-foreground truncate">{p.name}</span>
+                                    {p.title && <span className="text-[10px] text-muted-foreground truncate">· {p.title}</span>}
+                                  </div>
+                                  {p.company_name && <p className="text-[10px] text-muted-foreground truncate">{p.company_name}</p>}
+                                </div>
+                                <span className="text-[9px] uppercase tracking-wider text-muted-foreground shrink-0">
+                                  {p.source === 'people' ? 'Contact' : 'Lead'}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg">
+                          <button
+                            onClick={() => handleCreateAndLinkPerson(contactSearchQuery)}
+                            className="w-full text-left flex items-center gap-2 px-2 py-2 hover:bg-muted/60 transition-colors"
+                          >
+                            <Plus className="h-3.5 w-3.5 text-blue-600" />
+                            <span className="text-xs text-foreground">
+                              Create <span className="font-semibold">&quot;{contactSearchQuery.trim()}&quot;</span>
+                            </span>
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <button
@@ -2068,31 +2272,96 @@ export default function PipelineExpandedView() {
             <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Companies" count={lead.company_name ? 1 : 0} onAdd={() => setAddingCompany(true)}>
               <div className="space-y-2 py-1">
                 {lead.company_name && (
-                  <div className="text-xs text-foreground flex items-center gap-2">
+                  <div className="text-xs text-foreground flex items-center gap-2 group">
                     <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
                       {lead.company_name[0]?.toUpperCase()}
                     </div>
-                    {lead.company_name}
+                    <span className="flex-1 truncate">{lead.company_name}</span>
+                    <button
+                      onClick={handleRemoveCompany}
+                      disabled={savingCompany}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 disabled:opacity-50"
+                      title="Remove company"
+                    >
+                      {savingCompany ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+                      ) : (
+                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                      )}
+                    </button>
                   </div>
                 )}
                 {!lead.company_name && !addingCompany && (
                   <p className="text-xs text-muted-foreground">No companies</p>
                 )}
                 {addingCompany ? (
-                  <div className="flex items-center gap-1.5 mt-1">
+                  <div className="relative mt-1">
                     <input
                       autoFocus
-                      value={newCompanyName}
-                      onChange={(e) => setNewCompanyName(e.target.value)}
+                      value={companySearchQuery}
+                      onChange={(e) => setCompanySearchQuery(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newCompanyName.trim()) handleSaveCompany();
-                        if (e.key === 'Escape') { setAddingCompany(false); setNewCompanyName(''); }
+                        if (e.key === 'Escape') { setAddingCompany(false); setCompanySearchQuery(''); }
+                        if (e.key === 'Enter') {
+                          const query = companySearchQuery.trim();
+                          if (!query) return;
+                          const first = companiesSearchResults[0];
+                          handleLinkCompany(first ? first.company_name : query);
+                        }
                       }}
-                      placeholder="Company name..."
+                      placeholder="Search companies..."
                       disabled={savingCompany}
-                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                      className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                     />
-                    {savingCompany && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
+                    {savingCompany && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
+                    {companySearchQuery.trim().length > 0 && (() => {
+                      if (companiesSearchResults.length > 0) {
+                        return (
+                          <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-56 overflow-y-auto">
+                            {companiesSearchResults.map((co) => (
+                              <button
+                                key={`${co.source}:${co.id}`}
+                                onClick={() => handleLinkCompany(co.company_name)}
+                                className="w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-muted/60 transition-colors"
+                              >
+                                <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
+                                  {co.company_name[0]?.toUpperCase()}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-xs font-medium text-foreground truncate block">{co.company_name}</span>
+                                  {co.website && <p className="text-[10px] text-muted-foreground truncate">{co.website}</p>}
+                                </div>
+                                {co.source === 'companies' && (
+                                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground shrink-0">Company</span>
+                                )}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => handleLinkCompany(companySearchQuery)}
+                              className="w-full text-left flex items-center gap-2 px-2 py-2 border-t border-border hover:bg-muted/60 transition-colors"
+                            >
+                              <Plus className="h-3.5 w-3.5 text-blue-600" />
+                              <span className="text-xs text-foreground">
+                                Use <span className="font-semibold">&quot;{companySearchQuery.trim()}&quot;</span> as new company
+                              </span>
+                            </button>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg">
+                          <button
+                            onClick={() => handleLinkCompany(companySearchQuery)}
+                            className="w-full text-left flex items-center gap-2 px-2 py-2 hover:bg-muted/60 transition-colors"
+                          >
+                            <Plus className="h-3.5 w-3.5 text-blue-600" />
+                            <span className="text-xs text-foreground">
+                              Create <span className="font-semibold">&quot;{companySearchQuery.trim()}&quot;</span>
+                            </span>
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <button

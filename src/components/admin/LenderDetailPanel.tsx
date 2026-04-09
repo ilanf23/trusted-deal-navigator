@@ -7,6 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatPhoneNumber } from './InlineEditableFields';
 
 // ── Lender type ──
 export interface LenderProgram {
@@ -93,12 +94,13 @@ function useInlineSave(
 
 // ── Editable field row ──
 function EditableField({
-  icon, label, value, field, lenderId, onSaved, multiline,
+  icon, label, value, field, lenderId, onSaved, multiline, copyable,
 }: {
   icon: React.ReactNode; label: string; value: string; field: string;
   lenderId: string;
   onSaved: (field: string, newValue: string) => void;
   multiline?: boolean;
+  copyable?: boolean;
 }) {
   const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(lenderId, field, value, onSaved);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -144,6 +146,8 @@ function EditableField({
     );
   }
 
+  const displayValue = field === 'phone' && value ? formatPhoneNumber(value) : value;
+
   return (
     <div onClick={() => setEditing(true)} className="flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors cursor-pointer group">
       <div className="flex items-center gap-2 text-muted-foreground shrink-0">
@@ -152,8 +156,13 @@ function EditableField({
       </div>
       <div className="flex items-center gap-1.5">
         <span className="text-[13px] text-right truncate font-medium text-foreground max-w-[200px]">
-          {value || '\u2014'}
+          {displayValue || '\u2014'}
         </span>
+        {copyable && value && (
+          <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(value); toast.success('Copied'); }} className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+            <Copy className="h-3 w-3" />
+          </button>
+        )}
         <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
       </div>
     </div>
@@ -252,8 +261,8 @@ export default function LenderDetailPanel({
         <SectionHeader title="Contact Info" />
         <div className="divide-y divide-border/40">
           <EditableField icon={<User className="h-3.5 w-3.5" />} label="Contact" value={lender.contact_name ?? ''} field="contact_name" lenderId={lender.id} onSaved={handleFieldSaved} />
-          <EditableField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={lender.email ?? ''} field="email" lenderId={lender.id} onSaved={handleFieldSaved} />
-          <EditableField icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={lender.phone ?? ''} field="phone" lenderId={lender.id} onSaved={handleFieldSaved} />
+          <EditableField icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={lender.email ?? ''} field="email" lenderId={lender.id} onSaved={handleFieldSaved} copyable />
+          <EditableField icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={lender.phone ?? ''} field="phone" lenderId={lender.id} onSaved={handleFieldSaved} copyable />
           <EditableField icon={<MapPin className="h-3.5 w-3.5" />} label="Location" value={lender.location ?? ''} field="location" lenderId={lender.id} onSaved={handleFieldSaved} />
         </div>
 

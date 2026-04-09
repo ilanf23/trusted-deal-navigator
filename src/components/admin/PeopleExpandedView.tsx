@@ -344,7 +344,7 @@ function useInlineSave(
 
 // ── Editable field row ──
 function EditableField({
-  icon, label, value, field, personId, onSaved, placeholder, required, copyable, noLabel,
+  icon, label, value, field, personId, onSaved, placeholder, required, copyable, noLabel, allowClear, linkHref,
 }: {
   icon?: React.ReactNode; label: string; value: string; field: string;
   personId: string;
@@ -353,6 +353,8 @@ function EditableField({
   required?: boolean;
   copyable?: boolean;
   noLabel?: boolean;
+  allowClear?: boolean;
+  linkHref?: string;
 }) {
   const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(personId, field, value, onSaved);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -387,6 +389,15 @@ function EditableField({
     );
   }
 
+  const displayValue = field === 'phone' && value ? formatPhoneNumber(value) : value;
+
+  const handleClear = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { error } = await supabase.from('people').update({ [field]: null }).eq('id', personId);
+    if (error) { toast.error('Failed to clear'); return; }
+    onSaved(field, '');
+  };
+
   return (
     <div onClick={() => setEditing(true)} className="cursor-pointer group">
       {!noLabel && label && (
@@ -395,18 +406,39 @@ function EditableField({
             {label}
             {required && <span className="text-red-500 ml-0.5">*</span>}
           </span>
-          {copyable && value && (
-            <button
-              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(value); toast.success('Copied'); }}
-              className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Copy className="h-3.5 w-3.5" />
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {linkHref && value && (
+              <a
+                href={linkHref}
+                target={linkHref.startsWith('mailto:') ? undefined : '_blank'}
+                rel={linkHref.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
+                onClick={(e) => e.stopPropagation()}
+                className="text-muted-foreground hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Globe className="h-3.5 w-3.5" />
+              </a>
+            )}
+            {copyable && value && (
+              <button
+                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(value); toast.success('Copied'); }}
+                className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {allowClear && value && (
+              <button
+                onClick={handleClear}
+                className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
         </div>
       )}
       <span className={`text-sm font-medium block ${value ? 'text-foreground' : 'text-muted-foreground/50'}`}>
-        {value || placeholder || '\u2014'}
+        {displayValue || placeholder || '\u2014'}
       </span>
     </div>
   );
@@ -2077,13 +2109,13 @@ export default function PeopleExpandedView() {
               </div>
 
               {/* Work Email */}
-              <EditableField label="Work Email" value={person.email ?? ''} field="email" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Email" copyable />
+              <EditableField label="Work Email" value={person.email ?? ''} field="email" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Email" copyable allowClear linkHref={person.email ? `mailto:${person.email}` : undefined} />
 
               {/* Phone */}
-              <EditableField label="Phone" value={person.phone ?? ''} field="phone" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Phone" />
+              <EditableField label="Phone" value={person.phone ?? ''} field="phone" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Phone" allowClear />
 
               {/* LinkedIn */}
-              <EditableField label="LinkedIn" value={person.linkedin ?? ''} field="linkedin" personId={person.id} onSaved={handleFieldSaved} placeholder="Add LinkedIn" />
+              <EditableField label="LinkedIn" value={person.linkedin ?? ''} field="linkedin" personId={person.id} onSaved={handleFieldSaved} placeholder="Add LinkedIn" allowClear linkHref={person.linkedin ? (person.linkedin.startsWith('http') ? person.linkedin : `https://${person.linkedin}`) : undefined} />
 
               {/* Twitter */}
               <EditableField label="Twitter" value={person.twitter ?? ''} field="twitter" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Twitter" />
