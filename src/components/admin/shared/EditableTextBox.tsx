@@ -8,17 +8,27 @@ import { cn } from '@/lib/utils';
 // field across tables, expanded views, and detail panels.
 // ─────────────────────────────────────────────────────────────────
 export const EDITABLE_TEXTBOX_STYLES = {
-  base: 'inline-flex items-center rounded-full transition-colors max-w-full',
+  base: 'inline-flex items-center max-w-full transition-colors',
+  /** Padding + min-height per size. Font-size is kept in `fontSize` so it can be
+   *  applied to BOTH the outer span and the inner input (inputs do not reliably
+   *  inherit font-size when global CSS or user-agent styles compete).
+   *  Values are 70% of their original sizes (30% smaller per design update). */
   size: {
-    sm: 'px-3 py-1 text-[13px] min-h-[26px]',
-    md: 'px-3 py-1 text-[14px] min-h-[30px]',
-    lg: 'px-3 py-1.5 text-[22px] min-h-[40px]',
+    sm: 'px-[8px] py-[3px] min-h-[18px]',
+    md: 'px-[8px] py-[3px] min-h-[21px]',
+    lg: 'px-[8px] py-[4px] min-h-[28px]',
   },
-  idle: 'border border-transparent hover:bg-[#f1f3f4] dark:hover:bg-muted cursor-text',
-  editing:
-    'bg-white dark:bg-background border border-[#0066FF] focus-within:ring-1 focus-within:ring-[#0066FF]',
-  /** Dark purple underline rendered beneath the input text while editing. */
-  editingUnderline: 'border-0 border-b-2 border-b-[#3b2778] dark:border-b-[#a78bfa] rounded-none',
+  fontSize: {
+    sm: 'text-[9px]',
+    md: 'text-[10px]',
+    lg: 'text-[15px]',
+  },
+  /** Idle: invisible 2px bottom border at rest; faint gray on hover.
+   *  The border slot is reserved at all times so hovering and editing don't
+   *  shift layout by a pixel. */
+  idle: 'border-0 border-b-2 border-b-transparent hover:border-b-gray-300 dark:hover:border-b-gray-700 cursor-text',
+  /** Editing: dark purple bottom border, same 2px slot as idle. */
+  editing: 'border-0 border-b-2 border-b-[#3b2778] dark:border-b-[#a78bfa]',
   placeholder: 'text-muted-foreground/60',
 } as const;
 
@@ -138,6 +148,7 @@ export function EditableTextBox({
   };
 
   const sizeClasses = EDITABLE_TEXTBOX_STYLES.size[size];
+  const fontSizeClass = EDITABLE_TEXTBOX_STYLES.fontSize[size];
   const alignClass = align === 'right' ? 'text-right' : 'text-left';
   const justifyClass = align === 'right' ? 'justify-end' : 'justify-start';
 
@@ -147,6 +158,7 @@ export function EditableTextBox({
         className={cn(
           EDITABLE_TEXTBOX_STYLES.base,
           sizeClasses,
+          fontSizeClass,
           EDITABLE_TEXTBOX_STYLES.editing,
           justifyClass,
           className,
@@ -165,8 +177,8 @@ export function EditableTextBox({
           placeholder={placeholder}
           aria-label={ariaLabel}
           className={cn(
-            'editable-textbox-input flex-1 min-w-0 bg-transparent outline-none p-0',
-            EDITABLE_TEXTBOX_STYLES.editingUnderline,
+            'editable-textbox-input flex-1 min-w-0 bg-transparent outline-none border-0 p-0',
+            fontSizeClass,
             alignClass,
             inputClassName,
           )}
@@ -185,6 +197,7 @@ export function EditableTextBox({
       className={cn(
         EDITABLE_TEXTBOX_STYLES.base,
         sizeClasses,
+        fontSizeClass,
         EDITABLE_TEXTBOX_STYLES.idle,
         justifyClass,
         disabled && 'cursor-default opacity-60 hover:bg-transparent',
@@ -194,7 +207,7 @@ export function EditableTextBox({
       aria-label={ariaLabel}
     >
       {prefix}
-      <span className={cn('truncate', alignClass, !displayValue && EDITABLE_TEXTBOX_STYLES.placeholder)}>
+      <span className={cn('truncate', fontSizeClass, alignClass, !displayValue && EDITABLE_TEXTBOX_STYLES.placeholder)}>
         {displayValue || placeholder}
       </span>
       {saving && <Loader2 className="h-3 w-3 animate-spin text-[#0066FF] shrink-0 ml-1" />}

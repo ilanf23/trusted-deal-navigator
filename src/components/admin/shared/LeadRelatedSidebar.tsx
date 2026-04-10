@@ -1460,13 +1460,11 @@ export default function LeadRelatedSidebar({
                       onChange={(e) => setCompanySearchQuery(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          const q = companySearchQuery.trim();
-                          if (!q) return;
+                          e.preventDefault();
+                          if (!companySearchQuery.trim()) return;
                           const first = companiesSearchResults[0];
                           if (first) {
                             handleLinkCompany(first.company_name);
-                          } else {
-                            handleLinkCompany(q);
                           }
                         }
                         if (e.key === 'Escape') { setAddingCompany(false); setCompanySearchQuery(''); }
@@ -1500,13 +1498,7 @@ export default function LeadRelatedSidebar({
                     )}
                     {companySearchQuery.trim().length > 0 && companiesSearchResults.length === 0 && (
                       <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg px-2 py-2">
-                        <p className="text-xs text-muted-foreground mb-1">No matching companies</p>
-                        <button
-                          onClick={() => handleLinkCompany(companySearchQuery.trim())}
-                          className="w-full text-left text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-                        >
-                          + Use &quot;{companySearchQuery.trim()}&quot; as company
-                        </button>
+                        <p className="text-xs text-muted-foreground">No matching companies</p>
                       </div>
                     )}
                   </div>

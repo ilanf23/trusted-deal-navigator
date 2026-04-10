@@ -670,13 +670,13 @@ const Pipeline = () => {
 
   const { columnWidths, handleColumnResize } = useAutoFitColumns({
     minWidths: {
-      deal: 220, company: 140, contact: 120, value: 110, ownedBy: 90,
-      tasks: 60, status: 130, stage: 170, daysInStage: 75, stageUpdated: 105,
-      lastContacted: 110, interactions: 70, inactiveDays: 85, tags: 120,
+      deal: 280, company: 180, contact: 150, value: 130, ownedBy: 120,
+      tasks: 70, status: 160, stage: 200, daysInStage: 90, stageUpdated: 130,
+      lastContacted: 140, interactions: 90, inactiveDays: 100, tags: 250,
     },
     autoFitConfig: pipelineAutoFitConfig,
     data: filteredAndSorted,
-    storageKey: 'pipeline-col-widths-v3',
+    storageKey: 'pipeline-col-widths-v4',
   });
 
   // Group leads by stage for Kanban

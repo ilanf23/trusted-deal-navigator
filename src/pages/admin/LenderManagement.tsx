@@ -656,13 +656,13 @@ const LenderManagement = () => {
 
   const { columnWidths, handleColumnResize } = useAutoFitColumns({
     minWidths: {
-      deal: 200, company: 130, contact: 110, value: 90, ownedBy: 80,
-      tasks: 55, status: 100, stage: 160, daysInStage: 55, stageUpdated: 85,
-      lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+      deal: 280, company: 180, contact: 150, value: 110, ownedBy: 120,
+      tasks: 70, status: 130, stage: 200, daysInStage: 80, stageUpdated: 120,
+      lastContacted: 130, interactions: 90, inactiveDays: 100, tags: 250,
     },
     autoFitConfig: lmAutoFitConfig,
     data: filteredAndSorted,
-    storageKey: 'lm-col-widths-v2',
+    storageKey: 'lm-col-widths-v3',
   });
 
   // Group leads by stage for Kanban
