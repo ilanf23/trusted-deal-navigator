@@ -24,10 +24,19 @@ import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
+import { useCall } from '@/contexts/CallContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { differenceInDays, parseISO, format } from 'date-fns';
-import { formatPhoneNumber } from './InlineEditableFields';
+import {
+  formatPhoneNumber,
+  StackedEditableField,
+  StackedSelectField,
+  StackedOwnerField,
+  StackedReadOnlyField,
+  EditableTags as InlineEditableTags,
+  EditableNotesField,
+} from './InlineEditableFields';
 
 /* ─── Types ─── */
 
@@ -36,15 +45,24 @@ interface Company {
   company_name: string;
   contact_name: string | null;
   phone: string | null;
+  direct_phone: string | null;
+  fax_phone: string | null;
   email_domain: string | null;
   website: string | null;
   contact_type: string | null;
+  social_linkedin: string | null;
+  address: string | null;
+  description: string | null;
+  visibility: string | null;
   tags: string[] | null;
   assigned_to: string | null;
   notes: string | null;
   source: string | null;
   last_activity_at: string | null;
   last_contacted: string | null;
+  clx_file_name: string | null;
+  about: string | null;
+  history: string | null;
   created_at: string;
   updated_at: string;
   deals_count?: number;
@@ -605,6 +623,14 @@ export default function CompanyExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['companies'] });
   }, [companyId, queryClient, registerUndo]);
 
+  /* ── Click-to-call for the Primary Contact phone row. Matches the pattern
+       used by the deal pipeline expanded views so the left column behaves
+       consistently — phone rows dial through the global CallContext. ── */
+  const { makeOutboundCall } = useCall();
+  const handleCallPhone = useCallback((phone: string) => {
+    void makeOutboundCall(phone, companyId, undefined);
+  }, [makeOutboundCall, companyId]);
+
   /* ── Save activity ── */
   const handleSaveActivity = useCallback(async () => {
     if (!companyId) return;
@@ -690,23 +716,33 @@ export default function CompanyExpandedView() {
         .single();
       if (error) throw error;
 
+      const row = companyRow as any;
       return {
-        id: companyRow.id,
-        company_name: companyRow.company_name || companyRow.name,
-        contact_name: companyRow.name,
-        phone: companyRow.phone,
-        website: companyRow.website,
-        email_domain: companyRow.email ? companyRow.email.split('@')[1] || null : null,
-        contact_type: companyRow.contact_type,
-        tags: companyRow.tags,
-        assigned_to: companyRow.assigned_to,
-        notes: companyRow.notes,
-        source: companyRow.source,
-        last_activity_at: companyRow.last_activity_at,
-        last_contacted: companyRow.last_contacted ?? null,
-        created_at: companyRow.created_at,
-        updated_at: companyRow.updated_at,
-        deals_count: companyRow.deals_count ?? 0,
+        id: row.id,
+        company_name: row.company_name || row.name,
+        contact_name: row.name,
+        phone: row.phone ?? null,
+        direct_phone: row.direct_phone ?? null,
+        fax_phone: row.fax_phone ?? null,
+        website: row.website ?? row.work_website ?? null,
+        email_domain: row.email_domain ?? (row.email ? row.email.split('@')[1] || null : null),
+        contact_type: row.contact_type,
+        social_linkedin: row.social_linkedin ?? null,
+        address: row.address ?? null,
+        description: row.description ?? null,
+        visibility: row.visibility ?? null,
+        tags: row.tags,
+        assigned_to: row.assigned_to,
+        notes: row.notes,
+        source: row.source,
+        last_activity_at: row.last_activity_at,
+        last_contacted: row.last_contacted ?? null,
+        clx_file_name: row.clx_file_name ?? null,
+        about: row.about ?? null,
+        history: row.history ?? null,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        deals_count: row.deals_count ?? 0,
       } as Company;
     },
     enabled: !!companyId,
@@ -812,11 +848,11 @@ export default function CompanyExpandedView() {
     );
   }
 
-  const initial = company.company_name[0]?.toUpperCase() ?? '?';
   const assignedName = company.assigned_to ? (teamMemberMap[company.assigned_to] ?? '\u2014') : '\u2014';
   const inactiveDays = daysSince(company.last_activity_at ?? company.last_contacted);
   const typeCfg = contactTypeConfig[company.contact_type ?? ''];
   const ownerOptions = teamMembers.map((m) => ({ value: m.id, label: m.name }));
+  const contactTypeOptions = CONTACT_TYPES.map((ct) => ({ value: ct, label: contactTypeConfig[ct]?.label ?? ct }));
 
   function goBack() {
     navigate('/admin/contacts/companies');
@@ -829,6 +865,9 @@ export default function CompanyExpandedView() {
         .company-expanded-view *:not(svg):not(svg *) {
           font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
         }
+        .company-expanded-view [data-radix-scroll-area-viewport] {
+          overflow-x: hidden !important;
+        }
       `}</style>
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
@@ -837,21 +876,22 @@ export default function CompanyExpandedView() {
         <ScrollArea className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
           <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
-            {/* ── Back Arrow ── */}
-            <button onClick={goBack} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
-              <svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="30" y1="8" x2="2" y2="8" />
-                <polyline points="8,2 2,8 8,14" />
-              </svg>
+            {/* ── Close (X) ── */}
+            <button
+              onClick={goBack}
+              className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
             </button>
 
             {/* ── Contact Card Header ── */}
             <div className="flex items-start gap-4">
               <CrmAvatar name={company.company_name} size="xl" />
-              <div className="min-w-0 pt-0.5">
-                <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{company.company_name}</h2>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <h2 className="text-xl font-semibold text-foreground break-words leading-tight">{company.company_name}</h2>
                 {company.contact_name && (
-                  <p className="text-sm text-muted-foreground mt-0.5 truncate">{company.contact_name}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5 break-words">{company.contact_name}</p>
                 )}
                 <div className="mt-2">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
@@ -862,98 +902,208 @@ export default function CompanyExpandedView() {
               </div>
             </div>
 
-            {/* Pipeline */}
-            <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Companies" />
+            {/* Name */}
+            <StackedEditableField
+              label="Name"
+              value={company.company_name}
+              field="company_name"
+              leadId={company.id}
+              onSaved={handleFieldSaved}
+              tableName="companies"
+            />
 
-            {/* Contact Details */}
-            <div className="space-y-1">
-              <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={company.contact_name ?? ''} field="contact_name" companyId={company.id} placeholder="Add contact name..." onSaved={handleFieldSaved} />
-              <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={company.phone ?? ''} field="phone" companyId={company.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
-              <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={company.email_domain ?? ''} field="email_domain" companyId={company.id} placeholder="Add email domain..." onSaved={handleFieldSaved} />
-              <EditableContactRow icon={<Globe className="h-3.5 w-3.5" />} value={company.website ?? ''} field="website" companyId={company.id} placeholder="Add website..." onSaved={handleFieldSaved} />
-            </div>
+            {/* CLX - File Name */}
+            <StackedEditableField
+              label="CLX - File Name"
+              value={company.clx_file_name ?? ''}
+              field="clx_file_name"
+              leadId={company.id}
+              onSaved={handleFieldSaved}
+              tableName="companies"
+            />
 
-            {/* Details */}
+            {/* Phone (Work Phone) */}
+            <StackedEditableField
+              label="Phone (Work Phone)"
+              value={company.phone ? formatPhoneNumber(company.phone) : ''}
+              field="phone"
+              leadId={company.id}
+              onSaved={handleFieldSaved}
+              tableName="companies"
+            />
+
+            {/* Primary Contact — visually mirrors the deal-pipeline left column:
+                avatar + name row, then click-to-call phone and mailto email
+                rows as hoverable buttons. */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Details</span>
-              <div className=" bg-card">
-                {/* Contact Type */}
-                <div className="px-3 py-2 space-y-1.5">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium text-muted-foreground">Contact Type</span>
-                  </div>
-                  <Select value={company.contact_type ?? ''} onValueChange={handleContactTypeChange}>
-                    <SelectTrigger className={`h-8 w-full text-[13px] rounded-lg ${typeCfg?.bg ?? 'bg-muted'} ${typeCfg?.color ?? 'text-foreground'} border-border shadow-none px-2.5 gap-1`}>
-                      <SelectValue>{typeCfg?.label ?? company.contact_type ?? '\u2014'}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="min-w-[220px]">
-                      {CONTACT_TYPES.map((ct) => {
-                        const cfg = contactTypeConfig[ct];
-                        return (
-                          <SelectItem key={ct} value={ct} className="text-[13px]">
-                            <div className="flex items-center gap-2">
-                              <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-muted-foreground'}`} />
-                              {cfg?.label ?? ct}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {/* Owner */}
-                {ownerOptions.length > 0 ? (
-                  <div className="px-3 py-2 hover:bg-muted/40 transition-colors rounded-lg space-y-1.5">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <User className="h-3.5 w-3.5" />
-                      <span className="text-xs font-medium text-muted-foreground">Owner</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Select value={company.assigned_to ?? ''} onValueChange={handleOwnerChange}>
-                        <SelectTrigger className="h-8 w-full text-[13px] font-medium text-foreground border-border bg-transparent shadow-none px-2.5 gap-1 rounded-lg">
-                          <SelectValue>{assignedName}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="min-w-[200px]">
-                          {ownerOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value} className="text-[13px]">
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+              <label className="text-sm text-muted-foreground block mb-2">Primary Contact</label>
+              <div className="border-b border-border pb-3">
+                {company.contact_name ? (
+                  <div className="flex items-start gap-3 px-1 py-1.5">
+                    <CrmAvatar name={company.contact_name} size="lg" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base text-foreground break-words">{company.contact_name}</p>
+                      {company.company_name && (
+                        <p className="text-xs text-muted-foreground break-words">{company.company_name}</p>
+                      )}
                     </div>
                   </div>
                 ) : (
-                  <EditableField icon={<User className="h-3.5 w-3.5" />} label="Owner" value={assignedName} field="assigned_to" companyId={company.id} onSaved={handleFieldSaved} />
+                  <div className="px-1 py-1.5">
+                    <p className="text-sm text-muted-foreground italic">No primary contact</p>
+                  </div>
                 )}
-                {/* Source */}
-                <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={company.source ?? ''} field="source" companyId={company.id} onSaved={handleFieldSaved} />
-                {/* Company Name (editable) */}
-                <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company Name" value={company.company_name} field="company_name" companyId={company.id} onSaved={handleFieldSaved} />
+                {company.phone && (
+                  <button
+                    type="button"
+                    onClick={() => handleCallPhone(company.phone!)}
+                    className="w-full flex items-start gap-2 px-1 py-1 min-w-0 text-left rounded hover:bg-muted/60 transition-colors"
+                    title={`Call ${formatPhoneNumber(company.phone)}`}
+                  >
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />
+                    <span className="text-sm text-foreground min-w-0 flex-1 whitespace-nowrap">{formatPhoneNumber(company.phone)}</span>
+                  </button>
+                )}
+                {company.email_domain && (
+                  <a
+                    href={`mailto:${company.email_domain}`}
+                    className="w-full flex items-start gap-2 px-1 py-1 min-w-0 text-left rounded hover:bg-muted/60 transition-colors"
+                    title={`Email ${company.email_domain}`}
+                  >
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />
+                    <span className="text-sm text-foreground break-all min-w-0 flex-1">{company.email_domain}</span>
+                  </a>
+                )}
               </div>
             </div>
+
+            {/* Direct Phone */}
+            <StackedEditableField
+              label="Direct Phone"
+              value={company.direct_phone ? formatPhoneNumber(company.direct_phone) : ''}
+              field="direct_phone"
+              leadId={company.id}
+              onSaved={handleFieldSaved}
+              tableName="companies"
+            />
+
+            {/* Fax Phone */}
+            <StackedEditableField
+              label="Fax Phone"
+              value={company.fax_phone ? formatPhoneNumber(company.fax_phone) : ''}
+              field="fax_phone"
+              leadId={company.id}
+              onSaved={handleFieldSaved}
+              tableName="companies"
+            />
+
+            {/* Owner */}
+            {ownerOptions.length > 0 ? (
+              <StackedOwnerField
+                label="Owner"
+                value={company.assigned_to ?? ''}
+                displayValue={assignedName}
+                options={ownerOptions}
+                onChange={(v) => { void handleOwnerChange(v); }}
+              />
+            ) : (
+              <StackedReadOnlyField label="Owner" value={assignedName} />
+            )}
+
+            {/* Website (Work Website) */}
+            <StackedEditableField
+              label="Website (Work Website)"
+              value={company.website ?? ''}
+              field="website"
+              leadId={company.id}
+              onSaved={handleFieldSaved}
+              tableName="companies"
+            />
+
+            {/* Contact Type */}
+            <StackedSelectField
+              label="Contact Type"
+              value={company.contact_type ?? ''}
+              options={contactTypeOptions}
+              onChange={handleContactTypeChange}
+            />
+
+            {/* Email Domain */}
+            <StackedEditableField
+              label="Email Domain"
+              value={company.email_domain ?? ''}
+              field="email_domain"
+              leadId={company.id}
+              onSaved={handleFieldSaved}
+              tableName="companies"
+            />
+
+            {/* Social (LinkedIn) */}
+            <StackedEditableField
+              label="Social (LinkedIn)"
+              value={company.social_linkedin ?? ''}
+              field="social_linkedin"
+              leadId={company.id}
+              onSaved={handleFieldSaved}
+              tableName="companies"
+            />
+
+            {/* Address */}
+            <StackedEditableField
+              label="Address"
+              value={company.address ?? ''}
+              field="address"
+              leadId={company.id}
+              onSaved={handleFieldSaved}
+              tableName="companies"
+            />
+
+            {/* Description */}
+            <StackedEditableField
+              label="Description"
+              value={company.description ?? ''}
+              field="description"
+              leadId={company.id}
+              onSaved={handleFieldSaved}
+              tableName="companies"
+            />
+
+            {/* Visibility */}
+            <StackedEditableField
+              label="Visibility"
+              value={company.visibility ?? ''}
+              field="visibility"
+              leadId={company.id}
+              onSaved={handleFieldSaved}
+              tableName="companies"
+              emptyText="Everyone"
+            />
 
             {/* Tags */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Tags</span>
-              <EditableTags tags={company.tags ?? []} companyId={company.id} onSaved={handleFieldSaved} />
+              <label className="text-sm text-muted-foreground block mb-3">Tags</label>
+              <InlineEditableTags tags={company.tags ?? []} leadId={company.id} onSaved={handleFieldSaved} tableName="companies" />
             </div>
 
-            {/* Notes */}
+            {/* Last Contacted */}
+            <StackedReadOnlyField
+              label="Last Contacted"
+              value={formatDate(company.last_contacted ?? company.last_activity_at)}
+              locked
+            />
+
+            {/* About */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Notes</span>
-              <EditableNotes value={company.notes ?? ''} companyId={company.id} onSaved={handleFieldSaved} />
+              <label className="text-sm text-muted-foreground block mb-3">About</label>
+              <EditableNotesField value={company.about ?? ''} field="about" leadId={company.id} placeholder="Add About" onSaved={handleFieldSaved} tableName="companies" />
             </div>
 
-            {/* Fixed (read-only info) */}
+            {/* History */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
-              <div className=" bg-muted/50">
-                <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(company.created_at)} />
-                <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Updated" value={formatDate(company.updated_at)} />
-              </div>
+              <label className="text-sm text-muted-foreground block mb-3">History</label>
+              <EditableNotesField value={company.history ?? ''} field="history" leadId={company.id} placeholder="Add History" onSaved={handleFieldSaved} tableName="companies" />
             </div>
+
           </div>
         </ScrollArea>
 

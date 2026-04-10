@@ -13,11 +13,13 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { InlineEditableCell } from '@/components/admin/InlineEditableCell';
+import { EditableTextBox } from '@/components/admin/shared/EditableTextBox';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import PipelineDetailPanel from '@/components/admin/PipelineDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
+import { SavedFiltersSidebar, type SavedFilterOption } from '@/components/admin/SavedFiltersSidebar';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SelectAllHeader } from '@/components/admin/SelectAllHeader';
@@ -34,7 +36,6 @@ import {
   Filter,
   Settings2,
   ChevronDown,
-  ChevronUp,
   Plus,
   DollarSign,
   Check,
@@ -71,6 +72,7 @@ import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
 import { usePipelineStages } from '@/hooks/usePipelineStages';
 import { usePipelineDeals, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
 import { useCrmMutations } from '@/hooks/usePipelineMutations';
+import { AddOpportunityDialog } from '@/components/admin/AddOpportunityDialog';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
@@ -80,20 +82,13 @@ type Lead = Database['public']['Tables']['potential']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 
-const FILTER_OPTIONS = [
+const FILTER_OPTIONS: SavedFilterOption[] = [
+  { id: 'all', label: 'All Opportunities', group: 'top' },
   { id: 'my_open', label: 'My Open Opportunities', group: 'public' },
   { id: 'open', label: 'Open Opportunities', group: 'public' },
   { id: 'following', label: "Opportunities I'm Following", group: 'public' },
   { id: 'won', label: 'Won Opportunities', group: 'public' },
   { id: 'lost', label: 'Lost / Closed Opportunities', group: 'public' },
-  { id: 'brad_incoming', label: 'Brad Incoming Opportunities', group: 'public' },
-  { id: 'initial_review', label: 'Deals for Initial Review', group: 'public' },
-  { id: 'review_kill_keep', label: 'Deals Moving Towards Underwriting', group: 'public' },
-  { id: 'onboarding_2024', label: 'OnBoarding 2024 - Opp. into UW', group: 'public' },
-  { id: 'onboarding_2025', label: 'OnBoarding 2025 - Opp. into UW', group: 'public' },
-  { id: 'onboarding_2026', label: 'OnBoarding 2026 - Opp. into UW', group: 'public' },
-  { id: 'pre_approval_issued', label: 'Pre-Approval Letters Issued', group: 'public' },
-  { id: 'ready_for_wu_approval', label: "Write Up's Pending Approval", group: 'public' },
 ];
 
 function daysSince(dateStr: string | null): number | null {
@@ -335,7 +330,6 @@ const Pipeline = () => {
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedLead, setDraggedLead] = useState<FlatPipelineLead | null>(null);
 
   // Column sort menu state
@@ -351,10 +345,9 @@ const Pipeline = () => {
   // Custom filters
   const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
 
-  // Add Opportunity state
+  // Add Opportunity — full form lives inside <AddOpportunityDialog>
   const [addOpportunityOpen, setAddOpportunityOpen] = useState(false);
   const [addOpportunityStage, setAddOpportunityStage] = useState<string>('');
-  const [newOpp, setNewOpp] = useState({ name: '', company_name: '', email: '', phone: '' });
 
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
     company: true, contact: true, value: true, ownedBy: true, tasks: true,
@@ -419,7 +412,7 @@ const Pipeline = () => {
   const { data: pipeline } = useSystemPipelineByName('Potential');
   const { data: stages = [] } = usePipelineStages(pipeline?.id);
   const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = usePipelineDeals();
-  const { moveLeadToStage, addLeadToPipeline, removeLeadFromPipeline, bulkRemoveLeadsFromPipeline } = useCrmMutations('potential');
+  const { moveLeadToStage, removeLeadFromPipeline, bulkRemoveLeadsFromPipeline } = useCrmMutations('potential');
   const dynamicStageConfig = useMemo(() => buildStageConfig(stages), [stages]);
 
   const leads = pipelineLeadsList;
@@ -461,14 +454,22 @@ const Pipeline = () => {
     return map;
   }, [leads, teamMembers, leadOwnerOverrides]);
 
-  // Deterministic set of leads the current user is "following" (~25% of leads)
-  const followedLeadIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const lead of leads) {
-      if (seededRand(lead.id, 20) < 0.25) set.add(lead.id);
-    }
-    return set;
-  }, [leads]);
+  // Real set of opportunities the current user is following, keyed off the
+  // `entity_followers` table. The toolbar's Follow button in the expanded view
+  // invalidates this query key on toggle so the filter count stays in sync.
+  const { data: followedLeadIdsArray = [] } = useQuery({
+    queryKey: ['followed-deals', 'potential', currentTeamMember?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('entity_followers')
+        .select('entity_id')
+        .eq('entity_type', 'potential')
+        .eq('team_member_id', currentTeamMember!.id);
+      return (data ?? []).map((r) => r.entity_id);
+    },
+    enabled: !!currentTeamMember?.id,
+  });
+  const followedLeadIds = useMemo(() => new Set(followedLeadIdsArray), [followedLeadIdsArray]);
 
   const handleStageMove = (leadId: string, newStageId: string) => {
     const lead = leads.find(l => l.id === leadId);
@@ -484,53 +485,23 @@ const Pipeline = () => {
     });
   };
 
-  // Create opportunity mutation
-  const createOpportunityMutation = useMutation({
-    mutationFn: async (data: { name: string; company_name: string; email: string; phone: string; stageId: string }) => {
-      const result = await addLeadToPipeline.mutateAsync({
-        leadData: {
-          name: data.name,
-          company_name: data.company_name || undefined,
-          email: data.email || undefined,
-          phone: data.phone || undefined,
-          assigned_to: currentTeamMember?.id || teamMembers[0]?.id || null,
-        },
-        stageId: data.stageId,
-      });
-      return result;
-    },
-    onSuccess: (lead) => {
-      setAddOpportunityOpen(false);
-      setNewOpp({ name: '', company_name: '', email: '', phone: '' });
-      toast.success(`"${lead.name}" added to ${dynamicStageConfig[addOpportunityStage]?.title ?? 'pipeline'}`);
-      setDetailDialogLead(lead as any);
-      registerUndo({
-        label: `Created opportunity "${lead.name}"`,
-        execute: async () => {
-          const { error } = await supabase.from('potential').delete().eq('id', lead.id);
-          if (error) throw error;
-          setDetailDialogLead(null);
-          queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
-        },
-      });
-    },
-    onError: () => {
-      toast.error('Failed to create opportunity');
-    },
-  });
-
-  const handleCreateOpportunity = () => {
-    if (!newOpp.name.trim()) {
-      toast.error('Opportunity name is required');
-      return;
-    }
-    createOpportunityMutation.mutate({ ...newOpp, stageId: addOpportunityStage });
-  };
-
   const openAddDialog = (stageId?: string) => {
     setAddOpportunityStage(stageId ?? stages[0]?.id ?? '');
-    setNewOpp({ name: '', company_name: '', email: '', phone: '' });
     setAddOpportunityOpen(true);
+  };
+
+  // After the sheet creates the deal: open its detail dialog and register undo.
+  const handleOpportunityCreated = (lead: { id: string; name: string }) => {
+    setDetailDialogLead(lead as unknown as Lead);
+    registerUndo({
+      label: `Created opportunity "${lead.name}"`,
+      execute: async () => {
+        const { error } = await supabase.from('potential').delete().eq('id', lead.id);
+        if (error) throw error;
+        setDetailDialogLead(null);
+        queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
+      },
+    });
   };
 
   // Task and interaction count queries
@@ -571,6 +542,7 @@ const Pipeline = () => {
   // Filter counts
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+    counts['all'] = leads.length;
     for (const stage of stages) {
       counts[stage.id] = leads.filter((l) => l._stageId === stage.id).length;
     }
@@ -580,19 +552,8 @@ const Pipeline = () => {
     counts['following'] = leads.filter(l => followedLeadIds.has(l.id)).length;
     counts['won'] = leads.filter(l => l.status === 'won' as any).length;
     counts['lost'] = leads.filter(l => l.status === 'lost' as any || l.status === 'funded' as any).length;
-    counts['brad_incoming'] = leads.filter(l => {
-      const ownerId = leadOwnerMap[l.id];
-      return teamMemberMap[ownerId]?.toLowerCase().includes('brad');
-    }).length;
-    counts['initial_review'] = leads.filter(l => l.status === ('initial_review' as LeadStatus)).length;
-    counts['review_kill_keep'] = leads.filter(l => l.status === ('review_kill_keep' as LeadStatus)).length;
-    counts['onboarding_2024'] = leads.filter(l => l.cohort_year === 2024).length;
-    counts['onboarding_2025'] = leads.filter(l => l.cohort_year === 2025).length;
-    counts['onboarding_2026'] = leads.filter(l => l.cohort_year === 2026).length;
-    counts['pre_approval_issued'] = leads.filter(l => l.status === ('pre_approval_issued' as LeadStatus)).length;
-    counts['ready_for_wu_approval'] = leads.filter(l => l.status === ('ready_for_wu_approval' as LeadStatus)).length;
     return counts;
-  }, [leads, teamMemberMap, stages, currentTeamMember, leadOwnerMap, followedLeadIds]);
+  }, [leads, stages, currentTeamMember, leadOwnerMap, followedLeadIds]);
 
   // Filter and sort
   const filteredAndSorted = useMemo(() => {
@@ -641,22 +602,6 @@ const Pipeline = () => {
             return true;
           });
         }
-      } else if (activeFilter === 'initial_review') {
-        result = result.filter((l) => l.status === ('initial_review' as LeadStatus));
-      } else if (activeFilter === 'review_kill_keep') {
-        result = result.filter((l) => l.status === ('review_kill_keep' as LeadStatus));
-      } else if (activeFilter === 'pre_approval_issued') {
-        result = result.filter((l) => l.status === ('pre_approval_issued' as LeadStatus));
-      } else if (activeFilter === 'ready_for_wu_approval') {
-        result = result.filter((l) => l.status === ('ready_for_wu_approval' as LeadStatus));
-      } else if (activeFilter === 'brad_incoming') {
-        result = result.filter((l) => teamMemberMap[leadOwnerMap[l.id]]?.toLowerCase().includes('brad'));
-      } else if (activeFilter === 'onboarding_2024') {
-        result = result.filter((l) => l.cohort_year === 2024);
-      } else if (activeFilter === 'onboarding_2025') {
-        result = result.filter((l) => l.cohort_year === 2025);
-      } else if (activeFilter === 'onboarding_2026') {
-        result = result.filter((l) => l.cohort_year === 2026);
       }
     }
 
@@ -1092,103 +1037,25 @@ const Pipeline = () => {
           </button>
 
           {/* ── Left Sidebar (Copper style) ── */}
-          <aside
-            className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
-              sidebarOpen ? 'w-72 bg-[#f8f9fa] dark:bg-muted/30' : 'w-[72px] bg-[#eef0f2] dark:bg-muted/50'
-            }`}
-          >
-            {sidebarOpen && <div className="w-72 pl-4 flex-1 overflow-y-auto">
-              <div className="px-6 pt-5 pb-3 flex items-center justify-between">
-                <span className="text-[20px] font-bold tracking-tight text-[#1f1f1f] dark:text-foreground">Saved Filters</span>
-                <div className="flex items-center gap-1">
-                  <CreateFilterDialog
-                    teamMemberMap={teamMemberMap}
-                    stageConfig={Object.fromEntries(Object.entries(dynamicStageConfig).map(([k, v]) => [k, { label: v.title }]))}
-                    onSave={(filter) => {
-                      const id = `custom_${Date.now()}`;
-                      setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
-                      toast.success(`Filter "${filter.filterName}" created`);
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Search Filters input */}
-              <div className="px-6 pb-2">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search Filters"
-                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#3b2778] dark:focus:border-purple-400 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <nav className="flex-1 overflow-y-auto pb-4 px-3">
-                {/* All Opportunities — standalone above sections */}
-                <button
-                  onClick={() => setActiveFilter('all')}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-colors ${
-                    activeFilter === 'all'
-                      ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 font-medium'
-                      : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300'
-                  }`}
-                >
-                  <span className="text-[14px] font-medium">All Opportunities</span>
-                  <span className={`text-[13px] tabular-nums ${activeFilter === 'all' ? 'text-[#3b2778] dark:text-purple-400' : 'text-[#80868b] dark:text-muted-foreground'}`}>
-                    {leads.length}
-                  </span>
-                </button>
-
-                {/* Public section */}
-                <button
-                  onClick={() => setPublicFiltersOpen(v => !v)}
-                  className="w-full px-3 pt-4 pb-1 flex items-center justify-between group"
-                >
-                  <span className="text-[11px] uppercase tracking-wider font-semibold text-[#5f6368] dark:text-muted-foreground">Public</span>
-                  <ChevronUp className={`h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : 'rotate-180'}`} />
-                </button>
-
-                {publicFiltersOpen && FILTER_OPTIONS.filter(o => o.group === 'public').map((opt) => {
-                  const isActive = activeFilter === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
-                        isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                      }`}
-                    >
-                      <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{opt.label}</span>
-                    </button>
-                  );
-                })}
-
-                {/* Custom Filters */}
-                {customFilters.length > 0 && (
-                  <>
-                    <div className="pt-4 pb-1">
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-[#5f6368] dark:text-muted-foreground">Custom</span>
-                    </div>
-                    {customFilters.map((cf) => {
-                      const isActive = activeFilter === cf.id;
-                      return (
-                        <button
-                          key={cf.id}
-                          onClick={() => setActiveFilter(cf.id)}
-                          className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
-                            isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                          }`}
-                        >
-                          <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{cf.label}</span>
-                        </button>
-                      );
-                    })}
-                  </>
-                )}
-              </nav>
-            </div>}
-          </aside>
+          <SavedFiltersSidebar
+            sidebarOpen={sidebarOpen}
+            filterOptions={FILTER_OPTIONS}
+            customFilters={customFilters}
+            filterCounts={filterCounts}
+            activeFilter={activeFilter}
+            onSelectFilter={setActiveFilter}
+            createFilterAction={
+              <CreateFilterDialog
+                teamMemberMap={teamMemberMap}
+                stageConfig={Object.fromEntries(Object.entries(dynamicStageConfig).map(([k, v]) => [k, { label: v.title }]))}
+                onSave={(filter) => {
+                  const id = `custom_${Date.now()}`;
+                  setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
+                  toast.success(`Filter "${filter.filterName}" created`);
+                }}
+              />
+            }
+          />
 
           {/* Main Table Area */}
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -1415,15 +1282,15 @@ const Pipeline = () => {
                                     className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                                   />
                                 </div>
-                                <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
-                                  <CrmAvatar name={lead.name} />
-                                  <InlineEditableCell
-                                    value={lead.opportunity_name || ''}
-                                    onChange={(v) => handleInlineCellSave(lead.id, 'opportunity_name', v)}
-                                    placeholder={lead.company_name ? `${lead.name} - ${lead.company_name}` : lead.name}
-                                    displayClassName="text-[16px] text-[#202124] dark:text-foreground truncate"
-                                  />
-                                </div>
+                                <EditableTextBox
+                                  value={lead.opportunity_name || ''}
+                                  onSave={(v) => handleInlineCellSave(lead.id, 'opportunity_name', v)}
+                                  placeholder={lead.company_name ? `${lead.name} - ${lead.company_name}` : lead.name}
+                                  size="sm"
+                                  className="min-w-0 flex-1 pl-0.5 pr-3 gap-2 text-[16px] text-[#202124] dark:text-foreground"
+                                  prefix={<CrmAvatar name={lead.name} />}
+                                  aria-label="Opportunity name"
+                                />
                                 <button
                                   type="button"
                                   onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`); }}
@@ -1437,10 +1304,12 @@ const Pipeline = () => {
                             {/* Company */}
                             {columnVisibility.company && (
                               <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
-                                <InlineEditableCell
+                                <EditableTextBox
                                   value={lead.company_name || ''}
-                                  onChange={(v) => handleInlineCellSave(lead.id, 'company_name', v)}
-                                  displayClassName="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full"
+                                  onSave={(v) => handleInlineCellSave(lead.id, 'company_name', v)}
+                                  size="sm"
+                                  className="text-[16px] text-[#202124] dark:text-foreground"
+                                  aria-label="Company"
                                 />
                               </td>
                             )}
@@ -1448,10 +1317,12 @@ const Pipeline = () => {
                             {/* Contact */}
                             {columnVisibility.contact && (
                               <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
-                                <InlineEditableCell
+                                <EditableTextBox
                                   value={lead.name}
-                                  onChange={(v) => handleInlineCellSave(lead.id, 'name', v)}
-                                  displayClassName="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full"
+                                  onSave={(v) => handleInlineCellSave(lead.id, 'name', v)}
+                                  size="sm"
+                                  className="text-[16px] text-[#202124] dark:text-foreground"
+                                  aria-label="Contact"
                                 />
                               </td>
                             )}
@@ -1459,15 +1330,15 @@ const Pipeline = () => {
                             {/* Value */}
                             {columnVisibility.value && (
                               <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}>
-                                <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
-                                  {lead.deal_value != null && <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                                  <InlineEditableCell
-                                    value={lead.deal_value != null ? lead.deal_value.toLocaleString('en-US') : ''}
-                                    onChange={(v) => handleInlineCellSave(lead.id, 'deal_value', v)}
-                                    placeholder="—"
-                                    displayClassName="text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate"
-                                  />
-                                </div>
+                                <EditableTextBox
+                                  value={lead.deal_value != null ? lead.deal_value.toLocaleString('en-US') : ''}
+                                  onSave={(v) => handleInlineCellSave(lead.id, 'deal_value', v)}
+                                  placeholder="—"
+                                  size="sm"
+                                  className="text-[16px] text-[#202124] dark:text-foreground tabular-nums gap-1"
+                                  prefix={lead.deal_value != null ? <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : undefined}
+                                  aria-label="Deal value"
+                                />
                               </td>
                             )}
 
@@ -1670,109 +1541,16 @@ const Pipeline = () => {
       </div>
 
       {/* Add Opportunity Dialog */}
-      <Dialog open={addOpportunityOpen} onOpenChange={setAddOpportunityOpen}>
-        <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
-          <div className="px-6 pt-6 pb-4" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}>
-            <DialogHeader>
-              <DialogTitle className="text-white text-lg font-bold flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
-                  <Plus className="h-4 w-4 text-white" />
-                </div>
-                New Opportunity
-              </DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-wrap gap-1.5 mt-4">
-              {stages.map((stage) => {
-                const cfg = dynamicStageConfig[stage.id];
-                const isActive = addOpportunityStage === stage.id;
-                return (
-                  <button
-                    key={stage.id}
-                    onClick={() => setAddOpportunityStage(stage.id)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                      isActive
-                        ? 'bg-white text-slate-800 shadow-md scale-105 dark:bg-white/90 dark:text-slate-900'
-                        : 'bg-white/15 text-white/90 hover:bg-white/25'
-                    }`}
-                  >
-                    <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1.5 ${isActive ? (cfg?.dot ?? 'bg-white/60') : 'bg-white/60'}`} />
-                    {cfg?.title ?? stage.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div className="px-6 py-5 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="opp-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Opportunity Name <span className="text-red-400">*</span>
-              </Label>
-              <Input
-                id="opp-name"
-                placeholder="e.g. Riverside Plaza Acquisition"
-                value={newOpp.name}
-                onChange={(e) => setNewOpp(prev => ({ ...prev, name: e.target.value }))}
-                onKeyDown={(e) => { if (e.key === 'Enter' && newOpp.name.trim()) handleCreateOpportunity(); }}
-                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
-                autoFocus
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="opp-company" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company</Label>
-              <Input
-                id="opp-company"
-                placeholder="Company name"
-                value={newOpp.company_name}
-                onChange={(e) => setNewOpp(prev => ({ ...prev, company_name: e.target.value }))}
-                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="opp-email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</Label>
-                <Input
-                  id="opp-email"
-                  placeholder="email@example.com"
-                  type="email"
-                  value={newOpp.email}
-                  onChange={(e) => setNewOpp(prev => ({ ...prev, email: e.target.value }))}
-                  className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="opp-phone" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phone</Label>
-                <Input
-                  id="opp-phone"
-                  placeholder="(555) 123-4567"
-                  type="tel"
-                  value={newOpp.phone}
-                  onChange={(e) => setNewOpp(prev => ({ ...prev, phone: e.target.value }))}
-                  className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="px-6 py-4 bg-muted/50 border-t border-border flex items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setAddOpportunityOpen(false)}
-              className="h-9 px-4 rounded-xl text-muted-foreground hover:text-foreground"
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleCreateOpportunity}
-              disabled={createOpportunityMutation.isPending}
-              className="h-9 px-5 rounded-xl font-semibold"
-              style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)' }}
-            >
-              {createOpportunityMutation.isPending ? 'Creating...' : 'Create Opportunity'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AddOpportunityDialog
+        open={addOpportunityOpen}
+        onOpenChange={setAddOpportunityOpen}
+        tableName="potential"
+        stages={stages}
+        stageConfig={dynamicStageConfig}
+        ownerOptions={teamMembers.map((m) => ({ value: m.id, label: m.name }))}
+        initialStageId={addOpportunityStage}
+        onCreated={handleOpportunityCreated}
+      />
 
       {/* Bulk Delete Confirmation */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

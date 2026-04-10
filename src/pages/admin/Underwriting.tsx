@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -14,6 +15,7 @@ import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
 import UnderwritingDetailPanel from '@/components/admin/UnderwritingDetailPanel';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
+import { SavedFiltersSidebar, type SavedFilterOption } from '@/components/admin/SavedFiltersSidebar';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { useAutoFitColumns, CHAR_W_SM } from '@/hooks/useAutoFitColumns';
@@ -25,7 +27,6 @@ import {
   Filter,
   Settings2,
   ChevronDown,
-  ChevronUp,
   Plus,
   DollarSign,
   User,
@@ -79,12 +80,13 @@ import { useUnderwritingDeals, type FlatPipelineLead } from '@/hooks/usePipeline
 import { useCrmMutations } from '@/hooks/usePipelineMutations';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
+import { AddOpportunityDialog } from '@/components/admin/AddOpportunityDialog';
 
 type Lead = Database['public']['Tables']['underwriting']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 
-const FILTER_OPTIONS = [
+const FILTER_OPTIONS: SavedFilterOption[] = [
   { id: 'all', label: 'All Opportunities', group: 'top' },
   { id: 'my_open', label: 'My Open Opportunities', group: 'public' },
   { id: 'open', label: 'Open Opportunities', group: 'public' },
@@ -318,7 +320,7 @@ const Underwriting = () => {
   const { data: pipeline } = useSystemPipelineByName('Underwriting');
   const { data: stages = [] } = usePipelineStages(pipeline?.id);
   const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = useUnderwritingDeals();
-  const { moveLeadToStage, addLeadToPipeline, bulkRemoveLeadsFromPipeline } = useCrmMutations('underwriting');
+  const { moveLeadToStage, bulkRemoveLeadsFromPipeline } = useCrmMutations('underwriting');
   const dynamicStageConfig = useMemo(() => buildStageConfig(stages), [stages]);
 
   // ── Core state ──
@@ -343,7 +345,6 @@ const Underwriting = () => {
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -430,46 +431,13 @@ const Underwriting = () => {
   };
 
   // ── Add Opportunity state ──
+  // The full form lives inside <AddOpportunityDialog>; the parent only tracks
+  // whether the dialog is open and which stage to pre-select.
   const [addOpportunityOpen, setAddOpportunityOpen] = useState(false);
   const [addOpportunityStage, setAddOpportunityStage] = useState<string>('');
-  const [newOpp, setNewOpp] = useState({ name: '', company_name: '', email: '', phone: '' });
-
-  const createOpportunityMutation = useMutation({
-    mutationFn: async (data: { name: string; company_name: string; email: string; phone: string; stageId: string }) => {
-      const result = await addLeadToPipeline.mutateAsync({
-        leadData: {
-          name: data.name,
-          company_name: data.company_name || undefined,
-          email: data.email || undefined,
-          phone: data.phone || undefined,
-          assigned_to: teamMembers[0]?.id || null,
-        },
-        stageId: data.stageId,
-      });
-      return result;
-    },
-    onSuccess: (lead) => {
-      setAddOpportunityOpen(false);
-      setNewOpp({ name: '', company_name: '', email: '', phone: '' });
-      toast.success(`"${lead.name}" added to ${dynamicStageConfig[addOpportunityStage]?.title ?? 'pipeline'}`);
-      setSelectedLead(lead);
-    },
-    onError: () => {
-      toast.error('Failed to create opportunity');
-    },
-  });
-
-  const handleCreateOpportunity = () => {
-    if (!newOpp.name.trim()) {
-      toast.error('Opportunity name is required');
-      return;
-    }
-    createOpportunityMutation.mutate({ ...newOpp, stageId: addOpportunityStage });
-  };
 
   const openAddDialog = (stageId?: string) => {
     setAddOpportunityStage(stageId ?? stages[0]?.id ?? '');
-    setNewOpp({ name: '', company_name: '', email: '', phone: '' });
     setAddOpportunityOpen(true);
   };
 
@@ -557,6 +525,24 @@ const Underwriting = () => {
     enabled: leads.length > 0,
   });
 
+  // Opportunities the current user is following — real entity_followers query.
+  // Shared query key with the expanded-view toolbar so toggling follow
+  // invalidates this automatically.
+  const { teamMember: currentTeamMember } = useTeamMember();
+  const { data: followedLeadIdsArray = [] } = useQuery({
+    queryKey: ['followed-deals', 'underwriting', currentTeamMember?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('entity_followers')
+        .select('entity_id')
+        .eq('entity_type', 'underwriting')
+        .eq('team_member_id', currentTeamMember!.id);
+      return (data ?? []).map((r) => r.entity_id);
+    },
+    enabled: !!currentTeamMember?.id,
+  });
+  const followedLeadIds = useMemo(() => new Set(followedLeadIdsArray), [followedLeadIdsArray]);
+
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = { all: leads.length };
     for (const stage of stages) {
@@ -564,7 +550,7 @@ const Underwriting = () => {
     }
     counts['my_open'] = leads.length;
     counts['open'] = leads.length;
-    counts['following'] = 0;
+    counts['following'] = leads.filter((l) => followedLeadIds.has(l.id)).length;
     counts['won'] = leads.filter(l => l.status === 'won' as any).length;
     counts['lost'] = leads.filter(l => l.status === 'lost' as any).length;
     counts['brad_incoming'] = leads.filter(l => (l.assigned_to ?? '').toLowerCase().includes('brad') || teamMemberMap[l.assigned_to ?? '']?.toLowerCase().includes('brad')).length;
@@ -576,7 +562,7 @@ const Underwriting = () => {
     counts['pre_approval_issued'] = leads.filter(l => l.status === ('pre_approval_issued' as LeadStatus)).length;
     counts['ready_for_wu_approval'] = leads.filter(l => l.status === ('ready_for_wu_approval' as LeadStatus)).length;
     return counts;
-  }, [leads, teamMemberMap, stages]);
+  }, [leads, teamMemberMap, stages, followedLeadIds]);
 
   const filteredAndSorted = useMemo(() => {
     let result = leads;
@@ -633,8 +619,10 @@ const Underwriting = () => {
         result = result.filter((l) => l.cohort_year === 2025);
       } else if (activeFilter === 'onboarding_2026') {
         result = result.filter((l) => l.cohort_year === 2026);
+      } else if (activeFilter === 'following') {
+        result = result.filter((l) => followedLeadIds.has(l.id));
       }
-      // 'my_open', 'open', 'following' show all for now
+      // 'my_open', 'open' show all for now
     }
 
     if (searchTerm.trim()) {
@@ -667,7 +655,7 @@ const Underwriting = () => {
     });
 
     return result;
-  }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap, customFilters]);
+  }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap, customFilters, followedLeadIds]);
 
   const totalValue = useMemo(
     () => leads.reduce((sum, l) => sum + fakeValue(l.id), 0),
@@ -926,112 +914,25 @@ const Underwriting = () => {
           </button>
 
           {/* ── Left Sidebar (Copper style) ── */}
-          <aside
-            className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
-              sidebarOpen ? 'w-72 bg-[#f8f9fa] dark:bg-muted/30' : 'w-[72px] bg-[#eef0f2] dark:bg-muted/50'
-            }`}
-          >
-            {sidebarOpen && <div className="w-72 pl-4 flex-1 overflow-y-auto">
-              <div className="px-6 pt-5 pb-3 flex items-center justify-between">
-                <span className="text-[20px] font-bold tracking-tight text-[#1f1f1f] dark:text-foreground">Saved Filters</span>
-                <div className="flex items-center gap-1">
-                  <CreateFilterDialog
-                    teamMemberMap={teamMemberMap}
-                    stageConfig={dynamicStageConfig}
-                    onSave={(filter) => {
-                      const id = `custom_${Date.now()}`;
-                      setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
-                      toast.success(`Filter "${filter.filterName}" created`);
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Search Filters input */}
-              <div className="px-6 pb-2">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search Filters"
-                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#3b2778] dark:focus:border-purple-400 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <nav className="flex-1 overflow-y-auto pb-4 px-3">
-                {/* All Opportunities — top item */}
-                {FILTER_OPTIONS.filter(o => o.group === 'top').map((opt) => {
-                  const isActive = activeFilter === opt.id;
-                  const count = filterCounts[opt.id] ?? 0;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-3 py-3 text-left transition-colors ${
-                        isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className={`text-[14px] font-medium truncate`}>{opt.label}</span>
-                      </span>
-                      {count > 0 && (
-                        <span className="ml-1 shrink-0 text-[11px] font-medium text-[#5f6368] dark:text-muted-foreground">
-                          {count.toLocaleString()}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {/* Public section */}
-                <button
-                  onClick={() => setPublicFiltersOpen(v => !v)}
-                  className="w-full px-3 pt-4 pb-1 flex items-center justify-between group"
-                >
-                  <span className="text-[11px] uppercase tracking-wider font-semibold text-[#5f6368] dark:text-muted-foreground">Public</span>
-                  <ChevronUp className={`h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : 'rotate-180'}`} />
-                </button>
-
-                {publicFiltersOpen && FILTER_OPTIONS.filter(o => o.group === 'public').map((opt) => {
-                  const isActive = activeFilter === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
-                        isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                      }`}
-                    >
-                      <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{opt.label}</span>
-                    </button>
-                  );
-                })}
-
-                {/* Custom Filters */}
-                {customFilters.length > 0 && (
-                  <>
-                    <div className="pt-4 pb-1">
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-[#5f6368] dark:text-muted-foreground">Custom</span>
-                    </div>
-                    {customFilters.map((cf) => {
-                      const isActive = activeFilter === cf.id;
-                      return (
-                        <button
-                          key={cf.id}
-                          onClick={() => setActiveFilter(cf.id)}
-                          className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
-                            isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                          }`}
-                        >
-                          <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{cf.label}</span>
-                        </button>
-                      );
-                    })}
-                  </>
-                )}
-              </nav>
-            </div>}
-          </aside>
+          <SavedFiltersSidebar
+            sidebarOpen={sidebarOpen}
+            filterOptions={FILTER_OPTIONS}
+            customFilters={customFilters}
+            filterCounts={filterCounts}
+            activeFilter={activeFilter}
+            onSelectFilter={setActiveFilter}
+            createFilterAction={
+              <CreateFilterDialog
+                teamMemberMap={teamMemberMap}
+                stageConfig={dynamicStageConfig}
+                onSave={(filter) => {
+                  const id = `custom_${Date.now()}`;
+                  setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
+                  toast.success(`Filter "${filter.filterName}" created`);
+                }}
+              />
+            }
+          />
 
           {/* ── Main Table Area ── */}
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -1507,126 +1408,16 @@ const Underwriting = () => {
 
 
       {/* ── Add Opportunity Dialog ── */}
-      <Dialog open={addOpportunityOpen} onOpenChange={setAddOpportunityOpen}>
-        <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
-          {/* Header with gradient */}
-          <div className="px-6 pt-6 pb-4" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}>
-            <DialogHeader>
-              <DialogTitle className="text-white text-lg font-bold flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
-                  <Plus className="h-4 w-4 text-white" />
-                </div>
-                New Opportunity
-              </DialogTitle>
-            </DialogHeader>
-            {/* Stage selector pills */}
-            <div className="flex flex-wrap gap-1.5 mt-4">
-              {stages.map((stage) => {
-                const cfg = dynamicStageConfig[stage.id];
-                const isActive = addOpportunityStage === stage.id;
-                return (
-                  <button
-                    key={stage.id}
-                    onClick={() => setAddOpportunityStage(stage.id)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                      isActive
-                        ? 'bg-white text-slate-800 shadow-md scale-105 dark:bg-white/90 dark:text-slate-900'
-                        : 'bg-white/15 text-white/90 hover:bg-white/25'
-                    }`}
-                  >
-                    <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1.5 ${isActive ? (cfg?.dot ?? 'bg-white/60') : 'bg-white/60'}`} />
-                    {cfg?.title ?? stage.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Form body */}
-          <div className="px-6 py-5 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="opp-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Opportunity Name <span className="text-red-400">*</span>
-              </Label>
-              <Input
-                id="opp-name"
-                placeholder="e.g. Riverside Plaza Acquisition"
-                value={newOpp.name}
-                onChange={(e) => setNewOpp(prev => ({ ...prev, name: e.target.value }))}
-                onKeyDown={(e) => { if (e.key === 'Enter' && newOpp.name.trim()) handleCreateOpportunity(); }}
-                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
-                autoFocus
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="opp-company" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company</Label>
-              <Input
-                id="opp-company"
-                placeholder="Company name"
-                value={newOpp.company_name}
-                onChange={(e) => setNewOpp(prev => ({ ...prev, company_name: e.target.value }))}
-                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="opp-email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</Label>
-                <Input
-                  id="opp-email"
-                  placeholder="email@example.com"
-                  type="email"
-                  value={newOpp.email}
-                  onChange={(e) => setNewOpp(prev => ({ ...prev, email: e.target.value }))}
-                  className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="opp-phone" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phone</Label>
-                <Input
-                  id="opp-phone"
-                  placeholder="(555) 123-4567"
-                  type="tel"
-                  value={newOpp.phone}
-                  onChange={(e) => setNewOpp(prev => ({ ...prev, phone: e.target.value }))}
-                  className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="px-6 py-4 bg-muted/50 border-t border-border flex items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setAddOpportunityOpen(false)}
-              className="h-9 px-4 rounded-xl text-muted-foreground hover:text-foreground"
-            >
-              Cancel
-            </Button>
-            <button
-              onClick={handleCreateOpportunity}
-              disabled={!newOpp.name.trim() || createOpportunityMutation.isPending}
-              className="h-9 px-5 rounded-xl text-[13px] font-semibold text-white flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
-              style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}
-            >
-              {createOpportunityMutation.isPending ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Create Opportunity
-                </>
-              )}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AddOpportunityDialog
+        open={addOpportunityOpen}
+        onOpenChange={setAddOpportunityOpen}
+        tableName="underwriting"
+        stages={stages}
+        stageConfig={dynamicStageConfig}
+        ownerOptions={teamMembers.map((m) => ({ value: m.id, label: m.name }))}
+        initialStageId={addOpportunityStage}
+        onCreated={(lead) => setSelectedLead(lead as Lead)}
+      />
 
       {/* Bulk Delete Confirmation */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

@@ -34,6 +34,7 @@ import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { AvatarUpload } from '@/components/admin/AvatarUpload';
 import { useGmailConnection } from '@/hooks/useGmailConnection';
 // usePipelines import removed — people are no longer connected to pipelines
+import { useInlineSave as useSharedInlineSave } from './shared/useInlineSave';
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
 import { type LeadProject } from './ProjectDetailDialog';
 import { differenceInDays, parseISO, format } from 'date-fns';
@@ -296,50 +297,7 @@ function useInlineSave(
   currentValue: string,
   onSaved: (field: string, newValue: string) => void,
 ) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(currentValue);
-  const [saving, setSaving] = useState(false);
-  const { registerUndo } = useUndo();
-
-  useEffect(() => {
-    if (editing) setDraft(currentValue);
-  }, [editing, currentValue]);
-
-  const save = useCallback(async () => {
-    const trimmed = draft.trim();
-    if (trimmed === currentValue) {
-      setEditing(false);
-      return;
-    }
-    const previousValue = currentValue;
-    setSaving(true);
-    const { error } = await supabase
-      .from('people')
-      .update({ [field]: trimmed || null })
-      .eq('id', personId);
-    setSaving(false);
-    if (error) {
-      toast.error('Failed to save');
-      return;
-    }
-    registerUndo({
-      label: `Updated ${field}`,
-      execute: async () => {
-        const { error: e } = await supabase.from('people').update({ [field]: previousValue || null }).eq('id', personId);
-        if (e) throw e;
-        onSaved(field, previousValue);
-      },
-    });
-    onSaved(field, trimmed);
-    setEditing(false);
-  }, [draft, currentValue, field, personId, onSaved, registerUndo]);
-
-  const cancel = useCallback(() => {
-    setDraft(currentValue);
-    setEditing(false);
-  }, [currentValue]);
-
-  return { editing, setEditing, draft, setDraft, saving, save, cancel };
+  return useSharedInlineSave(personId, field, currentValue, onSaved, undefined, 'people');
 }
 
 // ── Editable field row ──
@@ -1929,6 +1887,9 @@ export default function PeopleExpandedView() {
         .people-expanded-view *:not(svg):not(svg *) {
           font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
         }
+        .people-expanded-view [data-radix-scroll-area-viewport] {
+          overflow-x: hidden !important;
+        }
       `}</style>
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
@@ -1937,12 +1898,13 @@ export default function PeopleExpandedView() {
         <ScrollArea className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
           <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
-            {/* ── Back Arrow ── */}
-            <button onClick={goBack} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
-              <svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="30" y1="8" x2="2" y2="8" />
-                <polyline points="8,2 2,8 8,14" />
-              </svg>
+            {/* ── Close (X) ── */}
+            <button
+              onClick={goBack}
+              className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
             </button>
 
             {/* ── Contact Card Header ── */}

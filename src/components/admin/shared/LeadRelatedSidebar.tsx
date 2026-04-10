@@ -21,6 +21,7 @@ import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { PeopleTaskDetailDialog, type LeadTask } from '@/components/admin/PeopleTaskDetailDialog';
 import { type LeadProject } from '@/components/admin/ProjectDetailDialog';
+import { LeadCallHistorySection } from '@/components/admin/shared/LeadCallHistorySection';
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ export interface LeadRelatedSidebarLead {
   opportunity_name?: string | null;
   company_name: string | null;
   email?: string | null;
+  phone?: string | null;
   status: string;
 }
 
@@ -1533,33 +1535,89 @@ export default function LeadRelatedSidebar({
                 onChange={handleFileUpload}
               />
               <div className="space-y-1.5 py-1">
-                {leadFiles.map((f) => (
-                  <div key={f.id} className="flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors group min-w-0">
-                    <span className="text-sm shrink-0">{getFileIcon(f.file_type)}</span>
-                    <div className="flex-1 min-w-0 max-w-full">
-                      <p className="font-medium text-foreground truncate" title={f.file_name}>{f.file_name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}
-                      </p>
+                {leadFiles.map((f) => {
+                  const isImage = f.file_type?.startsWith('image/') ?? false;
+                  // File types the browser can render directly in a new tab.
+                  const isPreviewable =
+                    isImage ||
+                    f.file_type === 'application/pdf' ||
+                    f.file_type === 'text/plain' ||
+                    f.file_type === 'text/html' ||
+                    f.file_type === 'text/csv';
+                  return (
+                    <div
+                      key={f.id}
+                      className="flex items-start gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors group min-w-0"
+                    >
+                      {isImage ? (
+                        // Inline thumbnail for image types — clicking opens the
+                        // full image in a new tab (opt-in noreferrer for safety).
+                        <a
+                          href={f.file_url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="h-9 w-9 shrink-0 rounded-md overflow-hidden border border-border bg-muted/40 flex items-center justify-center"
+                          title={`Preview ${f.file_name}`}
+                        >
+                          <img
+                            src={f.file_url}
+                            alt={f.file_name}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        </a>
+                      ) : (
+                        <span className="text-base shrink-0 mt-0.5 leading-none">{getFileIcon(f.file_type)}</span>
+                      )}
+                      <div className="flex-1 min-w-0 max-w-full">
+                        {isPreviewable ? (
+                          <a
+                            href={f.file_url}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="font-medium text-foreground truncate block hover:text-violet-700 hover:underline"
+                            title={`Preview ${f.file_name}`}
+                          >
+                            {f.file_name}
+                          </a>
+                        ) : (
+                          <p className="font-medium text-foreground truncate" title={f.file_name}>{f.file_name}</p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {isPreviewable && (
+                          <a
+                            href={f.file_url}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="p-1 rounded hover:bg-muted"
+                            title="Preview in new tab"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Eye className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                          </a>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }}
+                          className="p-1 rounded hover:bg-muted"
+                          title="Download"
+                        >
+                          <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFile(f)}
+                          className="p-1 rounded hover:bg-muted"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }}
-                        className="p-1 rounded hover:bg-muted"
-                        title="Download"
-                      >
-                        <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteFile(f)}
-                        className="p-1 rounded hover:bg-muted"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {uploadingFile && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
                     <Loader2 className="h-3 w-3 animate-spin text-orange-500" />
@@ -1577,6 +1635,14 @@ export default function LeadRelatedSidebar({
                 </button>
               </div>
             </RelatedSection>
+
+            {/* Call History */}
+            <LeadCallHistorySection
+              leadId={leadId}
+              entityType={entityType}
+              teamMembers={teamMembers}
+              fallbackPhone={lead.phone ?? null}
+            />
 
             {/* Calendar Events */}
             <RelatedSection

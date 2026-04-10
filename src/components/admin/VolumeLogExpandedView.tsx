@@ -62,6 +62,9 @@ const VolumeLogExpandedView = () => {
           .volume-log-expanded-view *:not(svg):not(svg *) {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
           }
+          .volume-log-expanded-view [data-radix-scroll-area-viewport] {
+            overflow-x: hidden !important;
+          }
         `}</style>
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b bg-card">

@@ -81,6 +81,8 @@ const CLXAssistant = () => {
     saveMessages,
     deleteConversation,
     startNewConversation,
+    pendingPrompt,
+    setPendingPrompt,
   } = useAIAssistant();
 
   const location = useLocation();
@@ -146,6 +148,26 @@ const CLXAssistant = () => {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // Consume a pending seed prompt from the context when the panel opens.
+  // Parent surfaces (e.g. expanded views) can call `openWithPrompt(...)` to
+  // pre-fill the input with deal-specific context, then the caret focuses
+  // so the user can send or edit immediately.
+  useEffect(() => {
+    if (isOpen && pendingPrompt) {
+      setInput(pendingPrompt);
+      setPendingPrompt(null);
+      setTimeout(() => {
+        inputRef.current?.focus();
+        // Move caret to end so the user can keep typing.
+        const el = inputRef.current;
+        if (el) {
+          const len = el.value.length;
+          try { el.setSelectionRange(len, len); } catch { /* input types without selection */ }
+        }
+      }, 150);
+    }
+  }, [isOpen, pendingPrompt, setPendingPrompt]);
 
   useEffect(() => {
     if (scrollRef.current) {

@@ -292,6 +292,9 @@ export default function LenderExpandedView() {
         .lender-expanded-view *:not(svg):not(svg *) {
           font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
         }
+        .lender-expanded-view [data-radix-scroll-area-viewport] {
+          overflow-x: hidden !important;
+        }
       `}</style>
       {/* Header */}
       <div className="shrink-0 border-b border-border bg-card">

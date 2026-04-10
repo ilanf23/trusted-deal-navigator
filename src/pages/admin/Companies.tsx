@@ -7,6 +7,7 @@ import { useUndo } from '@/contexts/UndoContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanies } from '@/hooks/useAllPipelineLeads';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,11 +18,12 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import CompanyDetailPanel, { contactTypeConfigDefault } from '@/components/admin/CompanyDetailPanel';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
+import { SavedFiltersSidebar, type SavedFilterOption } from '@/components/admin/SavedFiltersSidebar';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import {
-  ArrowLeft, PanelLeft, Filter, ChevronDown, ChevronUp, Plus,
+  ArrowLeft, PanelLeft, Filter, ChevronDown, Plus,
   Building2, Tag, Check, X, LayoutGrid, FileSearch,
   PanelRightOpen, Sparkles, Loader2, Download, PlusCircle, Globe, Maximize2,
   Search, BarChart3, AtSign, User, CalendarDays,
@@ -114,15 +116,12 @@ const contactTypeConfig: Record<string, { label: string; color: string; bg: stri
   },
 };
 
-const FILTER_OPTIONS = [
+const FILTER_OPTIONS: SavedFilterOption[] = [
   { id: 'all', label: 'All Companies', group: 'top' },
-  { id: 'Client', label: 'Clients', group: 'public' },
-  { id: 'Prospect', label: 'Prospects', group: 'public' },
-  { id: 'Referral Partner', label: 'Referral Partners', group: 'public' },
-  { id: 'Lender', label: 'Lenders', group: 'public' },
-  { id: 'Vendor', label: 'Vendors', group: 'public' },
-  { id: 'recently_contacted', label: 'Recently Contacted', group: 'public' },
-  { id: 'inactive', label: 'Inactive (30+ days)', group: 'public' },
+  { id: 'following', label: "Companies I'm Following", group: 'public' },
+  { id: 'current_customers', label: 'Current Customers', group: 'public' },
+  { id: 'my_companies', label: 'My Companies', group: 'public' },
+  { id: 'potential_customers', label: 'Potential Customers', group: 'public' },
 ];
 
 type SortField = 'company_name' | 'contact_name' | 'contact_type' | 'last_activity_at' | 'updated_at';
@@ -304,7 +303,6 @@ const Companies = () => {
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedCompany, setDraggedCompany] = useState<Company | null>(null);
   // Custom filters
   const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
@@ -515,6 +513,7 @@ const Companies = () => {
   const companies = rawCompanies as unknown as Company[];
 
   const { data: teamMembers = [] } = useAssignableUsers();
+  const { teamMember: currentTeamMember } = useTeamMember();
 
   const teamMemberMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -522,38 +521,95 @@ const Companies = () => {
     return map;
   }, [teamMembers]);
 
+  const { data: followedCompanyIdsArray = [] } = useQuery({
+    queryKey: ['followed-companies', currentTeamMember?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('entity_followers')
+        .select('entity_id')
+        .eq('entity_type', 'companies')
+        .eq('team_member_id', currentTeamMember!.id);
+      return (data ?? []).map((r) => r.entity_id);
+    },
+    enabled: !!currentTeamMember?.id,
+  });
+  const followedCompanyIds = useMemo(
+    () => new Set(followedCompanyIdsArray),
+    [followedCompanyIdsArray],
+  );
+
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = { all: companies.length };
-    for (const type of CONTACT_TYPES) {
-      counts[type] = companies.filter(c => c.contact_type === type).length;
-    }
-    counts['recently_contacted'] = companies.filter(c => {
-      const d = daysSince(c.last_activity_at);
-      return d !== null && d <= 7;
-    }).length;
-    counts['inactive'] = companies.filter(c => {
-      const d = daysSince(c.last_activity_at);
-      return d !== null && d >= 30;
-    }).length;
+    const myId = currentTeamMember?.id;
+    counts['following'] = companies.filter((c) => followedCompanyIds.has(c.id)).length;
+    counts['current_customers'] = companies.filter((c) => c.contact_type === 'Client').length;
+    counts['my_companies'] = myId
+      ? companies.filter((c) => c.assigned_to === myId).length
+      : 0;
+    counts['potential_customers'] = companies.filter((c) => c.contact_type === 'Prospect').length;
     return counts;
-  }, [companies]);
+  }, [companies, currentTeamMember?.id, followedCompanyIds]);
 
   const filteredAndSorted = useMemo(() => {
     let result = companies;
 
     if (activeFilter !== 'all') {
-      if (CONTACT_TYPES.includes(activeFilter)) {
-        result = result.filter(c => c.contact_type === activeFilter);
-      } else if (activeFilter === 'recently_contacted') {
-        result = result.filter(c => {
-          const d = daysSince(c.last_activity_at);
-          return d !== null && d <= 7;
-        });
-      } else if (activeFilter === 'inactive') {
-        result = result.filter(c => {
-          const d = daysSince(c.last_activity_at);
-          return d !== null && d >= 30;
-        });
+      const myId = currentTeamMember?.id;
+      if (activeFilter === 'following') {
+        result = result.filter((c) => followedCompanyIds.has(c.id));
+      } else if (activeFilter === 'current_customers') {
+        result = result.filter((c) => c.contact_type === 'Client');
+      } else if (activeFilter === 'my_companies') {
+        result = myId ? result.filter((c) => c.assigned_to === myId) : [];
+      } else if (activeFilter === 'potential_customers') {
+        result = result.filter((c) => c.contact_type === 'Prospect');
+      } else if (activeFilter.startsWith('custom_')) {
+        const cf = customFilters.find((f) => f.id === activeFilter);
+        if (cf) {
+          const v = cf.values;
+          result = result.filter((c) => {
+            if (v.ownedBy.length > 0 && !v.ownedBy.includes(c.assigned_to ?? '')) return false;
+            if (v.company.trim() && !c.company_name.toLowerCase().includes(v.company.toLowerCase())) return false;
+            if (v.tags.trim()) {
+              const filterTags = v.tags.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
+              const companyTags = (c.tags ?? []).map((t) => t.toLowerCase());
+              if (!filterTags.some((ft) => companyTags.includes(ft))) return false;
+            }
+            if (v.source.length > 0 && !v.source.includes(c.source ?? '')) return false;
+            if (v.followed && !followedCompanyIds.has(c.id)) return false;
+            if (v.dateAddedFrom && new Date(c.created_at) < v.dateAddedFrom) return false;
+            if (v.dateAddedTo && new Date(c.created_at) > v.dateAddedTo) return false;
+            if (v.lastContactedMin.trim()) {
+              const min = parseInt(v.lastContactedMin, 10);
+              if (!Number.isNaN(min)) {
+                const d = daysSince(c.last_activity_at);
+                if (d === null || d < min) return false;
+              }
+            }
+            if (v.lastContactedMax.trim()) {
+              const max = parseInt(v.lastContactedMax, 10);
+              if (!Number.isNaN(max)) {
+                const d = daysSince(c.last_activity_at);
+                if (d === null || d > max) return false;
+              }
+            }
+            if (v.inactiveDaysMin.trim()) {
+              const min = parseInt(v.inactiveDaysMin, 10);
+              if (!Number.isNaN(min)) {
+                const d = daysSince(c.last_activity_at);
+                if (d === null || d < min) return false;
+              }
+            }
+            if (v.inactiveDaysMax.trim()) {
+              const max = parseInt(v.inactiveDaysMax, 10);
+              if (!Number.isNaN(max)) {
+                const d = daysSince(c.last_activity_at);
+                if (d === null || d > max) return false;
+              }
+            }
+            return true;
+          });
+        }
       }
     }
 
@@ -580,7 +636,7 @@ const Companies = () => {
     });
 
     return result;
-  }, [companies, activeFilter, searchTerm, sortField, sortDir]);
+  }, [companies, activeFilter, searchTerm, sortField, sortDir, customFilters, followedCompanyIds, currentTeamMember?.id]);
 
   const { columnWidths, handleColumnResize } = useAutoFitColumns({
     minWidths: {
@@ -702,112 +758,25 @@ const Companies = () => {
           </button>
 
           {/* ── Left Sidebar (Copper style) ── */}
-          <aside
-            className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
-              sidebarOpen ? 'w-72 bg-[#f8f9fa] dark:bg-muted/30' : 'w-[72px] bg-[#eef0f2] dark:bg-muted/50'
-            }`}
-          >
-            {sidebarOpen && <div className="w-72 pl-4 flex-1 overflow-y-auto">
-              <div className="px-6 pt-5 pb-3 flex items-center justify-between">
-                <span className="text-[20px] font-bold tracking-tight text-[#1f1f1f] dark:text-foreground">Saved Filters</span>
-                <div className="flex items-center gap-1">
-                  <CreateFilterDialog
-                    teamMemberMap={teamMemberMap}
-                    stageConfig={contactTypeConfig}
-                    onSave={(filter) => {
-                      const id = `custom_${Date.now()}`;
-                      setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
-                      toast.success(`Filter "${filter.filterName}" created`);
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Search Filters input */}
-              <div className="px-6 pb-2">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search Filters"
-                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#3b2778] dark:focus:border-purple-400 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <nav className="flex-1 overflow-y-auto pb-4 px-3">
-                {/* All Companies — top item */}
-                {FILTER_OPTIONS.filter(o => o.group === 'top').map((opt) => {
-                  const isActive = activeFilter === opt.id;
-                  const count = filterCounts[opt.id] ?? 0;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-3 py-3 text-left transition-colors ${
-                        isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className={`text-[14px] font-medium truncate`}>{opt.label}</span>
-                      </span>
-                      {count > 0 && (
-                        <span className="ml-1 shrink-0 text-[11px] font-medium text-[#5f6368] dark:text-muted-foreground">
-                          {count.toLocaleString()}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {/* Public section (was "By Type") */}
-                <button
-                  onClick={() => setPublicFiltersOpen(v => !v)}
-                  className="w-full px-3 pt-4 pb-1 flex items-center justify-between group"
-                >
-                  <span className="text-[11px] uppercase tracking-wider font-semibold text-[#5f6368] dark:text-muted-foreground">Public</span>
-                  <ChevronUp className={`h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : 'rotate-180'}`} />
-                </button>
-
-                {publicFiltersOpen && FILTER_OPTIONS.filter(o => o.group === 'public').map((opt) => {
-                  const isActive = activeFilter === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
-                        isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                      }`}
-                    >
-                      <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{opt.label}</span>
-                    </button>
-                  );
-                })}
-
-                {/* Custom Filters */}
-                {customFilters.length > 0 && (
-                  <>
-                    <div className="pt-4 pb-1">
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-[#5f6368] dark:text-muted-foreground">Custom</span>
-                    </div>
-                    {customFilters.map((cf) => {
-                      const isActive = activeFilter === cf.id;
-                      return (
-                        <button
-                          key={cf.id}
-                          onClick={() => setActiveFilter(cf.id)}
-                          className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
-                            isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                          }`}
-                        >
-                          <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{cf.label}</span>
-                        </button>
-                      );
-                    })}
-                  </>
-                )}
-              </nav>
-            </div>}
-          </aside>
+          <SavedFiltersSidebar
+            sidebarOpen={sidebarOpen}
+            filterOptions={FILTER_OPTIONS}
+            customFilters={customFilters}
+            filterCounts={filterCounts}
+            activeFilter={activeFilter}
+            onSelectFilter={setActiveFilter}
+            createFilterAction={
+              <CreateFilterDialog
+                teamMemberMap={teamMemberMap}
+                stageConfig={contactTypeConfig}
+                onSave={(filter) => {
+                  const id = `custom_${Date.now()}`;
+                  setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
+                  toast.success(`Filter "${filter.filterName}" created`);
+                }}
+              />
+            }
+          />
 
           {/* ── Main Table Area ── */}
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">

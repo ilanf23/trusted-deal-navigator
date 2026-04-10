@@ -83,31 +83,37 @@ export type Database = {
         Row: {
           activity_type: string
           content: string | null
+          copper_activity_id: string | null
           created_at: string
           created_by: string | null
           entity_id: string
           entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
+          source_system: string
           title: string | null
         }
         Insert: {
           activity_type: string
           content?: string | null
+          copper_activity_id?: string | null
           created_at?: string
           created_by?: string | null
           entity_id: string
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
+          source_system?: string
           title?: string | null
         }
         Update: {
           activity_type?: string
           content?: string | null
+          copper_activity_id?: string | null
           created_at?: string
           created_by?: string | null
           entity_id?: string
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
+          source_system?: string
           title?: string | null
         }
         Relationships: []
@@ -747,12 +753,14 @@ export type Database = {
           assigned_to: string | null
           company_name: string
           contact_type: string | null
+          copper_company_id: string | null
           created_at: string
           description: string | null
           id: string
           last_activity_at: string | null
           notes: string | null
           source: string | null
+          source_system: string
           tags: string[] | null
           updated_at: string
           website: string | null
@@ -763,12 +771,14 @@ export type Database = {
           assigned_to?: string | null
           company_name: string
           contact_type?: string | null
+          copper_company_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           last_activity_at?: string | null
           notes?: string | null
           source?: string | null
+          source_system?: string
           tags?: string[] | null
           updated_at?: string
           website?: string | null
@@ -779,12 +789,14 @@ export type Database = {
           assigned_to?: string | null
           company_name?: string
           contact_type?: string | null
+          copper_company_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           last_activity_at?: string | null
           notes?: string | null
           source?: string | null
+          source_system?: string
           tags?: string[] | null
           updated_at?: string
           website?: string | null
@@ -1606,6 +1618,95 @@ export type Database = {
         }
         Relationships: []
       }
+      entity_checklist_items: {
+        Row: {
+          checklist_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          id: string
+          is_completed: boolean
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          checklist_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          checklist_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          label?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_checklist_items_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "entity_checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entity_checklist_items_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entity_checklists: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"]
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"]
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"]
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_checklists_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entity_contacts: {
         Row: {
           created_at: string
@@ -1680,6 +1781,7 @@ export type Database = {
       }
       entity_files: {
         Row: {
+          copper_file_id: string | null
           created_at: string
           entity_id: string
           entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
@@ -1688,9 +1790,11 @@ export type Database = {
           file_type: string | null
           file_url: string
           id: string
+          source_system: string
           uploaded_by: string | null
         }
         Insert: {
+          copper_file_id?: string | null
           created_at?: string
           entity_id: string
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
@@ -1699,9 +1803,11 @@ export type Database = {
           file_type?: string | null
           file_url: string
           id?: string
+          source_system?: string
           uploaded_by?: string | null
         }
         Update: {
+          copper_file_id?: string | null
           created_at?: string
           entity_id?: string
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
@@ -1710,6 +1816,7 @@ export type Database = {
           file_type?: string | null
           file_url?: string
           id?: string
+          source_system?: string
           uploaded_by?: string | null
         }
         Relationships: []
@@ -2008,7 +2115,10 @@ export type Database = {
           contact_type: string | null
           converted_at: string | null
           converted_to_client_id: string | null
+          copper_opportunity_id: string | null
           created_at: string
+          custom_fields: Json
+          deal_outcome: Database["public"]["Enums"]["deal_outcome"]
           deal_value: number | null
           description: string | null
           email: string | null
@@ -2017,6 +2127,7 @@ export type Database = {
           history: string | null
           id: string
           initial_nudge_created_at: string | null
+          interactions_count: number
           invoice_amount: number | null
           known_as: string | null
           last_activity_at: string | null
@@ -2026,6 +2137,7 @@ export type Database = {
           loan_category: string | null
           loan_stage: string | null
           loss_reason: string | null
+          lost_at: string | null
           name: string
           net_revenue: number | null
           next_action: string | null
@@ -2034,7 +2146,7 @@ export type Database = {
           origin_pipeline_id: string | null
           phone: string | null
           potential_revenue: number | null
-          priority: string | null
+          priority: Database["public"]["Enums"]["deal_priority"] | null
           qualified_at: string | null
           referral_source: string | null
           rs_fee_percent: number | null
@@ -2043,6 +2155,8 @@ export type Database = {
           sheets_row_index: number | null
           sla_threshold_days: number | null
           source: string | null
+          source_system: string
+          stage_changed_at: string | null
           stage_id: string | null
           status: Database["public"]["Enums"]["lead_status"]
           tags: string[] | null
@@ -2055,6 +2169,8 @@ export type Database = {
           waiting_on: string | null
           win_percentage: number | null
           won: boolean | null
+          won_at: string | null
+          won_reason: string | null
           wu_date: string | null
         }
         Insert: {
@@ -2071,7 +2187,10 @@ export type Database = {
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
+          copper_opportunity_id?: string | null
           created_at?: string
+          custom_fields?: Json
+          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
           deal_value?: number | null
           description?: string | null
           email?: string | null
@@ -2080,6 +2199,7 @@ export type Database = {
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
+          interactions_count?: number
           invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
@@ -2089,6 +2209,7 @@ export type Database = {
           loan_category?: string | null
           loan_stage?: string | null
           loss_reason?: string | null
+          lost_at?: string | null
           name: string
           net_revenue?: number | null
           next_action?: string | null
@@ -2097,7 +2218,7 @@ export type Database = {
           origin_pipeline_id?: string | null
           phone?: string | null
           potential_revenue?: number | null
-          priority?: string | null
+          priority?: Database["public"]["Enums"]["deal_priority"] | null
           qualified_at?: string | null
           referral_source?: string | null
           rs_fee_percent?: number | null
@@ -2106,6 +2227,8 @@ export type Database = {
           sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
+          source_system?: string
+          stage_changed_at?: string | null
           stage_id?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
@@ -2118,6 +2241,8 @@ export type Database = {
           waiting_on?: string | null
           win_percentage?: number | null
           won?: boolean | null
+          won_at?: string | null
+          won_reason?: string | null
           wu_date?: string | null
         }
         Update: {
@@ -2134,7 +2259,10 @@ export type Database = {
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
+          copper_opportunity_id?: string | null
           created_at?: string
+          custom_fields?: Json
+          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
           deal_value?: number | null
           description?: string | null
           email?: string | null
@@ -2143,6 +2271,7 @@ export type Database = {
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
+          interactions_count?: number
           invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
@@ -2152,6 +2281,7 @@ export type Database = {
           loan_category?: string | null
           loan_stage?: string | null
           loss_reason?: string | null
+          lost_at?: string | null
           name?: string
           net_revenue?: number | null
           next_action?: string | null
@@ -2160,7 +2290,7 @@ export type Database = {
           origin_pipeline_id?: string | null
           phone?: string | null
           potential_revenue?: number | null
-          priority?: string | null
+          priority?: Database["public"]["Enums"]["deal_priority"] | null
           qualified_at?: string | null
           referral_source?: string | null
           rs_fee_percent?: number | null
@@ -2169,6 +2299,8 @@ export type Database = {
           sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
+          source_system?: string
+          stage_changed_at?: string | null
           stage_id?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
@@ -2181,6 +2313,8 @@ export type Database = {
           waiting_on?: string | null
           win_percentage?: number | null
           won?: boolean | null
+          won_at?: string | null
+          won_reason?: string | null
           wu_date?: string | null
         }
         Relationships: [
@@ -2567,25 +2701,34 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          entity_id: string | null
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           is_pinned: boolean
           team_member_id: string | null
+          title: string | null
           updated_at: string
         }
         Insert: {
           content: string
           created_at?: string
+          entity_id?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           is_pinned?: boolean
           team_member_id?: string | null
+          title?: string | null
           updated_at?: string
         }
         Update: {
           content?: string
           created_at?: string
+          entity_id?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           is_pinned?: boolean
           team_member_id?: string | null
+          title?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2819,6 +2962,7 @@ export type Database = {
           company_id: string | null
           company_name: string | null
           contact_type: string | null
+          copper_person_id: string | null
           created_at: string
           description: string | null
           email: string | null
@@ -2833,6 +2977,7 @@ export type Database = {
           phone: string | null
           referral_source: string | null
           source: string | null
+          source_system: string
           tags: string[] | null
           title: string | null
           twitter: string | null
@@ -2846,6 +2991,7 @@ export type Database = {
           company_id?: string | null
           company_name?: string | null
           contact_type?: string | null
+          copper_person_id?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
@@ -2860,6 +3006,7 @@ export type Database = {
           phone?: string | null
           referral_source?: string | null
           source?: string | null
+          source_system?: string
           tags?: string[] | null
           title?: string | null
           twitter?: string | null
@@ -2873,6 +3020,7 @@ export type Database = {
           company_id?: string | null
           company_name?: string | null
           contact_type?: string | null
+          copper_person_id?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
@@ -2887,6 +3035,7 @@ export type Database = {
           phone?: string | null
           referral_source?: string | null
           source?: string | null
+          source_system?: string
           tags?: string[] | null
           title?: string | null
           twitter?: string | null
@@ -3129,7 +3278,10 @@ export type Database = {
           contact_type: string | null
           converted_at: string | null
           converted_to_client_id: string | null
+          copper_opportunity_id: string | null
           created_at: string
+          custom_fields: Json
+          deal_outcome: Database["public"]["Enums"]["deal_outcome"]
           deal_value: number | null
           description: string | null
           email: string | null
@@ -3138,6 +3290,7 @@ export type Database = {
           history: string | null
           id: string
           initial_nudge_created_at: string | null
+          interactions_count: number
           invoice_amount: number | null
           known_as: string | null
           last_activity_at: string | null
@@ -3148,6 +3301,7 @@ export type Database = {
           loan_category: string | null
           loan_stage: string | null
           loss_reason: string | null
+          lost_at: string | null
           name: string
           net_revenue: number | null
           next_action: string | null
@@ -3155,7 +3309,7 @@ export type Database = {
           opportunity_name: string | null
           phone: string | null
           potential_revenue: number | null
-          priority: string | null
+          priority: Database["public"]["Enums"]["deal_priority"] | null
           qualified_at: string | null
           questionnaire_completed_at: string | null
           questionnaire_sent_at: string | null
@@ -3170,6 +3324,8 @@ export type Database = {
           sheets_row_index: number | null
           sla_threshold_days: number | null
           source: string | null
+          source_system: string
+          stage_changed_at: string | null
           stage_id: string | null
           status: Database["public"]["Enums"]["lead_status"]
           tags: string[] | null
@@ -3184,6 +3340,8 @@ export type Database = {
           website: string | null
           win_percentage: number | null
           won: boolean | null
+          won_at: string | null
+          won_reason: string | null
           work_website: string | null
           wu_date: string | null
         }
@@ -3201,7 +3359,10 @@ export type Database = {
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
+          copper_opportunity_id?: string | null
           created_at?: string
+          custom_fields?: Json
+          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
           deal_value?: number | null
           description?: string | null
           email?: string | null
@@ -3210,6 +3371,7 @@ export type Database = {
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
+          interactions_count?: number
           invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
@@ -3220,6 +3382,7 @@ export type Database = {
           loan_category?: string | null
           loan_stage?: string | null
           loss_reason?: string | null
+          lost_at?: string | null
           name: string
           net_revenue?: number | null
           next_action?: string | null
@@ -3227,7 +3390,7 @@ export type Database = {
           opportunity_name?: string | null
           phone?: string | null
           potential_revenue?: number | null
-          priority?: string | null
+          priority?: Database["public"]["Enums"]["deal_priority"] | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
@@ -3242,6 +3405,8 @@ export type Database = {
           sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
+          source_system?: string
+          stage_changed_at?: string | null
           stage_id?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
@@ -3256,6 +3421,8 @@ export type Database = {
           website?: string | null
           win_percentage?: number | null
           won?: boolean | null
+          won_at?: string | null
+          won_reason?: string | null
           work_website?: string | null
           wu_date?: string | null
         }
@@ -3273,7 +3440,10 @@ export type Database = {
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
+          copper_opportunity_id?: string | null
           created_at?: string
+          custom_fields?: Json
+          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
           deal_value?: number | null
           description?: string | null
           email?: string | null
@@ -3282,6 +3452,7 @@ export type Database = {
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
+          interactions_count?: number
           invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
@@ -3292,6 +3463,7 @@ export type Database = {
           loan_category?: string | null
           loan_stage?: string | null
           loss_reason?: string | null
+          lost_at?: string | null
           name?: string
           net_revenue?: number | null
           next_action?: string | null
@@ -3299,7 +3471,7 @@ export type Database = {
           opportunity_name?: string | null
           phone?: string | null
           potential_revenue?: number | null
-          priority?: string | null
+          priority?: Database["public"]["Enums"]["deal_priority"] | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
@@ -3314,6 +3486,8 @@ export type Database = {
           sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
+          source_system?: string
+          stage_changed_at?: string | null
           stage_id?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
@@ -3328,6 +3502,8 @@ export type Database = {
           website?: string | null
           win_percentage?: number | null
           won?: boolean | null
+          won_at?: string | null
+          won_reason?: string | null
           work_website?: string | null
           wu_date?: string | null
         }
@@ -3773,6 +3949,7 @@ export type Database = {
       tasks: {
         Row: {
           completed_at: string | null
+          copper_task_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -3785,6 +3962,7 @@ export type Database = {
           lead_id: string | null
           priority: string | null
           source: string | null
+          source_system: string
           status: string | null
           tags: string[] | null
           task_type: string | null
@@ -3794,6 +3972,7 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          copper_task_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -3806,6 +3985,7 @@ export type Database = {
           lead_id?: string | null
           priority?: string | null
           source?: string | null
+          source_system?: string
           status?: string | null
           tags?: string[] | null
           task_type?: string | null
@@ -3815,6 +3995,7 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          copper_task_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -3827,6 +4008,7 @@ export type Database = {
           lead_id?: string | null
           priority?: string | null
           source?: string | null
+          source_system?: string
           status?: string | null
           tags?: string[] | null
           task_type?: string | null
@@ -3904,7 +4086,10 @@ export type Database = {
           contact_type: string | null
           converted_at: string | null
           converted_to_client_id: string | null
+          copper_opportunity_id: string | null
           created_at: string
+          custom_fields: Json
+          deal_outcome: Database["public"]["Enums"]["deal_outcome"]
           deal_value: number | null
           description: string | null
           email: string | null
@@ -3913,6 +4098,7 @@ export type Database = {
           history: string | null
           id: string
           initial_nudge_created_at: string | null
+          interactions_count: number
           invoice_amount: number | null
           known_as: string | null
           last_activity_at: string | null
@@ -3922,6 +4108,7 @@ export type Database = {
           loan_category: string | null
           loan_stage: string | null
           loss_reason: string | null
+          lost_at: string | null
           name: string
           net_revenue: number | null
           next_action: string | null
@@ -3930,7 +4117,7 @@ export type Database = {
           origin_pipeline_id: string | null
           phone: string | null
           potential_revenue: number | null
-          priority: string | null
+          priority: Database["public"]["Enums"]["deal_priority"] | null
           qualified_at: string | null
           referral_source: string | null
           rs_fee_percent: number | null
@@ -3939,6 +4126,8 @@ export type Database = {
           sheets_row_index: number | null
           sla_threshold_days: number | null
           source: string | null
+          source_system: string
+          stage_changed_at: string | null
           stage_id: string | null
           status: Database["public"]["Enums"]["lead_status"]
           tags: string[] | null
@@ -3951,6 +4140,8 @@ export type Database = {
           waiting_on: string | null
           win_percentage: number | null
           won: boolean | null
+          won_at: string | null
+          won_reason: string | null
           wu_date: string | null
         }
         Insert: {
@@ -3967,7 +4158,10 @@ export type Database = {
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
+          copper_opportunity_id?: string | null
           created_at?: string
+          custom_fields?: Json
+          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
           deal_value?: number | null
           description?: string | null
           email?: string | null
@@ -3976,6 +4170,7 @@ export type Database = {
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
+          interactions_count?: number
           invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
@@ -3985,6 +4180,7 @@ export type Database = {
           loan_category?: string | null
           loan_stage?: string | null
           loss_reason?: string | null
+          lost_at?: string | null
           name: string
           net_revenue?: number | null
           next_action?: string | null
@@ -3993,7 +4189,7 @@ export type Database = {
           origin_pipeline_id?: string | null
           phone?: string | null
           potential_revenue?: number | null
-          priority?: string | null
+          priority?: Database["public"]["Enums"]["deal_priority"] | null
           qualified_at?: string | null
           referral_source?: string | null
           rs_fee_percent?: number | null
@@ -4002,6 +4198,8 @@ export type Database = {
           sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
+          source_system?: string
+          stage_changed_at?: string | null
           stage_id?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
@@ -4014,6 +4212,8 @@ export type Database = {
           waiting_on?: string | null
           win_percentage?: number | null
           won?: boolean | null
+          won_at?: string | null
+          won_reason?: string | null
           wu_date?: string | null
         }
         Update: {
@@ -4030,7 +4230,10 @@ export type Database = {
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
+          copper_opportunity_id?: string | null
           created_at?: string
+          custom_fields?: Json
+          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
           deal_value?: number | null
           description?: string | null
           email?: string | null
@@ -4039,6 +4242,7 @@ export type Database = {
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
+          interactions_count?: number
           invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
@@ -4048,6 +4252,7 @@ export type Database = {
           loan_category?: string | null
           loan_stage?: string | null
           loss_reason?: string | null
+          lost_at?: string | null
           name?: string
           net_revenue?: number | null
           next_action?: string | null
@@ -4056,7 +4261,7 @@ export type Database = {
           origin_pipeline_id?: string | null
           phone?: string | null
           potential_revenue?: number | null
-          priority?: string | null
+          priority?: Database["public"]["Enums"]["deal_priority"] | null
           qualified_at?: string | null
           referral_source?: string | null
           rs_fee_percent?: number | null
@@ -4065,6 +4270,8 @@ export type Database = {
           sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
+          source_system?: string
+          stage_changed_at?: string | null
           stage_id?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
@@ -4077,6 +4284,8 @@ export type Database = {
           waiting_on?: string | null
           win_percentage?: number | null
           won?: boolean | null
+          won_at?: string | null
+          won_reason?: string | null
           wu_date?: string | null
         }
         Relationships: [
@@ -4328,6 +4537,13 @@ export type Database = {
       }
     }
     Views: {
+      all_deal_tags: {
+        Row: {
+          entity_type: string | null
+          tag: string | null
+        }
+        Relationships: []
+      }
       v_pipeline_metrics: {
         Row: {
           deal_count: number | null
@@ -4408,6 +4624,10 @@ export type Database = {
         Returns: boolean
       }
       is_team_owner: { Args: never; Returns: boolean }
+      move_deal_between_pipelines: {
+        Args: { p_deal_id: string; p_source: string; p_target: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "client" | "partner" | "super_admin"
@@ -4418,6 +4638,9 @@ export type Database = {
         | "signed"
         | "expired"
         | "cancelled"
+      deal_outcome: "open" | "won" | "lost" | "abandoned"
+      deal_outcome_enum: "open" | "won" | "lost" | "abandoned"
+      deal_priority: "low" | "medium" | "high"
       entity_type_enum:
         | "pipeline"
         | "underwriting"
@@ -4603,6 +4826,9 @@ export const Constants = {
         "expired",
         "cancelled",
       ],
+      deal_outcome: ["open", "won", "lost", "abandoned"],
+      deal_outcome_enum: ["open", "won", "lost", "abandoned"],
+      deal_priority: ["low", "medium", "high"],
       entity_type_enum: [
         "pipeline",
         "underwriting",
@@ -4659,45 +4885,4 @@ export const Constants = {
     },
   },
 } as const
-
-// ==========================================
-// Type aliases for the 5 CRM tables
-// ==========================================
-export type PotentialDeal = Database['public']['Tables']['potential']['Row']
-export type PotentialDealInsert = Database['public']['Tables']['potential']['Insert']
-export type PotentialDealUpdate = Database['public']['Tables']['potential']['Update']
-
-/** @deprecated Use PotentialDeal instead */
-export type PipelineDeal = PotentialDeal
-/** @deprecated Use PotentialDealInsert instead */
-export type PipelineDealInsert = PotentialDealInsert
-/** @deprecated Use PotentialDealUpdate instead */
-export type PipelineDealUpdate = PotentialDealUpdate
-
-export type UnderwritingDeal = Database['public']['Tables']['underwriting']['Row']
-export type UnderwritingDealInsert = Database['public']['Tables']['underwriting']['Insert']
-export type UnderwritingDealUpdate = Database['public']['Tables']['underwriting']['Update']
-
-export type LenderManagementDeal = Database['public']['Tables']['lender_management']['Row']
-export type LenderManagementDealInsert = Database['public']['Tables']['lender_management']['Insert']
-export type LenderManagementDealUpdate = Database['public']['Tables']['lender_management']['Update']
-
-export type Person = Database['public']['Tables']['people']['Row']
-export type PersonInsert = Database['public']['Tables']['people']['Insert']
-export type PersonUpdate = Database['public']['Tables']['people']['Update']
-
-export type Company = Database['public']['Tables']['companies']['Row']
-export type CompanyInsert = Database['public']['Tables']['companies']['Insert']
-export type CompanyUpdate = Database['public']['Tables']['companies']['Update']
-
-// Junction table types
-export type PotentialPerson = Database['public']['Tables']['potential_people']['Row']
-/** @deprecated Use PotentialPerson instead */
-export type PipelinePerson = PotentialPerson
-export type UnderwritingPerson = Database['public']['Tables']['underwriting_people']['Row']
-export type LenderManagementPerson = Database['public']['Tables']['lender_management_people']['Row']
-export type CompanyPerson = Database['public']['Tables']['company_people']['Row']
-
-// Entity type enum
-export type EntityType = Database['public']['Enums']['entity_type_enum']
 

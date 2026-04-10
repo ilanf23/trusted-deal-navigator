@@ -492,8 +492,11 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Inputs - Responsive */
-  .admin-portal input,
+  /* Inputs - Responsive
+     Note: .editable-textbox-input opts out — it's the unified CRM inline-edit
+     primitive (src/components/admin/shared/EditableTextBox.tsx) and draws its
+     own pill/underline chrome. */
+  .admin-portal input:not(.editable-textbox-input),
   .admin-portal textarea,
   .admin-portal select,
   .admin-portal [role="combobox"] {
@@ -508,7 +511,7 @@
   }
 
   @media (min-width: 1024px) {
-    .admin-portal input,
+    .admin-portal input:not(.editable-textbox-input),
     .admin-portal textarea,
     .admin-portal select,
     .admin-portal [role="combobox"] {
@@ -518,7 +521,7 @@
     }
   }
 
-  .admin-portal input:focus,
+  .admin-portal input:not(.editable-textbox-input):focus,
   .admin-portal textarea:focus,
   .admin-portal select:focus {
     outline: none;

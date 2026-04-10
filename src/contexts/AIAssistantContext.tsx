@@ -28,6 +28,12 @@ interface AIAssistantContextType {
   saveMessages: (conversationId: string, messages: Message[]) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
+  /** Pending seed prompt — consumed by CLXAssistant the next time the panel opens. */
+  pendingPrompt: string | null;
+  /** Set (or clear) the pending seed prompt without opening the panel. */
+  setPendingPrompt: (prompt: string | null) => void;
+  /** Convenience: seed the input with a prompt and open the assistant in one call. */
+  openWithPrompt: (prompt: string) => void;
 }
 
 const AIAssistantContext = createContext<AIAssistantContextType | null>(null);
@@ -48,7 +54,13 @@ export const AIAssistantProvider = ({ children }: AIAssistantProviderProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const openWithPrompt = useCallback((prompt: string) => {
+    setPendingPrompt(prompt);
+    setIsOpen(true);
+  }, []);
 
   // Fetch all conversations
   const { data: conversations = [], isLoading: isLoadingConversations } = useQuery({
@@ -184,6 +196,9 @@ export const AIAssistantProvider = ({ children }: AIAssistantProviderProps) => {
         saveMessages,
         deleteConversation,
         startNewConversation,
+        pendingPrompt,
+        setPendingPrompt,
+        openWithPrompt,
       }}
     >
       {children}

@@ -18,6 +18,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   X, ChevronDown, ChevronRight, ChevronUp,
   Users, CheckSquare,
@@ -29,6 +30,9 @@ import {
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useLeadEmailCompose } from '@/hooks/useLeadEmailCompose';
+import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
+import { useCall } from '@/contexts/CallContext';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
@@ -170,6 +174,19 @@ export default function LenderManagementExpandedView() {
   const { setSearchComponent } = useAdminTopBar();
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Email compose + click-to-call. See PipelineExpandedView for the pattern.
+  const { openCompose, dialogProps: composeDialogProps } = useLeadEmailCompose({
+    leadId,
+    tableName: 'lender_management',
+  });
+  const { makeOutboundCall } = useCall();
+  const handleCallPhone = useCallback(
+    (phone: string) => {
+      void makeOutboundCall(phone, leadId, undefined);
+    },
+    [makeOutboundCall, leadId],
+  );
+
   useEffect(() => {
     setSearchComponent(
       <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -221,6 +238,60 @@ export default function LenderManagementExpandedView() {
       },
     });
     toast.success('Stage updated');
+    queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
+  }, [leadId, queryClient, registerUndo]);
+
+  // ── Deal-outcome change handler (Status dropdown: Open / Won / Lost / Abandoned) ──
+  const handleDealOutcomeChange = useCallback(async (newOutcome: 'open' | 'won' | 'lost' | 'abandoned') => {
+    if (!leadId) return;
+    const { data: current } = await supabase.from('lender_management').select('deal_outcome').eq('id', leadId).single();
+    const previousOutcome = (current?.deal_outcome ?? 'open') as 'open' | 'won' | 'lost' | 'abandoned';
+    const { error } = await supabase
+      .from('lender_management')
+      .update({ deal_outcome: newOutcome })
+      .eq('id', leadId);
+    if (error) {
+      toast.error('Failed to update status');
+      return;
+    }
+    registerUndo({
+      label: `Status changed to ${newOutcome}`,
+      execute: async () => {
+        const { error: e } = await supabase.from('lender_management').update({ deal_outcome: previousOutcome }).eq('id', leadId);
+        if (e) throw e;
+        queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
+      },
+    });
+    toast.success('Status updated');
+    queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
+  }, [leadId, queryClient, registerUndo]);
+
+  // ── Priority change handler (Priority dropdown: None / Low / Medium / High) ──
+  const handlePriorityChange = useCallback(async (newPriority: 'low' | 'medium' | 'high' | null) => {
+    if (!leadId) return;
+    const { data: current } = await supabase.from('lender_management').select('priority').eq('id', leadId).single();
+    const previousPriority = (current?.priority ?? null) as 'low' | 'medium' | 'high' | null;
+    const { error } = await supabase
+      .from('lender_management')
+      .update({ priority: newPriority })
+      .eq('id', leadId);
+    if (error) {
+      toast.error('Failed to update priority');
+      return;
+    }
+    registerUndo({
+      label: `Priority changed to ${newPriority ?? 'None'}`,
+      execute: async () => {
+        const { error: e } = await supabase.from('lender_management').update({ priority: previousPriority }).eq('id', leadId);
+        if (e) throw e;
+        queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
+      },
+    });
+    toast.success('Priority updated');
     queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
     queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
   }, [leadId, queryClient, registerUndo]);
@@ -332,6 +403,23 @@ export default function LenderManagementExpandedView() {
   // from multiple sources that PeopleDetailPanel's Person type narrows.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
+
+  // ── Delete confirmation ──
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const handleDeleteLead = useCallback(async () => {
+    if (!leadId) return;
+    // Polymorphic children are cleaned up by the BEFORE DELETE trigger
+    // (cleanup_deal_polymorphic_children).
+    const { error } = await supabase.from('lender_management').delete().eq('id', leadId);
+    if (error) {
+      toast.error('Failed to delete');
+      return;
+    }
+    toast.success('Deleted');
+    queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
+    navigate(-1);
+  }, [leadId, queryClient, navigate]);
 
   const { data: interactionCount = 0 } = useQuery({
     queryKey: ['lm-lead-interactions', leadId],
@@ -676,11 +764,15 @@ export default function LenderManagementExpandedView() {
   }
 
   return (
+    <>
     <div data-full-bleed className="lender-management-expanded-view system-font flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
       <style>{`
         .lender-management-expanded-view,
         .lender-management-expanded-view *:not(svg):not(svg *) {
           font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        }
+        .lender-management-expanded-view [data-radix-scroll-area-viewport] {
+          overflow-x: hidden !important;
         }
       `}</style>
       {/* ── 3-Column Body ── */}
@@ -698,9 +790,20 @@ export default function LenderManagementExpandedView() {
           dealValue={dealValue}
           goBack={goBack}
           onStageChange={handleStageChange}
+          onDealOutcomeChange={handleDealOutcomeChange}
+          onPriorityChange={handlePriorityChange}
           onFieldSaved={handleFieldSaved}
           onBooleanToggle={handleBooleanToggle}
           onOwnerChange={handleOwnerChange}
+          onDelete={() => setShowDeleteConfirm(true)}
+          onComposeEmail={({ to, recipientName }) =>
+            openCompose({
+              to,
+              recipientName,
+              subject: `Lender follow-up — ${lead.company_name ?? lead.name ?? ''}`.trim(),
+            })
+          }
+          onCallPhone={handleCallPhone}
         />
 
         {/* CENTER: Activity */}
@@ -1156,6 +1259,7 @@ export default function LenderManagementExpandedView() {
               id: lead.id,
               name: lead.name,
               email: lead.email,
+              phone: lead.phone,
               company_name: lead.company_name,
               status: lead.status,
             }}
@@ -1171,5 +1275,17 @@ export default function LenderManagementExpandedView() {
         )}
       </div>
     </div>
+    <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader><DialogTitle>Delete Record</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Are you sure you want to delete this record? This will permanently remove all associated data.</p>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+          <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={() => { setShowDeleteConfirm(false); handleDeleteLead(); }}>Delete</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    <GmailComposeDialog {...composeDialogProps} />
+    </>
   );
 }

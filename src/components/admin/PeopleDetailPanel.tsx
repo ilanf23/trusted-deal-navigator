@@ -16,6 +16,7 @@ import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/ad
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
+import { useInlineSave as useSharedInlineSave } from './shared/useInlineSave';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -153,40 +154,7 @@ function useInlineSave(
   currentValue: string,
   onSaved: (field: string, newValue: string) => void,
 ) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(currentValue);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (editing) setDraft(currentValue);
-  }, [editing, currentValue]);
-
-  const save = useCallback(async () => {
-    const trimmed = draft.trim();
-    if (trimmed === currentValue) {
-      setEditing(false);
-      return;
-    }
-    setSaving(true);
-    const { error } = await supabase
-      .from('people')
-      .update({ [field]: trimmed || null })
-      .eq('id', personId);
-    setSaving(false);
-    if (error) {
-      toast.error('Failed to save');
-      return;
-    }
-    onSaved(field, trimmed);
-    setEditing(false);
-  }, [draft, currentValue, field, personId, onSaved]);
-
-  const cancel = useCallback(() => {
-    setDraft(currentValue);
-    setEditing(false);
-  }, [currentValue]);
-
-  return { editing, setEditing, draft, setDraft, saving, save, cancel };
+  return useSharedInlineSave(personId, field, currentValue, onSaved, undefined, 'people');
 }
 
 // ── Simple field (header + value, click to edit) ──

@@ -754,6 +754,9 @@ export default function ProjectExpandedView() {
         .project-expanded-view *:not(svg):not(svg *) {
           font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
         }
+        .project-expanded-view [data-radix-scroll-area-viewport] {
+          overflow-x: hidden !important;
+        }
       `}</style>
       {/* Project name header */}
       <div className="shrink-0 px-6 pt-4 pb-2 bg-card">
@@ -823,7 +826,7 @@ export default function ProjectExpandedView() {
           {/* Board columns */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-            <div className="flex-1 overflow-auto bg-muted pl-4">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden bg-muted pl-4">
               <div className="flex h-full min-h-[400px] divide-x divide-border">
                 {[
                   { key: 'todo', label: 'To Do', items: boardColumns.todo },
@@ -1049,12 +1052,13 @@ export default function ProjectExpandedView() {
             <ScrollArea className="md:h-full">
               <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
-                {/* ── Back Arrow ── */}
-                <button onClick={() => navigate(-1)} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
-                  <svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="30" y1="8" x2="2" y2="8" />
-                    <polyline points="8,2 2,8 8,14" />
-                  </svg>
+                {/* ── Close (X) ── */}
+                <button
+                  onClick={() => navigate(-1)}
+                  className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
                 </button>
 
                 {/* ── Project Header Card ── */}

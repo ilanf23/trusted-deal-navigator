@@ -11,6 +11,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useUndo } from '@/contexts/UndoContext';
 import type { Database } from '@/integrations/supabase/types';
+import { useInlineSave, persistInlineFieldChange } from './shared/useInlineSave';
+import { EditableTextBox } from './shared/EditableTextBox';
+
+// Re-export for back-compat with existing import sites
+export { useInlineSave };
 
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
@@ -137,64 +142,6 @@ export const stageConfig: Record<string, { label: string; color: string; bg: str
   },
 };
 
-// ── Generic inline-save helper ──
-export function useInlineSave(
-  leadId: string,
-  field: string,
-  currentValue: string,
-  onSaved: (field: string, newValue: string) => void,
-  transform?: (val: string) => unknown,
-  tableName: string = 'potential',
-) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(currentValue);
-  const [saving, setSaving] = useState(false);
-  const { registerUndo } = useUndo();
-
-  useEffect(() => {
-    if (editing) setDraft(currentValue);
-  }, [editing, currentValue]);
-
-  const save = useCallback(async () => {
-    const trimmed = draft.trim();
-    if (trimmed === currentValue) {
-      setEditing(false);
-      return;
-    }
-    const previousValue = currentValue;
-    setSaving(true);
-    const saveValue = transform ? transform(trimmed) : (trimmed || null);
-    const { error } = await supabase
-      .from(tableName as any)
-      .update({ [field]: saveValue })
-      .eq('id', leadId);
-    setSaving(false);
-    if (error) {
-      console.error('InlineEditableFields save error:', { field, leadId, saveValue, error });
-      toast.error('Failed to save');
-      return;
-    }
-    registerUndo({
-      label: `Updated ${field}`,
-      execute: async () => {
-        const restoreValue = transform ? transform(previousValue) : (previousValue || null);
-        const { error: e } = await supabase.from(tableName as any).update({ [field]: restoreValue }).eq('id', leadId);
-        if (e) throw e;
-        onSaved(field, previousValue);
-      },
-    });
-    onSaved(field, trimmed);
-    setEditing(false);
-  }, [draft, currentValue, field, leadId, onSaved, transform, registerUndo, tableName]);
-
-  const cancel = useCallback(() => {
-    setDraft(currentValue);
-    setEditing(false);
-  }, [currentValue]);
-
-  return { editing, setEditing, draft, setDraft, saving, save, cancel };
-}
-
 // ── Editable Deal-details row ──
 export function EditableField({
   icon, label, value, field, leadId, highlight = false, onSaved, transform, tableName = 'potential',
@@ -205,48 +152,43 @@ export function EditableField({
   transform?: (val: string) => unknown;
   tableName?: string;
 }) {
-  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved, transform, tableName);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { registerUndo } = useUndo();
 
-  useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
-  }, [editing]);
-
-  if (editing) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2">
-        <div className="flex items-center gap-2 text-blue-400 shrink-0">
-          {icon}
-          <span className="text-xs font-medium text-blue-500">{label}</span>
-        </div>
-        <div className="flex-1 flex items-center gap-1.5 justify-end">
-          <input
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
-            onBlur={save}
-            disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
-          />
-          {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-        </div>
-      </div>
-    );
-  }
+  const handleSave = useCallback(
+    async (next: string) => {
+      await persistInlineFieldChange({
+        leadId,
+        field,
+        nextValue: next,
+        previousValue: value,
+        onSaved,
+        registerUndo,
+        transform,
+        tableName,
+      });
+    },
+    [leadId, field, value, onSaved, registerUndo, transform, tableName],
+  );
 
   return (
-    <div onClick={() => setEditing(true)} className={`flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-pointer group overflow-hidden ${highlight ? 'bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-50/70 dark:hover:bg-blue-950/30' : 'hover:bg-muted/40'}`}>
+    <div
+      className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg transition-colors overflow-hidden ${
+        highlight ? 'bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-50/70 dark:hover:bg-blue-950/30' : ''
+      }`}
+    >
       <div className="flex items-center gap-2 text-muted-foreground shrink-0">
         {icon}
         <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{label}</span>
       </div>
-      <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
-        <span className={`text-[13px] text-right truncate ${highlight ? 'font-bold text-blue-700 dark:text-blue-400' : 'font-medium text-foreground'}`}>
-          {value || '—'}
-        </span>
-        <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-      </div>
+      <EditableTextBox
+        value={value || ''}
+        onSave={handleSave}
+        size="sm"
+        align="right"
+        placeholder="—"
+        className={`min-w-0 max-w-[70%] ${highlight ? 'font-bold text-blue-700 dark:text-blue-400' : 'font-medium'}`}
+        aria-label={label}
+      />
     </div>
   );
 }
@@ -265,46 +207,39 @@ export function StackedEditableField({
   /** Optional second line shown below the primary value in muted text (e.g., the formatted dollars below the raw number). Only rendered when value is non-empty and not editing. */
   secondaryValue?: string;
 }) {
-  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved, transform, tableName);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { registerUndo } = useUndo();
 
-  useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
-  }, [editing]);
+  const handleSave = useCallback(
+    async (next: string) => {
+      await persistInlineFieldChange({
+        leadId,
+        field,
+        nextValue: next,
+        previousValue: value,
+        onSaved,
+        registerUndo,
+        transform,
+        tableName,
+      });
+    },
+    [leadId, field, value, onSaved, registerUndo, transform, tableName],
+  );
 
   return (
     <div>
       <label className="block text-sm text-muted-foreground mb-3">{label}</label>
-      {editing ? (
-        <input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { void save(); } if (e.key === 'Escape') cancel(); }}
-          onBlur={() => { void save(); }}
-          disabled={saving}
-          placeholder={emptyText ?? `Add ${label}`}
-          className="w-full text-[22px] font-normal text-foreground bg-transparent border-0 p-0 outline-none placeholder:text-muted-foreground/60"
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className="block w-full text-left text-[22px] font-normal leading-tight"
-        >
-          {value ? (
-            <>
-              <span className="block text-foreground">{value}</span>
-              {secondaryValue && (
-                <span className="block text-base font-normal leading-tight text-muted-foreground mt-1">{secondaryValue}</span>
-              )}
-            </>
-          ) : emptyText ? (
-            <span className="text-foreground">{emptyText}</span>
-          ) : (
-            <span className="text-muted-foreground/60">Add {label}</span>
-          )}
-        </button>
+      <EditableTextBox
+        value={value || ''}
+        onSave={handleSave}
+        size="lg"
+        placeholder={emptyText ?? `Add ${label}`}
+        className="w-full"
+        aria-label={label}
+      />
+      {value && secondaryValue && (
+        <span className="block text-base font-normal leading-tight text-muted-foreground mt-1 px-3">
+          {secondaryValue}
+        </span>
       )}
     </div>
   );
@@ -574,18 +509,28 @@ export function EditableTags({
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch all existing tags across leads
+  // Fetch all existing tags across ALL three deal pipelines via the
+  // `all_deal_tags` view created in the platform-migration migration.
+  // This lets a user typing a tag in Underwriting see matches that were
+  // originally coined in Potential or Lender Management, which is
+  // critical for Copper parity (Copper deduplicates tags globally) and
+  // for cross-pipeline reporting consistency. The per-pipeline save
+  // path is unchanged — we only widen the autocomplete source.
   const { data: allExistingTags = [] } = useQuery({
-    queryKey: ['all-lead-tags', tableName],
+    queryKey: ['all-deal-tags'],
     queryFn: async () => {
-      const { data } = await supabase.from(tableName as any).select('tags').not('tags', 'is', null);
+      const { data, error } = await supabase
+        .from('all_deal_tags')
+        .select('tag')
+        .not('tag', 'is', null);
+      if (error) throw error;
       const tagSet = new Set<string>();
-      (data ?? []).forEach((row: any) => {
-        (row.tags ?? []).forEach((t: string) => tagSet.add(t));
+      (data ?? []).forEach((row) => {
+        if (row.tag) tagSet.add(row.tag);
       });
       return Array.from(tagSet).sort();
     },
-    staleTime: 60000,
+    staleTime: 60_000,
   });
 
   // Filtered suggestions

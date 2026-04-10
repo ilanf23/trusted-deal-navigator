@@ -129,18 +129,74 @@ export const useCrmMutations = (table: CrmTable) => {
 
   const addLeadToPipeline = useMutation({
     mutationFn: async ({ leadData, stageId }: {
-      leadData: { name: string; company_name?: string; email?: string; phone?: string; assigned_to?: string | null };
+      leadData: {
+        // Required
+        name: string;
+        // Deal
+        opportunity_name?: string | null;
+        loan_stage?: string | null;
+        clx_file_name?: string | null;
+        waiting_on?: string | null;
+        tags?: string[] | null;
+        deal_value?: number | null;
+        description?: string | null;
+        // Primary contact
+        title?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        // Status & ownership
+        close_date?: string | null;
+        assigned_to?: string | null;
+        source?: string | null;
+        priority?: string | null;
+        // Scoring
+        win_percentage?: number | null;
+        loss_reason?: string | null;
+        // Additional
+        visibility?: string | null;
+        bank_relationships?: string | null;
+        client_other_lenders?: boolean;
+        flagged_for_weekly?: boolean;
+      };
       stageId: string;
     }) => {
-      const { data, error } = await insertDeal(table, {
+      // Build the insert payload — only include keys the caller provided so the DB
+      // uses its own defaults for anything omitted. `name` is required; everything else
+      // is optional and written as-is (null-coerced) when present.
+      const payload: Record<string, unknown> = {
         name: leadData.name,
-        company_name: leadData.company_name || null,
-        email: leadData.email || null,
-        phone: leadData.phone || null,
-        assigned_to: leadData.assigned_to || null,
         stage_id: stageId,
         status: 'initial_review',
-      });
+      };
+      const passthrough: Array<keyof typeof leadData> = [
+        'opportunity_name',
+        'loan_stage',
+        'clx_file_name',
+        'waiting_on',
+        'tags',
+        'deal_value',
+        'description',
+        'title',
+        'email',
+        'phone',
+        'close_date',
+        'assigned_to',
+        'source',
+        'priority',
+        'win_percentage',
+        'loss_reason',
+        'visibility',
+        'bank_relationships',
+        'client_other_lenders',
+        'flagged_for_weekly',
+      ];
+      for (const key of passthrough) {
+        if (leadData[key] !== undefined) {
+          payload[key] = leadData[key];
+        }
+      }
+
+      const { data, error } = await insertDeal(table, payload);
       if (error) throw error;
       return data;
     },

@@ -19,6 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { SelectAllHeader } from '@/components/admin/SelectAllHeader';
 import { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import PeopleFilterPanel from '@/components/admin/PeopleFilterPanel';
+import { SavedFiltersSidebar, type SavedFilterOption } from '@/components/admin/SavedFiltersSidebar';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
@@ -31,7 +32,6 @@ import {
   Filter,
   Settings2,
   ChevronDown,
-  ChevronUp,
   ChevronLeft,
   Plus,
   User,
@@ -183,16 +183,16 @@ const contactTypeConfig: Record<string, { label: string; color: string; bg: stri
   },
 };
 
-const DEFAULT_FILTER_OPTIONS = [
-  { id: 'all', label: 'All Contacts', group: 'top' as const, editable: false },
-  { id: 'Current Customer', label: 'Current Customers', group: 'public' as const, editable: true },
-  { id: 'my_contacts', label: 'My People', group: 'public' as const, editable: false },
-  { id: 'following', label: 'People I\'m Following', group: 'public' as const, editable: false },
-  { id: 'Potential Customer', label: 'Potential Customers', group: 'public' as const, editable: true },
-  { id: 'CLX RateWatch', label: 'CLX RateWatch', group: 'public' as const, editable: true },
-  { id: 'CLX Referral Partner', label: 'CLX Referral Partners', group: 'public' as const, editable: true },
-  { id: 'Searching for Bus. Acq.', label: 'Searching for Bus. Acq.', group: 'public' as const, editable: true },
-  { id: 'Searching for RE Acq.', label: 'Searching for RE Acq.', group: 'public' as const, editable: true },
+const DEFAULT_FILTER_OPTIONS: SavedFilterOption[] = [
+  { id: 'all', label: 'All Contacts', group: 'top', editable: false },
+  { id: 'Current Customer', label: 'Current Customers', group: 'public', editable: true },
+  { id: 'my_contacts', label: 'My People', group: 'public', editable: false },
+  { id: 'following', label: 'People I\'m Following', group: 'public', editable: false },
+  { id: 'Potential Customer', label: 'Potential Customers', group: 'public', editable: true },
+  { id: 'CLX RateWatch', label: 'CLX RateWatch', group: 'public', editable: true },
+  { id: 'CLX Referral Partner', label: 'CLX Referral Partners', group: 'public', editable: true },
+  { id: 'Searching for Bus. Acq.', label: 'Searching for Bus. Acq.', group: 'public', editable: true },
+  { id: 'Searching for RE Acq.', label: 'Searching for RE Acq.', group: 'public', editable: true },
 ];
 
 type SortField = 'name' | 'company_name' | 'contact_type' | 'last_activity_at' | 'updated_at';
@@ -389,7 +389,6 @@ const People = () => {
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedPerson, setDraggedPerson] = useState<Person | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
@@ -399,8 +398,6 @@ const People = () => {
 
   // Custom filters
   const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
-  const [renamingFilterId, setRenamingFilterId] = useState<string | null>(null);
-  const [renamingValue, setRenamingValue] = useState('');
 
   // Rename public filter (contact type) — updates all leads in DB
   const renameContactTypeMutation = useMutation({
@@ -438,34 +435,29 @@ const People = () => {
     onError: () => toast.error('Failed to rename contact type'),
   });
 
-  const handleFilterRename = (filterId: string, newLabel: string) => {
+  const handleFilterRename = (
+    filter: { id: string; kind: 'public' | 'custom'; currentLabel: string },
+    newLabel: string,
+  ) => {
     const trimmed = newLabel.trim();
-    if (!trimmed || trimmed === filterId) {
-      setRenamingFilterId(null);
-      setRenamingValue('');
-      return;
-    }
+    if (!trimmed || trimmed === filter.id) return;
 
-    // Check if this is a public/editable filter (contact type)
-    const publicFilter = filterOptions.find(o => o.id === filterId && o.editable);
-    if (publicFilter) {
+    if (filter.kind === 'public') {
       // Update filter options state (both id and label)
       setFilterOptions(prev => prev.map(o =>
-        o.id === filterId ? { ...o, id: trimmed, label: trimmed } : o
+        o.id === filter.id ? { ...o, id: trimmed, label: trimmed } : o
       ));
       // Update active filter if it was the one being renamed
-      if (activeFilter === filterId) setActiveFilter(trimmed);
+      if (activeFilter === filter.id) setActiveFilter(trimmed);
       // Update DB — rename contact_type on all leads
-      renameContactTypeMutation.mutate({ oldType: filterId, newType: trimmed });
-      toast.success(`Renamed "${publicFilter.label}" to "${trimmed}"`);
+      renameContactTypeMutation.mutate({ oldType: filter.id, newType: trimmed });
+      toast.success(`Renamed "${filter.currentLabel}" to "${trimmed}"`);
     } else {
       // Custom filter rename (local only)
       setCustomFilters(prev => prev.map(cf =>
-        cf.id === filterId ? { ...cf, label: trimmed } : cf
+        cf.id === filter.id ? { ...cf, label: trimmed } : cf
       ));
     }
-    setRenamingFilterId(null);
-    setRenamingValue('');
   };
 
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
@@ -1032,154 +1024,25 @@ const People = () => {
           </button>
 
           {/* ── Left Sidebar (Copper style) ── */}
-          <aside
-            className={`shrink-0 flex flex-col overflow-hidden transition-all duration-200 ${
-              sidebarOpen ? 'w-72 bg-[#f8f9fa] dark:bg-muted/30' : 'w-[72px] bg-[#eef0f2] dark:bg-muted/50'
-            }`}
-          >
-            {sidebarOpen && <div className="w-72 pl-4 flex-1 overflow-y-auto">
-              <div className="px-6 pt-5 pb-3 flex items-center justify-between">
-                <span className="text-[20px] font-bold text-[#1f1f1f] dark:text-foreground tracking-tight">Saved Filters</span>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => { setFilterPanelOpen(true); setSelectedPerson(null); }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-[#3b2778] bg-[#eee6f6] hover:bg-[#e0d4f0] dark:text-purple-300 dark:bg-purple-950/40 dark:hover:bg-purple-950/60 transition-colors"
-                    title="Create new filter"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>New</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Search Filters input */}
-              <div className="px-6 pb-2">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search Filters"
-                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#3b2778] dark:focus:border-purple-400 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <nav className="flex-1 overflow-y-auto pb-4 px-3">
-                {/* All Contacts — top item */}
-                {filterOptions.filter(o => o.group === 'top').map((opt) => {
-                  const isActive = activeFilter === opt.id;
-                  const count = filterCounts[opt.id] ?? 0;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-3 py-3 text-left transition-colors ${
-                        isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className={`text-[14px] font-medium truncate`}>{opt.label}</span>
-                      </span>
-                      {count > 0 && (
-                        <span className="ml-1 shrink-0 text-[11px] font-medium text-[#5f6368] dark:text-muted-foreground">
-                          {count.toLocaleString()}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {/* Public section (was "By Type") */}
-                <button
-                  onClick={() => setPublicFiltersOpen(v => !v)}
-                  className="w-full px-3 pt-4 pb-1 flex items-center justify-between group"
-                >
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5f6368] dark:text-muted-foreground">Public</span>
-                  <ChevronUp className={`h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : 'rotate-180'}`} />
-                </button>
-
-                {publicFiltersOpen && filterOptions.filter(o => o.group === 'public').map((opt) => {
-                  const isActive = activeFilter === opt.id;
-                  const count = filterCounts[opt.id] ?? 0;
-                  const isRenaming = renamingFilterId === opt.id;
-
-                  if (isRenaming) {
-                    return (
-                      <div key={opt.id} className="py-1.5">
-                        <input
-                          autoFocus
-                          value={renamingValue}
-                          onChange={(e) => setRenamingValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleFilterRename(opt.id, renamingValue);
-                            if (e.key === 'Escape') { setRenamingFilterId(null); setRenamingValue(''); }
-                          }}
-                          onBlur={() => handleFilterRename(opt.id, renamingValue)}
-                          className="w-full h-8 px-2 text-[14px] rounded-md bg-white dark:bg-muted border border-[#1a73e8] dark:border-blue-500 text-[#1f1f1f] dark:text-foreground outline-none"
-                        />
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => setActiveFilter(opt.id)}
-                      onDoubleClick={opt.editable ? () => { setRenamingFilterId(opt.id); setRenamingValue(opt.label); } : undefined}
-                      className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
-                        isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                      }`}
-                    >
-                      <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{opt.label}</span>
-                      {count > 0 && (
-                        <span className="ml-1 shrink-0 text-[11px] font-medium text-[#5f6368] dark:text-muted-foreground">
-                          {count.toLocaleString()}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {/* Custom Filters */}
-                {customFilters.length > 0 && (
-                  <>
-                    <div className="pt-4 pb-1">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5f6368] dark:text-muted-foreground">Custom</span>
-                    </div>
-                    {customFilters.map((cf) => {
-                      const isActive = activeFilter === cf.id;
-                      const isRenaming = renamingFilterId === cf.id;
-                      return isRenaming ? (
-                        <div key={cf.id} className="py-1.5">
-                          <input
-                            autoFocus
-                            value={renamingValue}
-                            onChange={(e) => setRenamingValue(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleFilterRename(cf.id, renamingValue);
-                              if (e.key === 'Escape') { setRenamingFilterId(null); setRenamingValue(''); }
-                            }}
-                            onBlur={() => handleFilterRename(cf.id, renamingValue)}
-                            className="w-full h-8 px-2 text-[14px] rounded-md bg-white dark:bg-muted border border-[#1a73e8] dark:border-blue-500 text-[#1f1f1f] dark:text-foreground outline-none"
-                          />
-                        </div>
-                      ) : (
-                        <button
-                          key={cf.id}
-                          onClick={() => setActiveFilter(cf.id)}
-                          onDoubleClick={() => { setRenamingFilterId(cf.id); setRenamingValue(cf.label); }}
-                          className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
-                            isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
-                          }`}
-                        >
-                          <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{cf.label}</span>
-                        </button>
-                      );
-                    })}
-                  </>
-                )}
-              </nav>
-            </div>}
-          </aside>
+          <SavedFiltersSidebar
+            sidebarOpen={sidebarOpen}
+            filterOptions={filterOptions}
+            customFilters={customFilters}
+            filterCounts={filterCounts}
+            activeFilter={activeFilter}
+            onSelectFilter={setActiveFilter}
+            onRenameFilter={handleFilterRename}
+            createFilterAction={
+              <button
+                onClick={() => { setFilterPanelOpen(true); setSelectedPerson(null); }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-[#3b2778] bg-[#eee6f6] hover:bg-[#e0d4f0] dark:text-purple-300 dark:bg-purple-950/40 dark:hover:bg-purple-950/60 transition-colors"
+                title="Create new filter"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New</span>
+              </button>
+            }
+          />
 
           {/* ── Main Table Area ── */}
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">

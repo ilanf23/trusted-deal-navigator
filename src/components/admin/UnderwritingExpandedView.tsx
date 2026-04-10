@@ -32,6 +32,9 @@ import {
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useLeadEmailCompose } from '@/hooks/useLeadEmailCompose';
+import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
+import { useCall } from '@/contexts/CallContext';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
@@ -221,6 +224,21 @@ export default function UnderwritingExpandedView() {
   const { setSearchComponent } = useAdminTopBar();
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Email compose + click-to-call. See PipelineExpandedView for the pattern —
+  // compose dialog is mounted once at the bottom of the view and triggered
+  // from the primary-contact row via `openCompose`.
+  const { openCompose, dialogProps: composeDialogProps } = useLeadEmailCompose({
+    leadId,
+    tableName: 'underwriting',
+  });
+  const { makeOutboundCall } = useCall();
+  const handleCallPhone = useCallback(
+    (phone: string) => {
+      void makeOutboundCall(phone, leadId, undefined);
+    },
+    [makeOutboundCall, leadId],
+  );
+
   useEffect(() => {
     setSearchComponent(
       <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -347,6 +365,60 @@ export default function UnderwritingExpandedView() {
       },
     });
     toast.success('Stage updated');
+    queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
+  }, [leadId, queryClient, registerUndo]);
+
+  // ── Deal-outcome change handler (Status dropdown: Open / Won / Lost / Abandoned) ──
+  const handleDealOutcomeChange = useCallback(async (newOutcome: 'open' | 'won' | 'lost' | 'abandoned') => {
+    if (!leadId) return;
+    const { data: current } = await supabase.from('underwriting').select('deal_outcome').eq('id', leadId).single();
+    const previousOutcome = (current?.deal_outcome ?? 'open') as 'open' | 'won' | 'lost' | 'abandoned';
+    const { error } = await supabase
+      .from('underwriting')
+      .update({ deal_outcome: newOutcome })
+      .eq('id', leadId);
+    if (error) {
+      toast.error('Failed to update status');
+      return;
+    }
+    registerUndo({
+      label: `Status changed to ${newOutcome}`,
+      execute: async () => {
+        const { error: e } = await supabase.from('underwriting').update({ deal_outcome: previousOutcome }).eq('id', leadId);
+        if (e) throw e;
+        queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
+      },
+    });
+    toast.success('Status updated');
+    queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
+  }, [leadId, queryClient, registerUndo]);
+
+  // ── Priority change handler (Priority dropdown: None / Low / Medium / High) ──
+  const handlePriorityChange = useCallback(async (newPriority: 'low' | 'medium' | 'high' | null) => {
+    if (!leadId) return;
+    const { data: current } = await supabase.from('underwriting').select('priority').eq('id', leadId).single();
+    const previousPriority = (current?.priority ?? null) as 'low' | 'medium' | 'high' | null;
+    const { error } = await supabase
+      .from('underwriting')
+      .update({ priority: newPriority })
+      .eq('id', leadId);
+    if (error) {
+      toast.error('Failed to update priority');
+      return;
+    }
+    registerUndo({
+      label: `Priority changed to ${newPriority ?? 'None'}`,
+      execute: async () => {
+        const { error: e } = await supabase.from('underwriting').update({ priority: previousPriority }).eq('id', leadId);
+        if (e) throw e;
+        queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
+      },
+    });
+    toast.success('Priority updated');
     queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
     queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
   }, [leadId, queryClient, registerUndo]);
@@ -1033,6 +1105,9 @@ export default function UnderwritingExpandedView() {
         .underwriting-expanded-view *:not(svg):not(svg *) {
           font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
         }
+        .underwriting-expanded-view [data-radix-scroll-area-viewport] {
+          overflow-x: hidden !important;
+        }
       `}</style>
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
@@ -1049,9 +1124,22 @@ export default function UnderwritingExpandedView() {
           dealValue={dealValue}
           goBack={goBack}
           onStageChange={handleStageChange}
+          onDealOutcomeChange={handleDealOutcomeChange}
+          onPriorityChange={handlePriorityChange}
           onFieldSaved={handleFieldSaved}
           onBooleanToggle={handleBooleanToggle}
           onOwnerChange={handleOwnerChange}
+          onDelete={() => setShowDeleteConfirm(true)}
+          onComposeEmail={({ to, recipientName }) =>
+            openCompose({
+              to,
+              recipientName,
+              subject: lead.uw_number
+                ? `Re: ${lead.uw_number}`
+                : `Following up — ${lead.company_name ?? lead.name ?? ''}`.trim(),
+            })
+          }
+          onCallPhone={handleCallPhone}
         />
 
         {/* CENTER: Activity */}
@@ -1573,6 +1661,7 @@ export default function UnderwritingExpandedView() {
               id: lead.id,
               name: lead.name,
               email: lead.email,
+              phone: lead.phone,
               company_name: lead.company_name,
               status: lead.status,
             }}
@@ -1598,6 +1687,7 @@ export default function UnderwritingExpandedView() {
         </div>
       </DialogContent>
     </Dialog>
+    <GmailComposeDialog {...composeDialogProps} />
     </>
   );
 }

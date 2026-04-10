@@ -18,6 +18,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   X, DollarSign, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, CheckSquare, FileText,
@@ -33,6 +34,9 @@ import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
 import { usePipelineStages } from '@/hooks/usePipelineStages';
+import { useLeadEmailCompose } from '@/hooks/useLeadEmailCompose';
+import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
+import { useCall } from '@/contexts/CallContext';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
@@ -188,6 +192,23 @@ export default function PipelineExpandedView() {
   const { setSearchComponent } = useAdminTopBar();
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Compose + click-to-call wiring. The compose dialog is mounted once at the
+  // bottom of the view and triggered from the primary-contact row (or any
+  // future "email" button) via `openCompose`. Twilio outbound calls route
+  // through the global CallContext so the active-call state survives
+  // navigation between expanded views.
+  const { openCompose, dialogProps: composeDialogProps } = useLeadEmailCompose({
+    leadId,
+    tableName: 'potential',
+  });
+  const { makeOutboundCall } = useCall();
+  const handleCallPhone = useCallback(
+    (phone: string) => {
+      void makeOutboundCall(phone, leadId, undefined);
+    },
+    [makeOutboundCall, leadId],
+  );
+
   useEffect(() => {
     setSearchComponent(
       <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -324,6 +345,24 @@ export default function PipelineExpandedView() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
 
+  // ── Delete confirmation ──
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const handleDeleteLead = useCallback(async () => {
+    if (!leadId) return;
+    // Polymorphic children are cleaned up by the BEFORE DELETE trigger
+    // (cleanup_deal_polymorphic_children) added in the platform-migration
+    // migration, so we only need to delete the row itself.
+    const { error } = await supabase.from('potential').delete().eq('id', leadId);
+    if (error) {
+      toast.error('Failed to delete');
+      return;
+    }
+    toast.success('Deleted');
+    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+    navigate(-1);
+  }, [leadId, queryClient, navigate]);
+
   // ── Potential pipeline stages (from pipeline_stages DB table) ──
   const { data: potentialPipeline } = useSystemPipelineByName('Potential');
   const { data: dbPotentialStages = [] } = usePipelineStages(potentialPipeline?.id);
@@ -392,6 +431,60 @@ export default function PipelineExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
     queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
   }, [leadId, queryClient, registerUndo, pipelineStageConfig]);
+
+  // ── Deal-outcome change handler (Status dropdown: Open / Won / Lost / Abandoned) ──
+  const handleDealOutcomeChange = useCallback(async (newOutcome: 'open' | 'won' | 'lost' | 'abandoned') => {
+    if (!leadId) return;
+    const { data: current } = await supabase.from('potential').select('deal_outcome').eq('id', leadId).single();
+    const previousOutcome = (current?.deal_outcome ?? 'open') as 'open' | 'won' | 'lost' | 'abandoned';
+    const { error } = await supabase
+      .from('potential')
+      .update({ deal_outcome: newOutcome })
+      .eq('id', leadId);
+    if (error) {
+      toast.error('Failed to update status');
+      return;
+    }
+    registerUndo({
+      label: `Status changed to ${newOutcome}`,
+      execute: async () => {
+        const { error: e } = await supabase.from('potential').update({ deal_outcome: previousOutcome }).eq('id', leadId);
+        if (e) throw e;
+        queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
+      },
+    });
+    toast.success('Status updated');
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
+  }, [leadId, queryClient, registerUndo]);
+
+  // ── Priority change handler (Priority dropdown: None / Low / Medium / High) ──
+  const handlePriorityChange = useCallback(async (newPriority: 'low' | 'medium' | 'high' | null) => {
+    if (!leadId) return;
+    const { data: current } = await supabase.from('potential').select('priority').eq('id', leadId).single();
+    const previousPriority = (current?.priority ?? null) as 'low' | 'medium' | 'high' | null;
+    const { error } = await supabase
+      .from('potential')
+      .update({ priority: newPriority })
+      .eq('id', leadId);
+    if (error) {
+      toast.error('Failed to update priority');
+      return;
+    }
+    registerUndo({
+      label: `Priority changed to ${newPriority ?? 'None'}`,
+      execute: async () => {
+        const { error: e } = await supabase.from('potential').update({ priority: previousPriority }).eq('id', leadId);
+        if (e) throw e;
+        queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
+      },
+    });
+    toast.success('Priority updated');
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
+  }, [leadId, queryClient, registerUndo]);
 
   const { data: interactionCount = 0 } = useQuery({
     queryKey: ['pipeline-lead-interactions', leadId],
@@ -737,11 +830,15 @@ export default function PipelineExpandedView() {
   }
 
   return (
+    <>
     <div data-full-bleed className="pipeline-expanded-view system-font flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
       <style>{`
         .pipeline-expanded-view,
         .pipeline-expanded-view *:not(svg):not(svg *) {
           font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        }
+        .pipeline-expanded-view [data-radix-scroll-area-viewport] {
+          overflow-x: hidden !important;
         }
       `}</style>
       {/* ── 3-Column Body ── */}
@@ -762,9 +859,22 @@ export default function PipelineExpandedView() {
           dealValue={dealValue}
           goBack={goBack}
           onStageChange={handleStageChange}
+          onDealOutcomeChange={handleDealOutcomeChange}
+          onPriorityChange={handlePriorityChange}
           onFieldSaved={handleFieldSaved}
           onBooleanToggle={handleBooleanToggle}
           onOwnerChange={handleOwnerChange}
+          onDelete={() => setShowDeleteConfirm(true)}
+          onComposeEmail={({ to, recipientName }) =>
+            openCompose({
+              to,
+              recipientName,
+              subject: lead.opportunity_name
+                ? `Re: ${lead.opportunity_name}`
+                : `Following up — ${lead.company_name ?? lead.name ?? ''}`.trim(),
+            })
+          }
+          onCallPhone={handleCallPhone}
         />
 
         {/* CENTER: Activity */}
@@ -1220,6 +1330,7 @@ export default function PipelineExpandedView() {
               id: lead.id,
               name: lead.name,
               email: lead.email,
+              phone: lead.phone,
               company_name: lead.company_name,
               status: lead.status,
             }}
@@ -1235,5 +1346,17 @@ export default function PipelineExpandedView() {
         )}
       </div>
     </div>
+    <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader><DialogTitle>Delete Record</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Are you sure you want to delete this record? This will permanently remove all associated data.</p>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+          <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={() => { setShowDeleteConfirm(false); handleDeleteLead(); }}>Delete</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    <GmailComposeDialog {...composeDialogProps} />
+    </>
   );
 }

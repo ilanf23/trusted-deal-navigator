@@ -16,6 +16,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
+import { useInlineSave as useSharedInlineSave, persistInlineFieldChange } from './shared/useInlineSave';
+import { EditableTextBox } from './shared/EditableTextBox';
+import { useUndo } from '@/contexts/UndoContext';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -81,40 +84,7 @@ function useInlineSave(
   currentValue: string,
   onSaved: (field: string, newValue: string) => void,
 ) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(currentValue);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (editing) setDraft(currentValue);
-  }, [editing, currentValue]);
-
-  const save = useCallback(async () => {
-    const trimmed = draft.trim();
-    if (trimmed === currentValue) {
-      setEditing(false);
-      return;
-    }
-    setSaving(true);
-    const { error } = await supabase
-      .from('potential')
-      .update({ [field]: trimmed || null })
-      .eq('id', leadId);
-    setSaving(false);
-    if (error) {
-      toast.error('Failed to save');
-      return;
-    }
-    onSaved(field, trimmed);
-    setEditing(false);
-  }, [draft, currentValue, field, leadId, onSaved]);
-
-  const cancel = useCallback(() => {
-    setDraft(currentValue);
-    setEditing(false);
-  }, [currentValue]);
-
-  return { editing, setEditing, draft, setDraft, saving, save, cancel };
+  return useSharedInlineSave(leadId, field, currentValue, onSaved, undefined, 'potential');
 }
 
 // ── Editable Deal-details row ──
@@ -125,48 +95,38 @@ function EditableField({
   leadId: string; highlight?: boolean;
   onSaved: (field: string, newValue: string) => void;
 }) {
-  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { registerUndo } = useUndo();
 
-  useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
-  }, [editing]);
-
-  if (editing) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2">
-        <div className="flex items-center gap-2 text-blue-400 shrink-0">
-          {icon}
-          <span className="text-xs font-medium text-blue-500">{label}</span>
-        </div>
-        <div className="flex-1 flex items-center gap-1.5 justify-end">
-          <input
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
-            onBlur={save}
-            disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
-          />
-          {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-        </div>
-      </div>
-    );
-  }
+  const handleSave = useCallback(
+    async (next: string) => {
+      await persistInlineFieldChange({
+        leadId,
+        field,
+        nextValue: next,
+        previousValue: value,
+        onSaved,
+        registerUndo,
+        tableName: 'potential',
+      });
+    },
+    [leadId, field, value, onSaved, registerUndo],
+  );
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors cursor-pointer group">
+    <div className="flex items-center justify-between gap-2 px-3 py-2 transition-colors overflow-hidden">
       <div className="flex items-center gap-2 text-muted-foreground shrink-0">
         {icon}
         <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{label}</span>
       </div>
-      <div className="flex items-center gap-1.5">
-        <span className={`text-[13px] text-right truncate ${highlight ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'font-medium text-foreground'}`}>
-          {value || '\u2014'}
-        </span>
-        <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-      </div>
+      <EditableTextBox
+        value={value || ''}
+        onSave={handleSave}
+        size="sm"
+        align="right"
+        placeholder="—"
+        className={`min-w-0 max-w-[70%] ${highlight ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'font-medium'}`}
+        aria-label={label}
+      />
     </div>
   );
 }
@@ -230,41 +190,35 @@ function EditableContactRow({
   leadId: string; placeholder: string;
   onSaved: (field: string, newValue: string) => void;
 }) {
-  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { registerUndo } = useUndo();
 
-  useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
-  }, [editing]);
-
-  if (editing) {
-    return (
-      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg">
-        <div className="text-blue-400 shrink-0">{icon}</div>
-        <input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
-          onBlur={save}
-          placeholder={placeholder}
-          disabled={saving}
-          className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
-        />
-        {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-      </div>
-    );
-  }
-
-  const displayValue = field === 'phone' ? formatPhoneNumber(value) : value;
+  const handleSave = useCallback(
+    async (next: string) => {
+      await persistInlineFieldChange({
+        leadId,
+        field,
+        nextValue: next,
+        previousValue: value,
+        onSaved,
+        registerUndo,
+        tableName: 'potential',
+      });
+    },
+    [leadId, field, value, onSaved, registerUndo],
+  );
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/40 transition-colors group cursor-pointer">
-      <div className="text-muted-foreground group-hover:text-foreground shrink-0">{icon}</div>
-      <span className={`text-[13px] truncate flex-1 ${value ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
-        {displayValue || placeholder}
-      </span>
-      <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+    <div className="flex items-center gap-2.5 px-3 py-2">
+      <div className="text-muted-foreground shrink-0">{icon}</div>
+      <EditableTextBox
+        value={value || ''}
+        onSave={handleSave}
+        placeholder={placeholder}
+        size="sm"
+        format={field === 'phone' ? formatPhoneNumber : undefined}
+        className="flex-1 min-w-0"
+        aria-label={placeholder}
+      />
     </div>
   );
 }
