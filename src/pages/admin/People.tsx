@@ -68,13 +68,12 @@ import {
   ArrowDown,
 } from 'lucide-react';
 import {
-  DndContext, DragEndEvent, DragOverlay, DragStartEvent,
-  PointerSensor, useSensor, useSensors, closestCenter, useDroppable,
-} from '@dnd-kit/core';
-import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+  KanbanBoard,
+  KanbanColumn,
+  KanbanCardShell,
+  useKanbanDrag,
+} from '@/components/admin/pipeline/kanban';
 import { Card } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -263,33 +262,22 @@ function formatShortDate(dateStr: string | null): string {
   }
 }
 
-// ── Kanban sub-components ──
-
-function KanbanPersonCard({ person, isDragging, onClick }: {
+// ── Kanban card (domain-specific body/footer; chrome lives in KanbanCardShell) ──
+function PersonCard({ person, isDragging, onClick }: {
   person: Person;
   isDragging?: boolean;
   onClick: () => void;
 }) {
   const navigate = useNavigate();
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: person.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
-
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card
-        className="group/card cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card overflow-hidden"
-        onClick={(e) => { e.stopPropagation(); onClick(); }}
-      >
-        <div className="p-3 pb-2.5">
-          <div className="flex items-start justify-between gap-1 mb-2">
-            <p className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2">{person.name}</p>
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(`/admin/people/person/${person.id}`); }}
-              className="shrink-0 mt-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity"
-            >
-              <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-            </button>
-          </div>
+    <KanbanCardShell
+      id={person.id}
+      title={person.name}
+      isDragging={isDragging}
+      onClick={onClick}
+      onExpand={() => navigate(`/admin/people/person/${person.id}`)}
+      body={
+        <>
           {person.company_name && (
             <div className="flex items-center gap-1.5 mb-1.5">
               <Landmark className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -302,8 +290,10 @@ function KanbanPersonCard({ person, isDragging, onClick }: {
               <span className="text-xs text-muted-foreground truncate">{person.title}</span>
             </div>
           )}
-        </div>
-        <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/50 bg-muted/20">
+        </>
+      }
+      footer={
+        <>
           <div className="flex items-center gap-2 text-muted-foreground min-w-0">
             {person.email && (
               <div className="flex items-center gap-1">
@@ -315,56 +305,9 @@ function KanbanPersonCard({ person, isDragging, onClick }: {
           {person.contact_type && (
             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">{person.contact_type}</span>
           )}
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function KanbanDropColumn({ contactType, label, color, people, draggedId, onPersonClick }: {
-  contactType: string;
-  label: string;
-  color: string;
-  people: Person[];
-  draggedId: string | null;
-  onPersonClick: (person: Person) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: contactType });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`flex flex-col rounded-xl flex-1 min-w-[220px] max-w-[300px] transition-all ${
-        isOver ? 'ring-2 ring-blue-400 ring-offset-2 ring-offset-background bg-blue-50/30 dark:bg-blue-950/20' : 'bg-muted/30'
-      }`}
-    >
-      <div className="px-3 py-2.5 flex items-center gap-2">
-        <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
-        <span className="text-xs font-bold text-foreground uppercase tracking-wide">{label}</span>
-        <span className="ml-auto text-[11px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-          {people.length}
-        </span>
-      </div>
-      <ScrollArea className="flex-1 px-2 pb-2">
-        <SortableContext items={people.map(p => p.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2 min-h-[100px]">
-            {people.map((person) => (
-              <KanbanPersonCard
-                key={person.id}
-                person={person}
-                isDragging={draggedId === person.id}
-                onClick={() => onPersonClick(person)}
-              />
-            ))}
-            {people.length === 0 && (
-              <div className="text-center text-muted-foreground text-xs py-10 border-2 border-dashed border-muted-foreground/20 rounded-lg">
-                Drop contacts here
-              </div>
-            )}
-          </div>
-        </SortableContext>
-      </ScrollArea>
-    </div>
+        </>
+      }
+    />
   );
 }
 
@@ -389,7 +332,6 @@ const People = () => {
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [draggedPerson, setDraggedPerson] = useState<Person | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
@@ -548,11 +490,6 @@ const People = () => {
   const isFiltersActive = activeFilter !== 'all' || searchTerm.trim() !== '';
   const isNonDefaultSort = sortField !== 'last_activity_at' || sortDir !== 'desc';
 
-  // ── DnD sensors for Kanban ──
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
-
   // ── Contact type update mutation for Kanban drag ──
   const contactTypeMutation = useMutation({
     mutationFn: async ({ personId, newType, oldType }: { personId: string; newType: string; oldType: string }) => {
@@ -661,27 +598,6 @@ const People = () => {
     setNewPerson({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: type ?? 'Prospect' });
     setAddPersonOpen(true);
   };
-
-  function handleDragStart(event: DragStartEvent) {
-    const person = filteredAndSorted.find(p => p.id === event.active.id);
-    setDraggedPerson(person ?? null);
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    setDraggedPerson(null);
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const targetType = CONTACT_TYPES.find(t => t === over.id)
-      ?? filteredAndSorted.find(p => p.id === over.id)?.contact_type;
-
-    if (!targetType) return;
-
-    const person = filteredAndSorted.find(p => p.id === active.id);
-    if (!person || person.contact_type === targetType) return;
-
-    contactTypeMutation.mutate({ personId: person.id, newType: targetType, oldType: person.contact_type ?? 'Other' });
-  }
 
   // ── Queries ──
   const { data: teamMembers = [] } = useAssignableUsers();
@@ -802,6 +718,14 @@ const People = () => {
 
     return result;
   }, [people, activeFilter, searchTerm, sortField, sortDir, customFilters, followedLeadIds, teamMember?.id]);
+
+  const { dragged: draggedPerson, handleDragStart, handleDragEnd } = useKanbanDrag<Person>({
+    items: filteredAndSorted,
+    getGroupKey: (p) => p.contact_type,
+    validGroupKeys: CONTACT_TYPES,
+    onMove: (person, from, to) =>
+      contactTypeMutation.mutate({ personId: person.id, newType: to, oldType: from || 'Other' }),
+  });
 
   const { columnWidths, handleColumnResize } = useAutoFitColumns({
     minWidths: {
@@ -1432,42 +1356,44 @@ const People = () => {
               </div>
             ) : (
               /* ── Kanban View ── */
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
+              <KanbanBoard
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
-              >
-                <div className="flex-1 overflow-auto p-4">
-                  <div className="flex gap-4 h-full min-h-[500px]">
-                    {CONTACT_TYPES.map((type) => {
-                      const cfg = contactTypeConfig[type];
-                      const columnPeople = filteredAndSorted.filter(p => p.contact_type === type);
-                      return (
-                        <KanbanDropColumn
-                          key={type}
-                          contactType={type}
-                          label={cfg?.label ?? type}
-                          color={cfg?.dot ?? 'bg-muted-foreground'}
-                          people={columnPeople}
-                          draggedId={draggedPerson?.id ?? null}
-                          onPersonClick={handleRowClick}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-                <DragOverlay>
-                  {draggedPerson ? (
+                overlay={
+                  draggedPerson ? (
                     <Card className="p-3 shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-56 bg-card">
                       <div className="flex items-center gap-2 mb-1">
                         <CrmAvatar name={draggedPerson?.name || ''} size="xs" />
                         <p className="text-sm font-semibold text-foreground truncate">{draggedPerson.name}</p>
                       </div>
                     </Card>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
+                  ) : null
+                }
+              >
+                {CONTACT_TYPES.map((type) => {
+                  const cfg = contactTypeConfig[type];
+                  const columnPeople = filteredAndSorted.filter(p => p.contact_type === type);
+                  return (
+                    <KanbanColumn
+                      key={type}
+                      id={type}
+                      label={cfg?.label ?? type}
+                      color={cfg?.dot ?? 'bg-muted-foreground'}
+                      itemIds={columnPeople.map(p => p.id)}
+                      emptyMessage="Drop contacts here"
+                    >
+                      {columnPeople.map(person => (
+                        <PersonCard
+                          key={person.id}
+                          person={person}
+                          isDragging={draggedPerson?.id === person.id}
+                          onClick={() => handleRowClick(person)}
+                        />
+                      ))}
+                    </KanbanColumn>
+                  );
+                })}
+              </KanbanBoard>
             )}
           </main>
 

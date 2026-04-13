@@ -25,7 +25,6 @@ import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SelectAllHeader } from '@/components/admin/SelectAllHeader';
 import { Card } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
@@ -45,7 +44,6 @@ import {
   Columns3,
   PanelRightOpen,
   FileSearch,
-  Maximize2,
   Download,
   PlusCircle,
   Loader2,
@@ -62,11 +60,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 import {
-  DndContext, DragEndEvent, DragOverlay, DragStartEvent,
-  PointerSensor, useSensor, useSensors, closestCenter, useDroppable,
-} from '@dnd-kit/core';
-import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+  KanbanBoard,
+  KanbanColumn,
+  KanbanCardShell,
+  useKanbanDrag,
+} from '@/components/admin/pipeline/kanban';
 import { toast } from 'sonner';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
@@ -181,8 +179,8 @@ const COLUMN_SORT_OPTIONS: Record<string, { label: string; field: SortField; dir
   ],
 };
 
-// ── Kanban sub-components ──
-function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick }: {
+// ── Kanban card (domain-specific body/footer; chrome lives in KanbanCardShell) ──
+function DealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick }: {
   lead: Lead;
   teamMemberMap: Record<string, string>;
   leadOwnerMap: Record<string, string>;
@@ -190,29 +188,19 @@ function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick
   onClick: () => void;
 }) {
   const navigate = useNavigate();
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: lead.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const effectiveOwnerId = leadOwnerMap[lead.id] ?? lead.assigned_to;
   const assignedName = effectiveOwnerId ? (teamMemberMap[effectiveOwnerId] ?? null) : null;
   const lastActivity = lead.last_activity_at ? format(parseISO(lead.last_activity_at), 'MMM d') : null;
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card
-        className="group/card cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card overflow-hidden"
-        onClick={(e) => { e.stopPropagation(); onClick(); }}
-      >
-        {/* Top section */}
-        <div className="p-3 pb-2.5">
-          <div className="flex items-start justify-between gap-1 mb-2">
-            <p className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2">{lead.name}</p>
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`); }}
-              className="shrink-0 mt-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity"
-            >
-              <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-            </button>
-          </div>
+    <KanbanCardShell
+      id={lead.id}
+      title={lead.name}
+      isDragging={isDragging}
+      onClick={onClick}
+      onExpand={() => navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`)}
+      body={
+        <>
           {lead.company_name && (
             <div className="flex items-center gap-1.5 mb-1.5">
               <Landmark className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -225,10 +213,10 @@ function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick
               <span className="text-xs font-medium text-foreground">{formatValue(lead.deal_value)}</span>
             </div>
           )}
-        </div>
-
-        {/* Bottom bar */}
-        <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/50 bg-muted/20">
+        </>
+      }
+      footer={
+        <>
           <div className="flex items-center gap-2 text-muted-foreground min-w-0">
             {lastActivity && (
               <div className="flex items-center gap-1">
@@ -244,68 +232,9 @@ function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick
             {lead.status === 'won' && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">Won</span>}
             {lead.status === 'lost' && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-red-200 text-red-600 dark:border-red-800 dark:text-red-400">Lost</span>}
           </div>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function KanbanDropColumn({ status, label, color, leads, teamMemberMap, leadOwnerMap, draggedId, onLeadClick, onAdd }: {
-  status: string;
-  label: string;
-  color: string;
-  leads: any[];
-  teamMemberMap: Record<string, string>;
-  leadOwnerMap: Record<string, string>;
-  draggedId: string | null;
-  onLeadClick: (lead: any) => void;
-  onAdd?: () => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: status });
-  const totalValue = leads.reduce((sum, l) => sum + (l.deal_value ?? 0), 0);
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`flex flex-col w-[280px] shrink-0 rounded-xl transition-colors ${isOver ? 'bg-blue-50/70 dark:bg-blue-950/30' : 'bg-muted/30'}`}
-    >
-      <div className="px-3 pt-3 pb-1">
-        <div className="flex items-center gap-2">
-          <span className={`h-2 w-2 rounded-full shrink-0 ${color}`} />
-          <span className="text-xs font-semibold text-foreground truncate">{label}</span>
-          <span className="text-[11px] text-muted-foreground font-medium">{leads.length}</span>
-          <div className="ml-auto flex items-center gap-1">
-            {onAdd && (
-              <button onClick={onAdd} className="text-muted-foreground hover:text-foreground">
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-        {totalValue > 0 && (
-          <div className="flex items-center gap-1 mt-1 ml-4">
-            <DollarSign className="h-3 w-3 text-muted-foreground" />
-            <span className="text-[11px] text-muted-foreground font-medium">{formatValue(totalValue)}</span>
-          </div>
-        )}
-      </div>
-      <ScrollArea className="flex-1 px-2 pb-2 pt-1">
-        <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2">
-            {leads.map((lead) => (
-              <KanbanDealCard
-                key={lead.id}
-                lead={lead}
-                teamMemberMap={teamMemberMap}
-                leadOwnerMap={leadOwnerMap}
-                isDragging={lead.id === draggedId}
-                onClick={() => onLeadClick(lead)}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </ScrollArea>
-    </div>
+        </>
+      }
+    />
   );
 }
 
@@ -331,8 +260,6 @@ const Pipeline = () => {
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [draggedLead, setDraggedLead] = useState<FlatPipelineLead | null>(null);
-
   // Column sort menu state
   const [colMenuOpen, setColMenuOpen] = useState<string | null>(null);
 
@@ -403,11 +330,6 @@ const Pipeline = () => {
   const isFiltersActive = activeFilter !== 'all' || searchTerm.trim() !== '';
   const isNonDefaultSort = sortField !== 'last_activity_at' || sortDir !== 'desc';
   const sortFieldLabel = SORT_FIELD_OPTIONS.find(o => o.value === sortField)?.label ?? sortField;
-
-  // DnD sensors for Kanban
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  );
 
   // Pipeline data from DB
   const { data: pipeline } = useSystemPipelineByName('Potential');
@@ -689,27 +611,12 @@ const Pipeline = () => {
     return grouped;
   }, [filteredAndSorted, stages]);
 
-  function handleDragStart(event: DragStartEvent) {
-    const lead = filteredAndSorted.find(l => l.id === event.active.id);
-    setDraggedLead(lead ?? null);
-  }
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    setDraggedLead(null);
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    // Check if dropped on a stage column or on a lead in a stage
-    const targetStageId = stages.find(s => s.id === over.id)?.id
-      ?? leads.find(l => l.id === over.id)?._stageId;
-
-    if (!targetStageId) return;
-
-    const lead = leads.find(l => l.id === active.id);
-    if (!lead || lead._stageId === targetStageId) return;
-
-    handleStageMove(lead.id, targetStageId);
-  };
+  const { dragged: draggedLead, handleDragStart, handleDragEnd } = useKanbanDrag<FlatPipelineLead>({
+    items: filteredAndSorted,
+    getGroupKey: (l) => l._stageId,
+    validGroupKeys: stages.map(s => s.id),
+    onMove: (lead, _from, to) => handleStageMove(lead.id, to),
+  });
 
   // Row padding based on density
   const rowPad = rowDensity === 'comfortable' ? 'py-1.5' : 'py-0.5';
@@ -1323,36 +1230,11 @@ const Pipeline = () => {
               </div>
             ) : (
               /* Kanban View */
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
+              <KanbanBoard
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
-              >
-                <div className="flex-1 overflow-auto p-4">
-                  <div className="flex gap-4 h-full min-h-[500px]">
-                    {stages.map((stage) => {
-                      const config = dynamicStageConfig[stage.id];
-                      const columnLeads = filteredAndSorted.filter(l => l._stageId === stage.id);
-                      return (
-                        <KanbanDropColumn
-                          key={stage.id}
-                          status={stage.id}
-                          label={config?.title ?? stage.name}
-                          color={config?.dot ?? 'bg-gray-400'}
-                          leads={columnLeads}
-                          teamMemberMap={teamMemberMap}
-                          leadOwnerMap={leadOwnerMap}
-                          draggedId={draggedLead?.id ?? null}
-                          onLeadClick={(lead) => setDetailDialogLead(lead)}
-                          onAdd={() => openAddDialog(stage.id)}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-                <DragOverlay>
-                  {draggedLead ? (
+                overlay={
+                  draggedLead ? (
                     <Card className="shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-[280px] bg-card overflow-hidden">
                       <div className="p-3">
                         <p className="text-[13px] font-semibold text-foreground truncate">{draggedLead.name}</p>
@@ -1370,9 +1252,38 @@ const Pipeline = () => {
                         )}
                       </div>
                     </Card>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
+                  ) : null
+                }
+              >
+                {stages.map((stage) => {
+                  const config = dynamicStageConfig[stage.id];
+                  const columnLeads = filteredAndSorted.filter(l => l._stageId === stage.id);
+                  const totalValue = columnLeads.reduce((sum, l) => sum + (l.deal_value ?? 0), 0);
+                  return (
+                    <KanbanColumn
+                      key={stage.id}
+                      id={stage.id}
+                      label={config?.title ?? stage.name}
+                      color={config?.dot ?? 'bg-gray-400'}
+                      itemIds={columnLeads.map(l => l.id)}
+                      totalValue={totalValue}
+                      emptyMessage="Drop deals here"
+                      onAdd={() => openAddDialog(stage.id)}
+                    >
+                      {columnLeads.map(lead => (
+                        <DealCard
+                          key={lead.id}
+                          lead={lead}
+                          teamMemberMap={teamMemberMap}
+                          leadOwnerMap={leadOwnerMap}
+                          isDragging={draggedLead?.id === lead.id}
+                          onClick={() => setDetailDialogLead(lead)}
+                        />
+                      ))}
+                    </KanbanColumn>
+                  );
+                })}
+              </KanbanBoard>
             )}
           </main>
 

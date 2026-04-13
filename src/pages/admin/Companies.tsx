@@ -30,13 +30,12 @@ import {
   MessageSquare, Moon, Phone, DollarSign, Table2, Columns3,
 } from 'lucide-react';
 import {
-  DndContext, DragEndEvent, DragOverlay, DragStartEvent,
-  PointerSensor, useSensor, useSensors, closestCenter, useDroppable,
-} from '@dnd-kit/core';
-import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+  KanbanBoard,
+  KanbanColumn,
+  KanbanCardShell,
+  useKanbanDrag,
+} from '@/components/admin/pipeline/kanban';
 import { Card } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -180,32 +179,22 @@ function formatShortDate(dateStr: string | null): string {
   try { return format(parseISO(dateStr), 'MMM d, yyyy'); } catch { return '—'; }
 }
 
-// ── Kanban sub-components ──
-
-function KanbanCompanyCard({ company, isDragging, onClick }: {
+// ── Kanban card (domain-specific body/footer; chrome lives in KanbanCardShell) ──
+function CompanyCard({ company, isDragging, onClick }: {
   company: Company;
   isDragging?: boolean;
   onClick: () => void;
 }) {
   const navigate = useNavigate();
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: company.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card
-        className="group/card cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card overflow-hidden"
-        onClick={(e) => { e.stopPropagation(); onClick(); }}
-      >
-        <div className="p-3 pb-2.5">
-          <div className="flex items-start justify-between gap-1 mb-2">
-            <p className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2">{company.company_name}</p>
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(`/admin/companies/company/${company.id}`); }}
-              className="shrink-0 mt-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity"
-            >
-              <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-            </button>
-          </div>
+    <KanbanCardShell
+      id={company.id}
+      title={company.company_name}
+      isDragging={isDragging}
+      onClick={onClick}
+      onExpand={() => navigate(`/admin/companies/company/${company.id}`)}
+      body={
+        <>
           {company.contact_name && (
             <div className="flex items-center gap-1.5 mb-1.5">
               <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -218,8 +207,10 @@ function KanbanCompanyCard({ company, isDragging, onClick }: {
               <span className="text-xs text-muted-foreground truncate">{company.website}</span>
             </div>
           )}
-        </div>
-        <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/50 bg-muted/20">
+        </>
+      }
+      footer={
+        <>
           <div className="flex items-center gap-2 text-muted-foreground min-w-0">
             {company.phone && (
               <div className="flex items-center gap-1">
@@ -231,56 +222,9 @@ function KanbanCompanyCard({ company, isDragging, onClick }: {
           {company.deals_count > 0 && (
             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">{company.deals_count} deals</span>
           )}
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function KanbanDropColumn({ contactType, label, color, companies, draggedId, onCompanyClick }: {
-  contactType: string;
-  label: string;
-  color: string;
-  companies: Company[];
-  draggedId: string | null;
-  onCompanyClick: (company: Company) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: contactType });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`flex flex-col rounded-xl flex-1 min-w-[220px] max-w-[300px] transition-all ${
-        isOver ? 'ring-2 ring-blue-400 ring-offset-2 ring-offset-background bg-blue-50/30 dark:bg-blue-950/20' : 'bg-muted/30'
-      }`}
-    >
-      <div className="px-3 py-2.5 flex items-center gap-2">
-        <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
-        <span className="text-xs font-bold text-foreground uppercase tracking-wide">{label}</span>
-        <span className="ml-auto text-[11px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-          {companies.length}
-        </span>
-      </div>
-      <ScrollArea className="flex-1 px-2 pb-2">
-        <SortableContext items={companies.map(c => c.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2 min-h-[100px]">
-            {companies.map((company) => (
-              <KanbanCompanyCard
-                key={company.id}
-                company={company}
-                isDragging={draggedId === company.id}
-                onClick={() => onCompanyClick(company)}
-              />
-            ))}
-            {companies.length === 0 && (
-              <div className="text-center text-muted-foreground text-xs py-10 border-2 border-dashed border-muted-foreground/20 rounded-lg">
-                Drop companies here
-              </div>
-            )}
-          </div>
-        </SortableContext>
-      </ScrollArea>
-    </div>
+        </>
+      }
+    />
   );
 }
 
@@ -303,7 +247,6 @@ const Companies = () => {
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [draggedCompany, setDraggedCompany] = useState<Company | null>(null);
   // Custom filters
   const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
 
@@ -378,11 +321,6 @@ const Companies = () => {
 
   const isFiltersActive = activeFilter !== 'all' || searchTerm.trim() !== '';
   const isNonDefaultSort = sortField !== 'last_activity_at' || sortDir !== 'desc';
-
-  // ── DnD sensors ──
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
 
   // ── Contact type update mutation for Kanban drag ──
   const contactTypeMutation = useMutation({
@@ -486,27 +424,6 @@ const Companies = () => {
     setNewCompany({ company_name: '', contact_name: '', phone: '', website: '', email_domain: '', contact_type: type ?? 'Prospect' });
     setAddCompanyOpen(true);
   };
-
-  function handleDragStart(event: DragStartEvent) {
-    const company = filteredAndSorted.find(c => c.id === event.active.id);
-    setDraggedCompany(company ?? null);
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    setDraggedCompany(null);
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const targetType = CONTACT_TYPES.find(t => t === over.id)
-      ?? filteredAndSorted.find(c => c.id === over.id)?.contact_type;
-
-    if (!targetType) return;
-
-    const company = filteredAndSorted.find(c => c.id === active.id);
-    if (!company || company.contact_type === targetType) return;
-
-    contactTypeMutation.mutate({ companyId: company.id, newType: targetType, oldType: company.contact_type ?? 'Other' });
-  }
 
   // ── Queries ──
   const { data: rawCompanies = [], isLoading } = useCompanies();
@@ -637,6 +554,14 @@ const Companies = () => {
 
     return result;
   }, [companies, activeFilter, searchTerm, sortField, sortDir, customFilters, followedCompanyIds, currentTeamMember?.id]);
+
+  const { dragged: draggedCompany, handleDragStart, handleDragEnd } = useKanbanDrag<Company>({
+    items: filteredAndSorted,
+    getGroupKey: (c) => c.contact_type,
+    validGroupKeys: CONTACT_TYPES,
+    onMove: (company, from, to) =>
+      contactTypeMutation.mutate({ companyId: company.id, newType: to, oldType: from || 'Other' }),
+  });
 
   const { columnWidths, handleColumnResize } = useAutoFitColumns({
     minWidths: {
@@ -1143,33 +1068,11 @@ const Companies = () => {
               </div>
             ) : (
               /* ── Kanban View ── */
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
+              <KanbanBoard
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
-              >
-                <div className="flex-1 overflow-auto p-4">
-                  <div className="flex gap-4 h-full min-h-[500px]">
-                    {CONTACT_TYPES.map((type) => {
-                      const cfg = contactTypeConfig[type];
-                      const columnCompanies = filteredAndSorted.filter(c => c.contact_type === type);
-                      return (
-                        <KanbanDropColumn
-                          key={type}
-                          contactType={type}
-                          label={cfg?.label ?? type}
-                          color={cfg?.dot ?? 'bg-muted-foreground'}
-                          companies={columnCompanies}
-                          draggedId={draggedCompany?.id ?? null}
-                          onCompanyClick={handleRowClick}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-                <DragOverlay>
-                  {draggedCompany ? (
+                overlay={
+                  draggedCompany ? (
                     <Card className="p-3 shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-56 bg-card">
                       <div className="flex items-center gap-2 mb-1">
                         <CrmAvatar name={draggedCompany.company_name} size="xs" />
@@ -1179,9 +1082,33 @@ const Companies = () => {
                         <p className="text-[11px] text-muted-foreground">{draggedCompany.contact_name}</p>
                       )}
                     </Card>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
+                  ) : null
+                }
+              >
+                {CONTACT_TYPES.map((type) => {
+                  const cfg = contactTypeConfig[type];
+                  const columnCompanies = filteredAndSorted.filter(c => c.contact_type === type);
+                  return (
+                    <KanbanColumn
+                      key={type}
+                      id={type}
+                      label={cfg?.label ?? type}
+                      color={cfg?.dot ?? 'bg-muted-foreground'}
+                      itemIds={columnCompanies.map(c => c.id)}
+                      emptyMessage="Drop companies here"
+                    >
+                      {columnCompanies.map(company => (
+                        <CompanyCard
+                          key={company.id}
+                          company={company}
+                          isDragging={draggedCompany?.id === company.id}
+                          onClick={() => handleRowClick(company)}
+                        />
+                      ))}
+                    </KanbanColumn>
+                  );
+                })}
+              </KanbanBoard>
             )}
           </main>
 
