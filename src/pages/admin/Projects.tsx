@@ -599,7 +599,7 @@ const Projects = () => {
             <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#eee6f6' }}>
-                  <th className="w-12 pl-2 pr-4 py-1.5 text-center sticky top-0 left-0 z-30" style={{ border: '1px solid #c8bdd6', backgroundColor: '#eee6f6' }}>
+                  <th className="w-12 pl-2 pr-4 py-1.5 text-center sticky top-0 left-0 z-30" style={{ border: '1px solid #c8bdd6', borderLeft: 'none', backgroundColor: '#eee6f6', boxShadow: 'inset 1px 0 0 #c8bdd6' }}>
                     <Checkbox
                       checked={allSelected}
                       onCheckedChange={toggleAll}
@@ -637,7 +637,7 @@ const Projects = () => {
                       onClick={() => { if (!filterPanelOpen) setSelectedProject(p); }}
                     >
                       {/* Checkbox */}
-                      <td className={`pl-2 pr-3 py-1.5 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg} ${(selectedProject?.id === p.id || isSelected) ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
+                      <td className={`pl-2 pr-3 py-1.5 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg} ${(selectedProject?.id === p.id || isSelected) ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={() => toggleOne(p.id)}

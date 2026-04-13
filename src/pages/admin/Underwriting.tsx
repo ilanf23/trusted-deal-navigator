@@ -17,6 +17,7 @@ import UnderwritingDetailPanel from '@/components/admin/UnderwritingDetailPanel'
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import { SavedFiltersSidebar, type SavedFilterOption } from '@/components/admin/SavedFiltersSidebar';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import { PipelineTableRow } from '@/components/admin/pipeline/PipelineTableRow';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { useAutoFitColumns, CHAR_W_SM } from '@/hooks/useAutoFitColumns';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
@@ -1041,7 +1042,7 @@ const Underwriting = () => {
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#eee6f6' }}>
-                      <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                      <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                         <div className="shrink-0">
                           <Checkbox
                             checked={isAllSelected}
@@ -1119,7 +1120,7 @@ const Underwriting = () => {
                         </td>
                       </tr>
                     ) : (
-                      filteredAndSorted.map((lead, rowIdx) => {
+                      filteredAndSorted.map((lead) => {
                         const stageCfg = dynamicStageConfig[lead._stageId];
                         const assignedName = lead.assigned_to
                           ? (teamMemberMap[lead.assigned_to] ?? null)
@@ -1133,200 +1134,36 @@ const Underwriting = () => {
                         const isDetailSelected = selectedLead?.id === lead.id;
                         const isBulkSelected = selectedLeadIds.has(lead.id);
 
-                        const stickyBg = isDetailSelected
-                          ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
-                          : isBulkSelected
-                            ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
-                            : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
-
                         return (
-                          <tr
+                          <PipelineTableRow
                             key={lead.id}
-                            onClick={() => handleRowClick(lead)}
-                            className={`cursor-pointer transition-colors duration-100 group ${
-                              isDetailSelected
-                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
-                                : isBulkSelected
-                                  ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
-                                  : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
-                            }`}
-                          >
-                            {/* Opportunity + Checkbox (sticky) */}
-                            <td className={`pl-2 pr-1.5 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.opportunity, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                              <div className="flex items-center gap-2">
-                                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                                  <Checkbox
-                                    checked={isBulkSelected}
-                                    onCheckedChange={() => toggleLeadSelection(lead.id)}
-                                    className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
-                                  <CrmAvatar name={lead.name} />
-                                  <span className="text-[16px] text-[#202124] dark:text-foreground truncate">{getLeadDisplayName(lead)}</span>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/underwriting/expanded-view/${lead.id}`); }}
-                                  className="shrink-0 ml-auto -mr-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
-                                >
-                                  <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
-                                </button>
-                              </div>
-                            </td>
-
-                            {/* Company */}
-                            {columnVisibility.company && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
-                                {lead.company_name ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{lead.company_name}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Contact */}
-                            {columnVisibility.contact && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
-                                {lead.name ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{lead.name}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Value */}
-                            {columnVisibility.value && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{formatValue(dealValue)}</span>
-                              </td>
-                            )}
-
-                            {/* Owner */}
-                            {columnVisibility.ownedBy && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}>
-                                {assignedName ? (
-                                  <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
-                                    <CrmAvatar name={assignedName} imageUrl={assignedAvatar} size="sm" />
-                                    <span className="text-[16px] text-[#202124] dark:text-foreground truncate">{assignedName}</span>
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Tasks */}
-                            {columnVisibility.tasks && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{taskCount}</span>
-                              </td>
-                            )}
-
-                            {/* Status */}
-                            {columnVisibility.status && (
-                              <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status ?? 100, border: '1px solid #c8bdd6' }}>
-                                {lead.status ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{lead.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Stage */}
-                            {columnVisibility.stage && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
-                                {(stageCfg?.label ?? lead._stageName ?? lead.status) ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{stageCfg?.label ?? lead._stageName ?? lead.status}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Days in Stage */}
-                            {columnVisibility.daysInStage && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}>
-                                {daysInStage !== null ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{daysInStage}d</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Stage Updated */}
-                            {columnVisibility.stageUpdated && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}>
-                                {formatShortDate(lead.updated_at) ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{formatShortDate(lead.updated_at)}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Last Contacted */}
-                            {columnVisibility.lastContacted && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
-                                {formatShortDate(lead.last_activity_at) ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{formatShortDate(lead.last_activity_at)}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Interactions */}
-                            {columnVisibility.interactions && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{interactionCount}</span>
-                              </td>
-                            )}
-
-                            {/* Inactive Days */}
-                            {columnVisibility.inactiveDays && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
-                                {inactiveDays !== null ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{inactiveDays}d</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Tags */}
-                            {columnVisibility.tags && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
-                                {lead.tags && lead.tags.length > 0 ? (
-                                  <span className="flex items-center gap-1 flex-wrap">
-                                    {lead.tags.slice(0, 2).map((tag) => (
-                                      <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
-                                        {tag}
-                                      </span>
-                                    ))}
-                                    {lead.tags.length > 2 && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">+{lead.tags.length - 2}</span>
-                                    )}
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Detail arrow */}
-                            <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }}>
-                              <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
-                                isDetailSelected
-                                  ? 'text-[#3b2778]'
-                                  : 'text-transparent group-hover:text-muted-foreground'
-                              }`} />
-                            </td>
-                          </tr>
+                            leadId={lead.id}
+                            firstColumnKey="opportunity"
+                            opportunityDisplayName={getLeadDisplayName(lead)}
+                            avatarName={lead.name}
+                            companyName={lead.company_name}
+                            contactName={lead.name}
+                            dealValueDisplay={formatValue(dealValue)}
+                            ownerName={assignedName}
+                            ownerAvatarUrl={assignedAvatar}
+                            taskCount={taskCount}
+                            statusLabel={lead.status}
+                            stageLabel={stageCfg?.label ?? lead._stageName ?? lead.status}
+                            daysInStage={daysInStage}
+                            stageUpdatedDate={formatShortDate(lead.updated_at)}
+                            lastContactedDate={formatShortDate(lead.last_activity_at)}
+                            interactionCount={interactionCount}
+                            inactiveDays={inactiveDays}
+                            tags={lead.tags}
+                            columnVisibility={columnVisibility}
+                            columnWidths={columnWidths}
+                            isDetailSelected={isDetailSelected}
+                            isBulkSelected={isBulkSelected}
+                            rowPad="py-1.5"
+                            onRowClick={() => handleRowClick(lead)}
+                            onToggleSelection={() => toggleLeadSelection(lead.id)}
+                            onExpand={() => navigate(`/admin/pipeline/underwriting/expanded-view/${lead.id}`)}
+                          />
                         );
                       })
                     )}

@@ -1038,7 +1038,7 @@ const LoanVolumeLog = () => {
                     <ColHeader
                       colKey="borrower"
                       className="sticky top-0 z-30 bg-gray-100 dark:bg-muted group/hdr"
-                      style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}
+                      style={{ left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}
                     >
                       <div className="shrink-0">
                         <Checkbox
@@ -1078,7 +1078,7 @@ const LoanVolumeLog = () => {
                   {isLoading ? (
                     Array.from({ length: 8 }).map((_, i) => (
                       <tr key={i} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/30'}>
-                        <td className="pl-2 pr-4 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.borrower, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                        <td className="pl-2 pr-4 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.borrower, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                           <div className="flex items-center gap-2">
                             <Skeleton className="h-4 w-4 rounded shrink-0" />
                             <Skeleton className="h-7 w-7 rounded-full shrink-0" />
@@ -1181,7 +1181,7 @@ const LoanVolumeLog = () => {
                           {columnVisibility.borrower && (
                             <td
                               className={`pl-2 pr-3 ${rowPad} overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`}
-                              style={{ width: columnWidths.borrower, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}
+                              style={{ width: columnWidths.borrower, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}
                             >
                               <div className="flex items-center gap-2">
                                 <div className="shrink-0" onClick={(e) => e.stopPropagation()}>

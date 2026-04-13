@@ -253,6 +253,7 @@ const Calls = () => {
       return data as CallLog[];
     },
     enabled: !!teamMember?.id,
+    refetchInterval: 30000,
   });
 
   // If the transcript arrives after the dialog is opened, refresh the dialog content

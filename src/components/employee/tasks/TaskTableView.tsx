@@ -285,7 +285,7 @@ export const TaskTableView = ({
         <thead>
           <tr>
             {/* Checkbox + Task Name (sticky) */}
-            <ColHeader colKey="task" className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+            <ColHeader colKey="task" className="sticky top-0 z-30 group/hdr" style={{ left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
               <div className="shrink-0" title="Select all" onClick={(e) => e.stopPropagation()}>
                 <Checkbox
                   checked={isAllSelected}
@@ -360,7 +360,7 @@ export const TaskTableView = ({
                   {/* Task Name + Checkbox (sticky) */}
                   <td
                     className={`pl-4 pr-6 py-3 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`}
-                    style={{ width: columnWidths.task, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}
+                    style={{ width: columnWidths.task, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}
                   >
                     <div className="flex items-center gap-4">
                       <div className="shrink-0" title="Complete" onClick={(e) => e.stopPropagation()}>

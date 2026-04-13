@@ -96,6 +96,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   });
   
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const callStartTimeRef = useRef<Date | null>(null);
+  const outboundCallSidRef = useRef<string | null>(null);
   const deviceRef = useRef<Device | null>(null);
   // pendingCallsRef removed — calls are shown immediately regardless of device state
   const incomingCallRef = useRef<ActiveCallData | null>(null);
@@ -220,6 +222,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   // Start call timer
   const startCallTimer = useCallback(() => {
     setCallDuration(0);
+    callStartTimeRef.current = new Date();
     callTimerRef.current = setInterval(() => {
       setCallDuration(prev => prev + 1);
     }, 1000);
@@ -227,19 +230,47 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
 
   // Handle call end
   const handleCallEnd = useCallback(() => {
+    const durationSeconds = callStartTimeRef.current
+      ? Math.round((Date.now() - callStartTimeRef.current.getTime()) / 1000)
+      : 0;
+    const callSid = outboundCallSidRef.current;
+
     if (callTimerRef.current) {
       clearInterval(callTimerRef.current);
       callTimerRef.current = null;
     }
+    callStartTimeRef.current = null;
+    outboundCallSidRef.current = null;
     setActiveCall(null);
     setIsConnected(false);
     setIsMuted(false);
     setCallDuration(0);
     setIncomingCall(null);
     setOutboundCall(null);
+
+    // Update the outbound communications row with final status and duration
+    if (callSid) {
+      supabase
+        .from('communications')
+        .update({ status: 'completed', duration_seconds: durationSeconds })
+        .eq('call_sid', callSid)
+        .then(({ error }) => {
+          if (error) console.error('[CallContext] Failed to update communication on disconnect:', error);
+        });
+    }
+
     queryClient.invalidateQueries({ queryKey: ['active-calls-ringing'] });
     queryClient.invalidateQueries({ queryKey: ['communications'] });
     queryClient.invalidateQueries({ queryKey: ['call-history'] });
+    queryClient.invalidateQueries({ queryKey: ['lead-call-history'] });
+
+    // Edge functions (twilio-call-status, twilio-transcription) may take a moment
+    // to write the final communications record — re-invalidate after a delay.
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['call-history'] });
+      queryClient.invalidateQueries({ queryKey: ['communications'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-call-history'] });
+    }, 3000);
   }, [queryClient]);
 
   // Initialize Twilio Device - EAGER initialization
@@ -605,6 +636,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
           queryClient.invalidateQueries({ queryKey: ['active-calls-ringing'] });
           queryClient.invalidateQueries({ queryKey: ['active-calls'] });
           queryClient.invalidateQueries({ queryKey: ['communications'] });
+          queryClient.invalidateQueries({ queryKey: ['call-history'] });
+          queryClient.invalidateQueries({ queryKey: ['lead-call-history'] });
         }
       )
       .subscribe((status) => {
@@ -869,6 +902,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       });
 
       setActiveCall(call);
+      outboundCallSidRef.current = call.parameters.CallSid;
       setOutboundCall(prev => prev ? { ...prev, status: 'ringing', callSid: call.parameters.CallSid } : null);
 
       call.on('ringing', () => {
@@ -902,7 +936,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       });
 
       // Log the call to communications
-      await supabase.from('communications').insert({
+      const { error: insertError } = await supabase.from('communications').insert({
         lead_id: leadId || null,
         communication_type: 'call',
         direction: 'outbound',
@@ -912,6 +946,9 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
         call_sid: call.parameters.CallSid,
         team_member_id: teamMember?.id || null,
       });
+      if (insertError) {
+        console.error('[CallContext] Failed to log outbound call to communications:', insertError);
+      }
 
     } catch (error) {
       console.error('[CallContext] Failed to make outbound call:', error);

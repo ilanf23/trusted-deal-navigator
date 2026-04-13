@@ -1127,7 +1127,7 @@ const LenderPrograms = () => {
                       {/* Checkbox column header */}
                       <th
                         className="w-12 pl-2 pr-4 py-3 text-center sticky top-0 left-0 z-30"
-                        style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }}
+                        style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6' }}
                       >
                         <Checkbox
                           checked={isAllSelected}
@@ -1194,7 +1194,7 @@ const LenderPrograms = () => {
                             {/* Checkbox cell */}
                             <td
                               className={`w-12 pl-2 pr-3 py-2 text-center sticky left-0 z-[5] transition-colors ${checkboxBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`}
-                              style={{ border: '1px solid #c8bdd6' }}
+                              style={{ border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6' }}
                               onClick={(e) => e.stopPropagation()}
                             >
                               <Checkbox

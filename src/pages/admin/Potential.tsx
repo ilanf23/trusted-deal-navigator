@@ -15,6 +15,7 @@ import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { InlineEditableCell } from '@/components/admin/InlineEditableCell';
 import { EditableTextBox } from '@/components/admin/shared/EditableTextBox';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import { PipelineTableRow } from '@/components/admin/pipeline/PipelineTableRow';
 import PipelineDetailPanel from '@/components/admin/PipelineDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
@@ -1164,7 +1165,7 @@ const Pipeline = () => {
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#eee6f6' }}>
-                      <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                      <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                         <div className={`shrink-0`}>
                           <Checkbox
                             checked={isAllSelected}
@@ -1242,214 +1243,77 @@ const Pipeline = () => {
                         </td>
                       </tr>
                     ) : (
-                      filteredAndSorted.map((lead, rowIdx) => {
+                      filteredAndSorted.map((lead) => {
                         const stageCfg = dynamicStageConfig[lead._stageId];
                         const effectiveOwnerId = leadOwnerMap[lead.id] ?? lead.assigned_to;
-                        const assignedName = effectiveOwnerId
-                          ? (teamMemberMap[effectiveOwnerId] ?? null)
-                          : null;
-                        const assignedAvatar = effectiveOwnerId ? (teamAvatarMap[effectiveOwnerId] ?? null) : null;
                         const daysInStage = daysSince(lead.updated_at);
                         const inactiveDays = daysSince(lead.last_activity_at);
                         const isDetailOpen = detailDialogLead?.id === lead.id;
                         const isSelected = selectedLeadIds.has(lead.id);
-
-                        const stickyBg = isDetailOpen
-                          ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
-                          : isSelected
-                            ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
-                            : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
+                        const composedName = lead.company_name ? `${lead.name} - ${lead.company_name}` : lead.name;
 
                         return (
-                          <tr
+                          <PipelineTableRow
                             key={lead.id}
-                            onClick={() => handleRowClick(lead)}
-                            className={`cursor-pointer transition-colors duration-100 group ${
-                              isDetailOpen
-                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
-                                : isSelected
-                                  ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
-                                  : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
-                            }`}
-                          >
-                            {/* Deal + Checkbox (sticky) */}
-                            <td className={`pl-2 pr-1.5 ${rowPad} overflow-hidden whitespace-nowrap sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailOpen ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                              <div className="flex items-center gap-2">
-                                <div className={`shrink-0`} onClick={(e) => e.stopPropagation()}>
-                                  <Checkbox
-                                    checked={isSelected}
-                                    onCheckedChange={() => toggleLeadSelection(lead.id)}
-                                    className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
-                                  />
-                                </div>
-                                <EditableTextBox
-                                  value={lead.opportunity_name || ''}
-                                  onSave={(v) => handleInlineCellSave(lead.id, 'opportunity_name', v)}
-                                  placeholder={lead.company_name ? `${lead.name} - ${lead.company_name}` : lead.name}
-                                  size="sm"
-                                  className="min-w-0 flex-1 pl-0.5 pr-3 gap-2 text-[16px] text-[#202124] dark:text-foreground"
-                                  prefix={<CrmAvatar name={lead.name} />}
-                                  aria-label="Opportunity name"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`); }}
-                                  className="shrink-0 ml-auto -mr-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
-                                >
-                                  <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
-                                </button>
-                                </div>
-                            </td>
-
-                            {/* Company */}
-                            {columnVisibility.company && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
-                                <EditableTextBox
-                                  value={lead.company_name || ''}
-                                  onSave={(v) => handleInlineCellSave(lead.id, 'company_name', v)}
-                                  size="sm"
-                                  className="text-[16px] text-[#202124] dark:text-foreground"
-                                  aria-label="Company"
-                                />
-                              </td>
-                            )}
-
-                            {/* Contact */}
-                            {columnVisibility.contact && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
-                                <EditableTextBox
-                                  value={lead.name}
-                                  onSave={(v) => handleInlineCellSave(lead.id, 'name', v)}
-                                  size="sm"
-                                  className="text-[16px] text-[#202124] dark:text-foreground"
-                                  aria-label="Contact"
-                                />
-                              </td>
-                            )}
-
-                            {/* Value */}
-                            {columnVisibility.value && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}>
-                                <EditableTextBox
-                                  value={lead.deal_value != null ? lead.deal_value.toLocaleString('en-US') : ''}
-                                  onSave={(v) => handleInlineCellSave(lead.id, 'deal_value', v)}
-                                  placeholder="—"
-                                  size="sm"
-                                  className="text-[16px] text-[#202124] dark:text-foreground tabular-nums gap-1"
-                                  prefix={lead.deal_value != null ? <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : undefined}
-                                  aria-label="Deal value"
-                                />
-                              </td>
-                            )}
-
-                            {/* Owner */}
-                            {columnVisibility.ownedBy && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}>
-                                <InlineEditableCell
-                                  type="select"
-                                  value={effectiveOwnerId || ''}
-                                  options={teamMembers.map(m => ({ id: m.id, label: m.name }))}
-                                  onChange={(v) => handleInlineCellSave(lead.id, 'assigned_to', v)}
-                                  placeholder="—"
-                                />
-                              </td>
-                            )}
-
-                            {/* Tasks */}
-                            {columnVisibility.tasks && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{taskCountMap[lead.id] ?? 0}</span>
-                              </td>
-                            )}
-
-                            {/* Status */}
-                            {columnVisibility.status && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.status ?? 100, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{lead.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
-                              </td>
-                            )}
-
-                            {/* Stage */}
-                            {columnVisibility.stage && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
-                                <InlineEditableCell
-                                  type="select"
-                                  value={lead._stageId || ''}
-                                  options={stages.map(s => ({ id: s.id, label: dynamicStageConfig[s.id]?.title || s.name }))}
-                                  onChange={(v) => handleStageMove(lead.id, v)}
-                                  placeholder="—"
-                                />
-                              </td>
-                            )}
-
-                            {/* Days in Stage */}
-                            {columnVisibility.daysInStage && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
-                                  {daysInStage !== null ? `${daysInStage}d` : '—'}
-                                </span>
-                              </td>
-                            )}
-
-                            {/* Stage Updated */}
-                            {columnVisibility.stageUpdated && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate max-w-full">{formatShortDate(lead.updated_at)}</span>
-                              </td>
-                            )}
-
-                            {/* Last Contacted */}
-                            {columnVisibility.lastContacted && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums truncate max-w-full">{formatShortDate(lead.last_activity_at)}</span>
-                              </td>
-                            )}
-
-                            {/* Interactions */}
-                            {columnVisibility.interactions && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{interactionCountMap[lead.id] ?? 0}</span>
-                              </td>
-                            )}
-
-                            {/* Inactive Days */}
-                            {columnVisibility.inactiveDays && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
-                                  {inactiveDays !== null ? `${inactiveDays}d` : '—'}
-                                </span>
-                              </td>
-                            )}
-
-                            {/* Tags */}
-                            {columnVisibility.tags && (
-                              <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
-                                {lead.tags && lead.tags.length > 0 ? (
-                                  <span className="flex items-center gap-1 flex-nowrap min-w-0">
-                                    {lead.tags.slice(0, 2).map((tag) => (
-                                      <span key={tag} className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground whitespace-nowrap shrink-0">
-                                        {tag}
-                                      </span>
-                                    ))}
-                                    {lead.tags.length > 2 && (
-                                      <span className="text-[11px] text-muted-foreground font-medium whitespace-nowrap shrink-0">+{lead.tags.length - 2}</span>
-                                    )}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Detail arrow */}
-                            <td className={`px-2 ${rowPad} w-10`} style={{ border: '1px solid #c8bdd6' }}>
-                              <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
-                                isDetailOpen
-                                  ? 'text-[#3b2778]'
-                                  : 'text-transparent group-hover:text-muted-foreground'
-                              }`} />
-                            </td>
-                          </tr>
+                            leadId={lead.id}
+                            firstColumnKey="deal"
+                            opportunityDisplayName={lead.opportunity_name || composedName}
+                            avatarName={lead.name}
+                            opportunityEdit={{
+                              value: lead.opportunity_name || '',
+                              onSave: (v) => handleInlineCellSave(lead.id, 'opportunity_name', v),
+                            }}
+                            companyName={lead.company_name}
+                            companyEdit={{
+                              value: lead.company_name || '',
+                              onSave: (v) => handleInlineCellSave(lead.id, 'company_name', v),
+                            }}
+                            contactName={lead.name}
+                            contactEdit={{
+                              value: lead.name,
+                              onSave: (v) => handleInlineCellSave(lead.id, 'name', v),
+                            }}
+                            dealValueDisplay={lead.deal_value != null ? lead.deal_value.toLocaleString('en-US') : null}
+                            dealValueEdit={{
+                              value: lead.deal_value != null ? lead.deal_value.toLocaleString('en-US') : '',
+                              onSave: (v) => handleInlineCellSave(lead.id, 'deal_value', v),
+                            }}
+                            ownerSlot={
+                              <InlineEditableCell
+                                type="select"
+                                value={effectiveOwnerId || ''}
+                                options={teamMembers.map((m) => ({ id: m.id, label: m.name }))}
+                                onChange={(v) => handleInlineCellSave(lead.id, 'assigned_to', v)}
+                                placeholder="—"
+                              />
+                            }
+                            taskCount={taskCountMap[lead.id] ?? 0}
+                            statusLabel={lead.status}
+                            stageLabel={stageCfg?.title ?? lead._stageName}
+                            stageSlot={
+                              <InlineEditableCell
+                                type="select"
+                                value={lead._stageId || ''}
+                                options={stages.map((s) => ({ id: s.id, label: dynamicStageConfig[s.id]?.title || s.name }))}
+                                onChange={(v) => handleStageMove(lead.id, v)}
+                                placeholder="—"
+                              />
+                            }
+                            daysInStage={daysInStage}
+                            stageUpdatedDate={formatShortDate(lead.updated_at)}
+                            lastContactedDate={formatShortDate(lead.last_activity_at)}
+                            interactionCount={interactionCountMap[lead.id] ?? 0}
+                            inactiveDays={inactiveDays}
+                            tags={lead.tags}
+                            columnVisibility={columnVisibility}
+                            columnWidths={columnWidths}
+                            isDetailSelected={isDetailOpen}
+                            isBulkSelected={isSelected}
+                            rowPad={rowPad}
+                            onRowClick={() => handleRowClick(lead)}
+                            onToggleSelection={() => toggleLeadSelection(lead.id)}
+                            onExpand={() => navigate(`/admin/pipeline/potential/expanded-view/${lead.id}`)}
+                          />
                         );
                       })
                     )}
