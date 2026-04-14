@@ -4,7 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
-import type { EventInput, DatesSetArg } from '@fullcalendar/core';
+import type { EventInput, DatesSetArg, EventContentArg } from '@fullcalendar/core';
 import { useCalendarData, type ViewMode } from '@/hooks/useCalendarData';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarSidebar } from './CalendarSidebar';
@@ -17,6 +17,28 @@ const VIEW_MAP: Record<ViewMode, string> = {
   month: 'dayGridMonth',
   agenda: 'listWeek',
 };
+
+const APPOINTMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  call: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' },
+  video: { bg: '#ede9fe', border: '#8b5cf6', text: '#5b21b6' },
+  meeting: { bg: '#dcfce7', border: '#22c55e', text: '#166534' },
+  imported: { bg: '#ccfbf1', border: '#14b8a6', text: '#115e59' },
+};
+
+const TASK_COLORS = {
+  pending: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
+  completed: { bg: '#d1fae5', border: '#10b981', text: '#065f46' },
+};
+
+function renderTimeGridEvent(arg: EventContentArg) {
+  const { event, timeText } = arg;
+  return (
+    <div className="fc-custom-event">
+      <div className="fc-custom-event-time">{timeText}</div>
+      <div className="fc-custom-event-title">{event.title}</div>
+    </div>
+  );
+}
 
 export function CalendarView() {
   const calendarRef = useRef<FullCalendar>(null);
@@ -47,19 +69,15 @@ export function CalendarView() {
 
     if (showAppointments) {
       for (const apt of appointments) {
-        const colorMap: Record<string, string> = {
-          call: '#3b82f6',
-          video: '#8b5cf6',
-          meeting: '#22c55e',
-          imported: '#14b8a6',
-        };
+        const colors = APPOINTMENT_COLORS[apt.appointment_type ?? ''] ?? APPOINTMENT_COLORS.call;
         result.push({
           id: `apt-${apt.id}`,
           title: apt.title,
           start: apt.start_time,
           end: apt.end_time ?? undefined,
-          backgroundColor: colorMap[apt.appointment_type ?? ''] ?? '#3b82f6',
-          borderColor: colorMap[apt.appointment_type ?? ''] ?? '#3b82f6',
+          backgroundColor: colors.bg,
+          borderColor: colors.border,
+          textColor: colors.text,
           extendedProps: { type: 'appointment', data: apt },
         });
       }
@@ -68,13 +86,15 @@ export function CalendarView() {
     if (showTasks) {
       for (const task of tasks) {
         const hasTime = task.due_date.includes('T') && !task.due_date.endsWith('T00:00:00');
+        const colors = task.is_completed ? TASK_COLORS.completed : TASK_COLORS.pending;
         result.push({
           id: `task-${task.id}`,
           title: task.title,
           start: task.due_date,
           allDay: !hasTime,
-          backgroundColor: task.is_completed ? '#10b981' : '#f59e0b',
-          borderColor: task.is_completed ? '#10b981' : '#f59e0b',
+          backgroundColor: colors.bg,
+          borderColor: colors.border,
+          textColor: colors.text,
           extendedProps: { type: 'task', data: task },
         });
       }
@@ -178,14 +198,29 @@ export function CalendarView() {
             height="100%"
             scrollTime="08:00:00"
             allDaySlot={true}
+            allDayText="all-day"
             slotMinTime="00:00:00"
             slotMaxTime="24:00:00"
             slotDuration="00:30:00"
+            slotLabelInterval="01:00:00"
+            slotLabelFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
             expandRows={true}
             dayMaxEvents={3}
             navLinks={true}
             editable={false}
             selectable={false}
+            slotEventOverlap={false}
+            eventMaxStack={3}
+            eventContent={renderTimeGridEvent}
+            dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
+            views={{
+              timeGridWeek: {
+                dayHeaderFormat: { weekday: 'short', month: 'numeric', day: 'numeric' },
+              },
+              timeGridDay: {
+                dayHeaderFormat: { weekday: 'long', month: 'long', day: 'numeric' },
+              },
+            }}
           />
         </div>
       </div>

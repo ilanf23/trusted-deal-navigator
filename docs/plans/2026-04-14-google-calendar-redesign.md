@@ -72,15 +72,15 @@ Replace the current monolithic CalendarWidget (1309 lines, basic list-based view
 - Modify: `src/components/employee/calendar/calendar-styles.css`
 - Modify: `src/hooks/useCalendarData.ts`
 
-- [ ] Configure FullCalendar timeGridWeek view: 7 columns with hour rows (midnight to midnight), scrollable, default scroll position at 8 AM
-- [ ] Configure FullCalendar timeGridDay view: single column with hour rows
-- [ ] Add all-day event section at top of time grid (for tasks without specific times and all-day appointments)
-- [ ] Map appointments to FullCalendar EventInput objects: start/end times, title, color by type (call=blue, video=purple, meeting=green, imported=teal)
-- [ ] Map tasks with due dates to FullCalendar events: show as timed events if due_date has time component, otherwise as all-day events, amber color for pending, emerald for completed
-- [ ] Enable nowIndicator (red line showing current time in time grid views)
-- [ ] Style hour labels, grid lines, and day headers to match Google Calendar aesthetic (clean, light grid lines, readable typography)
-- [ ] Handle overlapping events: FullCalendar auto-positions side-by-side (configure slotEventOverlap and eventMaxStack)
-- [ ] Run `npm run build` and visually verify time grid rendering
+- [x] Configure FullCalendar timeGridWeek view: 7 columns with hour rows (midnight to midnight), scrollable, default scroll position at 8 AM
+- [x] Configure FullCalendar timeGridDay view: single column with hour rows
+- [x] Add all-day event section at top of time grid (for tasks without specific times and all-day appointments)
+- [x] Map appointments to FullCalendar EventInput objects: start/end times, title, color by type (call=blue, video=purple, meeting=green, imported=teal)
+- [x] Map tasks with due dates to FullCalendar events: show as timed events if due_date has time component, otherwise as all-day events, amber color for pending, emerald for completed
+- [x] Enable nowIndicator (red line showing current time in time grid views)
+- [x] Style hour labels, grid lines, and day headers to match Google Calendar aesthetic (clean, light grid lines, readable typography)
+- [x] Handle overlapping events: FullCalendar auto-positions side-by-side (configure slotEventOverlap and eventMaxStack)
+- [x] Run `npm run build` and visually verify time grid rendering
 
 ### Task 4: Month view and Schedule (agenda) view
 

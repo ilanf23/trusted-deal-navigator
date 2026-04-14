@@ -5,9 +5,9 @@
   --fc-page-bg-color: hsl(var(--background));
   --fc-neutral-bg-color: hsl(var(--muted));
   --fc-neutral-text-color: hsl(var(--muted-foreground));
-  --fc-today-bg-color: hsl(var(--primary) / 0.05);
+  --fc-today-bg-color: hsl(var(--primary) / 0.04);
   --fc-event-border-color: transparent;
-  --fc-now-indicator-color: #ef4444;
+  --fc-now-indicator-color: #ea4335;
   --fc-small-font-size: 0.8rem;
   font-family: inherit;
 }
@@ -17,71 +17,133 @@
   display: none !important;
 }
 
-/* Day headers */
+/* Day headers — Google Calendar style: clean, light background */
 .fc .fc-col-header-cell {
-  background: hsl(var(--muted));
+  background: hsl(var(--background));
   border-color: hsl(var(--border));
   padding: 8px 0;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .fc .fc-col-header-cell-cushion {
   color: hsl(var(--muted-foreground));
   font-weight: 500;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   text-decoration: none;
+  padding: 4px 0;
 }
 
-/* Time grid slots */
+/* Today's column header gets primary color like Google Calendar */
+.fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+/* Time grid slots — Google Calendar proportions */
 .fc .fc-timegrid-slot {
   height: 48px;
-  border-color: hsl(var(--border));
+  border-color: hsl(var(--border) / 0.4);
+}
+
+.fc .fc-timegrid-slot-lane {
+  border-color: hsl(var(--border) / 0.4);
 }
 
 .fc .fc-timegrid-slot-minor {
-  border-top-style: dotted;
-  border-color: hsl(var(--border) / 0.5);
+  border-top-style: none;
+}
+
+.fc .fc-timegrid-slot-label {
+  vertical-align: top;
+  border: none;
 }
 
 .fc .fc-timegrid-slot-label-cushion {
   color: hsl(var(--muted-foreground));
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 400;
+  padding-top: 2px;
+  text-transform: uppercase;
 }
 
-/* Now indicator */
+/* Time grid axis (left gutter) */
+.fc .fc-timegrid-axis {
+  border: none;
+}
+
+/* Now indicator — Google Calendar red line with circle */
 .fc .fc-timegrid-now-indicator-line {
-  border-color: #ef4444;
+  border-color: #ea4335;
   border-width: 2px;
+  z-index: 4;
 }
 
 .fc .fc-timegrid-now-indicator-arrow {
-  border-color: #ef4444;
-  border-width: 5px;
+  border-color: #ea4335;
+  border-width: 6px;
+  margin-top: -6px;
 }
 
-/* Events */
+/* Events — base styles */
 .fc .fc-event {
   border-radius: 4px;
   border: none;
   font-size: 0.75rem;
-  padding: 2px 4px;
   cursor: pointer;
-  transition: box-shadow 0.15s ease;
+  transition: box-shadow 0.15s ease, filter 0.15s ease;
 }
 
 .fc .fc-event:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  filter: brightness(0.97);
 }
 
+/* Time grid events — Google Calendar chip style */
 .fc .fc-timegrid-event {
-  border-radius: 4px;
-  border-left: 3px solid;
+  border-radius: 6px;
+  border-left: 4px solid;
+  overflow: hidden;
+  margin-bottom: 1px;
 }
 
 .fc .fc-timegrid-event .fc-event-main {
-  padding: 2px 4px;
+  padding: 1px 6px 2px;
+  overflow: hidden;
+}
+
+/* Custom event rendering inside time grid */
+.fc-custom-event {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  line-height: 1.3;
+}
+
+.fc-custom-event-time {
+  font-size: 0.65rem;
+  font-weight: 400;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fc-custom-event-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Short events (< 30 min) — render time and title on one line */
+.fc .fc-timegrid-event.fc-short .fc-custom-event {
+  flex-direction: row;
+  gap: 4px;
+  align-items: center;
 }
 
 .fc .fc-event-title {
@@ -170,9 +232,23 @@
   color: hsl(var(--muted-foreground));
 }
 
-/* All-day section */
+/* All-day section in time grid views */
+.fc .fc-timegrid-divider {
+  padding: 0;
+  border-color: hsl(var(--border));
+}
+
 .fc .fc-daygrid-body.fc-timegrid-body {
   border-bottom: 2px solid hsl(var(--border));
+}
+
+.fc .fc-timegrid-allday {
+  background: hsl(var(--background));
+}
+
+/* Column borders for time grid */
+.fc .fc-timegrid-col {
+  border-color: hsl(var(--border) / 0.4);
 }
 
 /* Scrollbar */
@@ -199,4 +275,8 @@
 /* Dark mode adjustments */
 .dark .fc .fc-event:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.dark .fc .fc-timegrid-slot-label-cushion {
+  color: hsl(var(--muted-foreground));
 }
