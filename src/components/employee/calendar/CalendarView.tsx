@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -74,6 +74,16 @@ export function CalendarView() {
     start: new Date(),
     end: new Date(),
   });
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) setSidebarOpen(false);
+    };
+    handler(mq);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   const {
     appointments,
@@ -344,6 +354,39 @@ export function CalendarView() {
       setViewMode('day');
     }
   }, []);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement)?.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      switch (e.key.toLowerCase()) {
+        case 't':
+          e.preventDefault();
+          handleToday();
+          break;
+        case 'd':
+          e.preventDefault();
+          handleViewChange('day');
+          break;
+        case 'w':
+          e.preventDefault();
+          handleViewChange('week');
+          break;
+        case 'm':
+          e.preventDefault();
+          handleViewChange('month');
+          break;
+        case 'c':
+          e.preventDefault();
+          handleCreateEvent();
+          break;
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleToday, handleViewChange, handleCreateEvent]);
 
   if (isLoading) {
     return (

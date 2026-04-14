@@ -14,7 +14,7 @@ Self-contained dashboard cards with own data fetching:
 - `EvanLeadsWidget` — assigned lead pipeline
 - `EvanNotesWidget` — personal notes
 - `EvanTasksWidget` — task overview
-- `EvanCalendarWidget` — upcoming calendar events
+- `calendar/CalendarView` — full Google Calendar-style calendar (FullCalendar engine)
 
 ### Call UI (4 files)
 - `IncomingCallPopup` — shown when Twilio SDK receives inbound call

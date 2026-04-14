@@ -369,6 +369,32 @@
   border-radius: 3px;
 }
 
+/* Smooth transitions between views */
+.fc .fc-view-harness {
+  transition: height 0.2s ease;
+}
+
+/* Responsive: larger touch targets on mobile */
+@media (max-width: 768px) {
+  .fc .fc-timegrid-slot {
+    height: 56px;
+  }
+
+  .fc .fc-daygrid-day-number {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+  }
+
+  .fc .fc-event {
+    font-size: 0.8rem;
+  }
+
+  .fc .fc-col-header-cell-cushion {
+    font-size: 0.65rem;
+    padding: 6px 0;
+  }
+}
+
 /* Selection highlight (click-and-drag to create) */
 .fc .fc-highlight {
   background: hsl(var(--primary) / 0.1);
@@ -395,6 +421,7 @@
 /* Dark mode adjustments */
 .dark .fc .fc-event:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  filter: brightness(1.1);
 }
 
 .dark .fc .fc-timegrid-slot-label-cushion {
@@ -403,4 +430,26 @@
 
 .dark .fc .fc-popover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.dark .fc .fc-event.fc-event-dragging {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.dark .fc .fc-event.fc-event-resizing {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.dark .fc .fc-highlight {
+  background: hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+.dark .fc .fc-list-event:hover td {
+  background: hsl(var(--accent));
+}
+
+.dark .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
