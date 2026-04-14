@@ -4,12 +4,13 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
-import type { EventInput, DatesSetArg, EventContentArg, DateSelectArg } from '@fullcalendar/core';
-import { useCalendarData, type ViewMode } from '@/hooks/useCalendarData';
+import type { EventInput, DatesSetArg, EventContentArg, DateSelectArg, EventClickArg } from '@fullcalendar/core';
+import { useCalendarData, type ViewMode, type Appointment } from '@/hooks/useCalendarData';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarSidebar } from './CalendarSidebar';
 import { QuickEventPopover, type QuickEventData } from './QuickEventPopover';
 import { EventDialog, type EventDialogData } from './EventDialog';
+import { EventDetailPopover, type EventDetailData } from './EventDetailPopover';
 import { Loader2 } from 'lucide-react';
 import './calendar-styles.css';
 
@@ -66,6 +67,7 @@ export function CalendarView() {
   const [calendarTitle, setCalendarTitle] = useState('');
 
   const [quickEvent, setQuickEvent] = useState<QuickEventData | null>(null);
+  const [eventDetail, setEventDetail] = useState<EventDetailData | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<EventDialogData>({
     start: new Date(),
@@ -89,6 +91,7 @@ export function CalendarView() {
     importFromGoogle,
     addAppointment,
     updateAppointment,
+    deleteAppointment,
   } = useCalendarData(viewMode, currentDate);
 
   const events = useMemo<EventInput[]>(() => {
@@ -239,6 +242,50 @@ export function CalendarView() {
     [addAppointment, updateAppointment]
   );
 
+  const handleEventClick = useCallback((info: EventClickArg) => {
+    info.jsEvent.preventDefault();
+    const rect = info.el.getBoundingClientRect();
+    const position = { top: rect.bottom + 4, left: rect.left };
+    const extProps = info.event.extendedProps;
+
+    if (extProps.type === 'appointment') {
+      setQuickEvent(null);
+      setEventDetail({
+        type: 'appointment',
+        appointment: extProps.data as Appointment,
+        position,
+      });
+    } else if (extProps.type === 'task') {
+      setQuickEvent(null);
+      setEventDetail({
+        type: 'task',
+        task: extProps.data,
+        position,
+      });
+    }
+  }, []);
+
+  const handleEditFromPopover = useCallback((apt: Appointment) => {
+    setEventDetail(null);
+    setDialogData({
+      id: apt.id,
+      title: apt.title,
+      start: new Date(apt.start_time),
+      end: apt.end_time ? new Date(apt.end_time) : new Date(apt.start_time),
+      appointmentType: apt.appointment_type ?? 'call',
+      description: apt.description ?? undefined,
+      leadId: apt.lead_id,
+    });
+    setDialogOpen(true);
+  }, []);
+
+  const handleDeleteFromPopover = useCallback(
+    (appointmentId: string) => {
+      deleteAppointment.mutate(appointmentId);
+    },
+    [deleteAppointment]
+  );
+
   const handleNavLinkDayClick = useCallback((date: Date) => {
     const api = calendarRef.current?.getApi();
     if (api) {
@@ -313,6 +360,7 @@ export function CalendarView() {
             selectMirror={true}
             unselectAuto={false}
             select={handleCalendarSelect}
+            eventClick={handleEventClick}
             slotEventOverlap={false}
             eventMaxStack={3}
             eventContent={renderEventContent}
@@ -342,6 +390,15 @@ export function CalendarView() {
           onSave={handleQuickSave}
           onMoreOptions={handleQuickMoreOptions}
           onClose={() => setQuickEvent(null)}
+        />
+      )}
+
+      {eventDetail && (
+        <EventDetailPopover
+          data={eventDetail}
+          onEdit={handleEditFromPopover}
+          onDelete={handleDeleteFromPopover}
+          onClose={() => setEventDetail(null)}
         />
       )}
 

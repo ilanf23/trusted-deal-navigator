@@ -128,7 +128,7 @@ Replace the current monolithic CalendarWidget (1309 lines, basic list-based view
 - Modify: `src/components/employee/calendar/CalendarView.tsx`
 - Modify: `src/hooks/useCalendarData.ts` (add update mutation)
 
-- [ ] Build `EventDetailPopover.tsx`: clicking an existing event shows a popover (like Google Calendar) with:
+- [x] Build `EventDetailPopover.tsx`: clicking an existing event shows a popover (like Google Calendar) with:
   - Event title (bold)
   - Date and time range
   - Event type icon + label
@@ -138,11 +138,11 @@ Replace the current monolithic CalendarWidget (1309 lines, basic list-based view
   - Edit button (pencil icon) - opens EventDialog in edit mode
   - Delete button (trash icon) - with confirmation
   - Close button (X)
-- [ ] Add edit mode to EventDialog: pre-fills all fields from existing event, Save updates instead of creates
-- [ ] Add appointment update mutation to `useCalendarData.ts`: PATCH to appointments table, invalidate queries
-- [ ] Wire FullCalendar `eventClick` callback to show EventDetailPopover positioned near the clicked event
-- [ ] Handle popover positioning: ensure it stays within viewport bounds
-- [ ] Run `npm run build` and test view/edit/delete flow
+- [x] Add edit mode to EventDialog: pre-fills all fields from existing event, Save updates instead of creates
+- [x] Add appointment update mutation to `useCalendarData.ts`: PATCH to appointments table, invalidate queries
+- [x] Wire FullCalendar `eventClick` callback to show EventDetailPopover positioned near the clicked event
+- [x] Handle popover positioning: ensure it stays within viewport bounds
+- [x] Run `npm run build` and test view/edit/delete flow
 
 ### Task 7: Drag-and-drop rescheduling and event resizing
 
