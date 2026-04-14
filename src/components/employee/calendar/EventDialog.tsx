@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { format } from 'date-fns';
-import { Phone, Video, Users, Clock } from 'lucide-react';
+import { Phone, Video, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -96,7 +95,7 @@ export function EventDialog({ open, onOpenChange, data, onSave }: EventDialogPro
     queryKey: ['pipeline-leads-for-calendar'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pipeline')
+        .from('potential')
         .select('id, name, company_name')
         .order('name');
       if (error) throw error;

@@ -216,7 +216,6 @@ AS $$
 DECLARE
   old_stage_name text;
   new_stage_name text;
-  actor_name text;
   entity_type_val public.entity_type_enum;
 BEGIN
   IF OLD.stage_id IS DISTINCT FROM NEW.stage_id THEN
@@ -224,8 +223,6 @@ BEGIN
 
     SELECT name INTO old_stage_name FROM public.pipeline_stages WHERE id = OLD.stage_id;
     SELECT name INTO new_stage_name FROM public.pipeline_stages WHERE id = NEW.stage_id;
-    SELECT COALESCE(name, email) INTO actor_name FROM public.users WHERE id = auth.uid();
-
     INSERT INTO public.activities (entity_id, entity_type, activity_type, title, content, created_by)
     VALUES (
       NEW.id,
@@ -237,7 +234,7 @@ BEGIN
         COALESCE(old_stage_name, 'none'),
         COALESCE(new_stage_name, 'none')
       ),
-      COALESCE(actor_name, 'System')
+      COALESCE(auth.uid()::text, 'System')
     );
 
     NEW.stage_changed_at := now();
@@ -289,6 +286,12 @@ BEGIN
   DELETE FROM public.entity_checklists
     WHERE entity_id = OLD.id AND entity_type = entity_type_val;
   DELETE FROM public.notes
+    WHERE entity_id = OLD.id AND entity_type = entity_type_val;
+  DELETE FROM public.entity_emails
+    WHERE entity_id = OLD.id AND entity_type = entity_type_val;
+  DELETE FROM public.entity_phones
+    WHERE entity_id = OLD.id AND entity_type = entity_type_val;
+  DELETE FROM public.entity_addresses
     WHERE entity_id = OLD.id AND entity_type = entity_type_val;
 
   RETURN OLD;

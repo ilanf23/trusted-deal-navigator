@@ -195,7 +195,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
       const { start, end } = getDateRange();
       let query = supabase
         .from('tasks')
-        .select('id, title, due_date, is_completed, priority, status, lead:pipeline(name, company_name)')
+        .select('id, title, due_date, is_completed, priority, status, lead:potential(name, company_name)')
         .not('due_date', 'is', null)
         .gte('due_date', start.toISOString())
         .lte('due_date', end.toISOString())
@@ -221,6 +221,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
       description?: string;
       lead_id?: string | null;
     }) => {
+      if (!teamMember?.id) throw new Error('User not loaded');
       const { error } = await supabase
         .from('appointments')
         .insert({
@@ -230,7 +231,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
           appointment_type: appt.appointment_type,
           description: appt.description ?? null,
           lead_id: appt.lead_id ?? null,
-          team_member_id: teamMember?.id,
+          team_member_id: teamMember.id,
         });
       if (error) throw error;
     },
@@ -251,11 +252,13 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
       description?: string | null;
       lead_id?: string | null;
     }) => {
+      if (!teamMember?.id) throw new Error('User not loaded');
       const { id, ...updates } = appt;
       const { error } = await supabase
         .from('appointments')
         .update(updates)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('team_member_id', teamMember.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -282,10 +285,12 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
 
   const deleteAppointment = useMutation({
     mutationFn: async (id: string) => {
+      if (!teamMember?.id) throw new Error('User not loaded');
       const { error } = await supabase
         .from('appointments')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('team_member_id', teamMember.id);
       if (error) throw error;
     },
     onSuccess: () => {

@@ -72,14 +72,15 @@ export function WonLostModal({
     if (!reason) return;
     setSaving(true);
     try {
-      const parsedValue = finalValue.trim()
-        ? Number(finalValue.replace(/[^0-9.]/g, ''))
-        : null;
+      const stripped = finalValue.trim()
+        ? finalValue.replace(/[^0-9.]/g, '')
+        : '';
+      const parsedValue = stripped ? Number(stripped) : null;
       await onSubmit({
         outcome,
         reason,
         notes: notes.trim(),
-        finalDealValue: Number.isFinite(parsedValue as number) ? (parsedValue as number) : null,
+        finalDealValue: parsedValue !== null && Number.isFinite(parsedValue) ? parsedValue : null,
         closeDate,
       });
       onOpenChange(false);

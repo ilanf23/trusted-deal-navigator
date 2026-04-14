@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 import type { CalendarFilter } from '@/hooks/useCalendarData';
 import {
   Plus,
-  ChevronRight,
   Link2,
   Unlink,
   RefreshCw,
