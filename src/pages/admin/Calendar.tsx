@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
-import { CalendarWidget } from '@/components/employee/CalendarWidget';
+import { CalendarView } from '@/components/employee/calendar/CalendarView';
 
 const Calendar = () => {
   const { setPageTitle } = useAdminTopBar();
@@ -12,9 +12,8 @@ const Calendar = () => {
 
   return (
     <EmployeeLayout>
-      <div className="space-y-2">
-        {/* Calendar Widget */}
-        <CalendarWidget />
+      <div className="h-[calc(100vh-8rem)]">
+        <CalendarView />
       </div>
     </EmployeeLayout>
   );

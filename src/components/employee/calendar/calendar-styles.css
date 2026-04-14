@@ -1,0 +1,202 @@
+/* FullCalendar theme overrides — aligned with shadcn/ui + Tailwind design tokens */
+
+.fc {
+  --fc-border-color: hsl(var(--border));
+  --fc-page-bg-color: hsl(var(--background));
+  --fc-neutral-bg-color: hsl(var(--muted));
+  --fc-neutral-text-color: hsl(var(--muted-foreground));
+  --fc-today-bg-color: hsl(var(--primary) / 0.05);
+  --fc-event-border-color: transparent;
+  --fc-now-indicator-color: #ef4444;
+  --fc-small-font-size: 0.8rem;
+  font-family: inherit;
+}
+
+/* Toolbar — hidden since we use our own CalendarHeader */
+.fc .fc-toolbar {
+  display: none !important;
+}
+
+/* Day headers */
+.fc .fc-col-header-cell {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
+  padding: 8px 0;
+}
+
+.fc .fc-col-header-cell-cushion {
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+}
+
+/* Time grid slots */
+.fc .fc-timegrid-slot {
+  height: 48px;
+  border-color: hsl(var(--border));
+}
+
+.fc .fc-timegrid-slot-minor {
+  border-top-style: dotted;
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.fc .fc-timegrid-slot-label-cushion {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+
+/* Now indicator */
+.fc .fc-timegrid-now-indicator-line {
+  border-color: #ef4444;
+  border-width: 2px;
+}
+
+.fc .fc-timegrid-now-indicator-arrow {
+  border-color: #ef4444;
+  border-width: 5px;
+}
+
+/* Events */
+.fc .fc-event {
+  border-radius: 4px;
+  border: none;
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+
+.fc .fc-event:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.fc .fc-timegrid-event {
+  border-radius: 4px;
+  border-left: 3px solid;
+}
+
+.fc .fc-timegrid-event .fc-event-main {
+  padding: 2px 4px;
+}
+
+.fc .fc-event-title {
+  font-weight: 500;
+}
+
+.fc .fc-event-time {
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+/* Day grid (month view) */
+.fc .fc-daygrid-day {
+  min-height: 100px;
+}
+
+.fc .fc-daygrid-day-number {
+  color: hsl(var(--foreground));
+  font-size: 0.8rem;
+  font-weight: 400;
+  padding: 4px 8px;
+  text-decoration: none;
+}
+
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 9999px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.fc .fc-daygrid-day.fc-day-other .fc-daygrid-day-number {
+  opacity: 0.4;
+}
+
+.fc .fc-daygrid-event {
+  border-radius: 4px;
+  margin: 1px 2px;
+}
+
+.fc .fc-daygrid-event-dot {
+  display: none;
+}
+
+.fc .fc-daygrid-more-link {
+  color: hsl(var(--primary));
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+/* List (schedule) view */
+.fc .fc-list {
+  border-color: hsl(var(--border));
+}
+
+.fc .fc-list-day-cushion {
+  background: hsl(var(--muted));
+}
+
+.fc .fc-list-day-text,
+.fc .fc-list-day-side-text {
+  color: hsl(var(--foreground));
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.fc .fc-list-event:hover td {
+  background: hsl(var(--accent));
+}
+
+.fc .fc-list-event-dot {
+  border-radius: 9999px;
+}
+
+.fc .fc-list-event-title a {
+  color: hsl(var(--foreground));
+  text-decoration: none;
+}
+
+.fc .fc-list-event-time {
+  color: hsl(var(--muted-foreground));
+}
+
+/* All-day section */
+.fc .fc-daygrid-body.fc-timegrid-body {
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+/* Scrollbar */
+.fc .fc-scroller::-webkit-scrollbar {
+  width: 6px;
+}
+
+.fc .fc-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fc .fc-scroller::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+
+/* Selection highlight (click-and-drag to create) */
+.fc .fc-highlight {
+  background: hsl(var(--primary) / 0.1);
+  border: 1px dashed hsl(var(--primary) / 0.4);
+  border-radius: 4px;
+}
+
+/* Dark mode adjustments */
+.dark .fc .fc-event:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
