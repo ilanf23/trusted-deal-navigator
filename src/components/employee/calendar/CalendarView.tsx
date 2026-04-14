@@ -40,6 +40,22 @@ function renderTimeGridEvent(arg: EventContentArg) {
   );
 }
 
+function renderMonthEvent(arg: EventContentArg) {
+  const { event, timeText } = arg;
+  return (
+    <div className="fc-month-event">
+      {timeText && <span className="fc-month-event-time">{timeText}</span>}
+      <span className="fc-month-event-title">{event.title}</span>
+    </div>
+  );
+}
+
+function renderEventContent(arg: EventContentArg) {
+  if (arg.view.type === 'dayGridMonth') return renderMonthEvent(arg);
+  if (arg.view.type.startsWith('list')) return undefined;
+  return renderTimeGridEvent(arg);
+}
+
 export function CalendarView() {
   const calendarRef = useRef<FullCalendar>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -148,6 +164,14 @@ export function CalendarView() {
     // Placeholder for Task 5 - will open EventDialog
   }, []);
 
+  const handleNavLinkDayClick = useCallback((date: Date) => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.changeView('timeGridDay', date);
+      setViewMode('day');
+    }
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[600px]">
@@ -206,12 +230,14 @@ export function CalendarView() {
             slotLabelFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
             expandRows={true}
             dayMaxEvents={3}
+            moreLinkClick="popover"
             navLinks={true}
+            navLinkDayClick={handleNavLinkDayClick}
             editable={false}
             selectable={false}
             slotEventOverlap={false}
             eventMaxStack={3}
-            eventContent={renderTimeGridEvent}
+            eventContent={renderEventContent}
             dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
             views={{
               timeGridWeek: {
@@ -219,6 +245,13 @@ export function CalendarView() {
               },
               timeGridDay: {
                 dayHeaderFormat: { weekday: 'long', month: 'long', day: 'numeric' },
+              },
+              dayGridMonth: {
+                dayHeaderFormat: { weekday: 'short' },
+              },
+              listWeek: {
+                listDayFormat: { weekday: 'long' },
+                listDaySideFormat: { month: 'long', day: 'numeric', year: 'numeric' },
               },
             }}
           />

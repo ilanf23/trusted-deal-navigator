@@ -88,13 +88,13 @@ Replace the current monolithic CalendarWidget (1309 lines, basic list-based view
 - Modify: `src/components/employee/calendar/CalendarView.tsx`
 - Modify: `src/components/employee/calendar/calendar-styles.css`
 
-- [ ] Configure FullCalendar dayGridMonth view: event chips displayed inside day cells, colored by type
-- [ ] Configure "+N more" link on days with many events - clicking opens a popover showing all events for that day (FullCalendar moreLinkClick)
-- [ ] Style month view day cells: today highlighted with blue circle on date number (Google Calendar style), current month days bold, outside-month days dimmed
-- [ ] Configure FullCalendar listWeek/listMonth view for Schedule/Agenda mode: grouped by day with date headers, event details in rows
-- [ ] Style list view to match Google Calendar schedule view: date headers with day name + number, event rows with time + colored dot + title
-- [ ] Ensure view switching (Day/Week/Month/Schedule) preserves the currently viewed date range appropriately
-- [ ] Run `npm run build` and visually verify all 4 views
+- [x] Configure FullCalendar dayGridMonth view: event chips displayed inside day cells, colored by type
+- [x] Configure "+N more" link on days with many events - clicking opens a popover showing all events for that day (FullCalendar moreLinkClick)
+- [x] Style month view day cells: today highlighted with blue circle on date number (Google Calendar style), current month days bold, outside-month days dimmed
+- [x] Configure FullCalendar listWeek/listMonth view for Schedule/Agenda mode: grouped by day with date headers, event details in rows
+- [x] Style list view to match Google Calendar schedule view: date headers with day name + number, event rows with time + colored dot + title
+- [x] Ensure view switching (Day/Week/Month/Schedule) preserves the currently viewed date range appropriately
+- [x] Run `npm run build` and visually verify all 4 views
 
 ### Task 5: Event creation UX (click-to-create, quick create, full dialog)
 

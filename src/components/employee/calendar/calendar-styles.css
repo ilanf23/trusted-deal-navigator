@@ -197,6 +197,61 @@
   color: hsl(var(--primary));
   font-size: 0.7rem;
   font-weight: 500;
+  padding: 2px 4px;
+}
+
+/* Bold current-month day numbers, dimmed other-month already handled above */
+.fc .fc-daygrid-day:not(.fc-day-other) .fc-daygrid-day-number {
+  font-weight: 500;
+}
+
+/* Month view event chips — compact colored pills */
+.fc-month-event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 2px;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.fc-month-event-time {
+  font-size: 0.65rem;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fc-month-event-title {
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* More events popover ("+N more") */
+.fc .fc-popover {
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border: 1px solid hsl(var(--border));
+  overflow: hidden;
+  z-index: 20;
+}
+
+.fc .fc-popover-header {
+  background: hsl(var(--muted));
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: hsl(var(--foreground));
+}
+
+.fc .fc-popover-body {
+  padding: 4px;
+  background: hsl(var(--background));
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 /* List (schedule) view */
@@ -230,6 +285,55 @@
 
 .fc .fc-list-event-time {
   color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+  min-width: 80px;
+  font-size: 0.8rem;
+}
+
+.fc .fc-list-event td {
+  padding: 8px 14px;
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.fc .fc-list-event-dot {
+  border-width: 5px;
+}
+
+.fc .fc-list-event-title {
+  font-size: 0.85rem;
+}
+
+.fc .fc-list-day-cushion {
+  padding: 8px 14px;
+}
+
+.fc .fc-list-day-text {
+  font-size: 0.85rem;
+}
+
+.fc .fc-list-day-side-text {
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Today highlighting in schedule view */
+.fc .fc-list-day.fc-day-today .fc-list-day-cushion {
+  background: hsl(var(--primary) / 0.08);
+}
+
+.fc .fc-list-day.fc-day-today .fc-list-day-text {
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+/* Empty schedule view */
+.fc .fc-list-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9rem;
 }
 
 /* All-day section in time grid views */
@@ -279,4 +383,8 @@
 
 .dark .fc .fc-timegrid-slot-label-cushion {
   color: hsl(var(--muted-foreground));
+}
+
+.dark .fc .fc-popover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
