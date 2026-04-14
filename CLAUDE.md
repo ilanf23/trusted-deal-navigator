@@ -30,7 +30,7 @@ src/
   components/     # ~270 components across 11 subdirectories
     ui/           # 61 shadcn/ui primitives (do not heavily modify)
     admin/        # 105 admin portal components (CRM, pipeline, inbox, dropbox, sheets, settings)
-    evan/         # 25 Evan sales rep portal components (dashboard, gmail, tasks)
+    employee/     # 31 employee portal components (dashboard, calendar, gmail, tasks)
     home/         # 10 public landing page sections
     layout/       # 3 public site layout wrappers (Header, Footer, PublicLayout)
     auth/         # ProtectedRoute guard
@@ -39,7 +39,7 @@ src/
     feed/         # Activity feed
     partner/      # Partner portal layout + routing
   pages/          # 67 page components (admin 41, partner 4, public 11, solutions 3)
-  hooks/          # 35 custom hooks (pipeline, gmail, dropbox, sheets, dashboards, tasks, AI)
+  hooks/          # 40 custom hooks (pipeline, gmail, dropbox, sheets, dashboards, tasks, calendar, AI)
   contexts/       # 8 React contexts (auth, call, AI, draft, UI state, undo, split view, top bar)
   integrations/   # Supabase client + auto-generated DB types (~5000 lines)
   constants/      # App config (team emails, stage labels, pipeline names)
