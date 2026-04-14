@@ -49,21 +49,21 @@ Replace the current monolithic CalendarWidget (1309 lines, basic list-based view
 - Create: `src/components/employee/calendar/CalendarSidebar.tsx`
 - Create: `src/components/employee/calendar/CalendarHeader.tsx`
 
-- [ ] Build `CalendarSidebar.tsx`: collapsible left panel (Google Calendar style) containing:
+- [x] Build `CalendarSidebar.tsx`: collapsible left panel (Google Calendar style) containing:
   - Prominent "Create" button (like Google Calendar's rounded + button)
   - Mini month calendar (using existing shadcn Calendar/react-day-picker) for quick date navigation - clicking a date navigates the main calendar
   - "My calendars" section with color-coded checkboxes: Appointments (blue), To-Dos (amber), Google Calendar (green) - toggling hides/shows that calendar's events
   - Google Calendar connection status and connect/disconnect actions (moved from header dropdown)
   - Sync actions (Push to Google, Pull from Google) when connected
-- [ ] Build `CalendarHeader.tsx`: toolbar above the calendar containing:
+- [x] Build `CalendarHeader.tsx`: toolbar above the calendar containing:
   - Today button (left side)
   - Previous/Next arrows
   - Current date range label (e.g., "April 2026", "Apr 13 - 19, 2026", "Sunday, April 13")
   - View switcher: Day, Week, Month, Schedule (right side, segmented button group)
   - Sidebar toggle button (hamburger/panel icon, far left)
-- [ ] Wire up CalendarView as the layout container: sidebar + header + FullCalendar main area
-- [ ] Ensure sidebar collapse/expand animates smoothly and calendar fills available space
-- [ ] Run `npm run build` and visually verify layout matches Google Calendar proportions
+- [x] Wire up CalendarView as the layout container: sidebar + header + FullCalendar main area
+- [x] Ensure sidebar collapse/expand animates smoothly and calendar fills available space
+- [x] Run `npm run build` and visually verify layout matches Google Calendar proportions
 
 ### Task 3: Time grid views (Day and Week) with current time indicator
 

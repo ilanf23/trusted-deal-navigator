@@ -6,6 +6,8 @@ import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { EventInput, DatesSetArg } from '@fullcalendar/core';
 import { useCalendarData, type ViewMode } from '@/hooks/useCalendarData';
+import { CalendarHeader } from './CalendarHeader';
+import { CalendarSidebar } from './CalendarSidebar';
 import { Loader2 } from 'lucide-react';
 import './calendar-styles.css';
 
@@ -20,6 +22,8 @@ export function CalendarView() {
   const calendarRef = useRef<FullCalendar>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [calendarTitle, setCalendarTitle] = useState('');
 
   const {
     appointments,
@@ -27,6 +31,15 @@ export function CalendarView() {
     isLoading,
     showAppointments,
     showTasks,
+    calendarStatus,
+    isConnecting,
+    isSyncing,
+    calendarFilters,
+    toggleFilter,
+    connectCalendar,
+    disconnectCalendar,
+    syncToGoogle,
+    importFromGoogle,
   } = useCalendarData(viewMode, currentDate);
 
   const events = useMemo<EventInput[]>(() => {
@@ -72,6 +85,7 @@ export function CalendarView() {
 
   const handleDatesSet = useCallback((arg: DatesSetArg) => {
     setCurrentDate(arg.view.currentStart);
+    setCalendarTitle(arg.view.title);
   }, []);
 
   const handleViewChange = useCallback((mode: ViewMode) => {
@@ -103,6 +117,17 @@ export function CalendarView() {
     }
   }, []);
 
+  const handleDateSelect = useCallback((date: Date) => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.gotoDate(date);
+    }
+  }, []);
+
+  const handleCreateEvent = useCallback(() => {
+    // Placeholder for Task 5 - will open EventDialog
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[600px]">
@@ -113,65 +138,56 @@ export function CalendarView() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center gap-2 mb-4 px-2">
-        <button
-          onClick={handleToday}
-          className="px-3 py-1.5 text-sm font-medium border rounded-md hover:bg-accent transition-colors"
-        >
-          Today
-        </button>
-        <button onClick={handlePrev} className="p-1.5 hover:bg-accent rounded-md transition-colors">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <button onClick={handleNext} className="p-1.5 hover:bg-accent rounded-md transition-colors">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-        <h2 className="text-lg font-semibold flex-1">
-          {calendarRef.current?.getApi()?.view.title ?? ''}
-        </h2>
-        <div className="flex border rounded-md overflow-hidden">
-          {(['day', 'week', 'month', 'agenda'] as ViewMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => handleViewChange(mode)}
-              className={`px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
-                viewMode === mode
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-accent'
-              }`}
-            >
-              {mode === 'agenda' ? 'Schedule' : mode}
-            </button>
-          ))}
-        </div>
-      </div>
+      <CalendarHeader
+        title={calendarTitle}
+        viewMode={viewMode}
+        onToday={handleToday}
+        onPrev={handlePrev}
+        onNext={handleNext}
+        onViewChange={handleViewChange}
+        onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+      />
 
-      <div className="flex-1 min-h-0">
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-          initialView={VIEW_MAP[viewMode]}
-          initialDate={currentDate}
-          headerToolbar={false}
-          events={events}
-          datesSet={handleDatesSet}
-          nowIndicator={true}
-          height="100%"
-          scrollTime="08:00:00"
-          allDaySlot={true}
-          slotMinTime="00:00:00"
-          slotMaxTime="24:00:00"
-          slotDuration="00:30:00"
-          expandRows={true}
-          dayMaxEvents={3}
-          navLinks={true}
-          editable={false}
-          selectable={false}
+      <div className="flex flex-1 min-h-0">
+        <CalendarSidebar
+          open={sidebarOpen}
+          currentDate={currentDate}
+          onDateSelect={handleDateSelect}
+          onCreateEvent={handleCreateEvent}
+          filters={calendarFilters}
+          onToggleFilter={toggleFilter}
+          calendarStatus={calendarStatus}
+          isConnecting={isConnecting}
+          isSyncing={isSyncing}
+          onConnect={connectCalendar}
+          onDisconnect={disconnectCalendar}
+          onSyncToGoogle={() => syncToGoogle.mutate()}
+          onImportFromGoogle={() => importFromGoogle.mutate()}
         />
+
+        <div className="flex-1 min-w-0 p-2">
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+            initialView={VIEW_MAP[viewMode]}
+            initialDate={currentDate}
+            headerToolbar={false}
+            events={events}
+            datesSet={handleDatesSet}
+            nowIndicator={true}
+            height="100%"
+            scrollTime="08:00:00"
+            allDaySlot={true}
+            slotMinTime="00:00:00"
+            slotMaxTime="24:00:00"
+            slotDuration="00:30:00"
+            expandRows={true}
+            dayMaxEvents={3}
+            navLinks={true}
+            editable={false}
+            selectable={false}
+          />
+        </div>
       </div>
     </div>
   );
