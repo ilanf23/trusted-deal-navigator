@@ -4,8 +4,9 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
-import type { EventInput, DatesSetArg, EventContentArg, DateSelectArg, EventClickArg } from '@fullcalendar/core';
-import { useCalendarData, type ViewMode, type Appointment } from '@/hooks/useCalendarData';
+import type { EventInput, DatesSetArg, EventContentArg, DateSelectArg, EventClickArg, EventDropArg } from '@fullcalendar/core';
+import type { EventResizeDoneArg } from '@fullcalendar/interaction';
+import { useCalendarData, type ViewMode, type Appointment, type TaskItem } from '@/hooks/useCalendarData';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarSidebar } from './CalendarSidebar';
 import { QuickEventPopover, type QuickEventData } from './QuickEventPopover';
@@ -91,6 +92,7 @@ export function CalendarView() {
     importFromGoogle,
     addAppointment,
     updateAppointment,
+    updateTaskDueDate,
     deleteAppointment,
   } = useCalendarData(viewMode, currentDate);
 
@@ -100,6 +102,7 @@ export function CalendarView() {
     if (showAppointments) {
       for (const apt of appointments) {
         const colors = APPOINTMENT_COLORS[apt.appointment_type ?? ''] ?? APPOINTMENT_COLORS.call;
+        const isImported = !!apt.google_event_id;
         result.push({
           id: `apt-${apt.id}`,
           title: apt.title,
@@ -108,6 +111,7 @@ export function CalendarView() {
           backgroundColor: colors.bg,
           borderColor: colors.border,
           textColor: colors.text,
+          editable: !isImported,
           extendedProps: { type: 'appointment', data: apt },
         });
       }
@@ -125,6 +129,8 @@ export function CalendarView() {
           backgroundColor: colors.bg,
           borderColor: colors.border,
           textColor: colors.text,
+          editable: !task.is_completed,
+          durationEditable: false,
           extendedProps: { type: 'task', data: task },
         });
       }
@@ -286,6 +292,51 @@ export function CalendarView() {
     [deleteAppointment]
   );
 
+  const handleEventDrop = useCallback(
+    (info: EventDropArg) => {
+      const { event, revert } = info;
+      const extProps = event.extendedProps;
+
+      if (extProps.type === 'appointment') {
+        const apt = extProps.data as Appointment;
+        updateAppointment.mutate(
+          {
+            id: apt.id,
+            start_time: event.start!.toISOString(),
+            end_time: (event.end ?? event.start!).toISOString(),
+          },
+          { onError: () => revert() }
+        );
+      } else if (extProps.type === 'task') {
+        const task = extProps.data as TaskItem;
+        updateTaskDueDate.mutate(
+          { id: task.id, due_date: event.start!.toISOString() },
+          { onError: () => revert() }
+        );
+      }
+    },
+    [updateAppointment, updateTaskDueDate]
+  );
+
+  const handleEventResize = useCallback(
+    (info: EventResizeDoneArg) => {
+      const { event, revert } = info;
+      const extProps = event.extendedProps;
+
+      if (extProps.type === 'appointment') {
+        const apt = extProps.data as Appointment;
+        updateAppointment.mutate(
+          {
+            id: apt.id,
+            end_time: event.end!.toISOString(),
+          },
+          { onError: () => revert() }
+        );
+      }
+    },
+    [updateAppointment]
+  );
+
   const handleNavLinkDayClick = useCallback((date: Date) => {
     const api = calendarRef.current?.getApi();
     if (api) {
@@ -355,12 +406,16 @@ export function CalendarView() {
             moreLinkClick="popover"
             navLinks={true}
             navLinkDayClick={handleNavLinkDayClick}
-            editable={false}
+            editable={true}
+            eventDurationEditable={true}
+            eventResizableFromStart={false}
             selectable={true}
             selectMirror={true}
             unselectAuto={false}
             select={handleCalendarSelect}
             eventClick={handleEventClick}
+            eventDrop={handleEventDrop}
+            eventResize={handleEventResize}
             slotEventOverlap={false}
             eventMaxStack={3}
             eventContent={renderEventContent}

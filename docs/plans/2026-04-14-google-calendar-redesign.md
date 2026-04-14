@@ -150,13 +150,13 @@ Replace the current monolithic CalendarWidget (1309 lines, basic list-based view
 - Modify: `src/components/employee/calendar/CalendarView.tsx`
 - Modify: `src/hooks/useCalendarData.ts`
 
-- [ ] Enable FullCalendar `editable: true`, `eventDurationEditable: true`, `eventResizableFromStart: false`
-- [ ] Implement `eventDrop` callback: when user drags event to new time/day, optimistically update the calendar and fire a Supabase update to change start_time and end_time. On error, revert the event position and show toast
-- [ ] Implement `eventResize` callback: when user drags bottom edge of event to change duration, optimistically update and fire Supabase update for end_time. On error, revert and toast
-- [ ] Add visual feedback during drag: FullCalendar shows ghost element by default, style it with reduced opacity
-- [ ] Prevent dragging of completed tasks (set `editable: false` on completed task events)
-- [ ] Prevent dragging of imported Google Calendar events that are read-only
-- [ ] Run `npm run build` and test drag/resize in day, week, and month views
+- [x] Enable FullCalendar `editable: true`, `eventDurationEditable: true`, `eventResizableFromStart: false`
+- [x] Implement `eventDrop` callback: when user drags event to new time/day, optimistically update the calendar and fire a Supabase update to change start_time and end_time. On error, revert the event position and show toast
+- [x] Implement `eventResize` callback: when user drags bottom edge of event to change duration, optimistically update and fire Supabase update for end_time. On error, revert and toast
+- [x] Add visual feedback during drag: FullCalendar shows ghost element by default, style it with reduced opacity
+- [x] Prevent dragging of completed tasks (set `editable: false` on completed task events)
+- [x] Prevent dragging of imported Google Calendar events that are read-only
+- [x] Run `npm run build` and test drag/resize in day, week, and month views
 
 ### Task 8: Polish, keyboard shortcuts, and cleanup
 

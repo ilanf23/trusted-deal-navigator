@@ -264,6 +264,21 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
     onError: () => toast.error('Failed to update appointment'),
   });
 
+  const updateTaskDueDate = useMutation({
+    mutationFn: async (payload: { id: string; due_date: string }) => {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ due_date: payload.due_date })
+        .eq('id', payload.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks-calendar'] });
+      toast.success('Task rescheduled');
+    },
+    onError: () => toast.error('Failed to reschedule task'),
+  });
+
   const deleteAppointment = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -436,6 +451,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
     showTasks,
     addAppointment,
     updateAppointment,
+    updateTaskDueDate,
     deleteAppointment,
     connectCalendar,
     disconnectCalendar,

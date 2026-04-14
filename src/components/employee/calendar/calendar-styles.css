@@ -376,6 +376,22 @@
   border-radius: 4px;
 }
 
+/* Drag-and-drop feedback */
+.fc .fc-event.fc-event-dragging {
+  opacity: 0.7;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.fc .fc-event.fc-event-resizing {
+  opacity: 0.7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Non-editable events show default cursor */
+.fc .fc-event:not([class*="fc-event-dragging"]) {
+  cursor: pointer;
+}
+
 /* Dark mode adjustments */
 .dark .fc .fc-event:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
