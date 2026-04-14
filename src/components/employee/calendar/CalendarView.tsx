@@ -4,10 +4,12 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
-import type { EventInput, DatesSetArg, EventContentArg } from '@fullcalendar/core';
+import type { EventInput, DatesSetArg, EventContentArg, DateSelectArg } from '@fullcalendar/core';
 import { useCalendarData, type ViewMode } from '@/hooks/useCalendarData';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarSidebar } from './CalendarSidebar';
+import { QuickEventPopover, type QuickEventData } from './QuickEventPopover';
+import { EventDialog, type EventDialogData } from './EventDialog';
 import { Loader2 } from 'lucide-react';
 import './calendar-styles.css';
 
@@ -63,6 +65,13 @@ export function CalendarView() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [calendarTitle, setCalendarTitle] = useState('');
 
+  const [quickEvent, setQuickEvent] = useState<QuickEventData | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogData, setDialogData] = useState<EventDialogData>({
+    start: new Date(),
+    end: new Date(),
+  });
+
   const {
     appointments,
     tasks,
@@ -78,6 +87,8 @@ export function CalendarView() {
     disconnectCalendar,
     syncToGoogle,
     importFromGoogle,
+    addAppointment,
+    updateAppointment,
   } = useCalendarData(viewMode, currentDate);
 
   const events = useMemo<EventInput[]>(() => {
@@ -160,9 +171,73 @@ export function CalendarView() {
     }
   }, []);
 
-  const handleCreateEvent = useCallback(() => {
-    // Placeholder for Task 5 - will open EventDialog
+  const openDialogForCreate = useCallback((start: Date, end: Date, title = '') => {
+    setQuickEvent(null);
+    setDialogData({ title, start, end });
+    setDialogOpen(true);
   }, []);
+
+  const handleCreateEvent = useCallback(() => {
+    const now = new Date();
+    now.setMinutes(Math.ceil(now.getMinutes() / 30) * 30, 0, 0);
+    const end = new Date(now.getTime() + 60 * 60000);
+    openDialogForCreate(now, end);
+  }, [openDialogForCreate]);
+
+  const handleCalendarSelect = useCallback((info: DateSelectArg) => {
+    const api = calendarRef.current?.getApi();
+    if (api) api.unselect();
+
+    const isAllDay = info.allDay;
+    const start = info.start;
+    const end = info.end;
+
+    const rect = (info.jsEvent?.target as HTMLElement)?.getBoundingClientRect?.();
+    const position = rect
+      ? { top: rect.top + rect.height, left: rect.left }
+      : { top: window.innerHeight / 2 - 100, left: window.innerWidth / 2 - 150 };
+
+    setQuickEvent({ start, end, allDay: isAllDay, position });
+  }, []);
+
+  const handleQuickSave = useCallback(
+    (title: string, start: Date, end: Date) => {
+      addAppointment.mutate({
+        title,
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        appointment_type: 'call',
+      });
+      setQuickEvent(null);
+    },
+    [addAppointment]
+  );
+
+  const handleQuickMoreOptions = useCallback(
+    (title: string, start: Date, end: Date) => {
+      openDialogForCreate(start, end, title);
+    },
+    [openDialogForCreate]
+  );
+
+  const handleDialogSave = useCallback(
+    (event: {
+      id?: string;
+      title: string;
+      start_time: string;
+      end_time: string;
+      appointment_type: string;
+      description?: string;
+      lead_id?: string | null;
+    }) => {
+      if (event.id) {
+        updateAppointment.mutate(event as { id: string } & typeof event);
+      } else {
+        addAppointment.mutate(event);
+      }
+    },
+    [addAppointment, updateAppointment]
+  );
 
   const handleNavLinkDayClick = useCallback((date: Date) => {
     const api = calendarRef.current?.getApi();
@@ -234,7 +309,10 @@ export function CalendarView() {
             navLinks={true}
             navLinkDayClick={handleNavLinkDayClick}
             editable={false}
-            selectable={false}
+            selectable={true}
+            selectMirror={true}
+            unselectAuto={false}
+            select={handleCalendarSelect}
             slotEventOverlap={false}
             eventMaxStack={3}
             eventContent={renderEventContent}
@@ -257,6 +335,22 @@ export function CalendarView() {
           />
         </div>
       </div>
+
+      {quickEvent && (
+        <QuickEventPopover
+          data={quickEvent}
+          onSave={handleQuickSave}
+          onMoreOptions={handleQuickMoreOptions}
+          onClose={() => setQuickEvent(null)}
+        />
+      )}
+
+      <EventDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        data={dialogData}
+        onSave={handleDialogSave}
+      />
     </div>
   );
 }

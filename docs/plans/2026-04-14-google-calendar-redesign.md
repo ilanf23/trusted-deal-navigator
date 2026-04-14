@@ -104,10 +104,10 @@ Replace the current monolithic CalendarWidget (1309 lines, basic list-based view
 - Modify: `src/components/employee/calendar/CalendarView.tsx`
 - Modify: `src/hooks/useCalendarData.ts` (add mutation hooks)
 
-- [ ] Enable FullCalendar `selectable: true` and `dateClick` - clicking an empty time slot opens a QuickEventPopover at that position
-- [ ] Build `QuickEventPopover.tsx`: small floating card (like Google Calendar) with title input, time display, "Save" and "More options" buttons. Save creates event immediately, "More options" opens full dialog
-- [ ] Enable click-and-drag on time grid to select a time range - pre-fills start/end in the quick popover
-- [ ] Build `EventDialog.tsx`: full event creation/editing dialog (shadcn Dialog) with:
+- [x] Enable FullCalendar `selectable: true` and `dateClick` - clicking an empty time slot opens a QuickEventPopover at that position
+- [x] Build `QuickEventPopover.tsx`: small floating card (like Google Calendar) with title input, time display, "Save" and "More options" buttons. Save creates event immediately, "More options" opens full dialog
+- [x] Enable click-and-drag on time grid to select a time range - pre-fills start/end in the quick popover
+- [x] Build `EventDialog.tsx`: full event creation/editing dialog (shadcn Dialog) with:
   - Title input (large, prominent)
   - Date picker (start date + time, end date + time)
   - Duration presets (15m, 30m, 45m, 1h, 1.5h, 2h)
@@ -116,9 +116,9 @@ Replace the current monolithic CalendarWidget (1309 lines, basic list-based view
   - Description textarea
   - Lead/borrower association (optional, with search)
   - Save and Cancel buttons
-- [ ] Extract appointment mutations (add, update, delete) into `useCalendarData.ts` hook
-- [ ] Wire the "Create" button in CalendarSidebar to open EventDialog with current date/time pre-filled
-- [ ] Run `npm run build` and test event creation flow in all views
+- [x] Extract appointment mutations (add, update, delete) into `useCalendarData.ts` hook
+- [x] Wire the "Create" button in CalendarSidebar to open EventDialog with current date/time pre-filled
+- [x] Run `npm run build` and test event creation flow in all views
 
 ### Task 6: Event detail popover and editing
 

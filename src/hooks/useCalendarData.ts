@@ -212,7 +212,14 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
   const isLoading = appointmentsLoading || tasksLoading;
 
   const addAppointment = useMutation({
-    mutationFn: async (appt: { title: string; start_time: string; end_time: string; appointment_type: string }) => {
+    mutationFn: async (appt: {
+      title: string;
+      start_time: string;
+      end_time: string;
+      appointment_type: string;
+      description?: string;
+      lead_id?: string | null;
+    }) => {
       const { error } = await supabase
         .from('appointments')
         .insert({
@@ -220,6 +227,8 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
           start_time: appt.start_time,
           end_time: appt.end_time,
           appointment_type: appt.appointment_type,
+          description: appt.description ?? null,
+          lead_id: appt.lead_id ?? null,
           team_member_id: teamMember?.id,
         });
       if (error) throw error;
@@ -229,6 +238,30 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
       toast.success('Appointment added');
     },
     onError: () => toast.error('Failed to add appointment'),
+  });
+
+  const updateAppointment = useMutation({
+    mutationFn: async (appt: {
+      id: string;
+      title?: string;
+      start_time?: string;
+      end_time?: string;
+      appointment_type?: string;
+      description?: string | null;
+      lead_id?: string | null;
+    }) => {
+      const { id, ...updates } = appt;
+      const { error } = await supabase
+        .from('appointments')
+        .update(updates)
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      toast.success('Appointment updated');
+    },
+    onError: () => toast.error('Failed to update appointment'),
   });
 
   const deleteAppointment = useMutation({
@@ -402,6 +435,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
     showAppointments,
     showTasks,
     addAppointment,
+    updateAppointment,
     deleteAppointment,
     connectCalendar,
     disconnectCalendar,
