@@ -68,6 +68,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
 
   const showAppointments = calendarFilters.find(f => f.id === 'appointments')?.enabled ?? true;
   const showTasks = calendarFilters.find(f => f.id === 'tasks')?.enabled ?? true;
+  const showGoogle = calendarFilters.find(f => f.id === 'google')?.enabled ?? true;
 
   const getDateRange = useCallback(() => {
     switch (viewMode) {
@@ -291,6 +292,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       toast.success('Appointment deleted');
     },
+    onError: () => toast.error('Failed to delete appointment'),
   });
 
   const connectCalendar = async () => {
@@ -449,6 +451,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
     toggleFilter,
     showAppointments,
     showTasks,
+    showGoogle,
     addAppointment,
     updateAppointment,
     updateTaskDueDate,
@@ -458,6 +461,5 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
     syncToGoogle,
     importFromGoogle,
     isSyncing,
-    getDateRange,
   };
 }

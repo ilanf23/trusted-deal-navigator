@@ -8,7 +8,7 @@ const Calendar = () => {
   useEffect(() => {
     setPageTitle('Calendar');
     return () => { setPageTitle(null); };
-  }, []);
+  }, [setPageTitle]);
 
   return (
     <EmployeeLayout>

@@ -14,6 +14,8 @@ npm run preview      # Preview production build
 
 There are no automated tests. Playwright is installed but not actively used.
 
+Large library bundles are split into separate chunks via `vite.config.ts` `manualChunks` (e.g., FullCalendar). Add new entries when introducing large dependencies.
+
 ## Architecture Overview
 
 **CommercialLendingX** is a multi-role commercial lending platform with three distinct portals:
@@ -30,7 +32,9 @@ src/
   components/     # ~270 components across 11 subdirectories
     ui/           # 61 shadcn/ui primitives (do not heavily modify)
     admin/        # 105 admin portal components (CRM, pipeline, inbox, dropbox, sheets, settings)
+      pipeline/kanban/  # Shared Kanban board components (KanbanBoard, KanbanColumn, KanbanCardShell, useKanbanDrag)
     employee/     # 31 employee portal components (dashboard, calendar, gmail, tasks)
+      calendar/   # Google Calendar-style calendar (FullCalendar engine + custom components)
     home/         # 10 public landing page sections
     layout/       # 3 public site layout wrappers (Header, Footer, PublicLayout)
     auth/         # ProtectedRoute guard
@@ -81,6 +85,8 @@ Edge functions live in `supabase/functions/`. Each function is a Deno TypeScript
 
 Key tables: `users`, `leads`, `tasks`, `active_calls`, `call_events`, `evan_communications`, `ai_conversations`, `contracts`, `invoices`, `partner_referrals`. The `users` table consolidates former `team_members`, `profiles`, and `people` tables. The `tasks` table is the unified task store (replaces former `lead_tasks`). Task status values are `todo`, `in_progress`, `done`. Assignment uses `team_member_id` (FK to `users`).
 
+Deal pipeline tables (`potential`, `underwriting`, `lender_management`) share two enum columns: `deal_outcome` (open/won/lost/abandoned via `deal_outcome_enum` — tracks win/loss independently of pipeline stage) and `priority` (low/medium/high, nullable `deal_priority` enum).
+
 ## Twilio Calling Architecture
 
 **Inbound:** PSTN → `twilio-inbound` edge function → TwiML dials browser client (`clx-admin`) + fallback phone → `CallContext` SDK "incoming" event → `IncomingCallPopup` → user answers.
@@ -118,6 +124,7 @@ If you need team member data, query the `users` table or use the `useTeamMember(
 
 - **UI**: Radix UI (20+ packages), Lucide icons, Framer Motion, dnd-kit (drag-and-drop)
 - **Data**: TanStack Query, React Hook Form + Zod, Supabase JS
+- **Calendar**: FullCalendar 6 (time grid, month, list views with drag-and-drop)
 - **Rich Content**: react-filerobot-image-editor, Fortune Sheet, Recharts, Konva
 - **Communication**: Twilio Voice SDK, DOMPurify (HTML sanitization)
 - **Routing**: react-router-dom v6

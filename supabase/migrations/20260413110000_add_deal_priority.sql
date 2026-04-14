@@ -22,7 +22,7 @@ DECLARE
 BEGIN
   FOREACH tbl IN ARRAY ARRAY['potential', 'underwriting', 'lender_management'] LOOP
     EXECUTE format(
-      'UPDATE public.%I SET priority = LOWER(priority) WHERE priority IS NOT NULL AND priority <> LOWER(priority)',
+      'UPDATE public.%I SET priority = TRIM(LOWER(priority)) WHERE priority IS NOT NULL AND priority <> TRIM(LOWER(priority))',
       tbl
     );
     EXECUTE format(

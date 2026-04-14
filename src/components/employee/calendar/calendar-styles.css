@@ -424,10 +424,6 @@
   filter: brightness(1.1);
 }
 
-.dark .fc .fc-timegrid-slot-label-cushion {
-  color: hsl(var(--muted-foreground));
-}
-
 .dark .fc .fc-popover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
@@ -445,11 +441,3 @@
   border-color: hsl(var(--primary) / 0.5);
 }
 
-.dark .fc .fc-list-event:hover td {
-  background: hsl(var(--accent));
-}
-
-.dark .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-}

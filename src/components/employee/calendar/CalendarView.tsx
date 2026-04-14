@@ -91,6 +91,7 @@ export function CalendarView() {
     isLoading,
     showAppointments,
     showTasks,
+    showGoogle,
     calendarStatus,
     isConnecting,
     isSyncing,
@@ -109,22 +110,22 @@ export function CalendarView() {
   const events = useMemo<EventInput[]>(() => {
     const result: EventInput[] = [];
 
-    if (showAppointments) {
-      for (const apt of appointments) {
-        const colors = APPOINTMENT_COLORS[apt.appointment_type ?? ''] ?? APPOINTMENT_COLORS.call;
-        const isImported = !!apt.google_event_id;
-        result.push({
-          id: `apt-${apt.id}`,
-          title: apt.title,
-          start: apt.start_time,
-          end: apt.end_time ?? undefined,
-          backgroundColor: colors.bg,
-          borderColor: colors.border,
-          textColor: colors.text,
-          editable: !isImported,
-          extendedProps: { type: 'appointment', data: apt },
-        });
-      }
+    for (const apt of appointments) {
+      const isImported = !!apt.google_event_id;
+      if (isImported && !showGoogle) continue;
+      if (!isImported && !showAppointments) continue;
+      const colors = APPOINTMENT_COLORS[apt.appointment_type ?? ''] ?? APPOINTMENT_COLORS.call;
+      result.push({
+        id: `apt-${apt.id}`,
+        title: apt.title,
+        start: apt.start_time,
+        end: apt.end_time ?? undefined,
+        backgroundColor: colors.bg,
+        borderColor: colors.border,
+        textColor: colors.text,
+        editable: !isImported,
+        extendedProps: { type: 'appointment', data: apt },
+      });
     }
 
     if (showTasks) {
@@ -147,7 +148,7 @@ export function CalendarView() {
     }
 
     return result;
-  }, [appointments, tasks, showAppointments, showTasks]);
+  }, [appointments, tasks, showAppointments, showTasks, showGoogle]);
 
   const handleDatesSet = useCallback((arg: DatesSetArg) => {
     setCurrentDate(arg.view.currentStart);
@@ -360,6 +361,7 @@ export function CalendarView() {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement)?.isContentEditable) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (quickEvent || eventDetail || dialogOpen) return;
 
       switch (e.key.toLowerCase()) {
         case 't':
@@ -386,7 +388,7 @@ export function CalendarView() {
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleToday, handleViewChange, handleCreateEvent]);
+  }, [handleToday, handleViewChange, handleCreateEvent, quickEvent, eventDetail, dialogOpen]);
 
   if (isLoading) {
     return (
