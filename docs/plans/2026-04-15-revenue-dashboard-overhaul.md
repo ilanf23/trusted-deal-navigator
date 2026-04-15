@@ -119,15 +119,15 @@ Complete redesign of both the SuperAdmin revenue dashboard and employee sales re
 **Files:**
 - Modify: `src/pages/admin/SuperAdminDashboard.tsx`
 
-- [ ] Replace top metric cards with CompactKPITile components: Revenue YTD (currency + sparkline), Pace vs Plan (percentage + trend), Weighted Forecast (currency + trend), Pipeline Total (currency + deal count), Team Win Rate (percentage), Active Deals (count)
-- [ ] Add a full-width RevenueComboChart showing company-wide revenue — bars for monthly revenue, line for cumulative, goal line from revenue_targets table
-- [ ] Add ActivityHeatmap showing company-wide deal activity (all team members combined)
-- [ ] Replace the plain Pipeline by Stage table with the PipelineStageBar component plus a detailed expandable table below it
-- [ ] Redesign Team Performance section: keep the table but add mini sparklines inline for each team member's revenue trend, color-code conversion rates (green > 20%, yellow 10-20%, red < 10%)
-- [ ] Consolidate filtering: unified filter bar at page top (time period: MTD/QTD/YTD/12M, with a team member multi-select to filter all sections)
-- [ ] Keep the Confidence banner but redesign it: horizontal bar with color gradient (red to green), breakdown metrics as compact pills below
-- [ ] Keep Referral Engine and Weekly Scorecard sections with tightened styling
-- [ ] Run `npm run build && npm run lint` — must pass
+- [x] Replace top metric cards with CompactKPITile components: Revenue YTD (currency + sparkline), Pace vs Plan (percentage + trend), Weighted Forecast (currency + trend), Pipeline Total (currency + deal count), Team Win Rate (percentage), Active Deals (count)
+- [x] Add a full-width RevenueComboChart showing company-wide revenue — bars for monthly revenue, line for cumulative, goal line from revenue_targets table
+- [x] Add ActivityHeatmap showing company-wide deal activity (all team members combined)
+- [x] Replace the plain Pipeline by Stage table with the PipelineStageBar component plus a detailed expandable table below it
+- [x] Redesign Team Performance section: keep the table but add mini sparklines inline for each team member's revenue trend, color-code conversion rates (green > 20%, yellow 10-20%, red < 10%)
+- [x] Consolidate filtering: unified filter bar at page top (time period: MTD/QTD/YTD/12M, with a team member multi-select to filter all sections)
+- [x] Keep the Confidence banner but redesign it: horizontal bar with color gradient (red to green), breakdown metrics as compact pills below
+- [x] Keep Referral Engine and Weekly Scorecard sections with tightened styling
+- [x] Run `npm run build && npm run lint` — must pass
 
 ### Task 9: Polish and visual consistency pass
 

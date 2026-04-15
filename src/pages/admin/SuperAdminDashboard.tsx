@@ -1,32 +1,100 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, Target, BarChart3, Calendar, Users, Handshake, Gauge, CalendarDays, Eye, Shield, AlertCircle } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Users, Handshake, Calendar, Eye, AlertCircle, Loader2,
+  ChevronDown, ChevronUp, Filter,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useSuperAdminDashboard, getTeamMemberUrl, getTeamMemberRole, type TimePeriod } from '@/hooks/useSuperAdminDashboard';
+import { CompactKPITile } from '@/components/admin/dashboard/CompactKPITile';
+import { RevenueComboChart, type ComboChartDataPoint } from '@/components/admin/dashboard/RevenueComboChart';
+import { ActivityHeatmap } from '@/components/admin/dashboard/ActivityHeatmap';
+import { PipelineStageBar, type PipelineStageData } from '@/components/admin/dashboard/PipelineStageBar';
+import { cn } from '@/lib/utils';
+
+const PIPELINE_STAGE_COLORS: Record<string, string> = {
+  'Discovery': 'blue',
+  'Pre-Qualification': 'cyan',
+  'Document Collection': 'amber',
+  'Underwriting': 'orange',
+  'Lender Management': 'violet',
+  'Path to Close': 'emerald',
+  'Closed': 'teal',
+};
+
+const formatCurrency = (amount: number) => {
+  if (amount >= 1000000) return `$${(amount / 1000000).toFixed(2)}M`;
+  return `$${(amount / 1000).toFixed(0)}K`;
+};
+
+const formatLargeAmount = (amount: number) => {
+  if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
+  if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}K`;
+  return `$${amount}`;
+};
+
+const getConfidenceGradient = (score: number) => {
+  if (score >= 70) return 'from-emerald-500 to-emerald-400';
+  if (score >= 50) return 'from-amber-500 to-amber-400';
+  return 'from-red-500 to-red-400';
+};
+
+const getConfidenceLabel = (score: number) => {
+  if (score >= 80) return 'Very High';
+  if (score >= 70) return 'High';
+  if (score >= 50) return 'Moderate';
+  if (score >= 30) return 'Low';
+  return 'Very Low';
+};
+
+const getConversionColor = (rate: number) => {
+  if (rate > 20) return 'text-emerald-600 dark:text-emerald-400';
+  if (rate >= 10) return 'text-amber-600 dark:text-amber-400';
+  return 'text-red-500 dark:text-red-400';
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'Hot': return 'bg-red-500 hover:bg-red-600';
+    case 'Warm': return 'bg-orange-500 hover:bg-orange-600';
+    case 'Cold': return 'bg-blue-500 hover:bg-blue-600';
+    case 'Dormant': return 'bg-gray-500 hover:bg-gray-600';
+    default: return 'bg-gray-500';
+  }
+};
 
 const SuperAdminDashboard = () => {
   const navigate = useNavigate();
   const { teamMember, isOwner, loading } = useTeamMember();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
-  const { currentMetrics, pipelineStages, teamMembers, referrals, scorecard, teamUsers, isLoading, isError } = useSuperAdminDashboard(timePeriod);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [pipelineExpanded, setPipelineExpanded] = useState(false);
+
+  const {
+    currentMetrics, pipelineStages, teamMembers, referrals, scorecard,
+    teamUsers, activityHeatmapData, sparklineData, revenueByTeamMember,
+    periodOverPeriod, isLoading, isError, heatmapLoading, sparklineLoading,
+  } = useSuperAdminDashboard(timePeriod);
 
   const { setPageTitle } = useAdminTopBar();
   useEffect(() => {
     setPageTitle('Admin Dashboard');
     return () => { setPageTitle(null); };
-  }, []);
+  }, [setPageTitle]);
 
-  // Redirect non-owner employees to their team dashboard
   useEffect(() => {
     if (!loading && teamMember && !isOwner) {
       const founderUsers = ['ilan', 'brad', 'adam'];
@@ -39,6 +107,24 @@ const SuperAdminDashboard = () => {
     }
   }, [loading, teamMember, isOwner, navigate]);
 
+  // Annual target for chart
+  const { data: annualTargetData } = useQuery({
+    queryKey: ['sa-annual-target'],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('revenue_targets')
+        .select('target_amount, period_type');
+      if (error) throw error;
+      const annual = (data || []).find((r: { period_type: string; target_amount: number }) =>
+        r.period_type === 'annual' || r.period_type === 'ytd',
+      );
+      return annual?.target_amount ?? 1500000;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const annualTarget = (annualTargetData as number) ?? 1500000;
+
   // Derived metrics
   const revenueAmount = currentMetrics?.current_amount ?? 0;
   const targetRevenue = currentMetrics?.target_amount ?? 1;
@@ -50,12 +136,10 @@ const SuperAdminDashboard = () => {
 
   const shortLabel = timePeriod === 'ytd' ? 'YTD' : 'MTD';
 
-  // Team average conversion rate
   const avgConversion = teamMembers.length > 0
     ? teamMembers.reduce((sum, m) => sum + m.conversion, 0) / teamMembers.length
     : 0;
 
-  // Pipeline health
   const totalDeals = pipelineStages.reduce((sum, s) => sum + s.deal_count, 0);
   const lateStageDeals = pipelineStages
     .filter(s => ['Lender Management', 'Path to Close', 'Closed'].includes(s.stage))
@@ -68,51 +152,66 @@ const SuperAdminDashboard = () => {
     forecastConfidence * 0.25 +
     Math.min(forecastAsPercentOfTarget, 100) * 0.20 +
     pipelineHealth * 0.15 +
-    avgConversion * 0.15
+    avgConversion * 0.15,
   );
 
-  const formatCurrency = (amount: number) => {
-    if (amount >= 1000000) return `$${(amount / 1000000).toFixed(2)}M`;
-    return `$${(amount / 1000).toFixed(0)}K`;
-  };
+  const totalPipelineValue = pipelineStages.reduce((sum, s) => sum + s.total_requested, 0);
 
-  const formatLargeAmount = (amount: number) => {
-    if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
-    if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}K`;
-    return `$${amount}`;
-  };
+  // Combo chart data from sparkline (12 months)
+  const comboChartData: ComboChartDataPoint[] = useMemo(() => {
+    const now = new Date();
+    const monthlyTarget = annualTarget / 12;
+    let cumulative = 0;
 
-  const getConfidenceColor = (score: number) => {
-    if (score >= 70) return 'text-green-600';
-    if (score >= 50) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+    return sparklineData.revenue.map((rev, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
+      const label = d.toLocaleDateString('en-US', { month: 'short' });
+      cumulative += rev;
+      return {
+        label,
+        revenue: rev,
+        cumulative,
+        target: monthlyTarget * (i + 1),
+      };
+    });
+  }, [sparklineData.revenue, annualTarget]);
 
-  const getConfidenceLabel = (score: number) => {
-    if (score >= 80) return 'Very High';
-    if (score >= 70) return 'High';
-    if (score >= 50) return 'Moderate';
-    if (score >= 30) return 'Low';
-    return 'Very Low';
-  };
+  // Pipeline bar data
+  const pipelineBarData: PipelineStageData[] = useMemo(() => {
+    return pipelineStages.map((s) => ({
+      stageId: s.stage,
+      stageName: s.stage,
+      dealCount: s.deal_count,
+      totalValue: s.total_requested,
+      weightedForecast: s.total_weighted_fees,
+      colorName: PIPELINE_STAGE_COLORS[s.stage],
+    }));
+  }, [pipelineStages]);
 
-  const getConfidenceBg = (score: number) => {
-    if (score >= 70) return 'from-green-500/20 to-green-600/10 border-green-500/30';
-    if (score >= 50) return 'from-yellow-500/20 to-yellow-600/10 border-yellow-500/30';
-    return 'from-red-500/20 to-red-600/10 border-red-500/30';
-  };
+  // Team member filter
+  const toggleMember = useCallback((name: string) => {
+    setSelectedMembers((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name],
+    );
+  }, []);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Hot': return 'bg-red-500 hover:bg-red-600';
-      case 'Warm': return 'bg-orange-500 hover:bg-orange-600';
-      case 'Cold': return 'bg-blue-500 hover:bg-blue-600';
-      case 'Dormant': return 'bg-gray-500 hover:bg-gray-600';
-      default: return 'bg-gray-500';
-    }
-  };
+  const filteredTeamMembers = useMemo(() => {
+    if (selectedMembers.length === 0) return teamMembers;
+    return teamMembers.filter((m) => selectedMembers.includes(m.name));
+  }, [teamMembers, selectedMembers]);
 
-  // Error state
+  // Revenue bar for team performance (relative to max)
+  const maxTeamRevenue = useMemo(() => {
+    if (revenueByTeamMember.length === 0) return 1;
+    return Math.max(...revenueByTeamMember.map((m) => m.revenue), 1);
+  }, [revenueByTeamMember]);
+
+  const teamRevenueMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const m of revenueByTeamMember) map.set(m.name, m.revenue);
+    return map;
+  }, [revenueByTeamMember]);
+
   if (isError) {
     return (
       <AdminLayout>
@@ -132,241 +231,317 @@ const SuperAdminDashboard = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4">
-          <Select value={timePeriod} onValueChange={(value: TimePeriod) => setTimePeriod(value)}>
-            <SelectTrigger className="w-[180px] bg-background">
-              <CalendarDays className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Select period" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border shadow-lg z-50">
-              <SelectItem value="ytd">Year to Date</SelectItem>
-              <SelectItem value="mtd">Month to Date</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="space-y-4">
+        {/* Unified filter bar */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          </div>
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                  selectedMembers.length > 0
+                    ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted ring-1 ring-border/50',
+                )}>
+                  <Filter className="h-3.5 w-3.5" />
+                  {selectedMembers.length === 0
+                    ? 'All Members'
+                    : `${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''}`}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-52 p-3" align="end">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium">Filter by Member</p>
+                  {selectedMembers.length > 0 && (
+                    <button
+                      onClick={() => setSelectedMembers([])}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {teamMembers.map((member) => (
+                    <label
+                      key={member.name}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors"
+                    >
+                      <Checkbox
+                        checked={selectedMembers.includes(member.name)}
+                        onCheckedChange={() => toggleMember(member.name)}
+                      />
+                      <span className="text-xs">{member.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
+              <TabsList className="bg-muted/60 rounded-full p-1 h-9">
+                {(['mtd', 'ytd'] as const).map((p) => (
+                  <TabsTrigger
+                    key={p}
+                    value={p}
+                    className="rounded-full px-4 text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
+                  >
+                    {p.toUpperCase()}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
 
-        {/* Confidence Level Banner */}
+        {/* Confidence banner — horizontal bar + pills */}
         {isLoading ? (
-          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-20 w-full" />
         ) : (
-          <Card className={`bg-gradient-to-r ${getConfidenceBg(overallConfidence)} border-2`}>
-            <CardContent className="py-6">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-background/80 rounded-full">
-                    <Gauge className={`h-8 w-8 ${getConfidenceColor(overallConfidence)}`} />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">
-                      Overall Confidence Level ({shortLabel})
-                    </div>
-                    <div className={`text-4xl font-bold ${getConfidenceColor(overallConfidence)}`}>
+          <Card className="border border-border/60">
+            <CardContent className="py-4">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Confidence ({shortLabel})
+                    </span>
+                    <span className={cn(
+                      'text-2xl font-bold',
+                      overallConfidence >= 70 ? 'text-emerald-600 dark:text-emerald-400' :
+                      overallConfidence >= 50 ? 'text-amber-600 dark:text-amber-400' :
+                      'text-red-500 dark:text-red-400',
+                    )}>
                       {overallConfidence}%
-                      <span className="text-lg ml-2 font-normal">({getConfidenceLabel(overallConfidence)})</span>
-                    </div>
+                    </span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {getConfidenceLabel(overallConfidence)}
+                    </Badge>
+                  </div>
+                  <div className="text-right text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{formatCurrency(revenueAmount)}</span>
+                    {' '}of{' '}
+                    <span>{formatCurrency(targetRevenue)}</span>
+                    {' '}({percentOfTarget.toFixed(0)}%)
                   </div>
                 </div>
-                <div className="flex-1 max-w-md">
-                  <Progress value={overallConfidence} className="h-3" />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                    <span>Target: {formatCurrency(targetRevenue)}</span>
-                    <span>Current: {formatCurrency(revenueAmount)} ({percentOfTarget.toFixed(1)}%)</span>
-                  </div>
+
+                <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted/50">
+                  <div
+                    className={cn('h-full rounded-full bg-gradient-to-r transition-all', getConfidenceGradient(overallConfidence))}
+                    style={{ width: `${Math.min(overallConfidence, 100)}%` }}
+                  />
                 </div>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground">Based on</div>
-                  <div className="text-xs space-y-1 mt-1">
-                    <div>Pace: {paceVsPlan}% • Forecast: {forecastConfidence}%</div>
-                    <div>Pipeline: {pipelineHealth.toFixed(0)}% • Team Conv: {avgConversion.toFixed(0)}%</div>
-                  </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {[
+                    { label: 'Pace', value: `${paceVsPlan}%` },
+                    { label: 'Forecast', value: `${forecastConfidence}%` },
+                    { label: 'Pipeline Health', value: `${pipelineHealth.toFixed(0)}%` },
+                    { label: 'Team Conv', value: `${avgConversion.toFixed(0)}%` },
+                    { label: 'Forecast Amt', value: formatCurrency(weightedForecast) },
+                  ].map((pill) => (
+                    <span
+                      key={pill.label}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-muted/50 px-2.5 py-1 text-[11px]"
+                    >
+                      <span className="text-muted-foreground">{pill.label}:</span>
+                      <span className="font-medium text-foreground">{pill.value}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Top Row - Revenue Metrics */}
+        {/* KPI tiles — 6 across on desktop */}
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-3">
-            {[1, 2, 3].map(i => <Skeleton key={i} className="h-48" />)}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-28" />)}
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-2 border-admin-teal/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  Revenue {shortLabel}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-admin-teal">{formatCurrency(revenueAmount)}</div>
-                <p className="text-sm text-muted-foreground mt-1">earned so far</p>
-                <div className="mt-3">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Target: {formatCurrency(targetRevenue)}</span>
-                    <span className="font-medium">{percentOfTarget.toFixed(0)}%</span>
-                  </div>
-                  <Progress value={percentOfTarget} className="h-2" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-admin-blue/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Pace vs Plan
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-600">{paceVsPlan}%</div>
-                <p className="text-sm text-muted-foreground mt-1">ahead of schedule</p>
-                <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
-                  <p className="text-sm text-green-700 dark:text-green-400">
-                    Moving faster than planned pace
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-admin-orange/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  Weighted Forecast
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-admin-orange">{formatCurrency(weightedForecast)}</div>
-                <p className="text-sm text-muted-foreground mt-1">projected for the {timePeriod === 'ytd' ? 'year' : 'month'}</p>
-                <div className="mt-3 flex items-center gap-2">
-                  <Badge variant="secondary" className="bg-admin-orange/10 text-admin-orange">
-                    {forecastConfidence}% confidence
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <CompactKPITile
+              label={`Revenue ${shortLabel}`}
+              value={periodOverPeriod.revenue.current}
+              variant="currency"
+              deltaAbsolute={periodOverPeriod.revenue.delta}
+              deltaPercent={periodOverPeriod.revenue.deltaPercent}
+              sparkline={{ values: sparklineData.revenue }}
+              comparisonLabel="vs previous period"
+            />
+            <CompactKPITile
+              label="Pace vs Plan"
+              value={paceVsPlan}
+              variant="percentage"
+              trend={paceVsPlan >= 100 ? 'up' : paceVsPlan >= 80 ? 'neutral' : 'down'}
+              comparisonLabel={paceVsPlan >= 100 ? 'Ahead of schedule' : 'Behind schedule'}
+            />
+            <CompactKPITile
+              label="Weighted Forecast"
+              value={weightedForecast}
+              variant="currency"
+              comparisonLabel={`${forecastConfidence}% confidence`}
+            />
+            <CompactKPITile
+              label="Pipeline Total"
+              value={totalPipelineValue}
+              variant="currency"
+              sparkline={{ values: sparklineData.pipeline }}
+              comparisonLabel={`${totalDeals} deal${totalDeals !== 1 ? 's' : ''}`}
+            />
+            <CompactKPITile
+              label="Team Win Rate"
+              value={periodOverPeriod.winRate.current}
+              variant="percentage"
+              deltaAbsolute={periodOverPeriod.winRate.delta}
+              sparkline={{ values: sparklineData.winRate }}
+              comparisonLabel="won / (won + lost)"
+            />
+            <CompactKPITile
+              label="Active Deals"
+              value={totalDeals}
+              variant="count"
+              comparisonLabel={`${lateStageDeals} in late stage`}
+            />
           </div>
         )}
 
-        {/* Pipeline by Stage */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-admin-blue" />
-              Pipeline by Stage
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-10" />)}
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Stage</TableHead>
-                    <TableHead className="text-right">Deals</TableHead>
-                    <TableHead className="text-right">Requested Amount</TableHead>
-                    <TableHead className="text-right">Weighted Fees</TableHead>
-                    <TableHead className="text-right">Median Days</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pipelineStages.map(row => (
-                    <TableRow key={row.stage}>
-                      <TableCell className="font-medium">{row.stage}</TableCell>
-                      <TableCell className="text-right">{row.deal_count}</TableCell>
-                      <TableCell className="text-right">{formatLargeAmount(row.total_requested)}</TableCell>
-                      <TableCell className="text-right font-medium text-admin-teal">{formatLargeAmount(row.total_weighted_fees)}</TableCell>
-                      <TableCell className="text-right">{row.median_days}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+        {/* Full-width revenue combo chart */}
+        <RevenueComboChart
+          data={comboChartData}
+          isLoading={sparklineLoading}
+          title="Company Revenue"
+          description={`Monthly revenue with cumulative trend — ${shortLabel}`}
+          showScopeToggle={false}
+          showSourceFilter={false}
+        />
 
-        {/* Weekly Scorecard */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-admin-blue" />
-              Weekly Scorecard
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => <Skeleton key={i} className="h-16" />)}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4">
-                {scorecard.map(item => (
-                  <div key={item.metric_label} className="text-center p-3 bg-muted/30 rounded-lg">
-                    <div className={`text-xl font-bold ${item.color_class || ''}`}>{item.metric_value}</div>
-                    <div className="text-xs text-muted-foreground mt-1">{item.metric_label}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Activity Heatmap */}
+        <ActivityHeatmap
+          data={activityHeatmapData}
+          title="Deal Activity"
+        />
 
-        <div className="grid gap-6 md:grid-cols-2">
+        {/* Pipeline stage bar + expandable detail table */}
+        <div className="space-y-0">
+          <PipelineStageBar stages={pipelineBarData} />
+          {pipelineStages.length > 0 && (
+            <div className="px-1">
+              <button
+                onClick={() => setPipelineExpanded(!pipelineExpanded)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
+                {pipelineExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                {pipelineExpanded ? 'Hide' : 'Show'} stage details
+              </button>
+              {pipelineExpanded && (
+                <Card className="border-t-0 rounded-t-none">
+                  <CardContent className="pt-3 pb-3">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Stage</TableHead>
+                          <TableHead className="text-xs text-right">Deals</TableHead>
+                          <TableHead className="text-xs text-right">Requested Amount</TableHead>
+                          <TableHead className="text-xs text-right">Weighted Fees</TableHead>
+                          <TableHead className="text-xs text-right">Median Days</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pipelineStages.map((row) => (
+                          <TableRow key={row.stage}>
+                            <TableCell className="text-xs font-medium">{row.stage}</TableCell>
+                            <TableCell className="text-xs text-right">{row.deal_count}</TableCell>
+                            <TableCell className="text-xs text-right">{formatLargeAmount(row.total_requested)}</TableCell>
+                            <TableCell className="text-xs text-right font-medium text-emerald-600 dark:text-emerald-400">
+                              {formatLargeAmount(row.total_weighted_fees)}
+                            </TableCell>
+                            <TableCell className="text-xs text-right">{row.median_days}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
           {/* Team Performance */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-admin-blue" />
-                Team Performance
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Click on team member to view their dashboard
-              </p>
+            <CardHeader className="pb-2 px-4 pt-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  Team Performance
+                </CardTitle>
+                <span className="text-[11px] text-muted-foreground">
+                  Click to view dashboard
+                </span>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 pb-3">
               {isLoading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12" />)}
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-10" />)}
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Member</TableHead>
-                      <TableHead className="text-right">Active</TableHead>
-                      <TableHead className="text-right">Conv %</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
+                      <TableHead className="text-[11px]">Member</TableHead>
+                      <TableHead className="text-[11px] text-right">Active</TableHead>
+                      <TableHead className="text-[11px] text-right">Revenue</TableHead>
+                      <TableHead className="text-[11px] text-right">Conv %</TableHead>
+                      <TableHead className="text-[11px] w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {teamMembers.map(member => (
-                      <TableRow key={member.name}>
-                        <TableCell>
-                          <div className="font-medium">{member.name}</div>
-                          <div className="text-xs text-muted-foreground">{getTeamMemberRole(member.name, teamUsers)}</div>
-                        </TableCell>
-                        <TableCell className="text-right">{member.active_deals}</TableCell>
-                        <TableCell className="text-right">
-                          <span className={member.conversion >= 40 ? 'text-green-600 font-medium' : member.conversion === 0 ? 'text-red-500' : ''}>
-                            {member.conversion}%
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link to={getTeamMemberUrl(member.name, teamUsers)}>
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredTeamMembers.map((member) => {
+                      const revenue = teamRevenueMap.get(member.name) ?? 0;
+                      const barWidth = maxTeamRevenue > 0 ? (revenue / maxTeamRevenue) * 100 : 0;
+
+                      return (
+                        <TableRow key={member.name}>
+                          <TableCell className="py-2">
+                            <div className="text-xs font-medium">{member.name}</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {getTeamMemberRole(member.name, teamUsers)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-right py-2">{member.active_deals}</TableCell>
+                          <TableCell className="text-right py-2">
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span className="text-xs font-medium">{formatLargeAmount(revenue)}</span>
+                              <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-primary/60"
+                                  style={{ width: `${barWidth}%` }}
+                                />
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right py-2">
+                            <span className={cn('text-xs font-medium', getConversionColor(member.conversion))}>
+                              {member.conversion}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right py-2">
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" asChild>
+                              <Link to={getTeamMemberUrl(member.name, teamUsers)}>
+                                <Eye className="h-3.5 w-3.5" />
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
@@ -375,31 +550,35 @@ const SuperAdminDashboard = () => {
 
           {/* Referral Engine */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Handshake className="h-5 w-5 text-admin-blue" />
-                Referral Engine
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Top revenue sources - follow up opportunities
-              </p>
+            <CardHeader className="pb-2 px-4 pt-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Handshake className="h-4 w-4 text-muted-foreground" />
+                  Referral Engine
+                </CardTitle>
+                <span className="text-[11px] text-muted-foreground">
+                  Top revenue sources
+                </span>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 pb-3">
               {isLoading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16" />)}
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-12" />)}
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {referrals.map(referral => (
-                    <div key={referral.name} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <div className="space-y-1.5">
+                  {referrals.map((referral) => (
+                    <div key={referral.name} className="flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
                       <div>
-                        <div className="font-medium">{referral.name}</div>
-                        <div className="text-sm text-muted-foreground">{referral.last_contact_days_ago} days ago</div>
+                        <div className="text-xs font-medium">{referral.name}</div>
+                        <div className="text-[10px] text-muted-foreground">{referral.last_contact_days_ago}d ago</div>
                       </div>
-                      <div className="text-right flex items-center gap-3">
-                        <div className="text-lg font-bold text-admin-teal">{formatCurrency(referral.total_revenue)}</div>
-                        <Badge className={getStatusColor(referral.status)}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          {formatCurrency(referral.total_revenue)}
+                        </span>
+                        <Badge className={cn('text-[10px]', getStatusColor(referral.status))}>
                           {referral.status}
                         </Badge>
                       </div>
@@ -410,6 +589,32 @@ const SuperAdminDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Weekly Scorecard */}
+        <Card>
+          <CardHeader className="pb-2 px-4 pt-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              Weekly Scorecard
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            {isLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-3">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => <Skeleton key={i} className="h-14" />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-3">
+                {scorecard.map((item) => (
+                  <div key={item.metric_label} className="text-center p-2 bg-muted/30 rounded-md">
+                    <div className={cn('text-lg font-bold', item.color_class || '')}>{item.metric_value}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{item.metric_label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AdminLayout>
   );
