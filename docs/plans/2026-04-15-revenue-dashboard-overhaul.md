@@ -148,13 +148,13 @@ Complete redesign of both the SuperAdmin revenue dashboard and employee sales re
 
 ### Task 10: Verify acceptance criteria
 
-- [ ] Run `npm run build` — must pass with no errors
-- [ ] Run `npm run lint` — must pass with no errors
-- [ ] Verify both dashboards render correctly with real Supabase data
-- [ ] Verify all KPI tiles show trend arrows and sparklines
-- [ ] Verify combo chart displays bars + lines with working filters
-- [ ] Verify heatmap renders activity data
-- [ ] Verify filters are unified and consistent across both dashboards
+- [x] Run `npm run build` — must pass with no errors
+- [x] Run `npm run lint` — must pass with no errors
+- [x] Verify both dashboards render correctly with real Supabase data
+- [x] Verify all KPI tiles show trend arrows and sparklines
+- [x] Verify combo chart displays bars + lines with working filters
+- [x] Verify heatmap renders activity data
+- [x] Verify filters are unified and consistent across both dashboards
 
 ### Task 11: Update documentation
 

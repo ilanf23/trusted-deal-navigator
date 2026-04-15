@@ -88,13 +88,13 @@ const Dashboard = () => {
   useEffect(() => {
     setPageTitle('Dashboard');
     return () => { setPageTitle(null); setSearchComponent(null); };
-  }, []);
+  }, [setPageTitle, setSearchComponent]);
 
   useEffect(() => {
     setSearchComponent(
       <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
     );
-  }, [searchTerm]);
+  }, [searchTerm, setSearchComponent]);
 
   const {
     pipelineData, fundedLeads,
@@ -136,9 +136,9 @@ const Dashboard = () => {
       pre_qualification: 2, discovery: 1,
     };
     return [...pipelineData]
-      .sort((a: any, b: any) => {
-        const wa = stageWeight[a.status] || 0;
-        const wb = stageWeight[b.status] || 0;
+      .sort((a, b) => {
+        const wa = stageWeight[a.status ?? ''] || 0;
+        const wb = stageWeight[b.status ?? ''] || 0;
         if (wb !== wa) return wb - wa;
         return (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0);
       })
@@ -167,8 +167,8 @@ const Dashboard = () => {
     const stageOrder = ['discovery', 'pre_qualification', 'document_collection', 'underwriting', 'approval'];
     const grouped: Record<string, { count: number; value: number; forecast: number }> = {};
 
-    pipelineData.forEach((lead: any) => {
-      const stage = lead.status;
+    pipelineData.forEach((lead) => {
+      const stage = lead.status ?? '';
       if (!grouped[stage]) grouped[stage] = { count: 0, value: 0, forecast: 0 };
       grouped[stage].count++;
       const rev = getDealRevenue(lead);
@@ -189,11 +189,11 @@ const Dashboard = () => {
   }, [pipelineData]);
 
   const metrics = useMemo(() => {
-    const fundedDeals = (fundedLeads || []) as any[];
-    const totalRevenue = fundedDeals.reduce((sum, lead) => sum + getDealRevenue(lead), 0);
+    const fundedDeals = fundedLeads || [];
+    const totalRevenue = fundedDeals.reduce((sum: number, lead) => sum + getDealRevenue(lead), 0);
     const totalDeals = fundedDeals.length;
 
-    const pipelineLeads = (pipelineData || []) as any[];
+    const pipelineLeads = pipelineData || [];
     const pipelineValue = pipelineLeads.reduce((sum, lead) => sum + getDealRevenue(lead), 0);
     const pipelineDeals = pipelineLeads.length;
 
@@ -313,7 +313,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="px-4 pb-3">
                 <div className="space-y-1.5">
-                  {hotDeals.length > 0 ? hotDeals.map((deal: any) => {
+                  {hotDeals.length > 0 ? hotDeals.map((deal) => {
                     const commission = getDealRevenue(deal);
                     return (
                       <div key={deal.id} className="flex items-center gap-2 p-2 rounded-md border hover:bg-muted/50 transition-colors">

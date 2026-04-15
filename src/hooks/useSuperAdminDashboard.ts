@@ -131,11 +131,11 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
   const revenueQuery = useQuery({
     queryKey: ['dashboard-revenue-targets'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('revenue_targets')
         .select('*');
       if (error) throw error;
-      return data as RevenueTarget[];
+      return (data ?? []) as RevenueTarget[];
     },
   });
 
@@ -143,11 +143,11 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
   const pipelineQuery = useQuery({
     queryKey: ['dashboard-pipeline-metrics'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('v_pipeline_metrics')
         .select('*');
       if (error) throw error;
-      return data as PipelineStage[];
+      return (data ?? []) as PipelineStage[];
     },
   });
 
@@ -155,11 +155,11 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
   const teamQuery = useQuery({
     queryKey: ['dashboard-team-performance'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('v_team_performance')
         .select('*');
       if (error) throw error;
-      return data as TeamPerformance[];
+      return (data ?? []) as TeamPerformance[];
     },
   });
 
@@ -167,11 +167,11 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
   const referralQuery = useQuery({
     queryKey: ['dashboard-referral-analytics'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('v_referral_analytics')
         .select('*');
       if (error) throw error;
-      return data as ReferralSource[];
+      return (data ?? []) as ReferralSource[];
     },
   });
 
@@ -179,12 +179,12 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
   const scorecardQuery = useQuery({
     queryKey: ['dashboard-weekly-scorecard'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('dashboard_weekly_scorecard')
         .select('*')
         .order('display_order');
       if (error) throw error;
-      return data as ScorecardItem[];
+      return (data ?? []) as ScorecardItem[];
     },
   });
 
