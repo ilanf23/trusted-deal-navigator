@@ -105,14 +105,14 @@ Complete redesign of both the SuperAdmin revenue dashboard and employee sales re
 - Modify: `src/pages/admin/Dashboard.tsx`
 - Modify: `src/components/employee/dashboard/RevenueChart.tsx` (replace internals or swap out)
 
-- [ ] Replace the 5 current KPI cards with CompactKPITile components: Revenue (currency, with sparkline), Deals Closed (count), Pipeline Value (currency), Win Rate (percentage), Goal Progress (percentage with progress bar variant)
-- [ ] Replace the current RevenueChart with the new RevenueComboChart — wire up data from useDashboardData, pass filter callbacks
-- [ ] Add ActivityHeatmap below the chart showing the sales rep's personal activity over 90 days
-- [ ] Add PipelineStageBar component showing the rep's current pipeline composition
-- [ ] Consolidate filtering: single unified filter bar at page top with time period (MTD/QTD/YTD), scope stays chart-specific, remove redundant per-section filters
-- [ ] Reorganize layout into a tighter grid: KPI tiles in a single row (5 across on desktop, wrapping on mobile), full-width combo chart, two-column layout below (left: heatmap + pipeline bar + nudges, right: hot deals + schedule + quick links)
-- [ ] Keep existing NudgesWidget, TopActions, Hot Deals, Commission Calculator, and Quick Links — but tighten their styling to match the new data-dense aesthetic (smaller padding, compact typography)
-- [ ] Run `npm run build && npm run lint` — must pass
+- [x] Replace the 5 current KPI cards with CompactKPITile components: Revenue (currency, with sparkline), Deals Closed (count), Pipeline Value (currency), Win Rate (percentage), Goal Progress (percentage with progress bar variant)
+- [x] Replace the current RevenueChart with the new RevenueComboChart — wire up data from useDashboardData, pass filter callbacks
+- [x] Add ActivityHeatmap below the chart showing the sales rep's personal activity over 90 days
+- [x] Add PipelineStageBar component showing the rep's current pipeline composition
+- [x] Consolidate filtering: single unified filter bar at page top with time period (MTD/QTD/YTD), scope stays chart-specific, remove redundant per-section filters
+- [x] Reorganize layout into a tighter grid: KPI tiles in a single row (5 across on desktop, wrapping on mobile), full-width combo chart, two-column layout below (left: heatmap + pipeline bar + nudges, right: hot deals + schedule + quick links)
+- [x] Keep existing NudgesWidget, TopActions, Hot Deals, Commission Calculator, and Quick Links — but tighten their styling to match the new data-dense aesthetic (smaller padding, compact typography)
+- [x] Run `npm run build && npm run lint` — must pass
 
 ### Task 8: Redesign SuperAdmin Dashboard page
 
