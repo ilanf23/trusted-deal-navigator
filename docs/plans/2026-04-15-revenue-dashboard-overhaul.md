@@ -69,11 +69,11 @@ Complete redesign of both the SuperAdmin revenue dashboard and employee sales re
 **Files:**
 - Create: `src/components/admin/dashboard/PipelineStageBar.tsx`
 
-- [ ] Create a horizontal stacked bar showing pipeline composition by stage with deal counts and dollar values
-- [ ] Each segment: colored by stage, shows deal count on hover, proportional width by value
-- [ ] Below the bar: legend with stage name, count, total value, and weighted forecast per stage
-- [ ] Support click-to-filter (emits stage callback for parent to handle)
-- [ ] Run `npm run build && npm run lint` — must pass
+- [x] Create a horizontal stacked bar showing pipeline composition by stage with deal counts and dollar values
+- [x] Each segment: colored by stage, shows deal count on hover, proportional width by value
+- [x] Below the bar: legend with stage name, count, total value, and weighted forecast per stage
+- [x] Support click-to-filter (emits stage callback for parent to handle)
+- [x] Run `npm run build && npm run lint` — must pass
 
 ### Task 5: Audit and fix data layer — useDashboardData hook
 
