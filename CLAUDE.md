@@ -32,6 +32,7 @@ src/
   components/     # ~270 components across 11 subdirectories
     ui/           # 61 shadcn/ui primitives (do not heavily modify)
     admin/        # 105 admin portal components (CRM, pipeline, inbox, dropbox, sheets, settings)
+      dashboard/    # Reusable dashboard widgets (CompactKPITile, RevenueComboChart, ActivityHeatmap, PipelineStageBar, useDashboardData)
       pipeline/kanban/  # Shared Kanban board components (KanbanBoard, KanbanColumn, KanbanCardShell, useKanbanDrag)
     employee/     # 31 employee portal components (dashboard, calendar, gmail, tasks)
       calendar/   # Google Calendar-style calendar (FullCalendar engine + custom components)
