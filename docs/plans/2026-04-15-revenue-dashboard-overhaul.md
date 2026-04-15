@@ -57,12 +57,12 @@ Complete redesign of both the SuperAdmin revenue dashboard and employee sales re
 **Files:**
 - Create: `src/components/admin/dashboard/ActivityHeatmap.tsx`
 
-- [ ] Create a GitHub-contribution-style heatmap showing deal activity intensity by day over the last 90 days (or configurable range)
-- [ ] Data: count of deal events per day from `potential` (stage changes, won_at, created_at) and `communications` (calls, emails) — accept pre-aggregated data via props
-- [ ] Render as an SVG grid: columns = weeks, rows = weekdays (Mon-Sun), cells colored by intensity (4-5 levels from transparent to deep purple)
-- [ ] Tooltip on hover: date + event count + breakdown (deals created, stage changes, communications)
-- [ ] Include summary row below: total events, most active day of week, current streak
-- [ ] Run `npm run build && npm run lint` — must pass
+- [x] Create a GitHub-contribution-style heatmap showing deal activity intensity by day over the last 90 days (or configurable range)
+- [x] Data: count of deal events per day from `potential` (stage changes, won_at, created_at) and `communications` (calls, emails) — accept pre-aggregated data via props
+- [x] Render as an SVG grid: columns = weeks, rows = weekdays (Mon-Sun), cells colored by intensity (4-5 levels from transparent to deep purple)
+- [x] Tooltip on hover: date + event count + breakdown (deals created, stage changes, communications)
+- [x] Include summary row below: total events, most active day of week, current streak
+- [x] Run `npm run build && npm run lint` — must pass
 
 ### Task 4: Build PipelineStageBar component
 
