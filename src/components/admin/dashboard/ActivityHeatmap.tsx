@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 export interface ActivityDay {
@@ -159,6 +160,34 @@ function formatDate(dateStr: string): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+export function ActivityHeatmapSkeleton({ className }: { className?: string }) {
+  return (
+    <Card className={className}>
+      <CardHeader className="pb-2">
+        <Skeleton className="h-5 w-24" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-1">
+          {Array.from({ length: 7 }).map((_, row) => (
+            <div key={row} className="flex items-center gap-[3px]">
+              {row % 2 === 0 && <Skeleton className="h-3 w-7 mr-1" />}
+              {row % 2 !== 0 && <div className="w-7 mr-1" />}
+              {Array.from({ length: 13 }).map((_, col) => (
+                <Skeleton key={col} className="h-[14px] w-[14px] rounded-sm" />
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex items-center gap-6">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function ActivityHeatmap({

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 export interface PipelineStageData {
@@ -53,6 +54,35 @@ function formatCurrency(value: number): string {
   return `$${value.toFixed(0)}`;
 }
 
+export function PipelineStageBarSkeleton({ className }: { className?: string }) {
+  return (
+    <Card className={className}>
+      <CardHeader className="pb-2">
+        <div className="flex items-baseline justify-between">
+          <Skeleton className="h-5 w-36" />
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2 px-2 py-1.5">
+              <Skeleton className="h-2.5 w-2.5 rounded-full" />
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="ml-auto h-3 w-12" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function PipelineStageBar({
   stages,
   onStageClick,
@@ -60,6 +90,7 @@ export function PipelineStageBar({
   title = 'Pipeline by Stage',
 }: PipelineStageBarProps) {
   const [hoveredStage, setHoveredStage] = useState<string | null>(null);
+  const prefersReducedMotion = useReducedMotion();
   const [tooltipInfo, setTooltipInfo] = useState<{
     x: number;
     y: number;
@@ -124,9 +155,9 @@ export function PipelineStageBar({
                   hoveredStage && !isHovered && 'opacity-50',
                 )}
                 style={{ width: `${pct}%`, minWidth: pct > 0 ? 4 : 0 }}
-                initial={{ scaleX: 0 }}
+                initial={prefersReducedMotion ? false : { scaleX: 0 }}
                 animate={{ scaleX: 1, opacity: hoveredStage && !isHovered ? 0.5 : 1 }}
-                transition={{ duration: 0.3, ease: 'easeOut', delay: i * 0.04 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.3, ease: 'easeOut', delay: prefersReducedMotion ? 0 : i * 0.04 }}
                 onClick={() => onStageClick?.(stage.stageId)}
                 onMouseEnter={(e) => {
                   setHoveredStage(stage.stageId);

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, useSpring, useTransform } from 'framer-motion';
+import { motion, useReducedMotion, useSpring, useTransform } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 type TrendDirection = 'up' | 'down' | 'neutral';
@@ -148,16 +149,21 @@ function AnimatedValue({
   value: number;
   variant: MetricVariant;
 }) {
-  const spring = useSpring(0, { stiffness: 80, damping: 20 });
+  const prefersReducedMotion = useReducedMotion();
+  const spring = useSpring(prefersReducedMotion ? value : 0, { stiffness: 80, damping: 20 });
   const display = useTransform(spring, (v) => formatValue(v, variant));
   const [rendered, setRendered] = useState(formatValue(value, variant));
   const ref = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    spring.set(value);
+    if (prefersReducedMotion) {
+      setRendered(formatValue(value, variant));
+    } else {
+      spring.set(value);
+    }
     const unsub = display.on('change', (v) => setRendered(v));
     return unsub;
-  }, [value, spring, display]);
+  }, [value, spring, display, prefersReducedMotion, variant]);
 
   return (
     <motion.span
@@ -166,6 +172,22 @@ function AnimatedValue({
     >
       {rendered}
     </motion.span>
+  );
+}
+
+export function CompactKPITileSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn('rounded-lg border border-border/60 bg-card p-4 shadow-sm flex flex-col gap-2', className)}>
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-6 w-20" />
+      </div>
+      <div className="flex items-end gap-3">
+        <Skeleton className="h-8 w-24" />
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </div>
+      <Skeleton className="h-3 w-28" />
+    </div>
   );
 }
 
@@ -181,6 +203,8 @@ export function CompactKPITile({
   comparisonLabel,
   className,
 }: CompactKPITileProps) {
+  const prefersReducedMotion = useReducedMotion();
+
   const computedDeltaAbsolute =
     deltaAbsolute ?? (previousValue != null ? value - previousValue : undefined);
   const computedDeltaPercent =
@@ -201,7 +225,7 @@ export function CompactKPITile({
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: 'easeOut' }}
       className={cn(
         'rounded-lg border border-border/60 bg-card p-4 shadow-sm',
         'flex flex-col gap-2',

@@ -12,6 +12,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -23,6 +24,7 @@ import {
   Target,
   ArrowDownRight,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 
 export type TimeRange = 'mtd' | 'qtd' | 'ytd' | '12m' | 'all';
@@ -60,15 +62,30 @@ export interface RevenueComboChartProps {
   className?: string;
 }
 
-const COLORS = {
+const LIGHT_COLORS = {
   bar: '#6366f1',
-  cumulative: '#0a1628',
+  cumulative: '#0f172a',
   target: '#f59e0b',
   previous: '#60a5fa',
   grid: '#e5e7eb',
   axis: '#9ca3af',
   refLine: '#e879797a',
 };
+
+const DARK_COLORS = {
+  bar: '#818cf8',
+  cumulative: '#e2e8f0',
+  target: '#fbbf24',
+  previous: '#93c5fd',
+  grid: '#334155',
+  axis: '#94a3b8',
+  refLine: '#f87171aa',
+};
+
+function useChartColors() {
+  const { resolvedTheme } = useTheme();
+  return resolvedTheme === 'dark' ? DARK_COLORS : LIGHT_COLORS;
+}
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -181,6 +198,7 @@ export function RevenueComboChart({
   const [internalSelectedSources, setInternalSelectedSources] = useState<string[]>([]);
   const [showTarget, setShowTarget] = useState(true);
   const [showPrevious, setShowPrevious] = useState(true);
+  const COLORS = useChartColors();
 
   const timeRange = controlledTimeRange ?? internalTimeRange;
   const scope = controlledScope ?? internalScope;
@@ -404,8 +422,17 @@ export function RevenueComboChart({
       <CardContent>
         <div className="h-[380px]">
           {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="flex flex-col gap-3 h-full pt-4 px-2">
+              <div className="flex items-end gap-2 h-full">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <Skeleton
+                    key={i}
+                    className="flex-1 rounded-t-sm"
+                    style={{ height: `${30 + Math.random() * 55}%` }}
+                  />
+                ))}
+              </div>
+              <Skeleton className="h-4 w-full" />
             </div>
           ) : filteredData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">

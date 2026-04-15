@@ -19,10 +19,10 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useSuperAdminDashboard, getTeamMemberUrl, getTeamMemberRole, type TimePeriod } from '@/hooks/useSuperAdminDashboard';
-import { CompactKPITile } from '@/components/admin/dashboard/CompactKPITile';
+import { CompactKPITile, CompactKPITileSkeleton } from '@/components/admin/dashboard/CompactKPITile';
 import { RevenueComboChart, type ComboChartDataPoint } from '@/components/admin/dashboard/RevenueComboChart';
-import { ActivityHeatmap } from '@/components/admin/dashboard/ActivityHeatmap';
-import { PipelineStageBar, type PipelineStageData } from '@/components/admin/dashboard/PipelineStageBar';
+import { ActivityHeatmap, ActivityHeatmapSkeleton } from '@/components/admin/dashboard/ActivityHeatmap';
+import { PipelineStageBar, PipelineStageBarSkeleton, type PipelineStageData } from '@/components/admin/dashboard/PipelineStageBar';
 import { cn } from '@/lib/utils';
 
 const PIPELINE_STAGE_COLORS: Record<string, string> = {
@@ -286,7 +286,7 @@ const SuperAdminDashboard = () => {
                   <TabsTrigger
                     key={p}
                     value={p}
-                    className="rounded-full px-4 text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
+                    className="rounded-full px-4 text-xs font-medium data-[state=active]:bg-white dark:data-[state=active]:bg-muted data-[state=active]:shadow-sm transition-all"
                   >
                     {p.toUpperCase()}
                   </TabsTrigger>
@@ -360,7 +360,7 @@ const SuperAdminDashboard = () => {
         {/* KPI tiles — 6 across on desktop */}
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-28" />)}
+            {Array.from({ length: 6 }).map((_, i) => <CompactKPITileSkeleton key={i} />)}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -421,14 +421,18 @@ const SuperAdminDashboard = () => {
         />
 
         {/* Activity Heatmap */}
-        <ActivityHeatmap
-          data={activityHeatmapData}
-          title="Deal Activity"
-        />
+        {heatmapLoading ? (
+          <ActivityHeatmapSkeleton />
+        ) : (
+          <ActivityHeatmap
+            data={activityHeatmapData}
+            title="Deal Activity"
+          />
+        )}
 
         {/* Pipeline stage bar + expandable detail table */}
         <div className="space-y-0">
-          <PipelineStageBar stages={pipelineBarData} />
+          {isLoading ? <PipelineStageBarSkeleton /> : <PipelineStageBar stages={pipelineBarData} />}
           {pipelineStages.length > 0 && (
             <div className="px-1">
               <button

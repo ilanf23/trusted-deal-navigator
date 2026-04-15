@@ -15,10 +15,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useDashboardData, getDealRevenue } from '@/components/admin/dashboard/useDashboardData';
-import { CompactKPITile } from '@/components/admin/dashboard/CompactKPITile';
-import { ActivityHeatmap } from '@/components/admin/dashboard/ActivityHeatmap';
-import { PipelineStageBar, type PipelineStageData } from '@/components/admin/dashboard/PipelineStageBar';
+import { CompactKPITile, CompactKPITileSkeleton } from '@/components/admin/dashboard/CompactKPITile';
+import { ActivityHeatmap, ActivityHeatmapSkeleton } from '@/components/admin/dashboard/ActivityHeatmap';
+import { PipelineStageBar, PipelineStageBarSkeleton, type PipelineStageData } from '@/components/admin/dashboard/PipelineStageBar';
 import NudgesWidget from '@/components/employee/dashboard/NudgesWidget';
 import TopActions from '@/components/employee/dashboard/TopActions';
 import RevenueChart from '@/components/employee/dashboard/RevenueChart';
@@ -204,19 +205,6 @@ const Dashboard = () => {
     return { totalRevenue, totalDeals, pipelineValue, pipelineDeals, periodGoal, goalProgress };
   }, [fundedLeads, pipelineData, timePeriod, annualGoal]);
 
-  if (isLoading) {
-    return (
-      <EmployeeLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-muted-foreground">Loading dashboard...</p>
-          </div>
-        </div>
-      </EmployeeLayout>
-    );
-  }
-
   return (
     <EmployeeLayout>
       <div className="space-y-4" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -228,7 +216,7 @@ const Dashboard = () => {
               {getGreeting(firstName)}
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')} · {metrics.pipelineDeals} active deal{metrics.pipelineDeals !== 1 ? 's' : ''}
+              {format(new Date(), 'EEEE, MMMM d, yyyy')} · {isLoading ? '...' : `${metrics.pipelineDeals} active deal${metrics.pipelineDeals !== 1 ? 's' : ''}`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -239,7 +227,7 @@ const Dashboard = () => {
                   <TabsTrigger
                     key={p}
                     value={p}
-                    className="rounded-full px-4 text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
+                    className="rounded-full px-4 text-xs font-medium data-[state=active]:bg-white dark:data-[state=active]:bg-muted data-[state=active]:shadow-sm transition-all"
                   >
                     {p.toUpperCase()}
                   </TabsTrigger>
@@ -250,6 +238,11 @@ const Dashboard = () => {
         </div>
 
         {/* KPI tiles — 5 across on desktop */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {Array.from({ length: 5 }).map((_, i) => <CompactKPITileSkeleton key={i} />)}
+          </div>
+        ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <CompactKPITile
             label="Revenue"
@@ -291,6 +284,7 @@ const Dashboard = () => {
             comparisonLabel={`${formatCurrency(metrics.totalRevenue)} of ${formatCurrency(metrics.periodGoal)}`}
           />
         </div>
+        )}
 
         {/* Full-width revenue combo chart */}
         <RevenueChart evanId={evanId} annualGoal={annualGoal} />
@@ -299,8 +293,8 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left column: heatmap + pipeline bar + nudges + top actions */}
           <div className="lg:col-span-2 space-y-4">
-            <ActivityHeatmap data={activityHeatmapData} title="Deal Activity" />
-            <PipelineStageBar stages={pipelineStages} />
+            {isLoading ? <ActivityHeatmapSkeleton /> : <ActivityHeatmap data={activityHeatmapData} title="Deal Activity" />}
+            {isLoading ? <PipelineStageBarSkeleton /> : <PipelineStageBar stages={pipelineStages} />}
             <NudgesWidget evanId={evanId} />
             <TopActions evanId={evanId} />
           </div>
@@ -329,7 +323,7 @@ const Dashboard = () => {
                         <Badge variant="secondary" className="text-[10px] shrink-0">
                           {STAGE_LABELS[deal.status] || deal.status}
                         </Badge>
-                        <span className="text-xs font-medium text-green-600 shrink-0">
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 shrink-0">
                           {formatCurrency(commission)}
                         </span>
                       </div>
@@ -369,16 +363,22 @@ const Dashboard = () => {
                       return (
                         <div
                           key={hour}
-                          className="flex border-t"
-                          style={{ borderColor: '#c8bdd6', minHeight: 44, ...(isCurrentHour ? { backgroundColor: '#eee6f6' } : {}) }}
+                          className={cn(
+                            'flex border-t border-purple-200 dark:border-purple-800/50',
+                            isCurrentHour && 'bg-purple-50 dark:bg-purple-950/30',
+                          )}
+                          style={{ minHeight: 44 }}
                         >
-                          <div className="shrink-0 px-2 py-1.5 text-right" style={{ width: 58, borderRight: '1px solid #c8bdd6' }}>
-                            <span className="text-[10px] font-medium" style={{ color: isCurrentHour ? '#3b2778' : isPast ? '#9ca3af' : '#6b7280' }}>
+                          <div className="shrink-0 px-2 py-1.5 text-right border-r border-purple-200 dark:border-purple-800/50" style={{ width: 58 }}>
+                            <span className={cn(
+                              'text-[10px] font-medium',
+                              isCurrentHour ? 'text-purple-800 dark:text-purple-300' : isPast ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400',
+                            )}>
                               {hourLabel}
                             </span>
                             {isCurrentHour && (
                               <div className="mt-0.5">
-                                <span className="text-[9px] font-semibold" style={{ color: '#3b2778' }}>NOW</span>
+                                <span className="text-[9px] font-semibold text-purple-800 dark:text-purple-300">NOW</span>
                               </div>
                             )}
                           </div>
@@ -386,11 +386,11 @@ const Dashboard = () => {
                             {hourAppts.length > 0 && (
                               <div className="space-y-0.5">
                                 {hourAppts.map((appt) => (
-                                  <div key={appt.id} className="flex items-center gap-1.5 px-2 py-1 rounded" style={{ backgroundColor: '#f3eef9', border: '1px solid #c8bdd6' }}>
-                                    <p className="text-[11px] font-medium truncate flex-1" style={{ color: '#1a1a2e' }}>
+                                  <div key={appt.id} className="flex items-center gap-1.5 px-2 py-1 rounded bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/50">
+                                    <p className="text-[11px] font-medium truncate flex-1 text-foreground">
                                       {appt.title}
                                     </p>
-                                    <span className="text-[10px] shrink-0" style={{ color: '#3b2778' }}>
+                                    <span className="text-[10px] shrink-0 text-purple-800 dark:text-purple-300">
                                       {format(new Date(appt.start_time), 'h:mm a')}
                                     </span>
                                   </div>
@@ -444,8 +444,8 @@ const Dashboard = () => {
                       <span>{formatCurrencyFull(commissionCalc.baseCommission)}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-green-600">Bonus (+{commissionCalc.bonusPercentage}%)</span>
-                      <span className="text-green-600">+{formatCurrencyFull(commissionCalc.bonusAmount)}</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">Bonus (+{commissionCalc.bonusPercentage}%)</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">+{formatCurrencyFull(commissionCalc.bonusAmount)}</span>
                     </div>
                     <div className="flex justify-between text-xs font-bold border-t pt-1.5">
                       <span>Total</span>

@@ -139,12 +139,12 @@ Complete redesign of both the SuperAdmin revenue dashboard and employee sales re
 - Modify: `src/components/admin/dashboard/ActivityHeatmap.tsx`
 - Modify: `src/components/admin/dashboard/PipelineStageBar.tsx`
 
-- [ ] Ensure consistent spacing, typography, and color usage across both dashboards
-- [ ] Verify dark mode compatibility (the app supports theme toggle) — all new components must work in both light and dark modes
-- [ ] Test responsive behavior: desktop (1440px+), laptop (1024px), tablet (768px) — KPI tiles should wrap gracefully, charts should resize, heatmap should scroll horizontally on small screens
-- [ ] Add loading skeletons for all new components (use shadcn Skeleton component) matching the final layout dimensions
-- [ ] Verify Framer Motion animations are subtle and performant (no layout thrash, reduced motion media query respected)
-- [ ] Run `npm run build && npm run lint` — must pass
+- [x] Ensure consistent spacing, typography, and color usage across both dashboards
+- [x] Verify dark mode compatibility (the app supports theme toggle) — all new components must work in both light and dark modes
+- [x] Test responsive behavior: desktop (1440px+), laptop (1024px), tablet (768px) — KPI tiles should wrap gracefully, charts should resize, heatmap should scroll horizontally on small screens
+- [x] Add loading skeletons for all new components (use shadcn Skeleton component) matching the final layout dimensions
+- [x] Verify Framer Motion animations are subtle and performant (no layout thrash, reduced motion media query respected)
+- [x] Run `npm run build && npm run lint` — must pass
 
 ### Task 10: Verify acceptance criteria
 
