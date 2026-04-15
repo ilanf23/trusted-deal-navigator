@@ -80,13 +80,13 @@ Complete redesign of both the SuperAdmin revenue dashboard and employee sales re
 **Files:**
 - Modify: `src/components/admin/dashboard/useDashboardData.ts`
 
-- [ ] Audit every metric calculation against the Supabase schema: verify `potential.potential_revenue` vs `potential.deal_value` usage is consistent and correct (currently has fallback `deal_value * 0.01` or `deal_value * 0.02` which may be wrong for some deal types)
-- [ ] Fix win rate calculation: currently uses `funded / total leads` — verify denominator should be total leads vs leads that reached a decision (won + lost, excluding abandoned/open)
-- [ ] Fix confidence score weights: document what each weight means and verify the blend (40% forecast, 30% progress, 20% pipeline, 10% momentum) reflects actual business priority
-- [ ] Replace hardcoded `ANNUAL_GOAL = 1500000` with a query to `revenue_targets` table so the goal is database-driven
-- [ ] Add new derived metrics needed for the redesign: revenue by source breakdown, period-over-period growth per metric, daily activity counts for heatmap, sparkline data arrays for KPI tiles (last 12 data points per metric)
-- [ ] Ensure all date filtering uses consistent timezone handling (currently uses `new Date()` which is local time — align with Supabase UTC storage)
-- [ ] Run `npm run build && npm run lint` — must pass
+- [x] Audit every metric calculation against the Supabase schema: verify `potential.potential_revenue` vs `potential.deal_value` usage is consistent and correct (currently has fallback `deal_value * 0.01` or `deal_value * 0.02` which may be wrong for some deal types)
+- [x] Fix win rate calculation: currently uses `funded / total leads` — verify denominator should be total leads vs leads that reached a decision (won + lost, excluding abandoned/open)
+- [x] Fix confidence score weights: document what each weight means and verify the blend (40% forecast, 30% progress, 20% pipeline, 10% momentum) reflects actual business priority
+- [x] Replace hardcoded `ANNUAL_GOAL = 1500000` with a query to `revenue_targets` table so the goal is database-driven
+- [x] Add new derived metrics needed for the redesign: revenue by source breakdown, period-over-period growth per metric, daily activity counts for heatmap, sparkline data arrays for KPI tiles (last 12 data points per metric)
+- [x] Ensure all date filtering uses consistent timezone handling (currently uses `new Date()` which is local time — align with Supabase UTC storage)
+- [x] Run `npm run build && npm run lint` — must pass
 
 ### Task 6: Audit and fix data layer — useSuperAdminDashboard hook
 
