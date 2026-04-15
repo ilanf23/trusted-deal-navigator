@@ -266,7 +266,6 @@ const Dashboard = () => {
             label="Pipeline Value"
             value={metrics.pipelineValue}
             variant="currency"
-            sparkline={{ values: sparklineData.pipeline }}
             comparisonLabel={`${metrics.pipelineDeals} active deal${metrics.pipelineDeals !== 1 ? 's' : ''}`}
           />
           <CompactKPITile

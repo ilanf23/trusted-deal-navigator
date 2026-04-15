@@ -123,7 +123,7 @@ export const getTeamMemberRole = (name: string, teamMembers?: TeamMemberRecord[]
 };
 
 export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const periodStartISO = getPeriodStartUTC(timePeriod);
   const prevRange = getPreviousPeriodRange(timePeriod);
 

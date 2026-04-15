@@ -16,7 +16,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Loader2,
   Filter,
   Building2,
   User,
@@ -428,7 +427,7 @@ export function RevenueComboChart({
                   <Skeleton
                     key={i}
                     className="flex-1 rounded-t-sm"
-                    style={{ height: `${30 + Math.random() * 55}%` }}
+                    style={{ height: `${30 + ((i * 17 + 7) % 55)}%` }}
                   />
                 ))}
               </div>

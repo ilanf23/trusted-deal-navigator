@@ -365,7 +365,6 @@ const SuperAdminDashboard = () => {
               label="Pipeline Total"
               value={totalPipelineValue}
               variant="currency"
-              sparkline={{ values: sparklineData.pipeline }}
               comparisonLabel={`${totalDeals} deal${totalDeals !== 1 ? 's' : ''}`}
             />
             <CompactKPITile
