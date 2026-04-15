@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { useSuperAdminDashboard, getTeamMemberUrl, getTeamMemberRole, type TimePeriod } from '@/hooks/useSuperAdminDashboard';
+import { useSuperAdminDashboard, getTeamMemberUrl, getTeamMemberRole } from '@/hooks/useSuperAdminDashboard';
+import type { TimePeriod } from '@/components/admin/dashboard/useDashboardData';
 import { CompactKPITile, CompactKPITileSkeleton } from '@/components/admin/dashboard/CompactKPITile';
 import { RevenueComboChart, type ComboChartDataPoint } from '@/components/admin/dashboard/RevenueComboChart';
 import { ActivityHeatmap, ActivityHeatmapSkeleton } from '@/components/admin/dashboard/ActivityHeatmap';

@@ -5,7 +5,7 @@ import {
   startOfWeek, endOfDay, addDays, eachDayOfInterval,
   getDaysInMonth, eachMonthOfInterval, differenceInDays,
 } from 'date-fns';
-import type { TimePeriod } from '@/pages/admin/Dashboard';
+export type TimePeriod = 'mtd' | 'ytd' | 'qtd';
 
 const STAGE_WEIGHTS: Record<string, number> = {
   discovery: 0.10,
@@ -104,7 +104,9 @@ function getPreviousPeriodRange(period: TimePeriod): { start: string; end: strin
     }
     case 'qtd': {
       const curQMonth = Math.floor(m / 3) * 3;
-      const daysIntoQ = differenceInDays(d, new Date(Date.UTC(y, curQMonth, 1)));
+      const nowUTC = new Date(Date.UTC(y, m, day));
+      const curQStart = new Date(Date.UTC(y, curQMonth, 1));
+      const daysIntoQ = differenceInDays(nowUTC, curQStart);
       const prevQMonth = curQMonth - 3;
       const prevY = prevQMonth < 0 ? y - 1 : y;
       const prevM = prevQMonth < 0 ? prevQMonth + 12 : prevQMonth;

@@ -17,15 +17,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDashboardData, getDealRevenue } from '@/components/admin/dashboard/useDashboardData';
+import { useDashboardData, getDealRevenue, type TimePeriod } from '@/components/admin/dashboard/useDashboardData';
 import { CompactKPITile, CompactKPITileSkeleton } from '@/components/admin/dashboard/CompactKPITile';
 import { ActivityHeatmap, ActivityHeatmapSkeleton } from '@/components/admin/dashboard/ActivityHeatmap';
 import { PipelineStageBar, PipelineStageBarSkeleton, type PipelineStageData } from '@/components/admin/dashboard/PipelineStageBar';
 import NudgesWidget from '@/components/employee/dashboard/NudgesWidget';
 import TopActions from '@/components/employee/dashboard/TopActions';
 import RevenueChart from '@/components/employee/dashboard/RevenueChart';
-
-export type TimePeriod = 'mtd' | 'ytd' | 'qtd';
 
 const STAGE_WEIGHTS: Record<string, number> = {
   discovery: 0.10,

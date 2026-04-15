@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
+import { differenceInDays, addDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import {
   getDealRevenue,
@@ -7,9 +8,8 @@ import {
   type SparklineDataSet,
   type PeriodComparison,
   type PeriodOverPeriod,
+  type TimePeriod,
 } from '@/components/admin/dashboard/useDashboardData';
-
-export type TimePeriod = 'ytd' | 'mtd';
 
 export interface RevenueTarget {
   period_type: string;
@@ -77,8 +77,11 @@ function getPeriodStartUTC(period: TimePeriod): string {
   const d = new Date();
   const y = d.getUTCFullYear();
   const m = d.getUTCMonth();
-  if (period === 'mtd') return new Date(Date.UTC(y, m, 1)).toISOString();
-  return new Date(Date.UTC(y, 0, 1)).toISOString();
+  switch (period) {
+    case 'mtd': return new Date(Date.UTC(y, m, 1)).toISOString();
+    case 'qtd': return new Date(Date.UTC(y, Math.floor(m / 3) * 3, 1)).toISOString();
+    case 'ytd': return new Date(Date.UTC(y, 0, 1)).toISOString();
+  }
 }
 
 function getPreviousPeriodRange(period: TimePeriod): { start: string; end: string } {
@@ -86,14 +89,30 @@ function getPreviousPeriodRange(period: TimePeriod): { start: string; end: strin
   const y = d.getUTCFullYear();
   const m = d.getUTCMonth();
   const day = d.getUTCDate();
-  if (period === 'mtd') {
-    const start = new Date(Date.UTC(y, m - 1, 1));
-    const end = new Date(Date.UTC(y, m - 1, day, 23, 59, 59));
-    return { start: start.toISOString(), end: end.toISOString() };
+  switch (period) {
+    case 'mtd': {
+      const start = new Date(Date.UTC(y, m - 1, 1));
+      const end = new Date(Date.UTC(y, m - 1, day, 23, 59, 59));
+      return { start: start.toISOString(), end: end.toISOString() };
+    }
+    case 'qtd': {
+      const curQMonth = Math.floor(m / 3) * 3;
+      const nowUTC = new Date(Date.UTC(y, m, day));
+      const curQStart = new Date(Date.UTC(y, curQMonth, 1));
+      const daysIntoQ = differenceInDays(nowUTC, curQStart);
+      const prevQMonth = curQMonth - 3;
+      const prevY = prevQMonth < 0 ? y - 1 : y;
+      const prevM = prevQMonth < 0 ? prevQMonth + 12 : prevQMonth;
+      const start = new Date(Date.UTC(prevY, prevM, 1));
+      const end = addDays(start, daysIntoQ);
+      return { start: start.toISOString(), end: end.toISOString() };
+    }
+    case 'ytd': {
+      const start = new Date(Date.UTC(y - 1, 0, 1));
+      const end = new Date(Date.UTC(y - 1, m, day, 23, 59, 59));
+      return { start: start.toISOString(), end: end.toISOString() };
+    }
   }
-  const start = new Date(Date.UTC(y - 1, 0, 1));
-  const end = new Date(Date.UTC(y - 1, m, day, 23, 59, 59));
-  return { start: start.toISOString(), end: end.toISOString() };
 }
 
 export const getTeamMemberUrl = (name: string, teamMembers?: TeamMemberRecord[]) => {
