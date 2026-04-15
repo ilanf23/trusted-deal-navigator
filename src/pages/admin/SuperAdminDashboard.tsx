@@ -15,8 +15,6 @@ import {
   ChevronDown, ChevronUp, Filter,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useSuperAdminDashboard, getTeamMemberUrl, getTeamMemberRole, type TimePeriod } from '@/hooks/useSuperAdminDashboard';
 import { CompactKPITile, CompactKPITileSkeleton } from '@/components/admin/dashboard/CompactKPITile';
@@ -87,6 +85,7 @@ const SuperAdminDashboard = () => {
     currentMetrics, pipelineStages, teamMembers, referrals, scorecard,
     teamUsers, activityHeatmapData, sparklineData, revenueByTeamMember,
     periodOverPeriod, isLoading, isError, heatmapLoading, sparklineLoading,
+    annualTarget,
   } = useSuperAdminDashboard(timePeriod);
 
   const { setPageTitle } = useAdminTopBar();
@@ -97,33 +96,9 @@ const SuperAdminDashboard = () => {
 
   useEffect(() => {
     if (!loading && teamMember && !isOwner) {
-      const founderUsers = ['ilan', 'brad', 'adam'];
-      const name = teamMember.name.toLowerCase();
-      if (founderUsers.includes(name)) {
-        navigate(`/superadmin/${name}`, { replace: true });
-      } else {
-        navigate(`/admin/${name}`, { replace: true });
-      }
+      navigate(`/admin/${teamMember.name.toLowerCase()}`, { replace: true });
     }
   }, [loading, teamMember, isOwner, navigate]);
-
-  // Annual target for chart
-  const { data: annualTargetData } = useQuery({
-    queryKey: ['sa-annual-target'],
-    queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
-        .from('revenue_targets')
-        .select('target_amount, period_type');
-      if (error) throw error;
-      const annual = (data || []).find((r: { period_type: string; target_amount: number }) =>
-        r.period_type === 'annual' || r.period_type === 'ytd',
-      );
-      return annual?.target_amount ?? 1500000;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-  const annualTarget = (annualTargetData as number) ?? 1500000;
 
   // Derived metrics
   const revenueAmount = currentMetrics?.current_amount ?? 0;

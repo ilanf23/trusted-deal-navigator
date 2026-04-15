@@ -2,16 +2,9 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import type { ActivityDay } from './useDashboardData';
 
-export interface ActivityDay {
-  date: string;
-  total: number;
-  breakdown?: {
-    dealsCreated?: number;
-    stageChanges?: number;
-    communications?: number;
-  };
-}
+export type { ActivityDay };
 
 export interface ActivityHeatmapProps {
   data: ActivityDay[];

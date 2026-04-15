@@ -128,11 +128,10 @@ function makePeriodComparison(current: number, previous: number): PeriodComparis
   return { current, previous, delta, deltaPercent };
 }
 
-const now = new Date();
-const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-const weekEnd = endOfDay(addDays(weekStart, 6));
-
 export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string | null) {
+  const now = useMemo(() => new Date(), []);
+  const weekStart = useMemo(() => startOfWeek(now, { weekStartsOn: 1 }), [now]);
+  const weekEnd = useMemo(() => endOfDay(addDays(weekStart, 6)), [weekStart]);
   const periodStartISO = getPeriodStartUTC(timePeriod);
   const prevRange = getPreviousPeriodRange(timePeriod);
 
@@ -423,7 +422,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
       total, calls: calls.length, emails: emails.length, texts: texts.length,
       other: other.length, inbound, outbound, totalDuration, dailyTouchpoints,
     };
-  }, [touchpointsQuery.data]);
+  }, [touchpointsQuery.data, now, weekStart, weekEnd]);
 
   const tasksData = useMemo(() => {
     const tasks = tasksQuery.data || [];
@@ -437,7 +436,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     const topUrgent = [...overdue, ...today].slice(0, 5);
 
     return { overdue: overdue.length, today: today.length, thisWeek: thisWeek.length, done: done.length, topUrgent };
-  }, [tasksQuery.data]);
+  }, [tasksQuery.data, now]);
 
   const scorecardData = useMemo(() => {
     const comms = scorecardCommsQuery.data || [];
@@ -450,7 +449,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     const conversions = leads.filter(l => l.status === 'funded' || l.converted_at).length;
 
     return { calls, emails, newLeads, tasksDone, conversions };
-  }, [scorecardCommsQuery.data, scorecardLeadsQuery.data, tasksQuery.data]);
+  }, [scorecardCommsQuery.data, scorecardLeadsQuery.data, tasksQuery.data, weekStart]);
 
   const lenderData = useMemo(() => {
     const programs = lenderQuery.data || [];
@@ -469,7 +468,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
       .filter(d => d.funded_at && new Date(d.funded_at) >= monthStartDate)
       .reduce((sum, d) => sum + d.fee_earned, 0);
     return { ytd, mtd };
-  }, [companyDealsQuery.data]);
+  }, [companyDealsQuery.data, now]);
 
   // Revenue by source breakdown
   const revenueBySource: RevenueBySource[] = useMemo(() => {
@@ -585,13 +584,8 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
       goalProgressArr.push(monthlyGoal > 0 ? (monthRevenue / monthlyGoal) * 100 : 0);
     }
 
-    const currentPipelineValue = (pipelineQuery.data || []).reduce(
-      (sum, d) => sum + getDealRevenue(d), 0,
-    );
-    const pipeline = new Array(12).fill(currentPipelineValue);
-
-    return { revenue, deals: dealCounts, pipeline, winRate: winRates, goalProgress: goalProgressArr };
-  }, [sparklineQuery.data, pipelineQuery.data, annualGoal]);
+    return { revenue, deals: dealCounts, pipeline: [], winRate: winRates, goalProgress: goalProgressArr };
+  }, [sparklineQuery.data, annualGoal, now]);
 
   // Confidence score — period-aware, uses real pipeline + revenue data
   // Weighted blend: 40% forecast trajectory (on pace to hit goal?),
@@ -672,7 +666,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
       score >= 65 ? 'on-track' : score >= 40 ? 'at-risk' : 'below-target';
 
     return { score, status, forecast, pipelineWeighted, growthRate };
-  }, [companyRevenueData, companyDealsQuery.data, pipelineQuery.data, timePeriod, annualGoal]);
+  }, [companyRevenueData, companyDealsQuery.data, pipelineQuery.data, timePeriod, annualGoal, now]);
 
   const isLoading = leadsQuery.isLoading || pipelineQuery.isLoading || fundedQuery.isLoading;
   const isFetching = leadsQuery.isFetching || pipelineQuery.isFetching || fundedQuery.isFetching;

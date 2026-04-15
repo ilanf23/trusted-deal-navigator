@@ -435,13 +435,8 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
       goalProgressArr.push(monthlyGoal > 0 ? (monthRevenue / monthlyGoal) * 100 : 0);
     }
 
-    const currentPipelineValue = (pipelineDealsQuery.data || []).reduce(
-      (sum, d) => sum + getDealRevenue(d), 0,
-    );
-    const pipeline = new Array(12).fill(currentPipelineValue);
-
-    return { revenue, deals: dealCounts, pipeline, winRate: winRates, goalProgress: goalProgressArr };
-  }, [sparklineQuery.data, pipelineDealsQuery.data, annualTarget]); // eslint-disable-line react-hooks/exhaustive-deps
+    return { revenue, deals: dealCounts, pipeline: [], winRate: winRates, goalProgress: goalProgressArr };
+  }, [sparklineQuery.data, annualTarget]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Revenue by team member (for comparison chart)
   const revenueByTeamMember: RevenueByTeamMember[] = useMemo(() => {
@@ -518,5 +513,6 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     isError,
     heatmapLoading: heatmapDealsQuery.isLoading || heatmapCommsQuery.isLoading,
     sparklineLoading: sparklineQuery.isLoading,
+    annualTarget,
   };
 };

@@ -240,7 +240,7 @@ export function RevenueComboChart({
   const hasPrevious = useMemo(() => data.some((d) => d.previous != null), [data]);
 
   const filteredData = useMemo(() => {
-    if (!showTarget && !showPrevious) return data;
+    if (showTarget && showPrevious) return data;
     return data.map((d) => ({
       ...d,
       target: showTarget ? d.target : undefined,
@@ -460,17 +460,6 @@ export function RevenueComboChart({
                   tickFormatter={formatCurrency}
                   tickCount={5}
                   width={55}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11, fill: COLORS.axis }}
-                  tickFormatter={formatCurrency}
-                  tickCount={5}
-                  width={55}
-                  hide
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend content={<CompactLegend />} />
