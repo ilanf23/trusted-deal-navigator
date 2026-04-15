@@ -18,7 +18,7 @@ const SuperAdminDashboard = () => {
   const navigate = useNavigate();
   const { teamMember, isOwner, loading } = useTeamMember();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
-  const { currentMetrics, pipelineStages, teamMembers, referrals, scorecard, isLoading, isError } = useSuperAdminDashboard(timePeriod);
+  const { currentMetrics, pipelineStages, teamMembers, referrals, scorecard, teamUsers, isLoading, isError } = useSuperAdminDashboard(timePeriod);
 
   const { setPageTitle } = useAdminTopBar();
   useEffect(() => {
@@ -349,7 +349,7 @@ const SuperAdminDashboard = () => {
                       <TableRow key={member.name}>
                         <TableCell>
                           <div className="font-medium">{member.name}</div>
-                          <div className="text-xs text-muted-foreground">{getTeamMemberRole(member.name)}</div>
+                          <div className="text-xs text-muted-foreground">{getTeamMemberRole(member.name, teamUsers)}</div>
                         </TableCell>
                         <TableCell className="text-right">{member.active_deals}</TableCell>
                         <TableCell className="text-right">
@@ -359,7 +359,7 @@ const SuperAdminDashboard = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" asChild>
-                            <Link to={getTeamMemberUrl(member.name)}>
+                            <Link to={getTeamMemberUrl(member.name, teamUsers)}>
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Link>

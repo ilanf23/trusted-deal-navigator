@@ -93,11 +93,11 @@ Complete redesign of both the SuperAdmin revenue dashboard and employee sales re
 **Files:**
 - Modify: `src/hooks/useSuperAdminDashboard.ts`
 
-- [ ] Verify `revenue_targets` query returns correct MTD vs YTD values and that the confidence percentage is calculated server-side correctly
-- [ ] Add new queries for: company-wide daily activity data (for heatmap), per-metric sparkline arrays (last 12 periods), revenue by team member for comparison chart
-- [ ] Remove hardcoded team member URL mapping (lines ~47-58) — derive from `users` table `dashboard_url` and `position` columns
-- [ ] Add period-over-period delta calculations for all KPI metrics (current vs previous period)
-- [ ] Run `npm run build && npm run lint` — must pass
+- [x] Verify `revenue_targets` query returns correct MTD vs YTD values and that the confidence percentage is calculated server-side correctly
+- [x] Add new queries for: company-wide daily activity data (for heatmap), per-metric sparkline arrays (last 12 periods), revenue by team member for comparison chart
+- [x] Remove hardcoded team member URL mapping (lines ~47-58) — derive from `users` table `dashboard_url` and `position` columns
+- [x] Add period-over-period delta calculations for all KPI metrics (current vs previous period)
+- [x] Run `npm run build && npm run lint` — must pass
 
 ### Task 7: Redesign Employee Dashboard page
 
