@@ -45,12 +45,12 @@ Complete redesign of both the SuperAdmin revenue dashboard and employee sales re
 **Files:**
 - Create: `src/components/admin/dashboard/RevenueComboChart.tsx`
 
-- [ ] Build a Recharts ComposedChart with: bars for period revenue (monthly/weekly/daily buckets), line overlay for cumulative revenue, second line for target/goal pace, optional dashed line for previous period comparison
-- [ ] Add interactive features: hover tooltip showing all series values with formatted currency, click-to-drill into a period (emits callback), reference lines for quarterly targets
-- [ ] Include a compact filter bar directly in the chart header: time range segmented control (MTD/QTD/YTD/12M/All), granularity auto-derived from range, scope toggle (company/personal), and source multi-select popover
-- [ ] Style the chart: dark grid lines on light background, muted axis labels, color palette using 3-4 distinguishable colors with good contrast, bar opacity at 0.7 with line at full opacity
-- [ ] Responsive: chart adapts to container width, legend collapses on small screens
-- [ ] Run `npm run build && npm run lint` — must pass
+- [x] Build a Recharts ComposedChart with: bars for period revenue (monthly/weekly/daily buckets), line overlay for cumulative revenue, second line for target/goal pace, optional dashed line for previous period comparison
+- [x] Add interactive features: hover tooltip showing all series values with formatted currency, click-to-drill into a period (emits callback), reference lines for quarterly targets
+- [x] Include a compact filter bar directly in the chart header: time range segmented control (MTD/QTD/YTD/12M/All), granularity auto-derived from range, scope toggle (company/personal), and source multi-select popover
+- [x] Style the chart: dark grid lines on light background, muted axis labels, color palette using 3-4 distinguishable colors with good contrast, bar opacity at 0.7 with line at full opacity
+- [x] Responsive: chart adapts to container width, legend collapses on small screens
+- [x] Run `npm run build && npm run lint` — must pass
 
 ### Task 3: Build ActivityHeatmap component
 
