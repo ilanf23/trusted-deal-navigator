@@ -49,9 +49,13 @@ const EXPANDED_QUERY_KEY: Record<CrmTable, string> = {
 interface PipelineSelectFieldProps {
   dealId: string;
   currentPipeline: CrmTable;
+  /** "block" renders a big label + underlined select (used in sidebar detail panels).
+   *  "inline" renders an icon + label + compact select (used in the Deal Details row section). */
+  variant?: 'block' | 'inline';
+  icon?: React.ReactNode;
 }
 
-export function PipelineSelectField({ dealId, currentPipeline }: PipelineSelectFieldProps) {
+export function PipelineSelectField({ dealId, currentPipeline, variant = 'block', icon }: PipelineSelectFieldProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { registerUndo } = useUndo();
@@ -84,10 +88,31 @@ export function PipelineSelectField({ dealId, currentPipeline }: PipelineSelectF
     }
   }, [dealId, currentPipeline, invalidate, navigate, registerUndo]);
 
+  if (variant === 'inline') {
+    return (
+      <div className="flex items-center justify-between gap-2 px-3 py-2 transition-colors">
+        <div className="flex items-center gap-2 text-muted-foreground shrink-0">
+          {icon}
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Pipeline</span>
+        </div>
+        <Select value={currentPipeline} onValueChange={(v) => handleChange(v as CrmTable)}>
+          <SelectTrigger className="h-7 w-auto max-w-[70%] text-[13px] font-medium text-foreground border-0 bg-transparent shadow-none px-1 gap-1 rounded-none">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper" sideOffset={4} className="min-w-[200px]">
+            <PipelineMenuItem value="underwriting" label="Underwriting" />
+            <PipelineMenuItem value="lender_management" label="Lender Management" />
+            <PipelineMenuItem value="potential" label="Potential" />
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  }
+
   return (
     <div>
       <label className="text-sm text-muted-foreground block mb-2">Pipeline</label>
-      <div className="border-b border-border pb-1">
+      <div className="border-b border-[#3b2778]/30 dark:border-[#a78bfa]/30 pb-1">
         <Select value={currentPipeline} onValueChange={(v) => handleChange(v as CrmTable)}>
           <SelectTrigger className="h-10 w-full text-base text-foreground border-0 bg-transparent shadow-none px-1 rounded-none">
             <SelectValue />

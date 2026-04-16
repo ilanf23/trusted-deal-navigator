@@ -18,6 +18,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
 import { useInlineSave as useSharedInlineSave } from './shared/useInlineSave';
+import { PipelineSelectField } from './PipelineSelectField';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -214,7 +215,7 @@ function CopperUnderlineField({
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       {editing ? (
-        <div className="border-b-2 border-blue-500 pb-1">
+        <div className="border-b-2 border-[#3b2778] dark:border-[#a78bfa] pb-1">
           <input
             ref={inputRef}
             value={draft}
@@ -222,12 +223,12 @@ function CopperUnderlineField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-base text-foreground bg-transparent outline-none px-1 py-1.5"
+            className="editable-textbox-input w-full text-base text-foreground bg-transparent outline-none px-1 py-1.5"
           />
-          {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 absolute right-1 top-1/2 -translate-y-1/2" />}
+          {saving && <Loader2 className="h-3 w-3 animate-spin text-[#3b2778] dark:text-[#a78bfa] absolute right-1 top-1/2 -translate-y-1/2" />}
         </div>
       ) : (
-        <div onClick={() => setEditing(true)} className="border-b border-border pb-1 cursor-pointer group hover:border-muted-foreground transition-colors">
+        <div onClick={() => setEditing(true)} className="border-b border-[#3b2778]/30 dark:border-[#a78bfa]/30 hover:border-[#3b2778] dark:hover:border-[#a78bfa] pb-1 cursor-pointer group transition-colors">
           <p className="text-base text-foreground py-1.5 px-1 truncate">
             {value || <span className="text-muted-foreground italic">—</span>}
           </p>
@@ -565,9 +566,6 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
       if (error) throw error;
       return data || [];
     },
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000,
   });
 
   const { data: activities = [], isLoading: loadingActivities } = useQuery({
@@ -582,9 +580,6 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
       if (error) throw error;
       return data || [];
     },
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000,
   });
 
   const isLoading = loadingComms || loadingActivities;
@@ -1227,17 +1222,12 @@ export default function UnderwritingDetailPanel({
             <CopperUnderlineField label="Name" required value={lead.name} field="name" leadId={lead.id} onSaved={handleFieldSaved} />
 
             {/* Pipeline */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Pipeline</label>
-              <div className="border-b border-border pb-1">
-                <p className="text-base text-foreground py-1.5 px-1">Underwriting</p>
-              </div>
-            </div>
+            <PipelineSelectField dealId={lead.id} currentPipeline="underwriting" />
 
             {/* Stage */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">Stage</label>
-              <div className="border-b border-border pb-1">
+              <div className="border-b border-[#3b2778]/30 dark:border-[#a78bfa]/30 pb-1">
                 {onStageChange ? (
                   <Select value={activeStageKey} onValueChange={(v) => onStageChange(lead.id, v)}>
                     <SelectTrigger className="h-10 w-full text-base text-foreground border-0 bg-transparent shadow-none px-1 rounded-none">
@@ -1275,7 +1265,7 @@ export default function UnderwritingDetailPanel({
             {/* Value */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">Value</label>
-              <div className="border-b border-border pb-1">
+              <div className="border-b border-[#3b2778]/30 dark:border-[#a78bfa]/30 pb-1">
                 <p className="text-base text-foreground py-1.5 px-1 tabular-nums">
                   {lead.deal_value != null ? (
                     <>{lead.deal_value.toLocaleString()}<br /><span className="text-sm text-muted-foreground">{formatValue(lead.deal_value)}</span></>
@@ -1295,7 +1285,7 @@ export default function UnderwritingDetailPanel({
             {/* Primary Contact */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">Primary Contact</label>
-              <div className="border-b border-border pb-3">
+              <div className="border-b border-[#3b2778]/30 dark:border-[#a78bfa]/30 pb-3">
                 <div className="flex items-center gap-3 px-1 py-1.5">
                   <CrmAvatar name={lead.name} size="lg" />
                   <div className="min-w-0">
@@ -1321,7 +1311,7 @@ export default function UnderwritingDetailPanel({
             {/* Status / Created */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">Created</label>
-              <div className="border-b border-border pb-1">
+              <div className="border-b border-[#3b2778]/30 dark:border-[#a78bfa]/30 pb-1">
                 <p className="text-base text-foreground py-1.5 px-1">{formatDate(lead.created_at)}</p>
               </div>
             </div>
@@ -1338,7 +1328,7 @@ export default function UnderwritingDetailPanel({
             {/* Owner */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">Owner</label>
-              <div className="border-b border-border pb-1">
+              <div className="border-b border-[#3b2778]/30 dark:border-[#a78bfa]/30 pb-1">
                 {ownerOptions.length > 0 ? (
                   <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
                     const { error } = await supabase.from('underwriting').update({ assigned_to: v || null }).eq('id', lead.id);
@@ -1368,7 +1358,7 @@ export default function UnderwritingDetailPanel({
             {/* Win Percentage */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">Win Percentage</label>
-              <div className="border-b border-border pb-1">
+              <div className="border-b border-[#3b2778]/30 dark:border-[#a78bfa]/30 pb-1">
                 <p className="text-base text-foreground py-1.5 px-1 tabular-nums">
                   {(lead as any).win_percentage != null ? (
                     <>{(lead as any).win_percentage}<br /><span className="text-sm text-muted-foreground">{(lead as any).win_percentage}%</span></>
@@ -1492,7 +1482,7 @@ export default function UnderwritingDetailPanel({
             {/* Client Working with Other Lenders */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">Client Working with Other Lenders</label>
-              <div className="border-b border-border pb-1">
+              <div className="border-b border-[#3b2778]/30 dark:border-[#a78bfa]/30 pb-1">
                 <button
                   onClick={async () => {
                     const newVal = !lead.client_other_lenders;
@@ -1509,7 +1499,7 @@ export default function UnderwritingDetailPanel({
             {/* Weekly's */}
             <div>
               <label className="text-sm text-muted-foreground block mb-2">Weekly's</label>
-              <div className="border-b border-border pb-1">
+              <div className="border-b border-[#3b2778]/30 dark:border-[#a78bfa]/30 pb-1">
                 <button
                   onClick={async () => {
                     const newVal = !lead.flagged_for_weekly;

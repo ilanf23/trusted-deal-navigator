@@ -191,7 +191,7 @@ function SimpleField({
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); } if (e.key === 'Escape') setEditing(false); }}
             onBlur={() => save()}
             rows={3}
-            className="w-full mt-0.5 text-[15px] text-foreground bg-transparent border-b border-blue-400 outline-none resize-none"
+            className="editable-textbox-input w-full mt-0.5 text-[15px] text-foreground bg-transparent border-b border-[#3b2778] dark:border-[#a78bfa] outline-none resize-none"
           />
         ) : (
           <input
@@ -200,7 +200,7 @@ function SimpleField({
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
             onBlur={() => save()}
-            className="w-full mt-0.5 text-[15px] text-foreground bg-transparent border-b border-blue-400 outline-none"
+            className="editable-textbox-input w-full mt-0.5 text-[15px] text-foreground bg-transparent border-b border-[#3b2778] dark:border-[#a78bfa] outline-none"
           />
         )}
       </div>
@@ -247,7 +247,7 @@ function EditableField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
+            className="editable-textbox-input w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-[#3b2778]/30 dark:border-b-[#a78bfa]/30 rounded-none px-0 py-0 outline-none focus:border-b-[#3b2778] dark:focus:border-b-[#a78bfa] focus:ring-0 transition-colors"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
         </div>
@@ -704,9 +704,6 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
       if (error) throw error;
       return data || [];
     },
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000,
   });
 
   const { data: activities = [], isLoading: loadingActivities } = useQuery({
@@ -720,9 +717,6 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
         .order('created_at', { ascending: false });
       return data || [];
     },
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000,
   });
 
   const isLoading = loadingComms || loadingActivities;

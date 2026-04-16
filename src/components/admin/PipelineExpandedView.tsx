@@ -528,9 +528,6 @@ export default function PipelineExpandedView() {
       return data ?? [];
     },
     enabled: !!leadId,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000,
   });
 
   // ── Activity comments query ──

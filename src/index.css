@@ -497,8 +497,8 @@
      primitive (src/components/admin/shared/EditableTextBox.tsx) and draws its
      own pill/underline chrome. */
   .admin-portal input:not(.editable-textbox-input),
-  .admin-portal textarea,
-  .admin-portal select,
+  .admin-portal textarea:not(.editable-textbox-input),
+  .admin-portal select:not(.editable-textbox-input),
   .admin-portal [role="combobox"] {
     font-size: 0.875rem;
     letter-spacing: -0.006em;
@@ -512,8 +512,8 @@
 
   @media (min-width: 1024px) {
     .admin-portal input:not(.editable-textbox-input),
-    .admin-portal textarea,
-    .admin-portal select,
+    .admin-portal textarea:not(.editable-textbox-input),
+    .admin-portal select:not(.editable-textbox-input),
     .admin-portal [role="combobox"] {
       font-size: 0.875rem;
       border-radius: 0.5rem;
@@ -522,8 +522,8 @@
   }
 
   .admin-portal input:not(.editable-textbox-input):focus,
-  .admin-portal textarea:focus,
-  .admin-portal select:focus {
+  .admin-portal textarea:not(.editable-textbox-input):focus,
+  .admin-portal select:not(.editable-textbox-input):focus {
     outline: none;
     border-color: hsl(var(--primary));
     box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);

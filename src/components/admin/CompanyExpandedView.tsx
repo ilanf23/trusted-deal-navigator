@@ -800,9 +800,6 @@ export default function CompanyExpandedView() {
       return data ?? [];
     },
     enabled: !!companyId,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000,
   });
 
   // Activity comments

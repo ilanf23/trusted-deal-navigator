@@ -148,16 +148,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    // Visibility change listener — attempt gentle session recovery when tab regains focus
+    // Visibility change listener — attempt gentle session recovery when tab regains focus.
+    // Only updates state when the access token actually changed, so routine tab-refocus
+    // does not rebuild the auth context value and force every useAuth() consumer to re-render.
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && roleRef.current !== null) {
-        supabase.auth.getSession().then(({ data: { session: freshSession } }) => {
-          if (freshSession) {
-            setSession(freshSession);
-            setUser(freshSession.user);
-          }
-        });
-      }
+      if (document.visibilityState !== 'visible' || roleRef.current === null) return;
+      supabase.auth.getSession().then(({ data: { session: freshSession } }) => {
+        if (!freshSession) return;
+        setSession((prev) => (prev?.access_token === freshSession.access_token ? prev : freshSession));
+        setUser((prev) => (prev?.id === freshSession.user.id ? prev : freshSession.user));
+      });
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);

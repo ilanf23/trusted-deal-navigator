@@ -175,7 +175,7 @@ function EditableField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-primary/30 rounded-none px-0 py-0 outline-none focus:border-b-primary focus:ring-0 transition-colors"
+            className="editable-textbox-input w-full text-right text-[13px] font-medium text-foreground bg-transparent border-0 border-b border-b-[#3b2778]/30 dark:border-b-[#a78bfa]/30 rounded-none px-0 py-0 outline-none focus:border-b-[#3b2778] dark:focus:border-b-[#a78bfa] focus:ring-0 transition-colors"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
         </div>
@@ -437,9 +437,6 @@ function ActivityTabContent({ company }: { company: Company }) {
       if (error) throw error;
       return data || [];
     },
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000,
   });
 
   const timelineItems = useMemo(() => {

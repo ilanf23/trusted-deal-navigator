@@ -1293,9 +1293,6 @@ export default function PeopleExpandedView() {
       return data ?? [];
     },
     enabled: !!personId,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000,
   });
 
   const { data: tasks = [] } = useQuery({

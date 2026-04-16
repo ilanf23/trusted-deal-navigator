@@ -129,6 +129,27 @@ export function useGmailLogic(config?: CRMGmailConfig) {
     console.debug('[GmailLogic] route', `${location.pathname}${location.search}`);
   }, [location.pathname, location.search]);
 
+  // Deep-link: select a specific Gmail thread when ?thread=<threadId> is present.
+  // Used by notification click-through (see src/lib/notificationLinks.ts).
+  const handledThreadParamRef = useRef<string | null>(null);
+  useEffect(() => {
+    const threadId = searchParams.get('thread');
+    if (!threadId) {
+      handledThreadParamRef.current = null;
+      return;
+    }
+    if (emailsLoading) return;
+    if (handledThreadParamRef.current === threadId) return;
+    const match = emails.find((e) => e.threadId === threadId);
+    handledThreadParamRef.current = threadId;
+    if (!match) {
+      console.warn('[GmailLogic] Thread from URL not found in current inbox list:', threadId);
+      return;
+    }
+    setSelectedEmailId(match.id);
+    setReadEmailIds((prev) => ({ ...prev, [match.id]: true }));
+  }, [searchParams, emails, emailsLoading]);
+
   const clearComposeParams = useCallback(() => {
     const next = new URLSearchParams(searchParams);
     ['compose', 'to', 'draftId', 'leadId', 'template', 'taskId'].forEach((k) => next.delete(k));

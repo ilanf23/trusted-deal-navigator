@@ -18,6 +18,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { formatPhoneNumber } from './InlineEditableFields';
 import { useInlineSave as useSharedInlineSave, persistInlineFieldChange } from './shared/useInlineSave';
 import { EditableTextBox } from './shared/EditableTextBox';
+import { PipelineSelectField } from './PipelineSelectField';
 import { useUndo } from '@/contexts/UndoContext';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -497,9 +498,6 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
       if (error) throw error;
       return data || [];
     },
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000,
   });
 
   const { data: activities = [], isLoading: loadingActivities } = useQuery({
@@ -514,9 +512,6 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
       if (error) throw error;
       return data || [];
     },
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000,
   });
 
   const isLoading = loadingComms || loadingActivities;
@@ -1206,7 +1201,7 @@ export default function PipelineDetailPanel({
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Deal Details</span>
               <div>
-                <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Pipeline" />
+                <PipelineSelectField dealId={lead.id} currentPipeline="potential" variant="inline" icon={<Briefcase className="h-3.5 w-3.5" />} />
                 <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={lead.known_as ?? ''} field="known_as" leadId={lead.id} onSaved={handleFieldSaved} />
                 {ownerOptions.length > 0 ? (

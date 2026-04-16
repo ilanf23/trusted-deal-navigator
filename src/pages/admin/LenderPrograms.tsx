@@ -3,23 +3,21 @@ import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { useNavigate } from 'react-router-dom';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Building2, Loader2, Save, Trash2, Upload, Filter, Sparkles, X, Search, Maximize2 } from 'lucide-react';
+import { Building2, Loader2, Save, Trash2, Upload, Maximize2, ArrowLeft, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { LenderProgramAssistant } from '@/components/admin/LenderProgramAssistant';
-import { SearchableSelect } from '@/components/ui/searchable-select';
 import * as XLSX from 'xlsx';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import LenderDetailPanel, { LenderProgram } from '@/components/admin/LenderDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
+import { SavedFiltersSidebar, type SavedFilterOption } from '@/components/admin/SavedFiltersSidebar';
+import LenderFilterPanel, { type LenderCustomFilterValues } from '@/components/admin/LenderFilterPanel';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 
 // ── Types ──
 
@@ -72,7 +70,7 @@ const COLUMNS: { key: ColumnKey; label: string; editable: boolean }[] = [
 ];
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
-  lender_name: 200,
+  lender_name: 240,
   call_status: 80,
   last_contact: 110,
   location: 140,
@@ -137,7 +135,6 @@ const COLUMN_SORT_OPTIONS: Record<string, { label: string; field: SortField; dir
   ],
 };
 
-// Valid US state abbreviations
 const VALID_STATE_ABBREVS = new Set([
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
   'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
@@ -146,7 +143,6 @@ const VALID_STATE_ABBREVS = new Set([
   'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
 ]);
 
-// Standardized loan size categories
 const LOAN_SIZE_CATEGORIES = [
   { label: 'Under $100K', min: 0, max: 100000 },
   { label: '$100K - $250K', min: 100000, max: 250000 },
@@ -160,7 +156,6 @@ const LOAN_SIZE_CATEGORIES = [
   { label: '$50M+', min: 50000000, max: Infinity },
 ];
 
-// Parse loan size text to extract numeric values
 const parseLoanSizeText = (text: string | null): { min: number; max: number } | null => {
   if (!text) return null;
   const cleaned = text.replace(/[$,]/g, '').toLowerCase().trim();
@@ -233,6 +228,77 @@ const rowMatchesLoanCategory = (row: LenderRow, categoryLabel: string): boolean 
   return lenderCanDoSmallEnough && lenderCanDoLargeEnough;
 };
 
+// ── Preset filter predicates ──
+
+const parseDateSafe = (s: string): Date | null => {
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+const daysSince = (dateStr: string): number | null => {
+  const d = parseDateSafe(dateStr);
+  if (!d) return null;
+  const diff = Date.now() - d.getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+};
+
+const presetPredicate = (id: string): ((row: LenderRow) => boolean) | null => {
+  switch (id) {
+    case 'needs_callback':
+      return (r) => (r.call_status || '').toUpperCase() === 'N';
+    case 'called_recently':
+      return (r) => {
+        const days = daysSince(r.last_contact);
+        return days !== null && days <= 30;
+      };
+    case 'no_contact_info':
+      return (r) => !r.email.trim() && !r.phone.trim();
+    default:
+      return null;
+  }
+};
+
+const customPredicate = (values: LenderCustomFilterValues): ((row: LenderRow) => boolean) => {
+  return (row) => {
+    if (values.institutions.length > 0 && !values.institutions.includes(row.lender_name)) return false;
+    if (values.lookingFor && !(row.looking_for || '').toLowerCase().includes(values.lookingFor.toLowerCase())) return false;
+    if (values.contacts.length > 0 && !values.contacts.includes(row.contact_name)) return false;
+    if (values.loanSizes.length > 0 && !values.loanSizes.some(ls => rowMatchesLoanCategory(row, ls))) return false;
+    if (values.states.length > 0) {
+      const rowStates = (row.states || '').split(/[,\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+      if (!values.states.some(s => rowStates.includes(s))) return false;
+    }
+    if (values.lenderTypes.length > 0 && !values.lenderTypes.includes(row.lender_type)) return false;
+    if (values.loanTypes.length > 0) {
+      const rowLoanTypes = (row.loan_types || '').split(',').map(t => t.trim()).filter(Boolean);
+      if (!values.loanTypes.some(lt => rowLoanTypes.includes(lt))) return false;
+    }
+    if (values.callStatus.length > 0 && !values.callStatus.map(c => c.toUpperCase()).includes((row.call_status || '').toUpperCase())) return false;
+    if (values.lastContactFrom || values.lastContactTo) {
+      const d = parseDateSafe(row.last_contact);
+      if (!d) return false;
+      if (values.lastContactFrom) {
+        const from = new Date(values.lastContactFrom);
+        if (d < from) return false;
+      }
+      if (values.lastContactTo) {
+        const to = new Date(values.lastContactTo);
+        to.setHours(23, 59, 59, 999);
+        if (d > to) return false;
+      }
+    }
+    return true;
+  };
+};
+
+const DEFAULT_LENDER_FILTER_OPTIONS: SavedFilterOption[] = [
+  { id: 'all', label: 'All Lenders', group: 'top', editable: false },
+  { id: 'needs_callback', label: 'Needs Call-back', group: 'public', editable: false },
+  { id: 'called_recently', label: 'Called Recently (30d)', group: 'public', editable: false },
+  { id: 'no_contact_info', label: 'Missing Contact', group: 'public', editable: false },
+];
+
 const createEmptyRow = (): LenderRow => ({
   id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   lender_name: '',
@@ -260,8 +326,6 @@ const createEmptyRow = (): LenderRow => ({
   isDirty: false,
 });
 
-// ── Component ──
-
 const lenderRowToProgram = (row: LenderRow): LenderProgram => ({
   id: row.id,
   lender_name: row.lender_name,
@@ -287,17 +351,22 @@ const lenderRowToProgram = (row: LenderRow): LenderProgram => ({
   updated_at: row.updated_at || '',
 });
 
+// ── Component ──
+
 const LenderPrograms = () => {
-  const { setPageTitle } = useAdminTopBar();
+  const { setPageTitle, setSearchComponent } = useAdminTopBar();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   useEffect(() => {
     setPageTitle('Lender Programs');
-    return () => { setPageTitle(null); };
-  }, [setPageTitle]);
+    return () => {
+      setPageTitle(null);
+      setSearchComponent(null);
+    };
+  }, [setPageTitle, setSearchComponent]);
 
-  // ── Data fetching via useQuery ──
+  // ── Data fetching ──
   const { data: dbRows = [], isLoading } = useQuery({
     queryKey: ['lender-programs'],
     queryFn: async () => {
@@ -335,7 +404,7 @@ const LenderPrograms = () => {
     },
   });
 
-  // Local rows state for inline editing + new rows
+  // Local edits + new rows
   const [localEdits, setLocalEdits] = useState<Record<string, Partial<LenderRow>>>({});
   const [newRows, setNewRows] = useState<LenderRow[]>([]);
 
@@ -354,23 +423,20 @@ const LenderPrograms = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingCell, setEditingCell] = useState<{ rowId: string; colKey: string } | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [panelMode, setPanelMode] = useState<'list' | 'filter' | 'advisor'>('list');
   const [sortField, setSortField] = useState<SortField>('lender_name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [colMenuOpen, setColMenuOpen] = useState<string | null>(null);
-  const [filters, setFilters] = useState({
-    institution: '',
-    lookingFor: '',
-    contact: '',
-    loanSize: '',
-    states: '',
-    lenderType: '',
-    loanTypes: '',
-    callStatus: '',
-  });
+
+  // Filter + sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: LenderCustomFilterValues }>>([]);
+  const filterOptions = DEFAULT_LENDER_FILTER_OPTIONS;
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Row selection ──
+  // Row selection
   const [selectedLenderIds, setSelectedLenderIds] = useState<Set<string>>(new Set());
   const [selectedLender, setSelectedLender] = useState<LenderProgram | null>(null);
   const detailPanelRef = useRef<HTMLDivElement>(null);
@@ -384,8 +450,18 @@ const LenderPrograms = () => {
     });
   };
 
+  // Inject page-specific search into top bar
+  useEffect(() => {
+    setSearchComponent(
+      <AdminTopBarSearch
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search lenders..."
+      />
+    );
+  }, [searchQuery, setSearchComponent]);
 
-  // ── Close sort menu on outside click ──
+  // Close sort menu on outside click
   useEffect(() => {
     if (!colMenuOpen) return;
     function handleClick() { setColMenuOpen(null); }
@@ -393,19 +469,19 @@ const LenderPrograms = () => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [colMenuOpen]);
 
-  // ── Close detail panel / sort menu on Escape ──
+  // Escape key handling
   useEffect(() => {
     function handleEsc(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        if (colMenuOpen) { setColMenuOpen(null); return; }
-        if (selectedLender) setSelectedLender(null);
-      }
+      if (e.key !== 'Escape') return;
+      if (colMenuOpen) { setColMenuOpen(null); return; }
+      if (selectedLender) { setSelectedLender(null); return; }
+      if (filterPanelOpen) setFilterPanelOpen(false);
     }
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
-  }, [colMenuOpen, selectedLender]);
+  }, [colMenuOpen, selectedLender, filterPanelOpen]);
 
-  // ── Close detail panel on outside click ──
+  // Close detail panel on outside click
   useEffect(() => {
     if (!selectedLender) return;
     function handleClickOutside(e: MouseEvent) {
@@ -419,34 +495,35 @@ const LenderPrograms = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedLender]);
 
-  // ── Filtering ──
+  // ── Filtering + sort ──
+  const activePredicate = useMemo(() => {
+    if (activeFilter === 'all') return null;
+    const preset = presetPredicate(activeFilter);
+    if (preset) return preset;
+    const custom = customFilters.find(cf => cf.id === activeFilter);
+    if (custom) return customPredicate(custom.values);
+    return null;
+  }, [activeFilter, customFilters]);
+
   const filteredAndSorted = useMemo(() => {
     let result = rows;
 
-    // Text search filter
+    if (activePredicate) {
+      result = result.filter(activePredicate);
+    }
+
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase();
       result = result.filter(row =>
-        row.lender_name.toLowerCase().includes(query) ||
-        row.loan_types?.toLowerCase().includes(query) ||
-        row.states?.toLowerCase().includes(query) ||
-        row.lender_type?.toLowerCase().includes(query) ||
-        row.contact_name?.toLowerCase().includes(query) ||
-        row.looking_for?.toLowerCase().includes(query)
+        row.lender_name.toLowerCase().includes(q) ||
+        row.loan_types?.toLowerCase().includes(q) ||
+        row.states?.toLowerCase().includes(q) ||
+        row.lender_type?.toLowerCase().includes(q) ||
+        row.contact_name?.toLowerCase().includes(q) ||
+        row.looking_for?.toLowerCase().includes(q)
       );
     }
 
-    // Dropdown filters
-    if (filters.institution) result = result.filter(row => row.lender_name === filters.institution);
-    if (filters.lookingFor) result = result.filter(row => row.looking_for?.toLowerCase().includes(filters.lookingFor.toLowerCase()));
-    if (filters.contact) result = result.filter(row => row.contact_name === filters.contact);
-    if (filters.loanSize) result = result.filter(row => rowMatchesLoanCategory(row, filters.loanSize));
-    if (filters.states) result = result.filter(row => row.states?.toLowerCase().includes(filters.states.toLowerCase()));
-    if (filters.lenderType) result = result.filter(row => row.lender_type === filters.lenderType);
-    if (filters.loanTypes) result = result.filter(row => row.loan_types?.toLowerCase().includes(filters.loanTypes.toLowerCase()));
-    if (filters.callStatus) result = result.filter(row => row.call_status?.toLowerCase() === filters.callStatus.toLowerCase());
-
-    // Sort
     result = [...result].sort((a, b) => {
       const aVal = ((a[sortField] ?? '') as string).toLowerCase();
       const bVal = ((b[sortField] ?? '') as string).toLowerCase();
@@ -455,23 +532,37 @@ const LenderPrograms = () => {
     });
 
     return result;
-  }, [rows, searchQuery, filters, sortField, sortDir]);
+  }, [rows, activePredicate, searchQuery, sortField, sortDir]);
+
+  // Sidebar filter counts
+  const filterCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: rows.length };
+    for (const opt of filterOptions) {
+      if (opt.id === 'all') continue;
+      const pred = presetPredicate(opt.id);
+      counts[opt.id] = pred ? rows.filter(pred).length : 0;
+    }
+    for (const cf of customFilters) {
+      counts[cf.id] = rows.filter(customPredicate(cf.values)).length;
+    }
+    return counts;
+  }, [rows, filterOptions, customFilters]);
 
   const { columnWidths, handleColumnResize } = useAutoFitColumns({
     minWidths: DEFAULT_COLUMN_WIDTHS,
     autoFitConfig: {
-      lender_name: { getText: (r: any) => r.lender_name, extraPx: 24 },
-      contact_name: { getText: (r: any) => r.contact_name },
-      email: { getText: (r: any) => r.email },
-      phone: { getText: (r: any) => r.phone },
-      location: { getText: (r: any) => r.location },
-      looking_for: { getText: (r: any) => r.looking_for },
-      loan_types: { getText: (r: any) => r.loan_types },
-      loan_size_text: { getText: (r: any) => r.loan_size_text },
-      states: { getText: (r: any) => r.states },
+      lender_name: { getText: (r: LenderRow) => r.lender_name, extraPx: 58 },
+      contact_name: { getText: (r: LenderRow) => r.contact_name },
+      email: { getText: (r: LenderRow) => r.email },
+      phone: { getText: (r: LenderRow) => r.phone },
+      location: { getText: (r: LenderRow) => r.location },
+      looking_for: { getText: (r: LenderRow) => r.looking_for },
+      loan_types: { getText: (r: LenderRow) => r.loan_types },
+      loan_size_text: { getText: (r: LenderRow) => r.loan_size_text },
+      states: { getText: (r: LenderRow) => r.states },
     },
     data: filteredAndSorted,
-    storageKey: 'lender-col-widths-v2',
+    storageKey: 'lender-col-widths-v3',
     maxAutoWidth: 400,
   });
 
@@ -484,7 +575,7 @@ const LenderPrograms = () => {
 
   const handleRowClick = (row: LenderRow) => {
     setSelectedLender(lenderRowToProgram(row));
-    if (panelMode !== 'list') setPanelMode('list');
+    if (filterPanelOpen) setFilterPanelOpen(false);
   };
 
   const handleBulkDelete = async () => {
@@ -519,73 +610,62 @@ const LenderPrograms = () => {
     }
   };
 
-  // ── Filter options ──
-  const filterOptions = useMemo(() => {
-    const getUniqueValues = (key: keyof LenderRow) => {
-      const values = rows
+  // ── Filter panel option sources ──
+  const filterPanelOptions = useMemo(() => {
+    const uniq = (key: keyof LenderRow) => {
+      const vals = rows
         .map(r => r[key])
         .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
         .map(v => v.trim());
-      return [...new Set(values)].sort();
+      return [...new Set(vals)].sort();
     };
 
     const getUniqueStates = () => {
-      const states = rows
-        .flatMap(r => (r.states || '').split(/[,\s]+/).map(s => s.trim().toUpperCase()))
-        .filter(s => VALID_STATE_ABBREVS.has(s));
-      return [...new Set(states)].sort();
+      const s = rows
+        .flatMap(r => (r.states || '').split(/[,\s]+/).map(v => v.trim().toUpperCase()))
+        .filter(v => VALID_STATE_ABBREVS.has(v));
+      return [...new Set(s)].sort();
     };
 
     const getUniqueLoanTypes = () => {
-      const types = rows
-        .flatMap(r => (r.loan_types || '').split(',').map(t => t.trim()))
-        .filter(t => t !== '');
-      return [...new Set(types)].sort();
+      const t = rows
+        .flatMap(r => (r.loan_types || '').split(',').map(v => v.trim()))
+        .filter(Boolean);
+      return [...new Set(t)].sort();
     };
 
     return {
-      institutions: getUniqueValues('lender_name'),
-      contacts: getUniqueValues('contact_name'),
+      institutions: uniq('lender_name'),
+      contacts: uniq('contact_name'),
       loanSizes: LOAN_SIZE_CATEGORIES.map(c => c.label),
       states: getUniqueStates(),
-      lenderTypes: getUniqueValues('lender_type'),
+      lenderTypes: uniq('lender_type'),
       loanTypes: getUniqueLoanTypes(),
     };
   }, [rows]);
 
-  const clearFilters = () => {
-    setFilters({
-      institution: '',
-      lookingFor: '',
-      contact: '',
-      loanSize: '',
-      states: '',
-      lenderType: '',
-      loanTypes: '',
-      callStatus: '',
-    });
+  const handleSaveCustomFilter = (values: LenderCustomFilterValues) => {
+    const id = `custom_${Date.now()}`;
+    const label = values.filterName.trim() || 'Custom Filter';
+    const entry = { id, label, values: { ...values, filterName: label } };
+    setCustomFilters(prev => [...prev, entry]);
+    setActiveFilter(id);
+    setFilterPanelOpen(false);
   };
-
-  const hasActiveFilters = Object.values(filters).some(v => v.trim() !== '');
 
   // ── Inline editing ──
   const handleCellClick = (e: React.MouseEvent, rowId: string, colKey: string) => {
     const col = COLUMNS.find(c => c.key === colKey);
     if (!col?.editable) return;
-
-    // Prevent row click (detail panel) when entering inline edit mode
     e.stopPropagation();
-
     const row = rows.find(r => r.id === rowId);
     if (!row) return;
-
     setEditingCell({ rowId, colKey });
     setEditValue(row[colKey] as string || '');
   };
 
   const handleCellBlur = () => {
     if (!editingCell) return;
-
     const { rowId, colKey } = editingCell;
     const row = rows.find(r => r.id === rowId);
     if (!row) { setEditingCell(null); return; }
@@ -619,7 +699,7 @@ const LenderPrograms = () => {
 
   // ── Save ──
   const handleSaveAll = async () => {
-    const dirtyExisting = Object.entries(localEdits).map(([id, edits]) => {
+    const dirtyExisting = Object.entries(localEdits).map(([id, edits]): LenderRow | null => {
       const original = dbRows.find(r => r.id === id);
       if (!original) return null;
       return { ...original, ...edits, isDirty: true };
@@ -634,7 +714,6 @@ const LenderPrograms = () => {
 
     setSaving(true);
     try {
-      // Insert new rows
       if (dirtyNew.length > 0) {
         const insertData = dirtyNew.map(r => ({
           lender_name: r.lender_name,
@@ -664,7 +743,6 @@ const LenderPrograms = () => {
         if (error) throw error;
       }
 
-      // Update existing rows
       for (const row of dirtyExisting) {
         const { error } = await supabase
           .from('lender_programs')
@@ -730,7 +808,7 @@ const LenderPrograms = () => {
     setNewRows(prev => [...prev, createEmptyRow()]);
   };
 
-  // ── File Upload handler (CSV and Excel) ──
+  // ── File Upload ──
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -745,56 +823,8 @@ const LenderPrograms = () => {
       return;
     }
 
-    if (isExcel) {
-      parseAndUploadExcel(file);
-    } else {
-      parseAndUploadCSV(file);
-    }
-  };
-
-  const parseAndUploadExcel = async (file: File) => {
-    setUploading(true);
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'array' });
-
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
-
-        if (jsonData.length < 2) {
-          toast.error('Excel file must have a header row and at least one data row');
-          setUploading(false);
-          return;
-        }
-
-        const headers = (jsonData[0] || []).map(h => (h || '').toString().trim().toLowerCase());
-        const programs = parseRowsToPrograms(headers, jsonData.slice(1));
-
-        if (programs.length === 0) {
-          toast.error('No valid lender data found in Excel file');
-          setUploading(false);
-          return;
-        }
-
-        const { error } = await supabase.from('lender_programs').insert(programs);
-        if (error) throw error;
-
-        toast.success(`Imported ${programs.length} lenders from Excel`);
-        queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
-      } catch (error) {
-        console.error('Error parsing/uploading Excel:', error);
-        toast.error('Failed to import Excel file');
-      } finally {
-        setUploading(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
-    };
-
-    reader.readAsArrayBuffer(file);
+    if (isExcel) parseAndUploadExcel(file);
+    else parseAndUploadCSV(file);
   };
 
   const parseRowsToPrograms = (headers: string[], rows: string[][]) => {
@@ -880,12 +910,53 @@ const LenderPrograms = () => {
     return programs;
   };
 
+  const parseAndUploadExcel = async (file: File) => {
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
+
+        if (jsonData.length < 2) {
+          toast.error('Excel file must have a header row and at least one data row');
+          setUploading(false);
+          return;
+        }
+
+        const headers = (jsonData[0] || []).map(h => (h || '').toString().trim().toLowerCase());
+        const programs = parseRowsToPrograms(headers, jsonData.slice(1));
+
+        if (programs.length === 0) {
+          toast.error('No valid lender data found in Excel file');
+          setUploading(false);
+          return;
+        }
+
+        const { error } = await supabase.from('lender_programs').insert(programs);
+        if (error) throw error;
+
+        toast.success(`Imported ${programs.length} lenders from Excel`);
+        queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
+      } catch (error) {
+        console.error('Error parsing/uploading Excel:', error);
+        toast.error('Failed to import Excel file');
+      } finally {
+        setUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
   const detectDelimiter = (text: string): string => {
     const firstLine = text.split('\n')[0] || '';
     const delimiters = [',', '\t', ';', '|'];
     let bestDelimiter = ',';
     let maxCount = 0;
-
     for (const d of delimiters) {
       const count = (firstLine.match(new RegExp(d === '|' ? '\\|' : d, 'g')) || []).length;
       if (count > maxCount) {
@@ -898,7 +969,6 @@ const LenderPrograms = () => {
 
   const parseAndUploadCSV = async (file: File) => {
     setUploading(true);
-
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
@@ -914,13 +984,11 @@ const LenderPrograms = () => {
 
         const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
         const csvRows: string[][] = [];
-
         for (let i = 1; i < lines.length; i++) {
           csvRows.push(lines[i].split(delimiter).map(v => v.trim().replace(/['"]/g, '')));
         }
 
         const programs = parseRowsToPrograms(headers, csvRows);
-
         if (programs.length === 0) {
           toast.error('No valid lender data found in CSV');
           setUploading(false);
@@ -940,13 +1008,17 @@ const LenderPrograms = () => {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     };
-
     reader.readAsText(file);
   };
 
   const dirtyCount = rows.filter(r => r.isDirty && r.lender_name.trim()).length;
 
-  // ── ColHeader (CRM pattern from People.tsx) ──
+  const activeFilterLabel =
+    filterOptions.find(o => o.id === activeFilter)?.label
+    ?? customFilters.find(cf => cf.id === activeFilter)?.label
+    ?? 'All Lenders';
+
+  // ── ColHeader (CRM pattern) ──
   const ColHeader = ({
     colKey,
     children,
@@ -1031,463 +1103,377 @@ const LenderPrograms = () => {
 
   return (
     <AdminLayout>
-      <div data-full-bleed className="space-y-4 p-6">
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2 justify-end">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={handleAddRow}
-            >
-              + Add Row
-            </Button>
-            <Button
-              variant={panelMode === 'filter' ? "default" : "outline"}
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setPanelMode(panelMode === 'filter' ? 'list' : 'filter')}
-            >
-              <Filter className="h-3.5 w-3.5" />
-              Filter
-              {hasActiveFilters && (
-                <span className="ml-1 bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full">
-                  {Object.values(filters).filter(v => v.trim()).length}
-                </span>
-              )}
-            </Button>
-            <Button
-              variant={panelMode === 'advisor' ? "default" : "outline"}
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setPanelMode(panelMode === 'advisor' ? 'list' : 'advisor')}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              AI Advisor
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-              Upload
-            </Button>
-            {dirtyCount > 0 && (
-              <Button onClick={handleSaveAll} disabled={saving} className="gap-1.5 bg-green-600 hover:bg-green-700">
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                Save {dirtyCount}
-              </Button>
-            )}
-          </div>
+      <div className="system-font flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-background -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10">
+        <div className="relative flex flex-1 min-h-0 overflow-y-hidden overflow-x-clip">
 
-        {/* Main content grid - table + optional panel */}
-        <div className="relative">
-        <div className={`grid gap-4 ${panelMode !== 'list' ? 'grid-cols-1 xl:grid-cols-4' : 'grid-cols-1'}`}>
-          {/* Table Section */}
-          <div className={panelMode !== 'list' ? 'xl:col-span-3' : ''}>
-            {/* Search */}
-            <div className="relative max-w-md mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search lenders..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-background border-border rounded-full"
-              />
+          {/* Sidebar collapse button */}
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            title={sidebarOpen ? 'Hide filters' : 'Show filters'}
+            style={{ left: sidebarOpen ? 'calc(18rem - 1.3125rem + 19px)' : 'calc(72px - 21px + 19px)', borderRadius: '50%', transition: 'left 200ms ease' }}
+            className="absolute top-[9px] z-20 h-[42px] w-[42px] border border-gray-300 dark:border-border bg-white dark:bg-card flex items-center justify-center text-black dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted hover:border-gray-400 transition-colors shadow-sm"
+          >
+            <ArrowLeft className="h-5 w-5" strokeWidth={2.5} style={{ transform: `scale(2) ${sidebarOpen ? '' : 'rotate(180deg)'}`, transition: 'transform 200ms ease' }} />
+          </button>
+
+          {/* Left saved-filters sidebar */}
+          <SavedFiltersSidebar
+            sidebarOpen={sidebarOpen}
+            filterOptions={filterOptions}
+            customFilters={customFilters.map(cf => ({ id: cf.id, label: cf.label }))}
+            filterCounts={filterCounts}
+            activeFilter={activeFilter}
+            onSelectFilter={(id) => { setActiveFilter(id); setSelectedLender(null); }}
+            createFilterAction={
+              <button
+                onClick={() => { setFilterPanelOpen(true); setSelectedLender(null); }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-[#3b2778] bg-[#eee6f6] hover:bg-[#e0d4f0] dark:text-purple-300 dark:bg-purple-950/40 dark:hover:bg-purple-950/60 transition-colors"
+                title="Create new filter"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>New</span>
+              </button>
+            }
+          />
+
+          {/* Main area */}
+          <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+            {/* Content title bar */}
+            <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-[#f8f9fa] dark:bg-muted/30">
+              <div className="flex items-center gap-3 ml-24">
+                <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
+                  {activeFilterLabel}
+                </h2>
+                <span className="text-[#5f6368] dark:text-muted-foreground text-sm tabular-nums whitespace-nowrap">
+                  # {filteredAndSorted.length.toLocaleString()} lender{filteredAndSorted.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                  Upload
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={handleAddRow}
+                >
+                  + Add Row
+                </Button>
+                {dirtyCount > 0 && (
+                  <Button onClick={handleSaveAll} disabled={saving} className="gap-1.5 bg-green-600 hover:bg-green-700">
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    Save {dirtyCount}
+                  </Button>
+                )}
+              </div>
             </div>
 
-            {/* Bulk Selection Toolbar */}
-            {selectedLenderIds.size > 0 && (
-              <div className="sticky top-0 z-40 px-4 py-2 mb-2 bg-white dark:bg-background border-b border-border">
-                <PipelineBulkToolbar
-                  selectedCount={selectedLenderIds.size}
-                  totalCount={filteredAndSorted.length}
-                  onClearSelection={clearSelection}
-                  onDeleteBoxes={handleBulkDelete}
-                />
-              </div>
-            )}
+            {/* Table scroll container */}
+            <div className="flex-1 overflow-auto">
+              {selectedLenderIds.size > 0 && (
+                <div className="sticky top-0 z-40 px-4 py-2 bg-white dark:bg-background border-b border-border">
+                  <PipelineBulkToolbar
+                    selectedCount={selectedLenderIds.size}
+                    totalCount={filteredAndSorted.length}
+                    onClearSelection={clearSelection}
+                    onDeleteBoxes={handleBulkDelete}
+                  />
+                </div>
+              )}
 
-            {/* CRM Table */}
-            <div className="bg-white dark:bg-card rounded-md border border-[#c8bdd6] overflow-hidden">
-              <ScrollArea className="h-[calc(100vh-320px)]">
-                <table className="w-full text-[13px]" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      {/* Checkbox column header */}
-                      <th
-                        className="w-12 pl-2 pr-4 py-3 text-center sticky top-0 left-0 z-30"
-                        style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6' }}
-                      >
+              <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <ColHeader
+                      colKey="lender_name"
+                      className="sticky top-0 z-30 group/hdr"
+                      style={{ left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}
+                    >
+                      <div className="shrink-0 mr-1" title="Select all" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={isAllSelected}
                           onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
                           className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                         />
-                      </th>
-                      {COLUMNS.map((col) => {
-                        const isSticky = col.key === 'lender_name';
-                        return (
-                          <ColHeader
-                            key={col.key}
-                            colKey={col.key}
-                            className={isSticky ? 'sticky top-0 z-30 group/hdr' : 'sticky top-0 z-20'}
-                            style={isSticky ? { left: 48, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' } : undefined}
-                          >
-                            {col.label}
-                          </ColHeader>
-                        );
-                      })}
-                      {/* Action column */}
-                      <th
-                        className="sticky top-0 z-20 w-12"
-                        style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }}
-                      />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAndSorted.length === 0 ? (
-                      <tr>
-                        <td colSpan={COLUMNS.length + 2} className="text-center py-16 text-muted-foreground">
-                          <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                          <p>No lender programs found</p>
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredAndSorted.map((row) => {
-                        const isDirty = row.isDirty;
-                        const isDetailSelected = selectedLender?.id === row.id;
-                        const isBulkSelected = selectedLenderIds.has(row.id);
-
-                        const rowBg = isDirty
-                          ? 'bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30'
-                          : isDetailSelected
-                            ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
-                            : isBulkSelected
-                              ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
-                              : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30';
-
-                        const checkboxBg = isDirty
-                          ? 'bg-amber-50 dark:bg-amber-950/20 group-hover:bg-amber-100 dark:group-hover:bg-amber-950/30'
-                          : isDetailSelected
-                            ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
-                            : isBulkSelected
-                              ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
-                              : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
-
-                        return (
-                          <tr
-                            key={row.id}
-                            onClick={() => handleRowClick(row)}
-                            className={`group cursor-pointer transition-colors duration-200 ${rowBg}`}
-                          >
-                            {/* Checkbox cell */}
-                            <td
-                              className={`w-12 pl-2 pr-3 py-2 text-center sticky left-0 z-[5] transition-colors ${checkboxBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`}
-                              style={{ border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6' }}
-                              onClick={(e) => e.stopPropagation()}
+                      </div>
+                      <Building2 className="h-4 w-4" /> Institution
+                    </ColHeader>
+                    {COLUMNS.filter(c => c.key !== 'lender_name').map((col) => (
+                      <ColHeader key={col.key} colKey={col.key} className="sticky top-0 z-10">
+                        {col.label}
+                      </ColHeader>
+                    ))}
+                    <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAndSorted.length === 0 ? (
+                    <tr>
+                      <td colSpan={COLUMNS.length + 1}>
+                        <div className="flex flex-col items-center justify-center py-24 gap-4">
+                          <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted">
+                            <Building2 className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-semibold text-foreground">No lenders found</p>
+                            <p className="text-xs text-muted-foreground mt-1 max-w-[260px]">
+                              {searchQuery || activeFilter !== 'all'
+                                ? 'Try adjusting your search or filter criteria'
+                                : 'No lender programs have been added yet'}
+                            </p>
+                          </div>
+                          {(searchQuery || activeFilter !== 'all') && (
+                            <button
+                              onClick={() => { setSearchQuery(''); setActiveFilter('all'); }}
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold mt-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
                             >
-                              <Checkbox
-                                checked={isBulkSelected}
-                                onCheckedChange={() => toggleLenderSelection(row.id)}
-                                className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
-                              />
-                            </td>
-                            {COLUMNS.map((col) => {
-                              const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key;
-                              const value = row[col.key] as string;
-                              const isLookingFor = col.key === 'looking_for';
-                              const isSticky = col.key === 'lender_name';
-                              const isEmail = col.key === 'email';
-                              const isPhone = col.key === 'phone';
-                              const stickyBg = isDirty
-                                ? 'bg-amber-50 dark:bg-amber-950/20 group-hover:bg-amber-100 dark:group-hover:bg-amber-950/30'
-                                : isDetailSelected
-                                  ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
-                                  : isBulkSelected
-                                    ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
-                                    : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
+                              Clear all filters
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAndSorted.map((row) => {
+                      const isDirty = row.isDirty;
+                      const isDetailSelected = selectedLender?.id === row.id;
+                      const isBulkSelected = selectedLenderIds.has(row.id);
 
-                              return (
-                                <td
-                                  key={col.key}
-                                  className={`px-4 py-2 overflow-hidden ${
-                                    isSticky ? `sticky z-[5] transition-colors ${stickyBg}` : ''
-                                  }`}
-                                  style={{
-                                    width: columnWidths[col.key],
-                                    border: '1px solid #c8bdd6',
-                                    ...(isSticky ? { left: 48, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' } : {}),
+                      const rowBg = isDirty
+                        ? 'bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30'
+                        : isDetailSelected
+                          ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
+                          : isBulkSelected
+                            ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
+                            : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30';
+
+                      const stickyBg = isDirty
+                        ? 'bg-amber-50 dark:bg-amber-950/20 group-hover:bg-amber-100 dark:group-hover:bg-amber-950/30'
+                        : isDetailSelected
+                          ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
+                          : isBulkSelected
+                            ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
+                            : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
+
+                      const isEditingSticky = editingCell?.rowId === row.id && editingCell?.colKey === 'lender_name';
+
+                      return (
+                        <tr
+                          key={row.id}
+                          onClick={() => handleRowClick(row)}
+                          className={`group cursor-pointer transition-colors duration-200 ${rowBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`}
+                        >
+                          {/* Sticky first column: checkbox + avatar + name pill */}
+                          <td
+                            className={`pl-2 pr-1.5 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`}
+                            style={{
+                              width: columnWidths.lender_name,
+                              border: '1px solid #c8bdd6',
+                              borderLeft: 'none',
+                              boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)',
+                            }}
+                            onClick={(e) => handleCellClick(e, row.id, 'lender_name')}
+                          >
+                            {isEditingSticky ? (
+                              <Input
+                                autoFocus
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onBlur={handleCellBlur}
+                                onKeyDown={handleKeyDown}
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-8 text-[14px] px-2 border-[#3b2778] focus-visible:ring-1 focus-visible:ring-[#3b2778] bg-background"
+                              />
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleLenderSelection(row.id);
                                   }}
-                                  onClick={(e) => handleCellClick(e, row.id, col.key)}
                                 >
-                                  {isEditing ? (
-                                    isLookingFor ? (
-                                      <textarea
-                                        autoFocus
-                                        value={editValue}
-                                        onChange={(e) => setEditValue(e.target.value)}
-                                        onBlur={handleCellBlur}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Escape') {
-                                            setEditingCell(null);
-                                            setEditValue('');
-                                          }
-                                        }}
-                                        className="w-full h-20 text-[16px] px-2 py-1 border border-[#3b2778] rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-[#3b2778] resize-none"
-                                      />
-                                    ) : (
-                                      <Input
-                                        autoFocus
-                                        value={editValue}
-                                        onChange={(e) => setEditValue(e.target.value)}
-                                        onBlur={handleCellBlur}
-                                        onKeyDown={handleKeyDown}
-                                        className="h-8 text-[16px] px-2 border-[#3b2778] focus-visible:ring-1 focus-visible:ring-[#3b2778] bg-background"
-                                      />
-                                    )
-                                  ) : isSticky ? (
-                                    <div className="flex items-center">
-                                      <span className="text-[16px] font-semibold text-foreground truncate flex-1 min-w-0">
-                                        {value || ''}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        title="Open expanded view"
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/lender-programs/expanded-view/${row.id}`); }}
-                                        className="shrink-0 ml-auto -mr-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
-                                      >
-                                        <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
-                                      </button>
-                                    </div>
-                                  ) : isEmail && value ? (
+                                  <Checkbox
+                                    checked={isBulkSelected}
+                                    onCheckedChange={() => toggleLenderSelection(row.id)}
+                                    className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
+                                  <CrmAvatar name={row.lender_name || '?'} size="md" />
+                                  <span className="text-[14px] text-[#202124] dark:text-foreground truncate">
+                                    {row.lender_name || <span className="text-muted-foreground/60">Untitled</span>}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  title="Open expanded view"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/lender-programs/expanded-view/${row.id}`); }}
+                                  className="shrink-0 ml-auto -mr-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                >
+                                  <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Other columns */}
+                          {COLUMNS.filter(c => c.key !== 'lender_name').map((col) => {
+                            const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key;
+                            const value = (row[col.key] as string) || '';
+                            const isLookingFor = col.key === 'looking_for';
+                            const isEmail = col.key === 'email';
+                            const isPhone = col.key === 'phone';
+                            const isCallStatus = col.key === 'call_status';
+
+                            return (
+                              <td
+                                key={col.key}
+                                className="px-3 py-1.5 overflow-hidden"
+                                style={{
+                                  width: columnWidths[col.key],
+                                  border: '1px solid #c8bdd6',
+                                }}
+                                onClick={(e) => handleCellClick(e, row.id, col.key)}
+                              >
+                                {isEditing ? (
+                                  isLookingFor ? (
+                                    <textarea
+                                      autoFocus
+                                      value={editValue}
+                                      onChange={(e) => setEditValue(e.target.value)}
+                                      onBlur={handleCellBlur}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Escape') {
+                                          setEditingCell(null);
+                                          setEditValue('');
+                                        }
+                                      }}
+                                      className="w-full h-20 text-[14px] px-2 py-1 border border-[#3b2778] rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-[#3b2778] resize-none"
+                                    />
+                                  ) : (
+                                    <Input
+                                      autoFocus
+                                      value={editValue}
+                                      onChange={(e) => setEditValue(e.target.value)}
+                                      onBlur={handleCellBlur}
+                                      onKeyDown={handleKeyDown}
+                                      className="h-8 text-[14px] px-2 border-[#3b2778] focus-visible:ring-1 focus-visible:ring-[#3b2778] bg-background"
+                                    />
+                                  )
+                                ) : value ? (
+                                  isEmail ? (
                                     <a
                                       href={`mailto:${value}`}
                                       onClick={(e) => e.stopPropagation()}
-                                      className="text-[16px] text-blue-600 hover:underline truncate block"
+                                      className="inline-flex items-center rounded-full bg-[#f1f3f4] dark:bg-muted px-3 py-0.5 text-[14px] text-blue-600 hover:underline truncate max-w-full"
                                     >
-                                      {value}
+                                      <span className="truncate">{value}</span>
                                     </a>
-                                  ) : isPhone && value ? (
+                                  ) : isPhone ? (
                                     <a
                                       href={`tel:${value}`}
                                       onClick={(e) => e.stopPropagation()}
-                                      className="text-[16px] text-blue-600 hover:underline truncate block"
+                                      className="inline-flex items-center rounded-full bg-[#f1f3f4] dark:bg-muted px-3 py-0.5 text-[14px] text-blue-600 hover:underline truncate max-w-full"
+                                    >
+                                      <span className="truncate">{value}</span>
+                                    </a>
+                                  ) : isCallStatus ? (
+                                    <span
+                                      className={`inline-flex items-center rounded-full px-3 py-0.5 text-[13px] font-medium ${
+                                        value.toUpperCase() === 'Y'
+                                          ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300'
+                                          : 'bg-[#f1f3f4] text-[#5f6368] dark:bg-muted dark:text-muted-foreground'
+                                      }`}
                                     >
                                       {value}
-                                    </a>
-                                  ) : (
-                                    <span className={`text-[16px] block w-full ${
-                                      col.key === 'call_status' && value === 'Y' ? 'text-green-600 font-medium' : 'text-foreground'
-                                    } ${isLookingFor ? 'whitespace-pre-wrap break-words line-clamp-3' : 'truncate'}`}>
-                                      {value || ''}
                                     </span>
-                                  )}
-                                </td>
-                              );
-                            })}
-                            {/* Action column: delete + expand */}
-                            <td
-                              className="w-12 text-center"
-                              style={{ border: '1px solid #c8bdd6' }}
-                            >
-                              {(row.lender_name.trim() || !row.isNew) && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleDeleteRow(row); }}
-                                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity p-1"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-                <ScrollBar orientation="horizontal" />
-                <ScrollBar orientation="vertical" />
-              </ScrollArea>
+                                  ) : isLookingFor ? (
+                                    <span className="text-[14px] text-[#202124] dark:text-foreground whitespace-pre-wrap break-words line-clamp-3 block">
+                                      {value}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center rounded-full bg-[#f1f3f4] dark:bg-muted px-3 py-0.5 text-[14px] text-[#202124] dark:text-foreground truncate max-w-full">
+                                      <span className="truncate">{value}</span>
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="text-muted-foreground/40 text-[14px]">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+
+                          {/* Action column */}
+                          <td
+                            className="w-10 text-center"
+                            style={{ border: '1px solid #c8bdd6' }}
+                          >
+                            {(row.lender_name.trim() || !row.isNew) && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteRow(row); }}
+                                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity p-1"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
+          </main>
 
-            <p className="text-xs text-muted-foreground mt-2">
-              Click any cell to edit. Changes are highlighted in yellow. {filteredAndSorted.length} lender{filteredAndSorted.length !== 1 ? 's' : ''} shown.
-            </p>
-          </div>
-
-          {/* Filter Panel */}
-          {panelMode === 'filter' && (
-            <div className="xl:col-span-1">
-              <Card className="h-full flex flex-col border-border">
-                <CardHeader
-                  className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors bg-muted/30"
-                  onClick={() => setPanelMode('list')}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-slate-700 dark:bg-slate-600">
-                        <Filter className="h-4 w-4 text-white" />
-                      </div>
-                      <CardTitle className="text-base">Filter Lenders</CardTitle>
-                      {hasActiveFilters && (
-                        <Badge variant="secondary" className="text-xs">
-                          {Object.values(filters).filter(v => v.trim()).length} active
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {hasActiveFilters && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            clearFilters();
-                          }}
-                          className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          <X className="h-3 w-3 mr-1" />
-                          Clear
-                        </Button>
-                      )}
-                      <X className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 p-4 min-h-0 overflow-auto">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-muted-foreground">Institution</Label>
-                      <SearchableSelect
-                        options={filterOptions.institutions}
-                        value={filters.institution}
-                        onValueChange={(value) => setFilters(prev => ({ ...prev, institution: value }))}
-                        placeholder="All institutions"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-muted-foreground">Looking For</Label>
-                      <Input
-                        placeholder="Type to search..."
-                        value={filters.lookingFor}
-                        onChange={(e) => setFilters(prev => ({ ...prev, lookingFor: e.target.value }))}
-                        className="h-8 text-sm pl-3"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-muted-foreground">Contact Name</Label>
-                      <SearchableSelect
-                        options={filterOptions.contacts}
-                        value={filters.contact}
-                        onValueChange={(value) => setFilters(prev => ({ ...prev, contact: value }))}
-                        placeholder="All contacts"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-muted-foreground">Loan Size</Label>
-                      <SearchableSelect
-                        options={filterOptions.loanSizes}
-                        value={filters.loanSize}
-                        onValueChange={(value) => setFilters(prev => ({ ...prev, loanSize: value }))}
-                        placeholder="All loan sizes"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-muted-foreground">States</Label>
-                      <SearchableSelect
-                        options={filterOptions.states}
-                        value={filters.states}
-                        onValueChange={(value) => setFilters(prev => ({ ...prev, states: value }))}
-                        placeholder="All states"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-muted-foreground">Lender Type</Label>
-                      <SearchableSelect
-                        options={filterOptions.lenderTypes}
-                        value={filters.lenderType}
-                        onValueChange={(value) => setFilters(prev => ({ ...prev, lenderType: value }))}
-                        placeholder="All lender types"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-muted-foreground">Loan Types</Label>
-                      <SearchableSelect
-                        options={filterOptions.loanTypes}
-                        value={filters.loanTypes}
-                        onValueChange={(value) => setFilters(prev => ({ ...prev, loanTypes: value }))}
-                        placeholder="All loan types"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-muted-foreground">Call Status</Label>
-                      <SearchableSelect
-                        options={['Y', 'N']}
-                        value={filters.callStatus}
-                        onValueChange={(value) => setFilters(prev => ({ ...prev, callStatus: value }))}
-                        placeholder="All"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+          {/* Right-side overlays — mutually exclusive */}
+          {selectedLender && !filterPanelOpen && (
+            <div ref={detailPanelRef} className="shrink-0">
+              <LenderDetailPanel
+                lender={selectedLender}
+                onClose={() => setSelectedLender(null)}
+                onExpand={() => {
+                  navigate(`/admin/lender-programs/expanded-view/${selectedLender.id}`);
+                  setSelectedLender(null);
+                }}
+                onLenderUpdate={(updated) => {
+                  setSelectedLender(updated);
+                  queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
+                }}
+              />
             </div>
           )}
 
-          {/* AI Advisor Panel */}
-          {panelMode === 'advisor' && (
-            <div className="xl:col-span-1">
-              <Card className="h-full flex flex-col border-primary/20">
-                <CardHeader
-                  className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => setPanelMode('list')}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary to-primary/80">
-                        <Sparkles className="h-4 w-4 text-white" />
-                      </div>
-                      <CardTitle className="text-base">Program Advisor</CardTitle>
-                    </div>
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 p-0 min-h-0">
-                  <LenderProgramAssistant />
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-
-        {/* Detail Panel overlay */}
-        {selectedLender && panelMode === 'list' && (
-          <div ref={detailPanelRef} className="absolute right-0 top-0 z-50 h-[calc(100vh-200px)]">
-            <LenderDetailPanel
-              lender={selectedLender}
-              onClose={() => setSelectedLender(null)}
-              onExpand={() => {
-                navigate(`/admin/lender-programs/expanded-view/${selectedLender.id}`);
-                setSelectedLender(null);
-              }}
-              onLenderUpdate={(updated) => {
-                setSelectedLender(updated);
-                queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
-              }}
+          {filterPanelOpen && !selectedLender && (
+            <LenderFilterPanel
+              institutions={filterPanelOptions.institutions}
+              contacts={filterPanelOptions.contacts}
+              lenderTypes={filterPanelOptions.lenderTypes}
+              loanTypes={filterPanelOptions.loanTypes}
+              states={filterPanelOptions.states}
+              loanSizes={filterPanelOptions.loanSizes}
+              onSave={handleSaveCustomFilter}
+              onClose={() => setFilterPanelOpen(false)}
             />
-          </div>
-        )}
+          )}
         </div>
       </div>
     </AdminLayout>
