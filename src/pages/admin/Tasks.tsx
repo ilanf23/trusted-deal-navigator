@@ -12,7 +12,7 @@ const Tasks = () => {
 
   return (
     <EmployeeLayout>
-      <div data-full-bleed className="space-y-2 px-4 md:px-6 lg:px-8">
+      <div data-full-bleed className="h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)] overflow-y-auto space-y-2 px-4 md:px-6 lg:px-8 pb-8">
         {/* Task Workspace */}
         <TaskWorkspace />
       </div>

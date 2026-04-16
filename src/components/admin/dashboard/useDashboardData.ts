@@ -167,8 +167,6 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
       if (error) throw error;
       return data;
     },
-    staleTime: 0,
-    refetchOnMount: 'always' as const,
   });
 
   // Pipeline analytics — open deals
@@ -182,8 +180,6 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
       if (error) throw error;
       return data;
     },
-    staleTime: 0,
-    refetchOnMount: 'always' as const,
   });
 
   // Won deals in current period
@@ -198,8 +194,6 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
       if (error) throw error;
       return data;
     },
-    staleTime: 0,
-    refetchOnMount: 'always' as const,
   });
 
   // Lost deals in current period (for proper win rate: won / (won + lost))
@@ -214,8 +208,6 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
       if (error) throw error;
       return data;
     },
-    staleTime: 0,
-    refetchOnMount: 'always' as const,
   });
 
   // Previous period won deals (for period-over-period comparison)
@@ -231,8 +223,6 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
       if (error) throw error;
       return data;
     },
-    staleTime: 0,
-    refetchOnMount: 'always' as const,
   });
 
   // Previous period lost deals (for period-over-period win rate)
@@ -248,8 +238,6 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
       if (error) throw error;
       return data;
     },
-    staleTime: 0,
-    refetchOnMount: 'always' as const,
   });
 
   // Company won deals YTD (always YTD for company revenue banner)
@@ -268,8 +256,6 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
         funded_at: d.won_at,
       }));
     },
-    staleTime: 0,
-    refetchOnMount: 'always' as const,
   });
 
   // Heatmap: deal events + communications over last 90 days

@@ -23,7 +23,7 @@ function getInitials(name: string): string {
 const AdminTopBarSearch = ({
   value,
   onChange,
-  placeholder = 'Search by name, email, domain or phone number',
+  placeholder = 'Search deals, contacts, tasks...',
 }: AdminTopBarSearchProps) => {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);

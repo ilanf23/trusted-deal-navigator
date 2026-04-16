@@ -21,26 +21,22 @@ export const useTeamMember = () => {
     queryFn: async () => {
       if (!user) return null;
 
-      // First get basic team member info from RPC
-      const { data: rpcData, error: rpcError } = await supabase.rpc('get_current_team_member');
+      // Run RPC and avatar fetch in parallel — auth uid === users.id in the consolidated users table
+      const [rpcResult, avatarResult] = await Promise.all([
+        supabase.rpc('get_current_team_member'),
+        supabase.from('users').select('avatar_url').eq('id', user.id).maybeSingle(),
+      ]);
 
-      if (rpcError || !rpcData || rpcData.length === 0) {
-        console.error('Error fetching team member:', rpcError);
+      if (rpcResult.error || !rpcResult.data || rpcResult.data.length === 0) {
+        console.error('Error fetching team member:', rpcResult.error);
         return null;
       }
 
-      const basicInfo = rpcData[0];
-
-      // Then fetch avatar_url from team_members table
-      const { data: fullData, error: fullError } = await supabase
-        .from('users')
-        .select('avatar_url')
-        .eq('id', basicInfo.id)
-        .single();
+      const basicInfo = rpcResult.data[0];
 
       return {
         ...basicInfo,
-        avatar_url: fullData?.avatar_url || null,
+        avatar_url: avatarResult.data?.avatar_url || null,
       } as TeamMember;
     },
     enabled: !!user,

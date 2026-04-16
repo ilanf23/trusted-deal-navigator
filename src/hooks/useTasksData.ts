@@ -13,7 +13,7 @@ export const useTasksData = (teamMemberId?: string | null) => {
     queryFn: async () => {
       let query = supabase
         .from('tasks')
-        .select('*, lead:pipeline(id, name, company_name, email, phone)')
+        .select('*, lead:potential(id, name, company_name, email, phone)')
         .order('due_date', { ascending: true, nullsFirst: false });
       if (teamMemberId) {
         query = query.eq('team_member_id', teamMemberId);
@@ -40,7 +40,7 @@ export const useTasksData = (teamMemberId?: string | null) => {
         lead_id: task.lead_id,
         source: task.source || 'manual',
         task_type: task.task_type || 'internal',
-      }).select('*, lead:pipeline(id, name, company_name, email, phone)').single();
+      }).select('*, lead:potential(id, name, company_name, email, phone)').single();
       if (error) throw error;
       return data;
     },

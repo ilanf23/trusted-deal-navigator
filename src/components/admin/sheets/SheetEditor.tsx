@@ -28,6 +28,8 @@ export function SheetEditor({
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const previousDataRef = useRef<Sheet[]>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastLocalSaveAtRef = useRef<number>(0);
+  const ECHO_SUPPRESS_MS = 5000;
 
   // Single API call to get all sheet tabs + data
   const loadAllData = useCallback(async () => {
@@ -71,9 +73,60 @@ export function SheetEditor({
     };
   }, [loadAllData]);
 
+  // Start a Drive watch on mount; stop it on unmount. Subscribe to change events
+  // via Supabase Realtime and refetch when external edits are detected (echo-suppressed).
+  useEffect(() => {
+    let cancelled = false;
+    let renewTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const startWatch = async () => {
+      try {
+        const { error } = await supabase.functions.invoke('sheets-watch-start', {
+          body: { spreadsheetId, teamMemberName },
+        });
+        if (error) console.warn('sheets-watch-start failed:', error);
+      } catch (err) {
+        console.warn('sheets-watch-start threw:', err);
+      }
+    };
+
+    startWatch();
+    // Belt-and-suspenders renewal in case a session runs past the 6d 23h watch expiry.
+    renewTimer = setTimeout(startWatch, 6 * 24 * 60 * 60 * 1000);
+
+    const channel = supabase
+      .channel(`sheets-changes-${spreadsheetId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'sheets_change_events',
+          filter: `spreadsheet_id=eq.${spreadsheetId}`,
+        },
+        () => {
+          if (cancelled) return;
+          if (Date.now() - lastLocalSaveAtRef.current < ECHO_SUPPRESS_MS) return;
+          loadAllData();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      if (renewTimer) clearTimeout(renewTimer);
+      supabase.removeChannel(channel);
+      // Fire-and-forget stop. We don't await because the user is navigating away.
+      supabase.functions
+        .invoke('sheets-watch-stop', { body: { teamMemberName } })
+        .catch((err) => console.warn('sheets-watch-stop failed:', err));
+    };
+  }, [spreadsheetId, teamMemberName, loadAllData]);
+
   const batchSave = useCallback(
     async (updates: { range: string; value: string }[]) => {
       if (updates.length === 0) return;
+      lastLocalSaveAtRef.current = Date.now();
       setSaveStatus('saving');
       try {
         const response = await supabase.functions.invoke('google-sheets-api', {

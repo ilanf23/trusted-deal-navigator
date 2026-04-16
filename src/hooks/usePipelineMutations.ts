@@ -94,7 +94,7 @@ export const useCrmMutations = (table: CrmTable) => {
   const queryKey = QUERY_KEY_MAP[table];
 
   const moveLeadToStage = useMutation({
-    mutationFn: async ({ pipelineLeadId, newStageId, newStageName, oldStageName, leadId }: {
+    mutationFn: async ({ pipelineLeadId, newStageId, newStageName, oldStageName }: {
       pipelineLeadId: string;
       newStageId: string;
       newStageName?: string;
@@ -106,24 +106,59 @@ export const useCrmMutations = (table: CrmTable) => {
       const { error } = await updateDealStage(table, dealId, newStageId);
       if (error) throw error;
 
-      // Log activity
+      // Best-effort activity log. The `activities` RLS policy currently
+      // requires app_role = 'admin', so super_admin users get blocked here.
+      // Do not fail the stage move when the audit-log write is rejected.
+      // (A BEFORE UPDATE trigger also writes a stage_change row via
+      // SECURITY DEFINER, so audit history is preserved either way.)
       if (dealId && oldStageName && newStageName) {
-        await supabase.from('activities').insert({
-          entity_id: dealId,
-          entity_type: ENTITY_TYPE_MAP[table],
-          activity_type: 'stage_change',
-          title: `Moved from ${oldStageName} to ${newStageName}`,
-          content: JSON.stringify({ from: oldStageName, to: newStageName }),
-        });
+        try {
+          const { error: activityError } = await supabase.from('activities').insert({
+            entity_id: dealId,
+            entity_type: ENTITY_TYPE_MAP[table],
+            activity_type: 'stage_change',
+            title: `Moved from ${oldStageName} to ${newStageName}`,
+            content: JSON.stringify({ from: oldStageName, to: newStageName }),
+          });
+          if (activityError) {
+            console.warn('Skipped stage_change activity log:', activityError);
+          }
+        } catch (err) {
+          console.warn('Skipped stage_change activity log:', err);
+        }
       }
     },
-    onSuccess: () => {
+    // Optimistic update: move the card into its new column immediately so the
+    // UI doesn't visibly snap back while the round-trip is in flight.
+    onMutate: async ({ pipelineLeadId, newStageId }) => {
+      await queryClient.cancelQueries({ queryKey: [queryKey] });
+      const previous = queryClient.getQueryData<unknown[]>([queryKey]);
+      queryClient.setQueryData<unknown[] | undefined>([queryKey], (old) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((row) => {
+          const r = row as { id?: string; stage_id?: string; stage?: { id?: string } | null };
+          if (r?.id !== pipelineLeadId) return row;
+          return {
+            ...r,
+            stage_id: newStageId,
+            stage: r.stage ? { ...r.stage, id: newStageId } : r.stage,
+          };
+        });
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData([queryKey], context.previous);
+      }
+      toast.error('Failed to move deal');
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [queryKey] });
       queryClient.invalidateQueries({ queryKey: ['lead-activity-timeline'] });
-      toast.success('Deal moved successfully');
     },
-    onError: () => {
-      toast.error('Failed to move deal');
+    onSuccess: () => {
+      toast.success('Deal moved successfully');
     },
   });
 

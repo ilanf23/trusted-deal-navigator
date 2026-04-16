@@ -20,7 +20,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { PeopleTaskDetailDialog, type LeadTask } from '@/components/admin/PeopleTaskDetailDialog';
-import { type LeadProject } from '@/components/admin/ProjectDetailDialog';
+import ProjectDetailDialog, { type LeadProject } from '@/components/admin/ProjectDetailDialog';
 import { LeadCallHistorySection } from '@/components/admin/shared/LeadCallHistorySection';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -402,6 +402,8 @@ export default function LeadRelatedSidebar({
   const [showAddProject, setShowAddProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [savingProject, setSavingProject] = useState(false);
+  const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
+  const [createProjectInitialName, setCreateProjectInitialName] = useState('');
 
   // File upload state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -466,6 +468,34 @@ export default function LeadRelatedSidebar({
       return (data ?? []) as LeadProject[];
     },
     enabled: !!leadId,
+  });
+
+  // Project name suggestions pulled from all entities in `entity_projects`.
+  // Deduped by name and filtered to exclude projects already linked to this
+  // entity. Powers the autocomplete on the Add Project input.
+  const { data: projectSuggestions = [] } = useQuery<Array<{ id: string; name: string; status: string | null; project_stage: string | null }>>({
+    queryKey: ['lead-related', 'project-search', newProjectName, leadId],
+    queryFn: async () => {
+      const q = newProjectName.trim();
+      if (!q) return [];
+      const { data } = await supabase
+        .from('entity_projects')
+        .select('id, name, status, project_stage')
+        .ilike('name', `%${q}%`)
+        .limit(20);
+      const existingNames = new Set(projects.map((p) => p.name.toLowerCase()));
+      const seen = new Set<string>();
+      const out: Array<{ id: string; name: string; status: string | null; project_stage: string | null }> = [];
+      for (const p of data ?? []) {
+        const lower = p.name.toLowerCase();
+        if (seen.has(lower) || existingNames.has(lower)) continue;
+        seen.add(lower);
+        out.push(p);
+        if (out.length >= 8) break;
+      }
+      return out;
+    },
+    enabled: showAddProject && newProjectName.trim().length > 0,
   });
 
   const { data: leadAppointments = [] } = useQuery({
@@ -886,37 +916,39 @@ export default function LeadRelatedSidebar({
     navigate,
   ]);
 
-  const handleInlineCreateProject = useCallback(async () => {
-    if (!newProjectName.trim() || !leadId) return;
+  // Link an existing project to this entity. Because `entity_projects` rows are
+  // per-entity (one row = one project scoped to one entity), "linking" inserts
+  // a new row carrying the suggested project's name and stage for this entity.
+  const handleLinkExistingProject = useCallback(async (suggestion: { name: string; status: string | null; project_stage: string | null }) => {
+    if (!leadId) return;
     setSavingProject(true);
     try {
       const { error } = await supabase.from('entity_projects').insert({
         entity_id: leadId,
         entity_type: entityType,
-        name: newProjectName.trim(),
-        status: 'open',
-        project_stage: 'open',
+        name: suggestion.name,
+        status: suggestion.status ?? 'open',
+        project_stage: suggestion.project_stage ?? 'open',
         visibility: 'everyone',
         created_by: currentUserName || null,
       });
       if (error) throw error;
-      toast.success('Project created');
+      toast.success('Project linked');
       queryClient.invalidateQueries({ queryKey: projectsKey });
       setNewProjectName('');
       setShowAddProject(false);
     } catch {
-      toast.error('Failed to create project');
+      toast.error('Failed to link project');
     } finally {
       setSavingProject(false);
     }
-  }, [newProjectName, leadId, entityType, currentUserName, queryClient, projectsKey]);
+  }, [leadId, entityType, currentUserName, queryClient, projectsKey]);
 
   /**
    * Delete a project from `entity_projects`. Each row in that table represents
-   * a project scoped to a single entity (the insert in handleInlineCreateProject
-   * creates one row per project), so removing the row deletes the project
-   * itself — not just a link. Uses a native confirm dialog because the sidebar
-   * has no undo and projects can carry their own tasks/files.
+   * a project scoped to a single entity, so removing the row deletes the
+   * project itself — not just a link. Uses a native confirm dialog because the
+   * sidebar has no undo and projects can carry their own tasks/files.
    */
   const handleDeleteProject = useCallback(async (projectId: string, projectName: string) => {
     if (!window.confirm(`Delete project "${projectName}"? This cannot be undone.`)) return;
@@ -1311,22 +1343,67 @@ export default function LeadRelatedSidebar({
                   <p className="text-xs text-muted-foreground py-1">No projects</p>
                 )}
                 {showAddProject ? (
-                  <div className="flex items-center gap-2 mt-1">
-                    <input
-                      value={newProjectName}
-                      onChange={(e) => setNewProjectName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newProjectName.trim()) handleInlineCreateProject();
-                        if (e.key === 'Escape') { setShowAddProject(false); setNewProjectName(''); }
-                      }}
-                      placeholder="Add Project"
-                      className="flex-1 text-xs bg-transparent border-b-2 border-blue-500 outline-none py-1 placeholder:text-muted-foreground/50"
-                      autoFocus
-                      disabled={savingProject}
-                    />
-                    <button onClick={() => { setShowAddProject(false); setNewProjectName(''); }}>
-                      <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
-                    </button>
+                  <div className="relative mt-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={newProjectName}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newProjectName.trim()) {
+                            const match = projectSuggestions.find(
+                              (s) => s.name.toLowerCase() === newProjectName.trim().toLowerCase(),
+                            );
+                            if (match) {
+                              handleLinkExistingProject(match);
+                            } else {
+                              setCreateProjectInitialName(newProjectName.trim());
+                              setCreateProjectDialogOpen(true);
+                              setShowAddProject(false);
+                              setNewProjectName('');
+                            }
+                          }
+                          if (e.key === 'Escape') { setShowAddProject(false); setNewProjectName(''); }
+                        }}
+                        placeholder="Search or create project..."
+                        className="flex-1 text-xs bg-transparent border-b-2 border-blue-500 outline-none py-1 placeholder:text-muted-foreground/50"
+                        autoFocus
+                        disabled={savingProject}
+                      />
+                      <button onClick={() => { setShowAddProject(false); setNewProjectName(''); }}>
+                        <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                      </button>
+                    </div>
+                    {newProjectName.trim().length > 0 && (projectSuggestions.length > 0 || !savingProject) && (
+                      <div className="absolute z-50 left-0 right-6 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {projectSuggestions.map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => handleLinkExistingProject(s)}
+                            className="w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-muted/60 transition-colors"
+                          >
+                            <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="flex-1 min-w-0 truncate text-xs font-medium text-foreground">{s.name}</span>
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 rounded-full capitalize shrink-0">
+                              {(s.status || 'open').replace(/_/g, ' ')}
+                            </Badge>
+                          </button>
+                        ))}
+                        {!projectSuggestions.some((s) => s.name.toLowerCase() === newProjectName.trim().toLowerCase()) && (
+                          <button
+                            onClick={() => {
+                              setCreateProjectInitialName(newProjectName.trim());
+                              setCreateProjectDialogOpen(true);
+                              setShowAddProject(false);
+                              setNewProjectName('');
+                            }}
+                            className="w-full text-left flex items-center gap-2 px-2 py-1.5 border-t border-border hover:bg-muted/60 transition-colors text-xs text-blue-600 dark:text-blue-400 font-medium"
+                          >
+                            <Plus className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">Create new project “{newProjectName.trim()}”</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <button
@@ -1707,6 +1784,21 @@ export default function LeadRelatedSidebar({
           teamMembers={teamMembers}
           currentUserName={currentUserName ?? null}
           onSaved={() => queryClient.invalidateQueries({ queryKey: tasksKey })}
+        />
+      )}
+
+      {/* Create Project Dialog */}
+      {leadId && (
+        <ProjectDetailDialog
+          project={null}
+          open={createProjectDialogOpen}
+          onClose={() => { setCreateProjectDialogOpen(false); setCreateProjectInitialName(''); }}
+          leadId={leadId}
+          leadName={lead.opportunity_name || lead.name || ''}
+          teamMembers={teamMembers}
+          currentUserName={currentUserName ?? null}
+          initialName={createProjectInitialName}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: projectsKey })}
         />
       )}
 

@@ -5,20 +5,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, AlertTriangle } from 'lucide-react';
+import { Filter, List, Phone, Mail, Loader2, Users, Landmark } from 'lucide-react';
 import { TouchpointCell } from '@/components/admin/TouchpointChip';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
+import {
+  KanbanBoard,
+  KanbanColumn,
+  KanbanCardShell,
+  useKanbanDrag,
+} from '@/components/admin/pipeline/kanban';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -39,6 +44,98 @@ const stages: { status: LeadStatus; title: string; bgColor: string; borderColor:
   { status: 'won', title: 'Won', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-600', textColor: 'text-emerald-700', barColor: 'bg-emerald-600' },
 ];
 
+type LeadCardProps = {
+  lead: Lead;
+  ownerName: string | null;
+  touchpoint: { type: string; direction: string; date: string } | undefined;
+  isDragging: boolean;
+  isCalling: boolean;
+  onClick: () => void;
+  onCall: (e: React.MouseEvent) => void;
+  onEmail: (e: React.MouseEvent) => void;
+};
+
+function LeadCard({
+  lead,
+  ownerName,
+  touchpoint,
+  isDragging,
+  isCalling,
+  onClick,
+  onCall,
+  onEmail,
+}: LeadCardProps) {
+  return (
+    <KanbanCardShell
+      id={lead.id}
+      title={lead.name}
+      isDragging={isDragging}
+      onClick={onClick}
+      body={
+        <>
+          {lead.company_name && (
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Landmark className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">{lead.company_name}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 mt-1">
+            {lead.phone && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={onCall}
+                    disabled={isCalling}
+                    className="inline-flex items-center justify-center gap-1 h-6 px-2 rounded-full bg-green-100 hover:bg-green-200 transition-colors disabled:opacity-50 border border-green-300"
+                  >
+                    {isCalling ? (
+                      <Loader2 className="h-3 w-3 text-green-700 animate-spin" />
+                    ) : (
+                      <Phone className="h-3 w-3 text-green-700" />
+                    )}
+                    <span className="text-[10px] font-medium text-green-700">Call</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top"><p>Call {lead.phone}</p></TooltipContent>
+              </Tooltip>
+            )}
+            {lead.email && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={onEmail}
+                    className="inline-flex items-center justify-center gap-1 h-6 px-2 rounded-full bg-[#0066FF]/10 hover:bg-[#0066FF]/20 transition-colors border border-[#0066FF]/30"
+                  >
+                    <Mail className="h-3 w-3 text-[#0066FF]" />
+                    <span className="text-[10px] font-medium text-[#0066FF]">Email</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top"><p>Email {lead.email}</p></TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </>
+      }
+      footer={
+        <>
+          <div className="flex items-center gap-2 text-muted-foreground min-w-0">
+            <CrmAvatar name={ownerName ?? '—'} size="xs" />
+            <span className="text-[11px] font-medium truncate">{ownerName ?? 'Unassigned'}</span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <TouchpointCell touchpoint={touchpoint} />
+            <span className="text-[10px] text-muted-foreground">
+              {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: false })}
+            </span>
+          </div>
+        </>
+      }
+    />
+  );
+}
+
 const CRMBoard = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -46,7 +143,6 @@ const CRMBoard = () => {
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
-  const [collapsedSections, setCollapsedSections] = useState<Record<LeadStatus, boolean>>({} as Record<LeadStatus, boolean>);
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
 
   const { setPageTitle } = useAdminTopBar();
@@ -203,21 +299,26 @@ const CRMBoard = () => {
     return matchesSearch && matchesSource && matchesOwner;
   });
 
-  const getLeadsByStatus = (status: LeadStatus) => 
+  const getLeadsByStatus = (status: LeadStatus) =>
     filteredLeads.filter(lead => lead.status === status);
-
-  const toggleSection = (status: LeadStatus) => {
-    setCollapsedSections(prev => ({
-      ...prev,
-      [status]: !prev[status]
-    }));
-  };
 
   const stageCounts = stages.map(stage => ({
     ...stage,
     count: getLeadsByStatus(stage.status).length
   }));
-  const totalLeads = filteredLeads.length;
+
+  const { dragged: draggedLead, handleDragStart, handleDragEnd } = useKanbanDrag<Lead>({
+    items: filteredLeads,
+    getGroupKey: (lead) => lead.status,
+    validGroupKeys: stages.map(s => s.status),
+    onMove: (lead, fromStatus, toStatus) => {
+      updateStatusMutation.mutate({
+        id: lead.id,
+        status: toStatus as LeadStatus,
+        previousStatus: fromStatus as LeadStatus,
+      });
+    },
+  });
 
   if (isLoading) {
     return (
@@ -326,186 +427,56 @@ const CRMBoard = () => {
           </div>
         </div>
 
-        {/* Grouped Table View */}
-        <div className="flex-1 overflow-auto border border-slate-200 rounded-md bg-white">
-          {/* Table Header */}
-          <div className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
-            <div className="grid grid-cols-[32px_32px_minmax(140px,1.2fr)_90px_minmax(100px,1fr)_minmax(140px,1fr)_90px_80px_100px_90px] gap-3 px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-              <div></div>
-              <div></div>
-              <div>Name</div>
-              <div>Stage</div>
-              <div>Company</div>
-              <div>Contact</div>
-              <div>Owner</div>
-              <div>Source</div>
-              <div>Last Touch</div>
-              <div>Updated</div>
-            </div>
-          </div>
-
-          {/* Grouped Sections */}
-          <div>
-            {stages.map((stage) => {
-              const stageLeads = getLeadsByStatus(stage.status);
-              const isCollapsed = collapsedSections[stage.status];
-
-              return (
-                <Collapsible
-                  key={stage.status}
-                  id={`section-${stage.status}`}
-                  open={!isCollapsed}
-                  onOpenChange={() => toggleSection(stage.status)}
-                >
-                  {/* Section Header */}
-                  <CollapsibleTrigger asChild>
-                    <div
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors border-l-[3px] border-b border-b-slate-100",
-                        stage.borderColor
-                      )}
-                    >
-                      {isCollapsed ? (
-                        <ChevronRight className="h-4 w-4 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-slate-400" />
-                      )}
-                      <Badge 
-                        variant="outline"
-                        className={cn(
-                          "font-semibold text-xs px-2 py-0.5 rounded",
-                          stage.bgColor,
-                          stage.textColor,
-                          stage.borderColor
-                        )}
-                      >
-                        {stage.title}
-                      </Badge>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {stageLeads.length} {stageLeads.length === 1 ? 'lead' : 'leads'}
-                      </span>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 ml-1 text-slate-400 hover:text-[#0066FF] hover:bg-[#0066FF]/5">
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
+        {/* Kanban Board */}
+        <TooltipProvider>
+          <div className="flex-1 overflow-hidden border border-slate-200 rounded-md bg-white">
+            <KanbanBoard
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              overlay={
+                draggedLead ? (
+                  <Card className="p-3 shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-56 bg-card">
+                    <div className="flex items-center gap-2">
+                      <CrmAvatar name={draggedLead.name} size="xs" />
+                      <p className="text-sm font-semibold text-foreground truncate">{draggedLead.name}</p>
                     </div>
-                  </CollapsibleTrigger>
-
-                  {/* Section Content */}
-                  <CollapsibleContent>
-                    {stageLeads.length === 0 ? (
-                      <div className="px-12 py-4 text-sm text-slate-400 italic border-b border-slate-100">
-                        No leads in this stage
-                      </div>
-                    ) : (
-                      <TooltipProvider>
-                        <div>
-                          {stageLeads.map((lead, idx) => {
-                            const touchpoint = touchpoints[lead.id];
-                            const ownerName = lead.assigned_to ? teamMemberMap[lead.assigned_to] : null;
-                            const isCallingThis = callingLeadId === lead.id;
-                            return (
-                              <div
-                                key={lead.id}
-                                className={cn(
-                                  "grid grid-cols-[32px_32px_minmax(140px,1.2fr)_90px_minmax(100px,1fr)_minmax(140px,1fr)_90px_80px_100px_90px] gap-3 px-4 py-2.5 hover:bg-slate-50/80 cursor-pointer items-center text-sm transition-colors",
-                                  idx < stageLeads.length - 1 && "border-b border-slate-50"
-                                )}
-                                onClick={() => setDetailDialogLead(lead)}
-                              >
-                                <div className="flex items-center justify-center">
-                                  <input 
-                                    type="checkbox" 
-                                    className="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]/20" 
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </div>
-                                <div>
-                                  <CrmAvatar name={lead.name} />
-                                </div>
-                                <div className="font-medium text-slate-900 truncate">{lead.name}</div>
-                                <div>
-                                  <Badge 
-                                    variant="outline" 
-                                    className={cn(
-                                      "text-[10px] font-medium px-1.5 py-0 rounded",
-                                      stage.bgColor,
-                                      stage.textColor,
-                                      "border-transparent"
-                                    )}
-                                  >
-                                    {stage.title}
-                                  </Badge>
-                                </div>
-                                <div className="text-slate-600 truncate text-[13px]">
-                                  {lead.company_name || '—'}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {lead.phone && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button
-                                          onClick={(e) => handleCall(e, lead)}
-                                          disabled={isCallingThis}
-                                          className="inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-full bg-green-100 hover:bg-green-200 transition-colors disabled:opacity-50 border border-green-300"
-                                        >
-                                          {isCallingThis ? (
-                                            <Loader2 className="h-4 w-4 text-green-700 animate-spin" />
-                                          ) : (
-                                            <Phone className="h-4 w-4 text-green-700" />
-                                          )}
-                                          <span className="text-xs font-medium text-green-700">Call</span>
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top">
-                                        <p>Call {lead.phone}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <button
-                                        onClick={(e) => lead.email ? handleEmail(e, lead) : e.stopPropagation()}
-                                        disabled={!lead.email}
-                                        className={`inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-full transition-colors border ${
-                                          lead.email 
-                                            ? 'bg-[#0066FF]/10 hover:bg-[#0066FF]/20 border-[#0066FF]/30'
-                                            : 'bg-muted/30 border-muted-foreground/10 opacity-50 cursor-not-allowed'
-                                        }`}
-                                      >
-                                        <Mail className={`h-4 w-4 ${lead.email ? 'text-[#0066FF]' : 'text-muted-foreground/50'}`} />
-                                        <span className={`text-xs font-medium ${lead.email ? 'text-[#0066FF]' : 'text-muted-foreground/50'}`}>Email</span>
-                                      </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">
-                                      <p>{lead.email ? `Email ${lead.email}` : 'No email on file'}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  {!lead.phone && !lead.email && <span className="text-slate-300 text-xs">—</span>}
-                                </div>
-                                <div className="text-xs text-slate-600 truncate">
-                                  {ownerName || <span className="text-slate-300">—</span>}
-                                </div>
-                                <div className="text-xs text-slate-500">
-                                  {lead.source || <span className="text-slate-300">—</span>}
-                                </div>
-                                <div>
-                                  <TouchpointCell touchpoint={touchpoint} />
-                                </div>
-                                <div className="text-xs text-slate-400">
-                                  {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: false })}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </TooltipProvider>
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
-              );
-            })}
+                  </Card>
+                ) : null
+              }
+            >
+              {stages.map((stage) => {
+                const stageLeads = getLeadsByStatus(stage.status);
+                return (
+                  <KanbanColumn
+                    key={stage.status}
+                    id={stage.status}
+                    label={stage.title}
+                    color={stage.barColor}
+                    itemIds={stageLeads.map(l => l.id)}
+                    emptyMessage="Drop leads here"
+                  >
+                    {stageLeads.map(lead => {
+                      const ownerName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? null) : null;
+                      return (
+                        <LeadCard
+                          key={lead.id}
+                          lead={lead}
+                          ownerName={ownerName}
+                          touchpoint={touchpoints[lead.id]}
+                          isDragging={draggedLead?.id === lead.id}
+                          isCalling={callingLeadId === lead.id}
+                          onClick={() => setDetailDialogLead(lead)}
+                          onCall={(e) => handleCall(e, lead)}
+                          onEmail={(e) => handleEmail(e, lead)}
+                        />
+                      );
+                    })}
+                  </KanbanColumn>
+                );
+              })}
+            </KanbanBoard>
           </div>
-        </div>
+        </TooltipProvider>
       </div>
 
       {/* Lead Detail Dialog */}

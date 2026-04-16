@@ -100,7 +100,7 @@ export const useFeedData = () => {
         // Communications (calls, emails, SMS)
         supabase
           .from('communications')
-          .select('id, communication_type, direction, content, created_at, lead_id, phone_number')
+          .select('id, communication_type, direction, content, created_at, lead_id, phone_number, team_member_id')
           .order('created_at', { ascending: false })
           .limit(200),
         // Activities (logged activities from all pipelines)

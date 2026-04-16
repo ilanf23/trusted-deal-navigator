@@ -164,6 +164,7 @@ function EditablePill({
           'text-[16px] text-[#202124] dark:text-foreground px-3',
           numeric && 'tabular-nums',
         )}
+        inputClassName={cn('text-[16px]', numeric && 'tabular-nums')}
         aria-label={ariaLabel}
       />
     </div>
@@ -263,6 +264,7 @@ export function PipelineTableRow(props: PipelineTableRowProps) {
                   size="sm"
                   placeholder={opportunityDisplayName}
                   className="text-[16px] text-[#202124] dark:text-foreground w-full"
+                  inputClassName="text-[16px]"
                   aria-label="Opportunity name"
                 />
               </div>

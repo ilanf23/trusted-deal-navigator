@@ -524,7 +524,7 @@ const Projects = () => {
     <EmployeeLayout>
       <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem)] bg-background">
         {/* Filter bar */}
-        <div className="shrink-0 border-b border-border bg-card px-8 py-2.5 flex items-center justify-between">
+        <div className="shrink-0 border-b border-border bg-card px-8 pt-6 pb-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Dropdown filter */}
             <button className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground/80 border border-border rounded-md px-3 py-1.5 transition-colors">

@@ -97,10 +97,12 @@ export const useNotifications = () => {
   // Mark all as read
   const markAllAsRead = useMutation({
     mutationFn: async () => {
+      if (!teamMemberId) return;
       const { error } = await (supabase as any)
         .from('notifications')
         .update({ is_read: true })
-        .eq('is_read', false);
+        .eq('is_read', false)
+        .eq('team_member_id', teamMemberId);
       if (error) throw error;
     },
     onMutate: async () => {

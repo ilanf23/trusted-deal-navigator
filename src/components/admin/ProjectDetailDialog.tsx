@@ -78,10 +78,12 @@ interface ProjectDetailDialogProps {
   teamMembers: { id: string; name: string }[];
   currentUserName?: string | null;
   onSaved: () => void;
+  /** Pre-fills the Name field in create mode. Used by autocomplete pickers. */
+  initialName?: string;
 }
 
 export default function ProjectDetailDialog({
-  project, open, onClose, leadId, leadName, teamMembers, currentUserName, onSaved,
+  project, open, onClose, leadId, leadName, teamMembers, currentUserName, onSaved, initialName,
 }: ProjectDetailDialogProps) {
   const queryClient = useQueryClient();
   const { registerUndo } = useUndo();
@@ -141,13 +143,13 @@ export default function ProjectDetailDialog({
       setWaitingOn(project.waiting_on || '');
       setRelatedToId(project.entity_id || '');
     } else {
-      setName(''); setStatus('open'); setProjectStage('open');
+      setName(initialName || ''); setStatus('open'); setProjectStage('open');
       setPriority(''); setOwner(''); setDueDate(new Date());
       setDescription(''); setVisibility('everyone'); setTags('');
       setClxFileName(''); setBankRelationships(''); setWaitingOn('');
       setRelatedToId(leadId || '');
     }
-  }, [open, project, leadId]);
+  }, [open, project, leadId, initialName]);
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
@@ -349,7 +351,9 @@ export default function ProjectDetailDialog({
               className="text-2xl font-bold text-foreground bg-transparent border-0 outline-none w-full"
             />
           ) : (
-            <h2 className="text-2xl font-bold text-foreground">Add a New Project</h2>
+            <h2 className="text-2xl font-bold text-foreground">
+              Add a New Project{leadName ? ` for ${leadName}` : ''}
+            </h2>
           )}
         </div>
 

@@ -97,10 +97,13 @@ export function EditableTextBox({
     if (!isEditing) setDraft(value);
   }, [value, isEditing]);
 
-  // Focus when entering edit mode
+  // Focus when entering edit mode.
+  // `preventScroll: true` is critical: without it, the browser auto-scrolls the
+  // focused input into view, which shifts the surrounding ScrollArea horizontally
+  // (visible in narrow left columns like the CompanyExpandedView details pane).
   useEffect(() => {
     if (isEditing && autoFocus && inputRef.current) {
-      inputRef.current.focus();
+      inputRef.current.focus({ preventScroll: true });
       inputRef.current.select();
     }
   }, [isEditing, autoFocus]);
@@ -207,7 +210,7 @@ export function EditableTextBox({
       aria-label={ariaLabel}
     >
       {prefix}
-      <span className={cn('truncate', fontSizeClass, alignClass, !displayValue && EDITABLE_TEXTBOX_STYLES.placeholder)}>
+      <span className={cn('truncate', alignClass, !displayValue && EDITABLE_TEXTBOX_STYLES.placeholder)}>
         {displayValue || placeholder}
       </span>
       {saving && <Loader2 className="h-3 w-3 animate-spin text-[#0066FF] shrink-0 ml-1" />}

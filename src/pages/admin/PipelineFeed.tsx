@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -89,14 +89,6 @@ const PipelineFeed = () => {
 
   const [selectedTeamMembers, setSelectedTeamMembers] = useState<Set<string>>(new Set());
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());
-  const initializedRef = useRef(false);
-
-  useEffect(() => {
-    if (!initializedRef.current && teamMember?.name) {
-      setSelectedTeamMembers(new Set([teamMember.name]));
-      initializedRef.current = true;
-    }
-  }, [teamMember?.name]);
 
   const [searchQuery, setSearchQuery] = useState('');
 

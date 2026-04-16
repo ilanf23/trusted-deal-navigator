@@ -83,3 +83,12 @@ verify_jwt = false
 
 [functions.google-sheets-sync]
 verify_jwt = false
+
+[functions.sheets-watch-start]
+verify_jwt = false
+
+[functions.sheets-watch-stop]
+verify_jwt = false
+
+[functions.sheets-watch-webhook]
+verify_jwt = false

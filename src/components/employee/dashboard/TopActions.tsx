@@ -5,19 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Zap, 
-  Clock, 
-  AlertTriangle, 
-  Phone, 
-  FileText, 
+import {
+  Zap,
+  Clock,
+  Phone,
+  FileText,
   Mail,
   ArrowRight,
   Target,
   CheckCircle2,
   Loader2
 } from 'lucide-react';
-import { differenceInDays, differenceInHours, format } from 'date-fns';
+import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 
 interface TopActionsProps {
@@ -61,231 +60,77 @@ const STAGE_CLOSE_PROXIMITY: Record<string, number> = {
 };
 
 export const TopActions = ({ evanId }: TopActionsProps) => {
-  // Fetch leads with their communications and responses
-  const { data: leadsData, isLoading } = useQuery({
-    queryKey: ['top-actions', evanId],
-    queryFn: async () => {
-      const { data: leads, error } = await supabase
-        .from('potential')
-        .select(`
-          id,
-          name,
-          company_name,
-          status,
-          updated_at,
-          created_at,
-          email,
-          phone,
-          lead_responses (
-            loan_amount,
-            funding_timeline
-          )
-        `)
-        .eq('assigned_to', evanId)
-        .neq('status', 'funded')
-        .order('updated_at', { ascending: true });
+  type OverdueTaskLead = {
+    id: string;
+    name: string | null;
+    company_name: string | null;
+    status: string;
+    email: string | null;
+    phone: string | null;
+    deal_value: number | null;
+    potential_revenue: number | null;
+  };
+  type OverdueTask = {
+    id: string;
+    title: string;
+    description: string | null;
+    due_date: string | null;
+    priority: string | null;
+    status: string | null;
+    lead_id: string | null;
+    lead: OverdueTaskLead | null;
+  };
 
-      if (error) throw error;
-      return leads;
-    },
-    enabled: !!evanId,
-  });
-
-  // Fetch recent communications
-  const { data: communications } = useQuery({
-    queryKey: ['lead-communications', evanId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('communications')
-        .select('lead_id, created_at, communication_type, direction')
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!evanId,
-  });
-
-  // Fetch pending tasks per lead — scoped to current user
-  const { data: tasks } = useQuery({
-    queryKey: ['lead-tasks-widget', evanId],
+  const { data: tasks, isLoading } = useQuery<OverdueTask[]>({
+    queryKey: ['top-actions-overdue', evanId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, title, due_date, priority, description, lead_id')
+        .select(`
+          id, title, description, due_date, priority, status, lead_id,
+          lead:potential(
+            id, name, company_name, status, email, phone,
+            deal_value, potential_revenue
+          )
+        `)
         .eq('team_member_id', evanId!)
         .eq('is_completed', false)
-        .order('due_date', { ascending: true });
+        .not('due_date', 'is', null)
+        .lt('due_date', new Date().toISOString())
+        .order('due_date', { ascending: true })
+        .limit(10);
 
       if (error) throw error;
-      return data;
+      return (data ?? []) as unknown as OverdueTask[];
     },
     enabled: !!evanId,
   });
 
-  const actions = useMemo(() => {
-    if (!leadsData) return [];
-
-    const now = new Date();
-    const actionsList: ActionItem[] = [];
-
-    // First, add pending tasks as actions (these take priority when they have due dates)
-    tasks?.forEach((task) => {
-      // Find the associated lead if any
-      const leadId = (task as any).lead_id;
-      const lead = leadId ? leadsData.find(l => l.id === leadId) : null;
-      
-      actionsList.push({
+  const actions = useMemo<ActionItem[]>(() => {
+    if (!tasks) return [];
+    return tasks.map((task) => {
+      const lead = task.lead;
+      return {
         id: `task-${task.id}`,
-        leadId: leadId || '',
-        leadName: lead?.name || 'General Task',
-        companyName: lead?.company_name || undefined,
+        leadId: lead?.id ?? '',
+        leadName: lead?.name ?? 'General Task',
+        companyName: lead?.company_name ?? undefined,
         action: task.title,
         actionType: 'follow_up',
-        impact: task.description || 'Complete this task',
-        urgencyScore: task.priority === 'high' ? 5 : task.priority === 'medium' ? 3 : 1,
-        closeProximity: lead ? STAGE_CLOSE_PROXIMITY[lead.status] || 1 : 1,
-        blockerSeverity: task.priority === 'high' ? 4 : 2,
+        impact: task.description ?? 'Complete this task',
+        urgencyScore: 0,
+        closeProximity: lead ? STAGE_CLOSE_PROXIMITY[lead.status] ?? 1 : 1,
+        blockerSeverity: 0,
         waitingTime: 0,
-        dueDate: task.due_date || undefined,
-        status: lead?.status || 'discovery',
-        loanAmount: lead?.lead_responses?.[0]?.loan_amount || undefined,
-        phone: lead?.phone || undefined,
-        email: lead?.email || undefined,
+        dueDate: task.due_date ?? undefined,
+        status: lead?.status ?? 'discovery',
+        loanAmount: lead?.deal_value ?? undefined,
+        phone: lead?.phone ?? undefined,
+        email: lead?.email ?? undefined,
         taskId: task.id,
-      });
+      };
     });
-
-    leadsData.forEach((lead) => {
-      const lastComm = communications?.find((c) => c.lead_id === lead.id);
-      const hoursSinceContact = lastComm 
-        ? differenceInHours(now, new Date(lastComm.created_at))
-        : differenceInHours(now, new Date(lead.created_at));
-      
-      const daysSinceUpdate = differenceInDays(now, new Date(lead.updated_at));
-      const closeProximity = STAGE_CLOSE_PROXIMITY[lead.status] || 1;
-      const loanAmount = lead.lead_responses?.[0]?.loan_amount || 0;
-      const isHighValue = loanAmount >= 500000;
-
-      // Determine action type and blocker severity based on status and timing
-      let action = '';
-      let actionType: ActionItem['actionType'] = 'follow_up';
-      let blockerSeverity = 1;
-      let impact = '';
-
-      // Status-based actions
-      if (lead.status === 'ready_for_wu_approval' || lead.status === 'pre_approval_issued' || lead.status === 'approval') {
-        if (daysSinceUpdate > 2) {
-          action = 'Push for final approval signature';
-          actionType = 'close';
-          blockerSeverity = 5;
-          impact = 'Close this deal today';
-        } else {
-          action = 'Confirm closing requirements met';
-          actionType = 'call';
-          blockerSeverity = 4;
-          impact = 'Removes final friction to close';
-        }
-      } else if (lead.status === 'underwriting') {
-        if (daysSinceUpdate > 5) {
-          action = 'Follow up with underwriter for status';
-          actionType = 'call';
-          blockerSeverity = 4;
-          impact = 'Unblocks stalled underwriting';
-        } else if (hoursSinceContact > 48) {
-          action = 'Check in on underwriting progress';
-          actionType = 'email';
-          blockerSeverity = 3;
-          impact = 'Keeps deal moving forward';
-        }
-      } else if (lead.status === 'onboarding' || lead.status === 'document_collection') {
-        if (daysSinceUpdate > 3) {
-          action = 'Request missing documents';
-          actionType = 'document';
-          blockerSeverity = 4;
-          impact = 'Unblocks document bottleneck';
-        } else if (hoursSinceContact > 24) {
-          action = 'Follow up on document submission';
-          actionType = 'call';
-          blockerSeverity = 3;
-          impact = 'Accelerates doc collection';
-        }
-      } else if (lead.status === 'moving_to_underwriting' || lead.status === 'pre_qualification') {
-        if (hoursSinceContact > 72) {
-          action = 'Re-engage with qualification call';
-          actionType = 'call';
-          blockerSeverity = 3;
-          impact = 'Prevents lead from going cold';
-        } else if (daysSinceUpdate > 5) {
-          action = 'Send pre-qualification summary';
-          actionType = 'email';
-          blockerSeverity = 2;
-          impact = 'Moves to onboarding';
-        }
-      } else if (lead.status === 'initial_review' || lead.status === 'discovery') {
-        if (hoursSinceContact > 24 && hoursSinceContact < 72) {
-          action = 'Schedule discovery call';
-          actionType = 'call';
-          blockerSeverity = 2;
-          impact = 'Starts relationship building';
-        } else if (hoursSinceContact >= 72) {
-          action = 'Send re-engagement email';
-          actionType = 'email';
-          blockerSeverity = 3;
-          impact = 'Prevents lead from going cold';
-        }
-      }
-
-      // Skip if no action determined
-      if (!action) return;
-
-      // Calculate urgency score
-      // Higher = more urgent
-      // Factors: close proximity (40%), blocker severity (35%), waiting time (25%)
-      const waitingScore = Math.min(hoursSinceContact / 24, 10) / 2; // Max 5 for 10+ days
-      const urgencyScore = 
-        (closeProximity * 0.4) + 
-        (blockerSeverity * 0.35) + 
-        (waitingScore * 0.25);
-
-      // Boost high-value deals
-      const finalUrgency = isHighValue ? urgencyScore * 1.2 : urgencyScore;
-
-      actionsList.push({
-        id: `${lead.id}-action`,
-        leadId: lead.id,
-        leadName: lead.name,
-        companyName: lead.company_name || undefined,
-        action,
-        actionType,
-        impact,
-        urgencyScore: finalUrgency,
-        closeProximity,
-        blockerSeverity,
-        waitingTime: hoursSinceContact,
-        status: lead.status,
-        loanAmount: loanAmount || undefined,
-        phone: lead.phone || undefined,
-        email: lead.email || undefined,
-      });
-    });
-
-    // Sort by due date (soonest first), then by urgency score for items without due dates
-    return actionsList
-      .sort((a, b) => {
-        // Items with due dates come first, sorted chronologically (soonest first)
-        if (a.dueDate && b.dueDate) {
-          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        }
-        // Items with due dates come before items without
-        if (a.dueDate && !b.dueDate) return -1;
-        if (!a.dueDate && b.dueDate) return 1;
-        // For items without due dates, sort by urgency score (highest first)
-        return b.urgencyScore - a.urgencyScore;
-      })
-      .slice(0, 10);
-  }, [leadsData, communications, tasks]);
+  }, [tasks]);
 
   const formatWaitingTime = (hours: number) => {
     if (hours < 24) return `${Math.round(hours)}h`;

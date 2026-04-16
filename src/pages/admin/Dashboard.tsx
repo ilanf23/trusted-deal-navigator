@@ -2,16 +2,17 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { useEmployeeUIState } from '@/contexts/EmployeeUIStateContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { Loader2, Kanban, Phone, Mail, Calendar, Building2 } from 'lucide-react';
+import { Loader2, Kanban, Phone, Mail, Calendar, Building2, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
@@ -67,6 +68,7 @@ const getGreeting = (firstName: string) => {
 
 const Dashboard = () => {
   const { teamMember } = useTeamMember();
+  const queryClient = useQueryClient();
   const { getPageState, setPageState } = useEmployeeUIState();
   const persisted = getPageState('dashboard', {
     timePeriod: 'ytd' as TimePeriod,
@@ -83,6 +85,22 @@ const Dashboard = () => {
 
   const { setPageTitle, setSearchComponent } = useAdminTopBar();
   const [searchTerm, setSearchTerm] = useState('');
+
+  const handleRefresh = useCallback(() => {
+    queryClient.invalidateQueries({
+      predicate: (q) => {
+        const key = q.queryKey[0];
+        if (typeof key !== 'string') return false;
+        return (
+          key.startsWith('admin-') ||
+          key.startsWith('dashboard-') ||
+          key.startsWith('company-funded') ||
+          key === 'todays-appointments' ||
+          key === 'revenue-chart-data'
+        );
+      },
+    });
+  }, [queryClient]);
 
   useEffect(() => {
     setPageTitle('Dashboard');
@@ -206,7 +224,8 @@ const Dashboard = () => {
 
   return (
     <EmployeeLayout>
-      <div className="space-y-4" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <div className="-m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 bg-muted/40 dark:bg-background min-h-[calc(100vh-4rem)]">
+        <div className="space-y-4" style={{ fontFamily: "'Inter', sans-serif" }}>
 
         {/* Greeting + unified filter bar */}
         <div className="flex items-center justify-between">
@@ -220,6 +239,17 @@ const Dashboard = () => {
           </div>
           <div className="flex items-center gap-2">
             {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isFetching}
+              className="h-9 px-3 rounded-full text-xs font-medium gap-1.5"
+              aria-label="Refresh dashboard data"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
+              Refresh
+            </Button>
             <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
               <TabsList className="bg-muted/60 rounded-full p-1 h-9">
                 {(['mtd', 'qtd', 'ytd'] as const).map((p) => (
@@ -239,7 +269,7 @@ const Dashboard = () => {
         {/* KPI tiles — 5 across on desktop */}
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {Array.from({ length: 5 }).map((_, i) => <CompactKPITileSkeleton key={i} />)}
+            {Array.from({ length: 5 }).map((_, i) => <CompactKPITileSkeleton key={i} className="bg-card" />)}
           </div>
         ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -247,52 +277,48 @@ const Dashboard = () => {
             label="Revenue"
             value={periodOverPeriod.revenue.current}
             variant="currency"
-            deltaAbsolute={periodOverPeriod.revenue.delta}
-            deltaPercent={periodOverPeriod.revenue.deltaPercent}
-            sparkline={{ values: sparklineData.revenue }}
             comparisonLabel="vs previous period"
+            className="bg-card"
           />
           <CompactKPITile
             label="Deals Closed"
             value={periodOverPeriod.deals.current}
             variant="count"
-            deltaAbsolute={periodOverPeriod.deals.delta}
-            deltaPercent={periodOverPeriod.deals.deltaPercent}
-            sparkline={{ values: sparklineData.deals }}
+            className="bg-card"
           />
           <CompactKPITile
             label="Pipeline Value"
             value={metrics.pipelineValue}
             variant="currency"
             comparisonLabel={`${metrics.pipelineDeals} active deal${metrics.pipelineDeals !== 1 ? 's' : ''}`}
+            className="bg-card"
           />
           <CompactKPITile
             label="Win Rate"
             value={periodOverPeriod.winRate.current}
             variant="percentage"
-            deltaAbsolute={periodOverPeriod.winRate.delta}
-            sparkline={{ values: sparklineData.winRate }}
             comparisonLabel="won / (won + lost)"
+            className="bg-card"
           />
           <CompactKPITile
             label="Goal Progress"
             value={metrics.goalProgress}
             variant="percentage"
-            sparkline={{ values: sparklineData.goalProgress }}
             comparisonLabel={`${formatCurrency(metrics.totalRevenue)} of ${formatCurrency(metrics.periodGoal)}`}
+            className="bg-card"
           />
         </div>
         )}
 
         {/* Full-width revenue combo chart */}
-        <RevenueChart evanId={evanId} annualGoal={annualGoal} />
+        <RevenueChart evanId={evanId} annualGoal={annualGoal} className="bg-card" />
 
         {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left column: heatmap + pipeline bar + nudges + top actions */}
           <div className="lg:col-span-2 space-y-4">
-            {isLoading ? <ActivityHeatmapSkeleton /> : <ActivityHeatmap data={activityHeatmapData} title="Deal Activity" />}
-            {isLoading ? <PipelineStageBarSkeleton /> : <PipelineStageBar stages={pipelineStages} />}
+            {isLoading ? <ActivityHeatmapSkeleton className="bg-card" /> : <ActivityHeatmap data={activityHeatmapData} title="Deal Activity" className="bg-card" />}
+            {isLoading ? <PipelineStageBarSkeleton className="bg-card" /> : <PipelineStageBar stages={pipelineStages} className="bg-card" />}
             <NudgesWidget evanId={evanId} />
             <TopActions evanId={evanId} />
           </div>
@@ -300,7 +326,7 @@ const Dashboard = () => {
           {/* Right column: hot deals + schedule + commission + quick links */}
           <div className="space-y-4">
             {/* Hot Deals */}
-            <Card>
+            <Card className="bg-card">
               <CardHeader className="pb-2 px-4 pt-4">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold">Hot Deals</CardTitle>
@@ -334,7 +360,7 @@ const Dashboard = () => {
             </Card>
 
             {/* Today's Schedule */}
-            <Card>
+            <Card className="bg-card">
               <CardHeader className="pb-2 px-4 pt-4">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold">Today's Schedule</CardTitle>
@@ -405,7 +431,7 @@ const Dashboard = () => {
             </Card>
 
             {/* Commission Calculator */}
-            <Card>
+            <Card className="bg-card">
               <CardHeader className="pb-2 px-4 pt-4">
                 <CardTitle className="text-sm font-semibold">Commission Calculator</CardTitle>
               </CardHeader>
@@ -455,7 +481,7 @@ const Dashboard = () => {
             </Card>
 
             {/* Quick Links */}
-            <Card>
+            <Card className="bg-card">
               <CardHeader className="pb-2 px-4 pt-4">
                 <CardTitle className="text-sm font-semibold">Quick Links</CardTitle>
               </CardHeader>
@@ -481,6 +507,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           </div>
+        </div>
         </div>
       </div>
     </EmployeeLayout>

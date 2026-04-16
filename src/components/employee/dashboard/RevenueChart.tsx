@@ -25,6 +25,7 @@ import {
 interface RevenueChartProps {
   evanId: string | undefined;
   annualGoal?: number;
+  className?: string;
 }
 
 type Granularity = 'daily' | 'weekly' | 'monthly';
@@ -35,7 +36,7 @@ function deriveGranularity(range: TimeRange): Granularity {
   return 'monthly';
 }
 
-const RevenueChart = ({ evanId, annualGoal = 1500000 }: RevenueChartProps) => {
+const RevenueChart = ({ evanId, annualGoal = 1500000, className }: RevenueChartProps) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('ytd');
   const [scope, setScope] = useState<Scope>('company');
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
@@ -168,6 +169,7 @@ const RevenueChart = ({ evanId, annualGoal = 1500000 }: RevenueChartProps) => {
       sources={allSources}
       selectedSources={selectedSources}
       onSourcesChange={setSelectedSources}
+      className={className}
     />
   );
 };

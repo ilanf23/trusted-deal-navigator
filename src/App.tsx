@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,6 +18,10 @@ import PublicLayout from "@/components/layout/PublicLayout";
 import AdminPortalWrapper from "@/components/admin/AdminPortalWrapper";
 import AdminRoute from "@/components/admin/AdminRoute";
 import DynamicEmployeeDashboard from "@/components/admin/DynamicEmployeeDashboard";
+import PartnerRouteLayout from "./components/partner/PartnerRouteLayout";
+import PageSkeleton from "@/components/admin/PageSkeleton";
+
+// Public pages — kept eager (small, often entry points)
 import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
 import Contact from "./pages/Contact";
@@ -29,69 +34,72 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Questionnaire from "./pages/Questionnaire";
 import RateWatchQuestionnaire from "./pages/RateWatchQuestionnaire";
-import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
-import AdminClients from "./pages/admin/Clients";
-import AdminContracts from "./pages/admin/Contracts";
-import AdminInvoices from "./pages/admin/Invoices";
-import AdminMessages from "./pages/admin/Messages";
-import AdminMarketing from "./pages/admin/Marketing";
-import AdminNewsletter from "./pages/admin/Newsletter";
-import CRMBoard from "./pages/admin/CRMBoard";
-import AdminRateWatch from "./pages/admin/RateWatch";
-import AdminInboxCallback from "./pages/admin/InboxCallback";
-import LenderPrograms from "./pages/admin/LenderPrograms";
-import Dashboard from "./pages/admin/Dashboard";
-import EmployeePipeline from "./pages/admin/EmployeePipeline";
-import Pipeline from "./pages/admin/Potential";
-import PipelineFeed from "./pages/admin/PipelineFeed";
-import Underwriting from "./pages/admin/Underwriting";
-import LenderManagement from "./pages/admin/LenderManagement";
-import People from "./pages/admin/People";
-import Companies from "./pages/admin/Companies";
-import Projects from "./pages/admin/Projects";
-import UnderwritingExpandedView from "./components/admin/UnderwritingExpandedView";
-import PipelineExpandedView from "./components/admin/PipelineExpandedView";
-import LenderManagementExpandedView from "./components/admin/LenderManagementExpandedView";
-import LenderExpandedView from "./components/admin/LenderExpandedView";
-import PeopleExpandedView from "./components/admin/PeopleExpandedView";
-import CompanyExpandedView from "./components/admin/CompanyExpandedView";
-import ProjectExpandedView from "./components/admin/ProjectExpandedView";
-import Tasks from "./pages/admin/Tasks";
-import Calls from "./pages/admin/Calls";
-import Gmail from "./pages/admin/Gmail";
-import EmailTemplates from "./pages/admin/EmailTemplates";
-import Calendar from "./pages/admin/Calendar";
-import Scorecard from "./pages/admin/Scorecard";
-import ScoreSheet from "./pages/admin/ScoreSheet";
-import DevNotes from "./pages/admin/DevNotes";
-import ModuleTracker from "./pages/admin/ModuleTracker";
-import MaurasPage from "./pages/admin/MaurasPage";
-import WendysPage from "./pages/admin/WendysPage";
-import BradsPage from "./pages/admin/BradsPage";
-import AdamsPage from "./pages/admin/AdamsPage";
-import IlansPage from "./pages/admin/IlansPage";
-import TeamPerformance from "./pages/admin/TeamPerformance";
-import IlansGmail from "./pages/admin/IlansGmail";
-import BugTesting from "./pages/admin/BugTesting";
-import BugReporting from "./pages/admin/BugReporting";
-import IlanTeamEvanBugs from "./pages/admin/IlanTeamEvanBugs";
-import IlanTeamEvanDevNotes from "./pages/admin/IlanTeamEvanDevNotes";
-import IlanTeamEvanNotes from "./pages/admin/IlanTeamEvanNotes";
-import UsersAndRoles from "./pages/admin/UsersAndRoles";
-import CalendarCallback from "./pages/admin/CalendarCallback";
-import SheetsCallback from "./pages/admin/SheetsCallback";
-import DropboxPage from "./pages/admin/Dropbox";
-import DropboxCallback from "./pages/admin/DropboxCallback";
-import AIChanges from "./pages/admin/AIChanges";
-import LoanVolumeLog from "./pages/admin/LoanVolumeLog";
-import VolumeLogExpandedView from "./components/admin/VolumeLogExpandedView";
-import PartnerRouteLayout from "./components/partner/PartnerRouteLayout";
-import PartnerDashboard from "./pages/partner/Dashboard";
-import PartnerReferrals from "./pages/partner/Referrals";
-import PartnerCommissions from "./pages/partner/Commissions";
-import AdminTracking from "./pages/admin/Tracking";
-import AdminSettings from "./pages/admin/Settings";
-import PartnerProfilePage from "./pages/partner/Profile";
+
+// Admin pages — lazy-loaded per route chunk
+const SuperAdminDashboard = lazy(() => import("./pages/admin/SuperAdminDashboard"));
+const AdminClients = lazy(() => import("./pages/admin/Clients"));
+const AdminContracts = lazy(() => import("./pages/admin/Contracts"));
+const AdminInvoices = lazy(() => import("./pages/admin/Invoices"));
+const AdminMessages = lazy(() => import("./pages/admin/Messages"));
+const AdminMarketing = lazy(() => import("./pages/admin/Marketing"));
+const AdminNewsletter = lazy(() => import("./pages/admin/Newsletter"));
+const CRMBoard = lazy(() => import("./pages/admin/CRMBoard"));
+const AdminRateWatch = lazy(() => import("./pages/admin/RateWatch"));
+const AdminInboxCallback = lazy(() => import("./pages/admin/InboxCallback"));
+const LenderPrograms = lazy(() => import("./pages/admin/LenderPrograms"));
+const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
+const EmployeePipeline = lazy(() => import("./pages/admin/EmployeePipeline"));
+const Pipeline = lazy(() => import("./pages/admin/Potential"));
+const PipelineFeed = lazy(() => import("./pages/admin/PipelineFeed"));
+const Underwriting = lazy(() => import("./pages/admin/Underwriting"));
+const LenderManagement = lazy(() => import("./pages/admin/LenderManagement"));
+const People = lazy(() => import("./pages/admin/People"));
+const Companies = lazy(() => import("./pages/admin/Companies"));
+const Projects = lazy(() => import("./pages/admin/Projects"));
+const UnderwritingExpandedView = lazy(() => import("./components/admin/UnderwritingExpandedView"));
+const PipelineExpandedView = lazy(() => import("./components/admin/PipelineExpandedView"));
+const LenderManagementExpandedView = lazy(() => import("./components/admin/LenderManagementExpandedView"));
+const LenderExpandedView = lazy(() => import("./components/admin/LenderExpandedView"));
+const PeopleExpandedView = lazy(() => import("./components/admin/PeopleExpandedView"));
+const CompanyExpandedView = lazy(() => import("./components/admin/CompanyExpandedView"));
+const ProjectExpandedView = lazy(() => import("./components/admin/ProjectExpandedView"));
+const Tasks = lazy(() => import("./pages/admin/Tasks"));
+const Calls = lazy(() => import("./pages/admin/Calls"));
+const Gmail = lazy(() => import("./pages/admin/Gmail"));
+const EmailTemplates = lazy(() => import("./pages/admin/EmailTemplates"));
+const Calendar = lazy(() => import("./pages/admin/Calendar"));
+const Scorecard = lazy(() => import("./pages/admin/Scorecard"));
+const ScoreSheet = lazy(() => import("./pages/admin/ScoreSheet"));
+const DevNotes = lazy(() => import("./pages/admin/DevNotes"));
+const ModuleTracker = lazy(() => import("./pages/admin/ModuleTracker"));
+const MaurasPage = lazy(() => import("./pages/admin/MaurasPage"));
+const WendysPage = lazy(() => import("./pages/admin/WendysPage"));
+const BradsPage = lazy(() => import("./pages/admin/BradsPage"));
+const AdamsPage = lazy(() => import("./pages/admin/AdamsPage"));
+const IlansPage = lazy(() => import("./pages/admin/IlansPage"));
+const TeamPerformance = lazy(() => import("./pages/admin/TeamPerformance"));
+const IlansGmail = lazy(() => import("./pages/admin/IlansGmail"));
+const BugTesting = lazy(() => import("./pages/admin/BugTesting"));
+const BugReporting = lazy(() => import("./pages/admin/BugReporting"));
+const IlanTeamEvanBugs = lazy(() => import("./pages/admin/IlanTeamEvanBugs"));
+const IlanTeamEvanDevNotes = lazy(() => import("./pages/admin/IlanTeamEvanDevNotes"));
+const IlanTeamEvanNotes = lazy(() => import("./pages/admin/IlanTeamEvanNotes"));
+const UsersAndRoles = lazy(() => import("./pages/admin/UsersAndRoles"));
+const CalendarCallback = lazy(() => import("./pages/admin/CalendarCallback"));
+const SheetsCallback = lazy(() => import("./pages/admin/SheetsCallback"));
+const DropboxPage = lazy(() => import("./pages/admin/Dropbox"));
+const DropboxCallback = lazy(() => import("./pages/admin/DropboxCallback"));
+const AIChanges = lazy(() => import("./pages/admin/AIChanges"));
+const LoanVolumeLog = lazy(() => import("./pages/admin/LoanVolumeLog"));
+const VolumeLogExpandedView = lazy(() => import("./components/admin/VolumeLogExpandedView"));
+const AdminTracking = lazy(() => import("./pages/admin/Tracking"));
+const AdminSettings = lazy(() => import("./pages/admin/Settings"));
+
+// Partner pages — lazy-loaded
+const PartnerDashboard = lazy(() => import("./pages/partner/Dashboard"));
+const PartnerReferrals = lazy(() => import("./pages/partner/Referrals"));
+const PartnerCommissions = lazy(() => import("./pages/partner/Commissions"));
+const PartnerProfilePage = lazy(() => import("./pages/partner/Profile"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,6 +127,7 @@ const App = () => (
             <BrowserRouter>
               <CLXAssistant />
               <CallProvider>
+              <Suspense fallback={<PageSkeleton />}>
               <Routes>
               <Route path="/" element={<PublicLayout><Index /></PublicLayout>} />
               <Route path="/how-it-works" element={<PublicLayout><HowItWorks /></PublicLayout>} />
@@ -255,6 +264,7 @@ const App = () => (
               </Route>
               <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
               <IncomingCallPopup />
               </CallProvider>
             </BrowserRouter>

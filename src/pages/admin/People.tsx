@@ -498,17 +498,36 @@ const People = () => {
         .update({ contact_type: newType })
         .eq('id', personId);
       if (error) throw error;
-      await supabase.from('activities').insert({
-        entity_id: personId,
-        entity_type: 'people',
-        activity_type: 'type_change',
-        title: `Changed from ${oldType} to ${newType}`,
-        content: JSON.stringify({ from: oldType, to: newType }),
-      });
+      try {
+        const { error: activityError } = await supabase.from('activities').insert({
+          entity_id: personId,
+          entity_type: 'people',
+          activity_type: 'type_change',
+          title: `Changed from ${oldType} to ${newType}`,
+          content: JSON.stringify({ from: oldType, to: newType }),
+        });
+        if (activityError) throw activityError;
+      } catch (e) {
+        console.warn('[People] activity log failed (non-fatal):', e);
+      }
       return { personId, oldType, newType };
     },
+    onMutate: async ({ personId, newType }) => {
+      await queryClient.cancelQueries({ queryKey: ['people'] });
+      const previous = queryClient.getQueryData<any[]>(['people']);
+      if (previous) {
+        queryClient.setQueryData<any[]>(
+          ['people'],
+          previous.map((p) => (p.id === personId ? { ...p, contact_type: newType } : p)),
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(['people'], ctx.previous);
+      toast.error('Failed to update contact type');
+    },
     onSuccess: ({ personId, oldType, newType }) => {
-      queryClient.invalidateQueries({ queryKey: ['people'] });
       toast.success('Contact type updated');
       registerUndo({
         label: `Changed contact type to "${newType}"`,
@@ -519,8 +538,8 @@ const People = () => {
         },
       });
     },
-    onError: () => {
-      toast.error('Failed to update contact type');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['people'] });
     },
   });
 
@@ -987,6 +1006,47 @@ const People = () => {
               </div>
 
               <div className="flex items-center gap-1">
+                {/* Sort control (Kanban only — table view uses column-header clicks) */}
+                {viewMode === 'kanban' && (
+                  <div className="flex items-center gap-1 mr-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="h-8 px-2.5 flex items-center gap-1.5 text-[12px] font-medium rounded-lg text-[#3b2778] dark:text-purple-400 bg-[#f0ebf5] dark:bg-purple-950/40 hover:bg-[#e4dbef] dark:hover:bg-purple-900/60 transition-colors">
+                          <ArrowUpDown className="h-3.5 w-3.5" />
+                          <span className="text-[11px] text-[#8c7bab] dark:text-purple-600">Sort:</span>
+                          <span>{sortFieldLabel}</span>
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 p-1.5 rounded-lg shadow-xl border border-[#dadce0] dark:border-border bg-white dark:bg-popover">
+                        {SORT_FIELD_OPTIONS.map((opt) => (
+                          <DropdownMenuItem
+                            key={opt.value}
+                            onClick={() => setSortField(opt.value)}
+                            className="flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-[13px] font-medium text-[#1f1f1f] dark:text-foreground hover:bg-[#f1f3f4] dark:hover:bg-muted focus:bg-[#f1f3f4] dark:focus:bg-muted transition-colors"
+                          >
+                            <span>{opt.label}</span>
+                            {sortField === opt.value && <Check className="h-3.5 w-3.5 text-[#3b2778] dark:text-purple-400" />}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+                          className="h-8 w-8 flex items-center justify-center rounded-lg text-[#3b2778] dark:text-purple-400 bg-[#f0ebf5] dark:bg-purple-950/40 hover:bg-[#e4dbef] dark:hover:bg-purple-900/60 transition-colors"
+                        >
+                          {sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">
+                        {sortDir === 'asc' ? 'Ascending — click for descending' : 'Descending — click for ascending'}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+
                 {/* View toggle: Table / Kanban segmented pill */}
                 <div className="flex items-center bg-[#f0ebf5] dark:bg-purple-950/40 rounded-xl p-0.5">
                   <Tooltip>

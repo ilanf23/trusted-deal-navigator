@@ -36,7 +36,7 @@ import { useGmailConnection } from '@/hooks/useGmailConnection';
 // usePipelines import removed — people are no longer connected to pipelines
 import { useInlineSave as useSharedInlineSave } from './shared/useInlineSave';
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
-import { type LeadProject } from './ProjectDetailDialog';
+import ProjectDetailDialog, { type LeadProject } from './ProjectDetailDialog';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { formatPhoneNumber } from './InlineEditableFields';
 
@@ -1254,6 +1254,8 @@ export default function PeopleExpandedView() {
   const [showAddProject, setShowAddProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [savingProject, setSavingProject] = useState(false);
+  const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
+  const [createProjectInitialName, setCreateProjectInitialName] = useState('');
 
   // Activity expand / comments state
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
@@ -1663,30 +1665,33 @@ export default function PeopleExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['person-appointments', personId] });
   }, [newEventTitle, newEventDate, newEventTime, newEventEndTime, newEventType, personId, teamMember, queryClient]);
 
-  const handleInlineCreateProject = useCallback(async () => {
-    if (!newProjectName.trim() || !personId) return;
+  // Link an existing project to this person. Because `entity_projects` rows
+  // are per-entity, we insert a new row with the suggested project's name and
+  // stage for this person.
+  const handleLinkExistingProject = useCallback(async (suggestion: { name: string; status: string | null; project_stage: string | null }) => {
+    if (!personId) return;
     setSavingProject(true);
     try {
       const { error } = await supabase.from('entity_projects').insert({
         entity_id: personId,
         entity_type: 'people',
-        name: newProjectName.trim(),
-        status: 'open',
-        project_stage: 'open',
+        name: suggestion.name,
+        status: suggestion.status ?? 'open',
+        project_stage: suggestion.project_stage ?? 'open',
         visibility: 'everyone',
         created_by: teamMember?.name || null,
       });
       if (error) throw error;
-      toast.success('Project created');
+      toast.success('Project linked');
       queryClient.invalidateQueries({ queryKey: ['person-projects', personId] });
       setNewProjectName('');
       setShowAddProject(false);
     } catch {
-      toast.error('Failed to create project');
+      toast.error('Failed to link project');
     } finally {
       setSavingProject(false);
     }
-  }, [newProjectName, personId, teamMember, queryClient]);
+  }, [personId, teamMember, queryClient]);
 
   const handleDeleteEvent = useCallback(async (eventId: string) => {
     // Capture event before deleting
@@ -1746,6 +1751,33 @@ export default function PeopleExpandedView() {
       return (data ?? []) as LeadProject[];
     },
     enabled: !!personId,
+  });
+
+  // Project name suggestions across all entities, excluding projects already
+  // linked to this person. Powers the Add Project autocomplete.
+  const { data: projectSuggestions = [] } = useQuery<Array<{ id: string; name: string; status: string | null; project_stage: string | null }>>({
+    queryKey: ['person-project-search', personId, newProjectName],
+    queryFn: async () => {
+      const q = newProjectName.trim();
+      if (!q) return [];
+      const { data } = await supabase
+        .from('entity_projects')
+        .select('id, name, status, project_stage')
+        .ilike('name', `%${q}%`)
+        .limit(20);
+      const existingNames = new Set(personProjects.map((p) => p.name.toLowerCase()));
+      const seen = new Set<string>();
+      const out: Array<{ id: string; name: string; status: string | null; project_stage: string | null }> = [];
+      for (const p of data ?? []) {
+        const lower = p.name.toLowerCase();
+        if (seen.has(lower) || existingNames.has(lower)) continue;
+        seen.add(lower);
+        out.push(p);
+        if (out.length >= 8) break;
+      }
+      return out;
+    },
+    enabled: showAddProject && newProjectName.trim().length > 0,
   });
 
   // Financial stats from person's lead data
@@ -2914,22 +2946,67 @@ export default function PeopleExpandedView() {
                     !showAddProject && <p className="text-sm text-muted-foreground">No projects</p>
                   )}
                   {showAddProject && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <input
-                        value={newProjectName}
-                        onChange={(e) => setNewProjectName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newProjectName.trim()) handleInlineCreateProject();
-                          if (e.key === 'Escape') { setShowAddProject(false); setNewProjectName(''); }
-                        }}
-                        placeholder="Add Project"
-                        className="flex-1 text-sm bg-transparent border-b-2 border-blue-500 outline-none py-1 placeholder:text-muted-foreground/50"
-                        autoFocus
-                        disabled={savingProject}
-                      />
-                      <button onClick={() => { setShowAddProject(false); setNewProjectName(''); }}>
-                        <X className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                      </button>
+                    <div className="relative mt-1">
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={newProjectName}
+                          onChange={(e) => setNewProjectName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newProjectName.trim()) {
+                              const match = projectSuggestions.find(
+                                (s) => s.name.toLowerCase() === newProjectName.trim().toLowerCase(),
+                              );
+                              if (match) {
+                                handleLinkExistingProject(match);
+                              } else {
+                                setCreateProjectInitialName(newProjectName.trim());
+                                setCreateProjectDialogOpen(true);
+                                setShowAddProject(false);
+                                setNewProjectName('');
+                              }
+                            }
+                            if (e.key === 'Escape') { setShowAddProject(false); setNewProjectName(''); }
+                          }}
+                          placeholder="Search or create project..."
+                          className="flex-1 text-sm bg-transparent border-b-2 border-blue-500 outline-none py-1 placeholder:text-muted-foreground/50"
+                          autoFocus
+                          disabled={savingProject}
+                        />
+                        <button onClick={() => { setShowAddProject(false); setNewProjectName(''); }}>
+                          <X className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                        </button>
+                      </div>
+                      {newProjectName.trim().length > 0 && (
+                        <div className="absolute z-50 left-0 right-8 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                          {projectSuggestions.map((s) => (
+                            <button
+                              key={s.id}
+                              onClick={() => handleLinkExistingProject(s)}
+                              className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-muted/60 transition-colors"
+                            >
+                              <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="flex-1 min-w-0 truncate text-sm font-medium text-foreground">{s.name}</span>
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 rounded-full capitalize shrink-0">
+                                {(s.status || 'open').replace(/_/g, ' ')}
+                              </Badge>
+                            </button>
+                          ))}
+                          {!projectSuggestions.some((s) => s.name.toLowerCase() === newProjectName.trim().toLowerCase()) && (
+                            <button
+                              onClick={() => {
+                                setCreateProjectInitialName(newProjectName.trim());
+                                setCreateProjectDialogOpen(true);
+                                setShowAddProject(false);
+                                setNewProjectName('');
+                              }}
+                              className="w-full text-left flex items-center gap-2 px-3 py-2 border-t border-border hover:bg-muted/60 transition-colors text-sm text-blue-600 dark:text-blue-400 font-medium"
+                            >
+                              <Plus className="h-4 w-4 shrink-0" />
+                              <span className="truncate">Create new project “{newProjectName.trim()}”</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </CollapsibleContent>
@@ -3163,6 +3240,20 @@ export default function PeopleExpandedView() {
         onSaved={() => {
           queryClient.invalidateQueries({ queryKey: ['person-tasks', personId] });
         }}
+      />
+    )}
+
+    {personId && (
+      <ProjectDetailDialog
+        project={null}
+        open={createProjectDialogOpen}
+        onClose={() => { setCreateProjectDialogOpen(false); setCreateProjectInitialName(''); }}
+        leadId={personId}
+        leadName={person?.name ?? ''}
+        teamMembers={teamMembers}
+        currentUserName={teamMember?.name ?? null}
+        initialName={createProjectInitialName}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ['person-projects', personId] })}
       />
     )}
 
