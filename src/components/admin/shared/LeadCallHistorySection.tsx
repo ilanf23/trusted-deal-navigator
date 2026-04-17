@@ -35,7 +35,7 @@ interface CommunicationRow {
   recording_url: string | null;
   transcript: string | null;
   created_at: string;
-  team_member_id: string | null;
+  user_id: string | null;
   content: string | null;
   call_sid: string | null;
 }
@@ -85,7 +85,7 @@ export function LeadCallHistorySection({
       const { data, error } = await supabase
         .from('communications')
         .select(
-          'id, communication_type, direction, status, phone_number, duration_seconds, recording_url, transcript, created_at, team_member_id, content, call_sid',
+          'id, communication_type, direction, status, phone_number, duration_seconds, recording_url, transcript, created_at, user_id, content, call_sid',
         )
         .eq('lead_id', leadId)
         .eq('communication_type', 'call')
@@ -142,8 +142,8 @@ export function LeadCallHistorySection({
           )}
           {calls.map((c) => {
             const rowExpanded = !!expanded[c.id];
-            const member = c.team_member_id
-              ? teamMemberMap[c.team_member_id] ?? '—'
+            const member = c.user_id
+              ? teamMemberMap[c.user_id] ?? '—'
               : '—';
             return (
               <div

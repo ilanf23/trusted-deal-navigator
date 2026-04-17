@@ -81,7 +81,7 @@ export const useWendysDashboard = () => {
       const { data, error } = await supabase
         .from('dashboard_deals')
         .select('*')
-        .eq('team_member_id', teamMemberId!)
+        .eq('user_id', teamMemberId!)
         .order('days_in_stage', { ascending: false })
         .limit(20);
       if (error) throw error;
@@ -96,7 +96,7 @@ export const useWendysDashboard = () => {
       const { data, error } = await (supabase as any)
         .from('team_monthly_goals')
         .select('*')
-        .eq('team_member_id', teamMemberId!);
+        .eq('user_id', teamMemberId!);
       if (error) throw error;
       return data ?? [];
     },

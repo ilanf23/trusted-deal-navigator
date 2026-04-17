@@ -9,7 +9,7 @@ export interface Task {
   priority: string | null;
   status: string | null;
   estimated_hours: number | null;
-  team_member_id: string | null;
+  user_id: string | null;
   group_name: string | null;
   tags: string[] | null;
   lead_id: string | null;

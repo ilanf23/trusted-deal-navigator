@@ -156,7 +156,7 @@ const Calls = () => {
       const { count } = await supabase
         .from('communications')
         .select('id', { count: 'exact', head: true })
-        .eq('team_member_id', teamMember!.id)
+        .eq('user_id', teamMember!.id)
         .limit(1);
       return (count ?? 0) > 0;
     },
@@ -219,7 +219,7 @@ const Calls = () => {
         .eq('direction', 'inbound')
         .order('created_at', { ascending: false });
       if (teamMember?.id) {
-        query = query.or(`team_member_id.eq.${teamMember.id},team_member_id.is.null`);
+        query = query.or(`user_id.eq.${teamMember.id},user_id.is.null`);
       }
       const { data, error } = await query;
       if (error) throw error;
@@ -246,7 +246,7 @@ const Calls = () => {
         .order('created_at', { ascending: false })
         .limit(100);
       if (teamMember?.id) {
-        query = query.eq('team_member_id', teamMember.id);
+        query = query.eq('user_id', teamMember.id);
       }
       const { data, error } = await query;
       if (error) throw error;

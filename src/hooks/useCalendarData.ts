@@ -180,7 +180,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
         .lte('start_time', end.toISOString())
         .order('start_time', { ascending: true });
       if (teamMember?.id) {
-        query = query.eq('team_member_id', teamMember.id);
+        query = query.eq('user_id', teamMember.id);
       }
       const { data, error } = await query;
       if (error) throw error;
@@ -201,7 +201,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
         .lte('due_date', end.toISOString())
         .order('due_date', { ascending: true });
       if (teamMember?.id) {
-        query = query.eq('team_member_id', teamMember.id);
+        query = query.eq('user_id', teamMember.id);
       }
       const { data, error } = await query;
       if (error) throw error;
@@ -231,7 +231,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
           appointment_type: appt.appointment_type,
           description: appt.description ?? null,
           lead_id: appt.lead_id ?? null,
-          team_member_id: teamMember.id,
+          user_id: teamMember.id,
         });
       if (error) throw error;
     },
@@ -258,7 +258,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
         .from('appointments')
         .update(updates)
         .eq('id', id)
-        .eq('team_member_id', teamMember.id);
+        .eq('user_id', teamMember.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -290,7 +290,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
         .from('appointments')
         .delete()
         .eq('id', id)
-        .eq('team_member_id', teamMember.id);
+        .eq('user_id', teamMember.id);
       if (error) throw error;
     },
     onSuccess: () => {

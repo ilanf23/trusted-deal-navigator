@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
       };
       
       if (teamMemberName) {
-        upsertData.team_member_name = teamMemberName;
+        upsertData.user_name = teamMemberName;
       }
 
       const { error: upsertError } = await supabaseAdmin
@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
       // Delete by team member name if provided, otherwise by user_id
       let query = supabaseAdmin.from('calendar_connections').delete();
       if (teamMemberName) {
-        query = query.eq('team_member_name', teamMemberName);
+        query = query.eq('user_name', teamMemberName);
       } else {
         query = query.eq('user_id', userId);
       }
@@ -182,10 +182,10 @@ Deno.serve(async (req) => {
       // Query by team member name if provided, otherwise by user_id
       let query = supabaseAdmin
         .from('calendar_connections')
-        .select('email, calendar_id, updated_at, team_member_name');
+        .select('email, calendar_id, updated_at, user_name');
       
       if (teamMemberName) {
-        query = query.eq('team_member_name', teamMemberName);
+        query = query.eq('user_name', teamMemberName);
       } else {
         query = query.eq('user_id', userId);
       }

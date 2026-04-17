@@ -100,7 +100,7 @@ export const useFeedData = () => {
         // Communications (calls, emails, SMS)
         supabase
           .from('communications')
-          .select('id, communication_type, direction, content, created_at, lead_id, phone_number, team_member_id')
+          .select('id, communication_type, direction, content, created_at, lead_id, phone_number, user_id')
           .order('created_at', { ascending: false })
           .limit(200),
         // Activities (logged activities from all pipelines)
@@ -263,7 +263,7 @@ export const useFeedData = () => {
           : undefined;
 
         const commActorName = comm.direction === 'outbound'
-          ? (comm.team_member_id ? teamMap.get(comm.team_member_id)?.name : null) || 'Team'
+          ? (comm.user_id ? teamMap.get(comm.user_id)?.name : null) || 'Team'
           : (leadInfo?.name || 'Unknown');
         activities.push({
           id: `comm-${comm.id}`,

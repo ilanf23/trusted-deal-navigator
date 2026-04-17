@@ -8,7 +8,7 @@ export type NotificationType = 'email' | 'lead' | 'opportunity' | 'project' | 'c
 
 export interface Notification {
   id: string;
-  team_member_id: string;
+  user_id: string;
   type: NotificationType;
   title: string;
   description: string | null;
@@ -58,7 +58,7 @@ export const useNotifications = () => {
         event: '*',
         schema: 'public',
         table: 'notifications',
-        filter: `team_member_id=eq.${teamMemberId}`,
+        filter: `user_id=eq.${teamMemberId}`,
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['notifications', teamMemberId] });
       })
@@ -102,7 +102,7 @@ export const useNotifications = () => {
         .from('notifications')
         .update({ is_read: true })
         .eq('is_read', false)
-        .eq('team_member_id', teamMemberId);
+        .eq('user_id', teamMemberId);
       if (error) throw error;
     },
     onMutate: async () => {

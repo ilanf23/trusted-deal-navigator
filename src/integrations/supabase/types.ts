@@ -28,9 +28,9 @@ export type Database = {
           id: string
           lead_id: string | null
           status: string
-          team_member_id: string | null
           to_number: string
           updated_at: string
+          user_id: string | null
           webhook_timestamp: string | null
         }
         Insert: {
@@ -46,9 +46,9 @@ export type Database = {
           id?: string
           lead_id?: string | null
           status?: string
-          team_member_id?: string | null
           to_number: string
           updated_at?: string
+          user_id?: string | null
           webhook_timestamp?: string | null
         }
         Update: {
@@ -64,15 +64,15 @@ export type Database = {
           id?: string
           lead_id?: string | null
           status?: string
-          team_member_id?: string | null
           to_number?: string
           updated_at?: string
+          user_id?: string | null
           webhook_timestamp?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "active_calls_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "active_calls_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -364,10 +364,10 @@ export type Database = {
           start_time: string
           sync_status: string | null
           synced_at: string | null
-          team_member_id: string | null
-          team_member_name: string | null
           title: string
           updated_at: string
+          user_id: string | null
+          user_name: string | null
         }
         Insert: {
           appointment_type?: string | null
@@ -382,10 +382,10 @@ export type Database = {
           start_time: string
           sync_status?: string | null
           synced_at?: string | null
-          team_member_id?: string | null
-          team_member_name?: string | null
           title: string
           updated_at?: string
+          user_id?: string | null
+          user_name?: string | null
         }
         Update: {
           appointment_type?: string | null
@@ -400,15 +400,15 @@ export type Database = {
           start_time?: string
           sync_status?: string | null
           synced_at?: string | null
-          team_member_id?: string | null
-          team_member_name?: string | null
           title?: string
           updated_at?: string
+          user_id?: string | null
+          user_name?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "appointments_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "appointments_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -538,10 +538,10 @@ export type Database = {
           email: string
           id: string
           refresh_token: string
-          team_member_name: string | null
           token_expiry: string
           updated_at: string
           user_id: string
+          user_name: string | null
         }
         Insert: {
           access_token: string
@@ -550,10 +550,10 @@ export type Database = {
           email: string
           id?: string
           refresh_token: string
-          team_member_name?: string | null
           token_expiry: string
           updated_at?: string
           user_id: string
+          user_name?: string | null
         }
         Update: {
           access_token?: string
@@ -562,10 +562,10 @@ export type Database = {
           email?: string
           id?: string
           refresh_token?: string
-          team_member_name?: string | null
           token_expiry?: string
           updated_at?: string
           user_id?: string
+          user_name?: string | null
         }
         Relationships: []
       }
@@ -700,8 +700,8 @@ export type Database = {
           recording_sid: string | null
           recording_url: string | null
           status: string | null
-          team_member_id: string | null
           transcript: string | null
+          user_id: string | null
         }
         Insert: {
           call_sid?: string | null
@@ -717,8 +717,8 @@ export type Database = {
           recording_sid?: string | null
           recording_url?: string | null
           status?: string | null
-          team_member_id?: string | null
           transcript?: string | null
+          user_id?: string | null
         }
         Update: {
           call_sid?: string | null
@@ -734,13 +734,13 @@ export type Database = {
           recording_sid?: string | null
           recording_url?: string | null
           status?: string | null
-          team_member_id?: string | null
           transcript?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "communications_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "communications_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -935,7 +935,7 @@ export type Database = {
           id: string
           requested_amount: number
           stage: string
-          team_member_id: string | null
+          user_id: string | null
           weighted_fees: number
         }
         Insert: {
@@ -946,7 +946,7 @@ export type Database = {
           id?: string
           requested_amount?: number
           stage: string
-          team_member_id?: string | null
+          user_id?: string | null
           weighted_fees?: number
         }
         Update: {
@@ -957,13 +957,13 @@ export type Database = {
           id?: string
           requested_amount?: number
           stage?: string
-          team_member_id?: string | null
+          user_id?: string | null
           weighted_fees?: number
         }
         Relationships: [
           {
-            foreignKeyName: "dashboard_deals_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "dashboard_deals_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1474,8 +1474,8 @@ export type Database = {
           id: string
           name: string
           subject: string
-          team_member_id: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           body: string
@@ -1484,8 +1484,8 @@ export type Database = {
           id?: string
           name: string
           subject: string
-          team_member_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           body?: string
@@ -1494,13 +1494,13 @@ export type Database = {
           id?: string
           name?: string
           subject?: string
-          team_member_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "email_templates_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "email_templates_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1827,26 +1827,26 @@ export type Database = {
           entity_id: string
           entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
-          team_member_id: string
+          user_id: string
         }
         Insert: {
           created_at?: string | null
           entity_id: string
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
-          team_member_id: string
+          user_id: string
         }
         Update: {
           created_at?: string | null
           entity_id?: string
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
-          team_member_id?: string
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "lead_followers_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "entity_followers_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1949,7 +1949,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "lead_projects_owner_fkey"
+            foreignKeyName: "entity_projects_owner_fkey"
             columns: ["owner"]
             isOneToOne: false
             referencedRelation: "users"
@@ -2705,9 +2705,9 @@ export type Database = {
           entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           is_pinned: boolean
-          team_member_id: string | null
           title: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           content: string
@@ -2716,9 +2716,9 @@ export type Database = {
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           is_pinned?: boolean
-          team_member_id?: string | null
           title?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           content?: string
@@ -2727,14 +2727,14 @@ export type Database = {
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           is_pinned?: boolean
-          team_member_id?: string | null
           title?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "notes_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "notes_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -2748,9 +2748,10 @@ export type Database = {
           id: string
           is_read: boolean | null
           link_url: string | null
-          team_member_id: string
+          target_id: string | null
           title: string
           type: string
+          user_id: string
         }
         Insert: {
           created_at?: string | null
@@ -2758,9 +2759,10 @@ export type Database = {
           id?: string
           is_read?: boolean | null
           link_url?: string | null
-          team_member_id: string
+          target_id?: string | null
           title: string
           type: string
+          user_id: string
         }
         Update: {
           created_at?: string | null
@@ -2768,14 +2770,15 @@ export type Database = {
           id?: string
           is_read?: boolean | null
           link_url?: string | null
-          team_member_id?: string
+          target_id?: string | null
           title?: string
           type?: string
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "notifications_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -3509,17 +3512,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "pipeline_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "pipeline_stage_id_fkey"
             columns: ["stage_id"]
             isOneToOne: false
             referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "potential_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -3863,10 +3866,10 @@ export type Database = {
           email: string
           id: string
           refresh_token: string
-          team_member_name: string | null
           token_expiry: string
           updated_at: string
           user_id: string
+          user_name: string | null
         }
         Insert: {
           access_token: string
@@ -3874,10 +3877,10 @@ export type Database = {
           email: string
           id?: string
           refresh_token: string
-          team_member_name?: string | null
           token_expiry: string
           updated_at?: string
           user_id: string
+          user_name?: string | null
         }
         Update: {
           access_token?: string
@@ -3885,10 +3888,10 @@ export type Database = {
           email?: string
           id?: string
           refresh_token?: string
-          team_member_name?: string | null
           token_expiry?: string
           updated_at?: string
           user_id?: string
+          user_name?: string | null
         }
         Relationships: []
       }
@@ -3903,7 +3906,7 @@ export type Database = {
           new_value: string | null
           old_value: string | null
           task_id: string
-          team_member_id: string | null
+          user_id: string | null
         }
         Insert: {
           activity_type: string
@@ -3915,7 +3918,7 @@ export type Database = {
           new_value?: string | null
           old_value?: string | null
           task_id: string
-          team_member_id?: string | null
+          user_id?: string | null
         }
         Update: {
           activity_type?: string
@@ -3927,7 +3930,7 @@ export type Database = {
           new_value?: string | null
           old_value?: string | null
           task_id?: string
-          team_member_id?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -3938,8 +3941,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "task_activities_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "task_activities_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -3966,9 +3969,9 @@ export type Database = {
           status: string | null
           tags: string[] | null
           task_type: string | null
-          team_member_id: string | null
           title: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           completed_at?: string | null
@@ -3989,9 +3992,9 @@ export type Database = {
           status?: string | null
           tags?: string[] | null
           task_type?: string | null
-          team_member_id?: string | null
           title: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           completed_at?: string | null
@@ -4012,9 +4015,9 @@ export type Database = {
           status?: string | null
           tags?: string[] | null
           task_type?: string | null
-          team_member_id?: string | null
           title?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -4025,8 +4028,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tasks_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "tasks_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -4040,8 +4043,8 @@ export type Database = {
           goal_label: string
           id: string
           target_value: number
-          team_member_id: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -4049,8 +4052,8 @@ export type Database = {
           goal_label: string
           id?: string
           target_value?: number
-          team_member_id?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -4058,13 +4061,13 @@ export type Database = {
           goal_label?: string
           id?: string
           target_value?: number
-          team_member_id?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "team_monthly_goals_team_member_id_fkey"
-            columns: ["team_member_id"]
+            foreignKeyName: "team_monthly_goals_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]

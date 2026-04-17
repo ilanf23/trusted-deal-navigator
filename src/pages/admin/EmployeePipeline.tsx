@@ -8,6 +8,7 @@ import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loade
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { usePageDatabases } from '@/hooks/usePageDatabases';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { Link, useNavigate } from 'react-router-dom';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
@@ -221,6 +222,52 @@ const EmployeePipeline = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { teamMember, isOwner } = useTeamMember();
+
+  // ── Dev-mode: declare Supabase tables this page touches ──
+  usePageDatabases([
+    {
+      table: 'potential',
+      access: 'readwrite',
+      usage: 'Primary deal records for the pipeline (kanban/table). Read via useQuery("evans-pipeline-deals"). Written inline for inline-edit, bulk delete, owner reassignment, and stage moves.',
+      via: 'src/pages/admin/EmployeePipeline.tsx (useQuery + direct supabase.from updates)',
+    },
+    {
+      table: 'pipelines',
+      access: 'read',
+      usage: 'List of all available pipelines shown in the pipeline switcher.',
+      via: 'useQuery("all-pipelines") in EmployeePipeline.tsx',
+    },
+    {
+      table: 'pipeline_stages',
+      access: 'readwrite',
+      usage: 'Columns of the current pipeline. Read to build the board; written inline when the user adds/removes stages through StageManagerModal.',
+      via: 'useQuery("pipeline-stages") + inline supabase.from("pipeline_stages")',
+    },
+    {
+      table: 'communications',
+      access: 'read',
+      usage: 'Last-touchpoint chip shown on each deal card (call/email history).',
+      via: 'useQuery("evans-pipeline-touchpoints") in EmployeePipeline.tsx',
+    },
+    {
+      table: 'users',
+      access: 'read',
+      usage: 'Assignable owners + team-member avatars on deal cards and in filters.',
+      via: 'src/hooks/useAssignableUsers.ts, src/hooks/useTeamMember.ts',
+    },
+    {
+      table: 'twilio-call',
+      access: 'rpc',
+      usage: 'Edge function invoked when placing an outbound call from a deal card. Writes to active_calls / call_events server-side.',
+      via: 'supabase.functions.invoke("twilio-call")',
+    },
+    {
+      table: 'send-prequalification-email',
+      access: 'rpc',
+      usage: 'Edge function invoked when sending prequal emails from the inline compose dialog.',
+      via: 'supabase.functions.invoke("send-prequalification-email")',
+    },
+  ]);
   const { getPageState, setPageState } = useEmployeeUIState();
   const persistedPipeline = getPageState('pipeline', { collapsedSections: {} as Record<LeadStatus, boolean>, selectedLeadId: null as string | null });
 

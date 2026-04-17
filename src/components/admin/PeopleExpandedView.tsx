@@ -1629,7 +1629,7 @@ export default function PeopleExpandedView() {
         id: string; title: string; description: string | null;
         start_time: string; end_time: string | null;
         appointment_type: string | null; lead_id: string | null;
-        team_member_name: string | null; created_at: string;
+        user_name: string | null; created_at: string;
       }>;
     },
     enabled: !!personId,
@@ -1646,7 +1646,7 @@ export default function PeopleExpandedView() {
       end_time: endTime,
       lead_id: personId,
       appointment_type: newEventType,
-      team_member_name: teamMember?.name ?? null,
+      user_name: teamMember?.name ?? null,
     });
     setSavingEvent(false);
     if (error) {

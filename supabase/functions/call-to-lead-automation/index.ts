@@ -240,7 +240,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
         status: 'todo',
         due_date: taskDueDate.toISOString(),
         group_name: 'To Do',
-        team_member_id: teamMemberId || null,
+        user_id: teamMemberId || null,
         tags: ['follow-up', 'new-lead', 'phone-call'],
       })
       .select()

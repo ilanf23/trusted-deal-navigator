@@ -322,7 +322,7 @@ export default function ProjectDetailPanel({
     queryKey: ['project-follow', project.entity_id, teamMemberId],
     queryFn: async () => {
       const { data } = await supabase.from('entity_followers').select('id')
-        .eq('entity_id', project.entity_id).eq('team_member_id', teamMemberId!).maybeSingle();
+        .eq('entity_id', project.entity_id).eq('user_id', teamMemberId!).maybeSingle();
       return !!data;
     },
     enabled: !!project.entity_id && !!teamMemberId,
@@ -330,9 +330,9 @@ export default function ProjectDetailPanel({
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
       if (isFollowing) {
-        await supabase.from('entity_followers').delete().eq('entity_id', project.entity_id).eq('team_member_id', teamMemberId!);
+        await supabase.from('entity_followers').delete().eq('entity_id', project.entity_id).eq('user_id', teamMemberId!);
       } else {
-        await supabase.from('entity_followers').insert({ entity_id: project.entity_id, team_member_id: teamMemberId! });
+        await supabase.from('entity_followers').insert({ entity_id: project.entity_id, user_id: teamMemberId! });
       }
     },
     onSuccess: () => {

@@ -30,7 +30,7 @@ export interface LeadTask {
   status: string | null;
   priority: string | null;
   due_date: string | null;
-  team_member_id: string | null;
+  user_id: string | null;
   task_type: string | null;
   created_by: string | null;
   completed_at: string | null;
@@ -145,7 +145,7 @@ export const PeopleTaskDetailDialog = ({
       setActivityType(task.task_type || 'to_do');
       setDueDate(parseDateOnly(task.due_date));
       setDueTime(extractTimeFromDate(task.due_date));
-      setAssignedTo(task.team_member_id || '');
+      setAssignedTo(task.user_id || '');
       setPriority(task.priority || 'none');
       setDescription(task.description || '');
     } else {
@@ -174,7 +174,7 @@ export const PeopleTaskDetailDialog = ({
         description: description.trim() || null,
         task_type: activityType,
         due_date: combineDateAndTime(dueDate, dueTime) || null,
-        team_member_id: assignedTo || null,
+        user_id: assignedTo || null,
         priority,
         status: 'todo',
         source: 'lead',
@@ -262,7 +262,7 @@ export const PeopleTaskDetailDialog = ({
   const handleAssignedToChange = useCallback((val: string) => {
     const resolved = val === '__none__' ? '' : val;
     setAssignedTo(resolved);
-    if (task) saveField('team_member_id', resolved || null);
+    if (task) saveField('user_id', resolved || null);
   }, [task, saveField]);
 
   const handlePriorityChange = useCallback((val: string) => {

@@ -24,7 +24,7 @@ interface EmailTemplate {
   subject: string;
   body: string;
   category: string | null;
-  team_member_id: string | null;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -77,7 +77,7 @@ export function GmailTemplatesView({ onUseTemplate }: GmailTemplatesViewProps) {
         subject: tpl.subject!,
         body: tpl.body!,
         category: tpl.category || 'general',
-        team_member_id: teamMember?.id || null,
+        user_id: teamMember?.id || null,
       });
       if (error) throw error;
     },

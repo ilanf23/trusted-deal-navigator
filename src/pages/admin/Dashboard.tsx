@@ -138,7 +138,7 @@ const Dashboard = () => {
         .lte('start_time', todayEnd.toISOString())
         .order('start_time', { ascending: true })
         .limit(8);
-      if (evanId) query = query.eq('team_member_id', evanId);
+      if (evanId) query = query.eq('user_id', evanId);
       const { data, error } = await query;
       if (error) throw error;
       return data;

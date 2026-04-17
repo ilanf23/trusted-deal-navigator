@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
       .select('*');
 
     if (teamMemberName) {
-      query = query.eq('team_member_name', teamMemberName);
+      query = query.eq('user_name', teamMemberName);
     } else {
       query = query.eq('user_id', userId);
     }

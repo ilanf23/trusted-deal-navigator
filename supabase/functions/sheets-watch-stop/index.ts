@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
     let q = admin.from('sheets_connections').select('*').eq('user_id', userId);
-    if (teamMemberName) q = q.eq('team_member_name', teamMemberName);
+    if (teamMemberName) q = q.eq('user_name', teamMemberName);
     const { data: connection } = await q.maybeSingle();
 
     if (!connection || !connection.drive_watch_channel_id || !connection.drive_watch_resource_id) {

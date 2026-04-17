@@ -14,6 +14,7 @@ import { useState, createContext, useContext } from 'react';
 import { AdminTopBarProvider, useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import NotificationBell from './NotificationBell';
 import AdminTopBarSearch from './AdminTopBarSearch';
+import PageDatabaseBadges from './dev/PageDatabaseBadges';
 
 export const AdminLayoutMountedContext = createContext(false);
 
@@ -161,7 +162,10 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
               <SplitViewToggle />
             </div>
           </header>
-          
+
+          {/* Dev-mode: per-page DB footprint banner (owners only) */}
+          <PageDatabaseBadges />
+
           {/* Main Content Area */}
           <SplitViewContent>{children}</SplitViewContent>
         </main>

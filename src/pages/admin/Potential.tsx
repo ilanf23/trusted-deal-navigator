@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAutoFitColumns, CHAR_W_SM } from '@/hooks/useAutoFitColumns';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { usePageDatabases } from '@/hooks/usePageDatabases';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -287,6 +288,40 @@ const Pipeline = () => {
   // ── Top bar: inject title + search into AdminLayout header ──
   const { setPageTitle, setSearchComponent } = useAdminTopBar();
 
+  // ── Dev-mode: declare Supabase tables this page touches ──
+  usePageDatabases([
+    {
+      table: 'potential',
+      access: 'readwrite',
+      usage: 'Main deal records shown in the kanban/table. Loaded via usePipelineDeals; mutated via useCrmMutations (move stage, remove from pipeline, bulk remove).',
+      via: 'src/hooks/usePipelineLeads.ts, src/hooks/usePipelineMutations.ts',
+    },
+    {
+      table: 'pipelines',
+      access: 'read',
+      usage: 'Looks up the "Potential" system pipeline record to drive stages.',
+      via: 'src/hooks/useSystemPipelineByName.ts',
+    },
+    {
+      table: 'pipeline_stages',
+      access: 'read',
+      usage: 'Ordered column definitions for the kanban board.',
+      via: 'src/hooks/usePipelineStages.ts',
+    },
+    {
+      table: 'users',
+      access: 'read',
+      usage: 'Assignable owners / team-member avatars shown on each deal card.',
+      via: 'src/hooks/useAssignableUsers.ts, src/hooks/useTeamMember.ts',
+    },
+    {
+      table: 'lead_activities',
+      access: 'write',
+      usage: 'Activity log entries written whenever a deal is moved, removed, or bulk-updated.',
+      via: 'src/hooks/usePipelineMutations.ts',
+    },
+  ]);
+
   useEffect(() => {
     setPageTitle('Pipeline');
     return () => {
@@ -387,7 +422,7 @@ const Pipeline = () => {
         .from('entity_followers')
         .select('entity_id')
         .eq('entity_type', 'potential')
-        .eq('team_member_id', currentTeamMember!.id);
+        .eq('user_id', currentTeamMember!.id);
       return (data ?? []).map((r) => r.entity_id);
     },
     enabled: !!currentTeamMember?.id,

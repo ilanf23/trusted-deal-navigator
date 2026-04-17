@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
     let q = admin.from('sheets_connections').select('*').eq('user_id', userId);
-    if (teamMemberName) q = q.eq('team_member_name', teamMemberName);
+    if (teamMemberName) q = q.eq('user_name', teamMemberName);
     const { data: connection, error: connErr } = await q.maybeSingle();
 
     if (connErr || !connection) {

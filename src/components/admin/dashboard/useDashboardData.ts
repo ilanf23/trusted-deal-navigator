@@ -330,7 +330,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
       const { data, error } = await supabase
         .from('tasks')
         .select('id, title, priority, due_date, is_completed, status, created_at')
-        .eq('team_member_id', teamMemberId!)
+        .eq('user_id', teamMemberId!)
         .order('due_date', { ascending: true });
       if (error) throw error;
       return data || [];

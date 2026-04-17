@@ -669,7 +669,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     // Assign this call to the current team member
     if (teamMember?.id) {
       supabase.from('active_calls')
-        .update({ team_member_id: teamMember.id })
+        .update({ user_id: teamMember.id })
         .eq('call_sid', incomingCall.call_sid)
         .then();
     }
@@ -944,7 +944,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
         phone_number: formattedPhone,
         status: 'ringing',
         call_sid: call.parameters.CallSid,
-        team_member_id: teamMember?.id || null,
+        user_id: teamMember?.id || null,
       });
       if (insertError) {
         console.error('[CallContext] Failed to log outbound call to communications:', insertError);

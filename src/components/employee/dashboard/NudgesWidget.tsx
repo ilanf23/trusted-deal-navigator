@@ -107,7 +107,7 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
           status: 'todo',
           priority: 'high',
           lead_id: lead.id,
-          team_member_id: teamMember?.id,
+          user_id: teamMember?.id,
           group_name: 'To Do',
           source: 'nudge',
           task_type: 'email',

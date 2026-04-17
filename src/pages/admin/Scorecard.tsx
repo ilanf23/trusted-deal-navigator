@@ -351,7 +351,7 @@ const Scorecard = () => {
       // Fetch tasks created in the period
       const { data: createdInPeriod, error: e1 } = await supabase
         .from('tasks')
-        .select('id, title, is_completed, lead_id, created_at, due_date, source, team_member_id')
+        .select('id, title, is_completed, lead_id, created_at, due_date, source, user_id')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
       if (e1) throw e1;
@@ -360,7 +360,7 @@ const Scorecard = () => {
       // (captures overdue tasks that were created before this period)
       const { data: dueInPeriod, error: e2 } = await supabase
         .from('tasks')
-        .select('id, title, is_completed, lead_id, created_at, due_date, source, team_member_id')
+        .select('id, title, is_completed, lead_id, created_at, due_date, source, user_id')
         .eq('is_completed', false)
         .not('due_date', 'is', null)
         .lte('due_date', periodBoundaries.end.toISOString());
@@ -420,7 +420,7 @@ const Scorecard = () => {
     const scopedTasks = repFilter === 'me'
       ? (tasks || []).filter(t =>
           (t.lead_id && userLeadIds.has(t.lead_id)) ||
-          (t.team_member_id && teamMember && t.team_member_id === teamMember.id)
+          (t.user_id && teamMember && t.user_id === teamMember.id)
         )
       : (tasks || []);
 

@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
       };
       
       if (teamMemberName) {
-        upsertData.team_member_name = teamMemberName;
+        upsertData.user_name = teamMemberName;
       }
 
       // Delete existing connection for this team member if exists
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
         await supabaseAdmin
           .from('sheets_connections')
           .delete()
-          .eq('team_member_name', teamMemberName);
+          .eq('user_name', teamMemberName);
       } else {
         await supabaseAdmin
           .from('sheets_connections')
@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
 
       let query = supabaseAdmin.from('sheets_connections').delete();
       if (teamMemberName) {
-        query = query.eq('team_member_name', teamMemberName);
+        query = query.eq('user_name', teamMemberName);
       } else {
         query = query.eq('user_id', userId);
       }
@@ -186,10 +186,10 @@ Deno.serve(async (req) => {
       
       let query = supabaseAdmin
         .from('sheets_connections')
-        .select('email, updated_at, team_member_name');
+        .select('email, updated_at, user_name');
       
       if (teamMemberName) {
-        query = query.eq('team_member_name', teamMemberName);
+        query = query.eq('user_name', teamMemberName);
       } else {
         query = query.eq('user_id', userId);
       }

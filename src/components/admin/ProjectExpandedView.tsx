@@ -40,7 +40,7 @@ interface ProjectTask {
   status: string | null;
   priority: string | null;
   due_date: string | null;
-  team_member_id: string | null;
+  user_id: string | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -549,7 +549,7 @@ export default function ProjectExpandedView() {
     queryKey: ['lead-follow', leadId, teamMemberId],
     queryFn: async () => {
       const { data } = await supabase.from('entity_followers').select('id')
-        .eq('entity_id', leadId!).eq('team_member_id', teamMemberId!).maybeSingle();
+        .eq('entity_id', leadId!).eq('user_id', teamMemberId!).maybeSingle();
       return !!data;
     },
     enabled: !!leadId && !!teamMemberId,
@@ -557,9 +557,9 @@ export default function ProjectExpandedView() {
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
       if (isFollowing) {
-        await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('team_member_id', teamMemberId!);
+        await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('user_id', teamMemberId!);
       } else {
-        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'potential', team_member_id: teamMemberId! });
+        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'potential', user_id: teamMemberId! });
       }
     },
     onSuccess: () => {
@@ -882,11 +882,11 @@ export default function ProjectExpandedView() {
                             <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shrink-0 mt-1.5" />
                             <p className="text-sm text-foreground truncate flex-1">{ticket.title}</p>
                           </div>
-                          {ticket.team_member_id && teamMemberMap[ticket.team_member_id] && (
+                          {ticket.user_id && teamMemberMap[ticket.user_id] && (
                             <div className="flex items-center justify-end mt-3">
-                              <span className="text-[11px] text-muted-foreground">{teamMemberMap[ticket.team_member_id]}</span>
+                              <span className="text-[11px] text-muted-foreground">{teamMemberMap[ticket.user_id]}</span>
                               <div className="ml-1.5 h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[9px] font-bold">
-                                {teamMemberMap[ticket.team_member_id][0]?.toUpperCase()}
+                                {teamMemberMap[ticket.user_id][0]?.toUpperCase()}
                               </div>
                             </div>
                           )}
@@ -951,8 +951,8 @@ export default function ProjectExpandedView() {
                   <div>
                     <label className="text-xs text-muted-foreground block mb-1">Assigned To</label>
                     <Select
-                      value={selectedBoardTask.team_member_id ?? ''}
-                      onValueChange={(v) => handleUpdateTaskField(selectedBoardTask.id, 'team_member_id', v || null)}
+                      value={selectedBoardTask.user_id ?? ''}
+                      onValueChange={(v) => handleUpdateTaskField(selectedBoardTask.id, 'user_id', v || null)}
                     >
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Unassigned" /></SelectTrigger>
                       <SelectContent>

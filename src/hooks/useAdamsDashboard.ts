@@ -101,7 +101,7 @@ export const useAdamsDashboard = () => {
       const { data, error } = await supabase
         .from('dashboard_deals')
         .select('*')
-        .eq('team_member_id', teamMemberId!)
+        .eq('user_id', teamMemberId!)
         .order('requested_amount', { ascending: false })
         .limit(10);
       if (error) throw error;
@@ -160,7 +160,7 @@ export const useAdamsDashboard = () => {
       const { data, error } = await (supabase as any)
         .from('team_monthly_goals')
         .select('*')
-        .eq('team_member_id', teamMemberId!);
+        .eq('user_id', teamMemberId!);
       if (error) throw error;
       return data ?? [];
     },

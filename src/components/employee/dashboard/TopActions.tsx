@@ -93,7 +93,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
             deal_value, potential_revenue
           )
         `)
-        .eq('team_member_id', evanId!)
+        .eq('user_id', evanId!)
         .eq('is_completed', false)
         .not('due_date', 'is', null)
         .lt('due_date', new Date().toISOString())

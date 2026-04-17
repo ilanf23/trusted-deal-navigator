@@ -106,7 +106,7 @@ export const useBradsDashboard = () => {
       const { data, error } = await supabase
         .from('dashboard_deals')
         .select('*')
-        .eq('team_member_id', teamMemberId!)
+        .eq('user_id', teamMemberId!)
         .order('requested_amount', { ascending: false })
         .limit(10);
       if (error) throw error;
@@ -122,7 +122,7 @@ export const useBradsDashboard = () => {
       const { data, error } = await supabase
         .from('appointments')
         .select('*')
-        .eq('team_member_id', teamMemberId!)
+        .eq('user_id', teamMemberId!)
         .gte('start_time', new Date().toISOString())
         .order('start_time', { ascending: true })
         .limit(5);
@@ -153,7 +153,7 @@ export const useBradsDashboard = () => {
       const { data, error } = await (supabase as any)
         .from('team_monthly_goals')
         .select('*')
-        .eq('team_member_id', teamMemberId!);
+        .eq('user_id', teamMemberId!);
       if (error) throw error;
       return data ?? [];
     },

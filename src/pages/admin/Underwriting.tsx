@@ -443,7 +443,7 @@ const Underwriting = () => {
         .from('entity_followers')
         .select('entity_id')
         .eq('entity_type', 'underwriting')
-        .eq('team_member_id', currentTeamMember!.id);
+        .eq('user_id', currentTeamMember!.id);
       return (data ?? []).map((r) => r.entity_id);
     },
     enabled: !!currentTeamMember?.id,

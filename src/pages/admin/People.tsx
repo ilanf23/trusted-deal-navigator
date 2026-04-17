@@ -673,7 +673,7 @@ const People = () => {
         .from('entity_followers')
         .select('entity_id')
         .eq('entity_type', 'people')
-        .eq('team_member_id', teamMember!.id);
+        .eq('user_id', teamMember!.id);
       return (data ?? []).map(r => r.entity_id);
     },
     enabled: !!teamMember?.id,

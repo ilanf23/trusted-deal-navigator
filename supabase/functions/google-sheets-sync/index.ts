@@ -671,7 +671,7 @@ Deno.serve(async (req) => {
       .select('*');
 
     if (teamMemberName) {
-      connectionQuery = connectionQuery.eq('team_member_name', teamMemberName);
+      connectionQuery = connectionQuery.eq('user_name', teamMemberName);
     } else {
       connectionQuery = connectionQuery.eq('user_id', userId);
     }

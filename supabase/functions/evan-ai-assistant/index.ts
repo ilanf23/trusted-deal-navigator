@@ -134,7 +134,7 @@ async function executeAction(
         if (leadId) taskData.lead_id = leadId;
         if (dueDate) taskData.due_date = dueDate;
         if (desc) taskData.description = desc;
-        if (teamMemberId) taskData.team_member_id = teamMemberId;
+        if (teamMemberId) taskData.user_id = teamMemberId;
 
         const { data: task, error: taskErr } = await supabase
           .from("tasks")
@@ -842,7 +842,7 @@ serve(async (req) => {
       // Fetch pending tasks
       const { data: tasks } = await supabase
         .from("tasks")
-        .select("id, title, description, status, priority, due_date, is_completed, lead_id, tags, team_member_id")
+        .select("id, title, description, status, priority, due_date, is_completed, lead_id, tags, user_id")
         .eq("is_completed", false)
         .order("due_date", { ascending: true })
         .limit(30);

@@ -958,7 +958,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         status: 'todo',
         lead_id: lead.id,
         source: 'lead',
-        team_member_id: teamMember?.id,
+        user_id: teamMember?.id,
       });
       if (evanTaskError) throw evanTaskError;
     },
@@ -2928,7 +2928,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
             status: task.status || 'todo',
             lead_id: lead.id,
             source: 'lead',
-            team_member_id: (task as any).team_member_id || teamMember?.id,
+            user_id: (task as any).user_id || teamMember?.id,
             estimated_hours: task.estimated_hours || null,
           });
           if (evanTaskError) {

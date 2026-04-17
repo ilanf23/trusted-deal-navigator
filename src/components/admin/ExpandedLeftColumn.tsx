@@ -201,7 +201,7 @@ export function ExpandedLeftColumn({
         .select('id')
         .eq('entity_id', lead.id)
         .eq('entity_type', tableName)
-        .eq('team_member_id', teamMemberId!)
+        .eq('user_id', teamMemberId!)
         .maybeSingle();
       return !!data;
     },
@@ -216,12 +216,12 @@ export function ExpandedLeftColumn({
           .delete()
           .eq('entity_id', lead.id)
           .eq('entity_type', tableName)
-          .eq('team_member_id', teamMemberId);
+          .eq('user_id', teamMemberId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('entity_followers')
-          .insert({ entity_id: lead.id, entity_type: tableName, team_member_id: teamMemberId });
+          .insert({ entity_id: lead.id, entity_type: tableName, user_id: teamMemberId });
         if (error) throw error;
       }
     },

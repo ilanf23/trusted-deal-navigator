@@ -292,7 +292,7 @@ export default function UnderwritingExpandedView() {
     queryKey: ['entity-follow', leadId, teamMemberId],
     queryFn: async () => {
       const { data } = await supabase.from('entity_followers').select('id')
-        .eq('entity_id', leadId!).eq('entity_type', 'underwriting').eq('team_member_id', teamMemberId!).maybeSingle();
+        .eq('entity_id', leadId!).eq('entity_type', 'underwriting').eq('user_id', teamMemberId!).maybeSingle();
       return !!data;
     },
     enabled: !!leadId && !!teamMemberId,
@@ -300,9 +300,9 @@ export default function UnderwritingExpandedView() {
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
       if (isFollowing) {
-        await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('entity_type', 'underwriting').eq('team_member_id', teamMemberId!);
+        await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('entity_type', 'underwriting').eq('user_id', teamMemberId!);
       } else {
-        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'underwriting', team_member_id: teamMemberId! });
+        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'underwriting', user_id: teamMemberId! });
       }
     },
     onSuccess: () => {

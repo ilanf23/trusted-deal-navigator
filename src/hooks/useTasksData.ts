@@ -16,7 +16,7 @@ export const useTasksData = (teamMemberId?: string | null) => {
         .select('*, lead:potential(id, name, company_name, email, phone)')
         .order('due_date', { ascending: true, nullsFirst: false });
       if (teamMemberId) {
-        query = query.eq('team_member_id', teamMemberId);
+        query = query.eq('user_id', teamMemberId);
       }
       const { data, error } = await query;
       if (error) throw error;
@@ -31,7 +31,7 @@ export const useTasksData = (teamMemberId?: string | null) => {
         title: task.title || 'New Task',
         status: task.status || 'todo',
         priority: task.priority || 'medium',
-        team_member_id: (task as any).team_member_id || teamMemberId,
+        user_id: (task as any).user_id || teamMemberId,
         due_date: task.due_date,
         group_name: task.group_name || 'To Do',
         estimated_hours: task.estimated_hours,
@@ -107,7 +107,7 @@ export const useTasksData = (teamMemberId?: string | null) => {
               status: result.currentTask.status,
               priority: result.currentTask.priority,
               due_date: result.currentTask.due_date,
-              team_member_id: result.currentTask.team_member_id,
+              user_id: result.currentTask.user_id,
               description: result.currentTask.description,
               title: result.currentTask.title,
             }).eq('id', result.currentTask.id);
@@ -149,7 +149,7 @@ export const useTasksData = (teamMemberId?: string | null) => {
               title: deletedTask.title,
               status: deletedTask.status,
               priority: deletedTask.priority,
-              team_member_id: deletedTask.team_member_id,
+              user_id: deletedTask.user_id,
               due_date: deletedTask.due_date,
               group_name: deletedTask.group_name,
               estimated_hours: deletedTask.estimated_hours,

@@ -59,7 +59,7 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, title, due_date, lead_id, priority, source, team_member_id')
+        .select('id, title, due_date, lead_id, priority, source, user_id')
         .eq('is_completed', false)
         .not('due_date', 'is', null)
         .order('due_date', { ascending: true })
@@ -75,8 +75,8 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('appointments')
-        .select('id, title, start_time, end_time, team_member_id, description')
-        .eq('team_member_id', teamMember!.id)
+        .select('id, title, start_time, end_time, user_id, description')
+        .eq('user_id', teamMember!.id)
         .gte('start_time', now)
         .order('start_time', { ascending: true })
         .limit(5);
