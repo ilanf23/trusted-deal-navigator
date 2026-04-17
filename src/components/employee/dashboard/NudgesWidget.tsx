@@ -4,12 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, Loader2, Clock, ExternalLink, Zap } from 'lucide-react';
+import { Bell, Loader2, Clock, ExternalLink, Zap, CheckCircle2 } from 'lucide-react';
 import { differenceInDays, subDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { DbTableBadge } from '@/components/admin/DbTableBadge';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import { useGmail } from '@/hooks/useGmail';
 import { appendSignature } from '@/lib/email-signature';
@@ -47,7 +47,6 @@ const STATUS_LABELS: Record<string, string> = {
 export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
   const { teamMember } = useTeamMember();
   const queryClient = useQueryClient();
-  const tasksCreatedRef = useRef<Set<string>>(new Set());
   const { sendMessage } = useGmail();
   
   // Track which lead is currently generating a draft
@@ -90,24 +89,18 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
     },
   });
 
-  // Auto-create high priority tasks for leads needing follow-up (one-time only)
-  useEffect(() => {
-    const createFollowUpTasks = async () => {
-      if (nudgeLeads.length === 0) return;
-      
-      for (const lead of nudgeLeads) {
-        // Skip if we already created one this session
-        if (tasksCreatedRef.current.has(lead.id)) {
-          continue;
-        }
+  const createTasksMutation = useMutation({
+    mutationFn: async () => {
+      if (nudgeLeads.length === 0) return 0;
 
+      let createdCount = 0;
+      const dueDate = new Date().toISOString();
+      const nowIso = new Date().toISOString();
+
+      for (const lead of nudgeLeads) {
         const lastActivity = lead.last_activity_at || lead.created_at;
         const daysSince = differenceInDays(new Date(), new Date(lastActivity));
-        
-        // Set due date to today for follow-up tasks
-        const dueDate = new Date();
-        
-        // Create the task
+
         const { error: taskError } = await supabase.from('tasks').insert({
           title: `7-Day Follow Up: ${lead.name}`,
           description: `No activity in ${daysSince} days. Follow up with ${lead.name}${lead.company_name ? ` at ${lead.company_name}` : ''}.`,
@@ -118,29 +111,32 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
           group_name: 'To Do',
           source: 'nudge',
           task_type: 'email',
-          due_date: dueDate.toISOString(),
+          due_date: dueDate,
         });
 
-        if (!taskError) {
-          // Mark the lead as nudged permanently - this ensures no future nudge tasks
-          await supabase
-            .from('potential')
-            .update({ initial_nudge_created_at: new Date().toISOString() })
-            .eq('id', lead.id);
-            
-          tasksCreatedRef.current.add(lead.id);
-        }
+        if (taskError) throw taskError;
+
+        const { error: updateError } = await supabase
+          .from('potential')
+          .update({ initial_nudge_created_at: nowIso })
+          .eq('id', lead.id);
+
+        if (updateError) throw updateError;
+
+        createdCount += 1;
       }
 
-      // Invalidate queries to reflect changes
-      if (tasksCreatedRef.current.size > 0) {
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        queryClient.invalidateQueries({ queryKey: ['dashboard-nudges'] });
-      }
-    };
-
-    createFollowUpTasks();
-  }, [nudgeLeads, queryClient]);
+      return createdCount;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-nudges'] });
+      toast.success(`Created ${count} follow-up task${count === 1 ? '' : 's'}`);
+    },
+    onError: (err: Error) => {
+      toast.error('Failed to create tasks: ' + err.message);
+    },
+  });
 
   // Generate email content and open compose dialog
   const handleCreateDraft = async (lead: Lead) => {
@@ -232,12 +228,28 @@ Evan`;
                 </CardDescription>
               </div>
             </div>
-            <Link to="/admin/gmail">
-              <Button variant="ghost" size="sm" className="gap-1">
-                <ExternalLink className="h-3.5 w-3.5" />
-                Gmail
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() => createTasksMutation.mutate()}
+                disabled={createTasksMutation.isPending || nudgeLeads.length === 0}
+              >
+                {createTasksMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+                Create All Tasks
               </Button>
-            </Link>
+              <Link to="/admin/gmail">
+                <Button variant="ghost" size="sm" className="gap-1">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Gmail
+                </Button>
+              </Link>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">

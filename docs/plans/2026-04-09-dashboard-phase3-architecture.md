@@ -64,21 +64,21 @@ Remove the NudgesWidget auto-task-creation side effect (DB writes on every page 
 
 Subtasks:
 
-- [ ] Remove `tasksCreatedRef` `useRef` declaration (line 50)
-- [ ] Remove the entire auto-insert `useEffect` block (lines 94-143) including the `createFollowUpTasks` async function
-- [ ] Remove `useRef` from React imports (line 12) — keep `useEffect` / `useState` if still used elsewhere
-- [ ] Add `CheckCircle2` to lucide-react imports (line 7)
-- [ ] Add `createTasksMutation` using `useMutation`:
+- [x] Remove `tasksCreatedRef` `useRef` declaration (line 50)
+- [x] Remove the entire auto-insert `useEffect` block (lines 94-143) including the `createFollowUpTasks` async function
+- [x] Remove `useRef` from React imports (line 12) — keep `useEffect` / `useState` if still used elsewhere
+- [x] Add `CheckCircle2` to lucide-react imports (line 7)
+- [x] Add `createTasksMutation` using `useMutation`:
   - `mutationFn` iterates `nudgeLeads`, inserts task into `tasks` table per lead with: title `7-Day Follow Up: ${lead.name}`, status `'todo'`, priority `'high'`, `lead_id`, `team_member_id` from `teamMember.id`, group_name `'To Do'`, source `'nudge'`, task_type `'email'`, due_date today
   - After successful insert per lead, update `potential.initial_nudge_created_at` for that lead
   - `onSuccess`: `queryClient.invalidateQueries({ queryKey: ['tasks'] })` and `queryClient.invalidateQueries({ queryKey: ['dashboard-nudges'] })`; show `toast.success('Created N follow-up tasks')`
   - `onError`: `toast.error('Failed to create tasks: ' + err.message)`
-- [ ] Add "Create All Tasks" Button next to the existing Gmail link in CardHeader (around lines 235-240):
+- [x] Add "Create All Tasks" Button next to the existing Gmail link in CardHeader (around lines 235-240):
   - `variant="outline"`, `size="sm"`, `className="gap-1"`
   - `onClick` triggers `createTasksMutation.mutate()`
   - `disabled` when `createTasksMutation.isPending || nudgeLeads.length === 0`
   - Show `Loader2` spinner when pending, otherwise `CheckCircle2` icon
-- [ ] Run `npm run build` — must pass with no TypeScript errors
+- [x] Run `npm run build` — must pass with no TypeScript errors
 
 **Acceptance:**
 
