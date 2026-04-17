@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { differenceInDays, addDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -145,6 +145,8 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
   const now = useMemo(() => new Date(), []);
   const periodStartISO = getPeriodStartUTC(timePeriod);
   const prevRange = getPreviousPeriodRange(timePeriod);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRefetchesRef = useRef<Set<() => void>>(new Set());
 
   // Revenue targets
   const revenueQuery = useQuery({
@@ -353,26 +355,39 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     refetchOnMount: 'always' as const,
   });
 
-  // Realtime subscriptions
+  // Realtime subscriptions (debounced — coalesces rapid successive events into one refetch)
   useEffect(() => {
+    const scheduleRefetch = (refetchFn: () => void) => {
+      pendingRefetchesRef.current.add(refetchFn);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        const pending = Array.from(pendingRefetchesRef.current);
+        pendingRefetchesRef.current.clear();
+        debounceRef.current = null;
+        pending.forEach(fn => fn());
+      }, 2000);
+    };
+
     const channel = supabase
       .channel('dashboard-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dashboard_deals' }, () => {
-        pipelineQuery.refetch();
-        teamQuery.refetch();
+        scheduleRefetch(() => pipelineQuery.refetch());
+        scheduleRefetch(() => teamQuery.refetch());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'revenue_targets' }, () => {
-        revenueQuery.refetch();
+        scheduleRefetch(() => revenueQuery.refetch());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dashboard_referral_sources' }, () => {
-        referralQuery.refetch();
+        scheduleRefetch(() => referralQuery.refetch());
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dashboard_weekly_scorecard' }, () => {
-        scorecardQuery.refetch();
+        scheduleRefetch(() => scorecardQuery.refetch());
       })
       .subscribe();
 
     return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      pendingRefetchesRef.current.clear();
       supabase.removeChannel(channel);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

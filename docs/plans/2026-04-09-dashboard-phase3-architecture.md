@@ -93,15 +93,15 @@ Subtasks:
 
 Subtasks:
 
-- [ ] Add `useRef` to existing React import on line 2: `import { useEffect, useMemo, useRef } from 'react'`
-- [ ] Inside `useSuperAdminDashboard` (after `prevRange = ...` on line 147), add: `const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)`
-- [ ] Add `const pendingRefetchesRef = useRef<Set<() => void>>(new Set())` to coalesce all refetch callbacks during the debounce window
-- [ ] Replace realtime subscription useEffect (lines 357-378) with debounced version:
+- [x] Add `useRef` to existing React import on line 2: `import { useEffect, useMemo, useRef } from 'react'`
+- [x] Inside `useSuperAdminDashboard` (after `prevRange = ...` on line 147), add: `const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)`
+- [x] Add `const pendingRefetchesRef = useRef<Set<() => void>>(new Set())` to coalesce all refetch callbacks during the debounce window
+- [x] Replace realtime subscription useEffect (lines 357-378) with debounced version:
   - Define inline helper `scheduleRefetch(refetchFn)`: adds fn to `pendingRefetchesRef`, clears existing `debounceRef` timeout, sets new 2000ms `setTimeout` that runs all pending refetches and clears the set
   - Each `.on('postgres_changes', ...)` handler calls `scheduleRefetch` with the appropriate refetch function (e.g., `() => pipelineQuery.refetch()`)
   - Cleanup function: `if (debounceRef.current) clearTimeout(debounceRef.current); supabase.removeChannel(channel);`
-- [ ] Keep `// eslint-disable-line react-hooks/exhaustive-deps` comment
-- [ ] Run `npm run build` — must pass
+- [x] Keep `// eslint-disable-line react-hooks/exhaustive-deps` comment
+- [x] Run `npm run build` — must pass
 
 **Acceptance:**
 
