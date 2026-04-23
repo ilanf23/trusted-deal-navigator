@@ -49,7 +49,7 @@ Eight React contexts managing global application state. All follow the provider 
 ### AdminTopBarContext
 - **State**: pageTitle, searchComponent, actionsComponent (all ReactNode | null), pageDatabases (PageDatabaseDeclaration[] | null)
 - **Purpose**: Pages set their own top bar title, search UI, action buttons, and DB-footprint declarations dynamically.
-- **pageDatabases**: dev-mode per-page list of Supabase tables used. Registered via `usePageDatabases(...)`, rendered by `PageDatabaseBadges` under the topbar for owners only.
+- **pageDatabases**: dev-mode per-page list of Supabase tables used. Registered via `usePageDatabases(...)` hook, rendered by `PageDatabaseBadges` under the topbar for owners only.
 - **Consumer**: `useAdminTopBar()`
 
 ## Provider Hierarchy
