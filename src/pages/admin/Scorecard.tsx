@@ -276,7 +276,7 @@ const Scorecard = () => {
 
   const periodStart = periodBoundaries.start;
 
-  const evanMember = teamMember ? { id: teamMember.id } : null;
+  const currentUserMember = teamMember ? { id: teamMember.id } : null;
 
   const weekOptions = useMemo(() => generateWeekOptions(selectedYear, selectedMonth), [selectedYear, selectedMonth]);
   const monthOptions = useMemo(() => generateMonthOptions(selectedYear), [selectedYear]);
@@ -300,92 +300,112 @@ const Scorecard = () => {
   };
 
   const { data: allLeads, isLoading: leadsLoading } = useQuery({
-    queryKey: ['scorecard-all-leads', repFilter, evanMember?.id, selectedWeek],
+    queryKey: ['scorecard-all-leads', repFilter, currentUserMember?.id, selectedWeek],
     queryFn: async () => {
       let query = supabase
         .from('potential')
         .select('id, name, company_name, status, assigned_to, created_at, updated_at');
-      if (repFilter === 'me' && evanMember?.id) {
-        query = query.eq('assigned_to', evanMember.id);
+      if (repFilter === 'me' && currentUserMember?.id) {
+        query = query.eq('assigned_to', currentUserMember.id);
       }
       const { data, error } = await query;
       if (error) throw error;
       return data;
     },
-    enabled: repFilter === 'all' || !!evanMember?.id,
+    enabled: repFilter === 'all' || !!currentUserMember?.id,
     refetchInterval: 30_000,
   });
 
   const { data: communications } = useQuery({
-    queryKey: ['scorecard-communications', periodStart.toISOString(), periodBoundaries.end.toISOString()],
+    queryKey: ['scorecard-communications', repFilter, currentUserMember?.id, periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('communications')
         .select('id, communication_type, direction, created_at, lead_id, duration_seconds')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
+      if (repFilter === 'me' && currentUserMember?.id) {
+        query = query.eq('user_id', currentUserMember.id);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
+    enabled: repFilter === 'all' || !!currentUserMember?.id,
     refetchInterval: 30_000,
   });
 
   const { data: leadActivities } = useQuery({
-    queryKey: ['scorecard-activities', periodStart.toISOString(), periodBoundaries.end.toISOString()],
+    queryKey: ['scorecard-activities', repFilter, currentUserMember?.id, periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('activities')
         .select('id, entity_id, activity_type, title, content, created_at')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
+      if (repFilter === 'me' && currentUserMember?.id) {
+        query = query.eq('created_by', currentUserMember.id);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
+    enabled: repFilter === 'all' || !!currentUserMember?.id,
     refetchInterval: 30_000,
   });
 
   // Tasks created OR due within the selected period
   const { data: tasks } = useQuery({
-    queryKey: ['scorecard-tasks', periodStart.toISOString(), periodBoundaries.end.toISOString()],
+    queryKey: ['scorecard-tasks', repFilter, currentUserMember?.id, periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
-      // Fetch tasks created in the period
-      const { data: createdInPeriod, error: e1 } = await supabase
+      let createdQuery = supabase
         .from('tasks')
         .select('id, title, is_completed, lead_id, created_at, due_date, source, user_id')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
+      if (repFilter === 'me' && currentUserMember?.id) {
+        createdQuery = createdQuery.eq('user_id', currentUserMember.id);
+      }
+      const { data: createdInPeriod, error: e1 } = await createdQuery;
       if (e1) throw e1;
 
-      // Fetch incomplete tasks whose due_date falls within or before the period end
-      // (captures overdue tasks that were created before this period)
-      const { data: dueInPeriod, error: e2 } = await supabase
+      let dueQuery = supabase
         .from('tasks')
         .select('id, title, is_completed, lead_id, created_at, due_date, source, user_id')
         .eq('is_completed', false)
         .not('due_date', 'is', null)
         .lte('due_date', periodBoundaries.end.toISOString());
+      if (repFilter === 'me' && currentUserMember?.id) {
+        dueQuery = dueQuery.eq('user_id', currentUserMember.id);
+      }
+      const { data: dueInPeriod, error: e2 } = await dueQuery;
       if (e2) throw e2;
 
-      // Merge and dedupe by id
       const map = new Map<string, NonNullable<typeof createdInPeriod>[number]>();
       for (const t of (createdInPeriod || [])) map.set(t.id, t);
       for (const t of (dueInPeriod || [])) map.set(t.id, t);
       return Array.from(map.values());
     },
+    enabled: repFilter === 'all' || !!currentUserMember?.id,
     refetchInterval: 30_000,
   });
 
   const { data: followUpEmails } = useQuery({
-    queryKey: ['scorecard-follow-up-emails', periodStart.toISOString(), periodBoundaries.end.toISOString()],
+    queryKey: ['scorecard-follow-up-emails', repFilter, currentUserMember?.id, periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('outbound_emails')
         .select('id, source, created_at, status, lead_id')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
+      if (repFilter === 'me' && currentUserMember?.id) {
+        query = query.eq('user_id', currentUserMember.id);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
+    enabled: repFilter === 'all' || !!currentUserMember?.id,
     refetchInterval: 30_000,
   });
 
