@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { usePageDatabases } from '@/hooks/usePageDatabases';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { useUndo } from '@/contexts/UndoContext';
@@ -233,6 +234,11 @@ const Companies = () => {
   const queryClient = useQueryClient();
   const { registerUndo } = useUndo();
   const navigate = useNavigate();
+  usePageDatabases([
+    { table: 'companies', access: 'readwrite', usage: 'CRM company records — listed, inline-edited, bulk-deleted from this page.', via: 'src/hooks/useAllPipelineLeads.ts (useCompanies) + direct supabase.from in Companies.tsx' },
+    { table: 'pipeline_leads', access: 'read', usage: 'Deal associations shown per company row.', via: 'src/hooks/useAllPipelineLeads.ts' },
+    { table: 'users', access: 'read', usage: 'Owners + team-member avatars on each company row.', via: 'src/hooks/useAssignableUsers.ts, src/hooks/useTeamMember.ts' },
+  ]);
 
   // ── Core state ──
   const [activeFilter, setActiveFilter] = useState<string>('all');

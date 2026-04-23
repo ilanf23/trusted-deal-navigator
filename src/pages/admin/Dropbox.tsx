@@ -3,11 +3,18 @@ import { DropboxBrowser } from '@/components/admin/DropboxBrowser';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { usePageDatabases } from '@/hooks/usePageDatabases';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 const Dropbox = () => {
   const { user } = useAuth();
+  usePageDatabases([
+    { table: 'dropbox_connections', access: 'read', usage: 'Checks whether the current user has linked a personal Dropbox account.', via: 'useQuery in Dropbox.tsx' },
+    { table: 'dropbox_files', access: 'readwrite', usage: 'File metadata cache — used by DropboxBrowser to list/search/move/delete.', via: 'src/hooks/useDropbox.ts via DropboxBrowser' },
+    { table: 'dropbox-api', access: 'rpc', usage: 'Edge function proxy to Dropbox API: list, upload, delete, move, search, sync.', via: 'src/hooks/useDropbox.ts' },
+    { table: 'dropbox-auth', access: 'rpc', usage: 'Edge function handling Dropbox OAuth connect flow.', via: 'src/hooks/useDropboxConnection.ts' },
+  ]);
 
   // Check if this user has their own Dropbox connection (no fallback)
   const { data: hasDropboxSetup, isLoading: checkingSetup } = useQuery({

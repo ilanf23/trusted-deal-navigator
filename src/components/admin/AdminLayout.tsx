@@ -14,7 +14,7 @@ import { useState, createContext, useContext } from 'react';
 import { AdminTopBarProvider, useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import NotificationBell from './NotificationBell';
 import AdminTopBarSearch from './AdminTopBarSearch';
-import PageDatabaseBadges from './dev/PageDatabaseBadges';
+import PageDatabasesButton from './dev/PageDatabasesButton';
 
 export const AdminLayoutMountedContext = createContext(false);
 
@@ -123,6 +123,8 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
             {/* Right: page actions + global actions */}
             <div className="flex items-center gap-2 md:gap-4 shrink-0">
               {actionsComponent}
+              {/* Dev-mode: per-page DB footprint popup (owners only) */}
+              <PageDatabasesButton />
               {/* Notification Bell */}
               <NotificationBell />
               {/* Undo Button - Always Visible */}
@@ -162,9 +164,6 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
               <SplitViewToggle />
             </div>
           </header>
-
-          {/* Dev-mode: per-page DB footprint banner (owners only) */}
-          <PageDatabaseBadges />
 
           {/* Main Content Area */}
           <SplitViewContent>{children}</SplitViewContent>

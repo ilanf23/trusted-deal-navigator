@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { useNavigate } from 'react-router-dom';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { usePageDatabases } from '@/hooks/usePageDatabases';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -355,6 +356,9 @@ const lenderRowToProgram = (row: LenderRow): LenderProgram => ({
 
 const LenderPrograms = () => {
   const { setPageTitle, setSearchComponent } = useAdminTopBar();
+  usePageDatabases([
+    { table: 'lender_programs', access: 'readwrite', usage: 'Lender-program records — listed, inline-edited, bulk-imported, deleted from this page.', via: 'useQuery + direct supabase.from in LenderPrograms.tsx' },
+  ]);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
+import { usePageDatabases } from '@/hooks/usePageDatabases';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileSpreadsheet, Link2, Loader2 } from 'lucide-react';
@@ -14,6 +15,12 @@ type View = 'browser' | 'editor';
 
 const ScoreSheet = () => {
   const { teamMember } = useTeamMember();
+  usePageDatabases([
+    { table: 'google-sheets-api', access: 'rpc', usage: 'Edge function for listing spreadsheets, reading rows, updating cells, appending rows.', via: 'src/hooks/useGoogleSheets.ts via SheetEditor' },
+    { table: 'google-sheets-auth', access: 'rpc', usage: 'Edge function handling Google OAuth connect/disconnect.', via: 'src/hooks/useGoogleSheets.ts' },
+    { table: 'sheets-watch-start', access: 'rpc', usage: 'Edge function registering a watch on the opened sheet.', via: 'SheetEditor' },
+    { table: 'sheets-watch-stop', access: 'rpc', usage: 'Edge function un-registering the watch when leaving a sheet.', via: 'SheetEditor' },
+  ]);
   const name = teamMember?.name;
   const googleSheets = useGoogleSheets(name, '/admin/sheets-callback');
 

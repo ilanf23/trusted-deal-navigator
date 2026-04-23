@@ -10,6 +10,7 @@ import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useFeedData, type FeedActivityType } from '@/hooks/useFeedData';
+import { usePageDatabases } from '@/hooks/usePageDatabases';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
@@ -38,6 +39,14 @@ const FILTER_TYPE_MAP: Record<string, FeedActivityType | null> = {
 };
 
 const PipelineFeed = () => {
+  usePageDatabases([
+    { table: 'lead_activities', access: 'read', usage: 'Activity-log entries across all deals shown in the feed.', via: 'src/hooks/useFeedData.ts' },
+    { table: 'communications', access: 'read', usage: 'Call/email communications surfaced as feed items.', via: 'src/hooks/useFeedData.ts' },
+    { table: 'tasks', access: 'read', usage: 'Completed/updated tasks shown in the feed.', via: 'src/hooks/useFeedData.ts' },
+    { table: 'outbound_emails', access: 'read', usage: 'Sent emails surfaced as feed items.', via: 'src/hooks/useFeedData.ts' },
+    { table: 'notes', access: 'read', usage: 'Lead/person notes shown in the feed.', via: 'src/hooks/useFeedData.ts' },
+    { table: 'users', access: 'read', usage: 'Team member avatars + filter dropdown.', via: 'src/hooks/useAssignableUsers.ts, src/hooks/useTeamMember.ts' },
+  ]);
   const { data: activities = [], isLoading } = useFeedData();
   const { teamMember } = useTeamMember();
   const queryClient = useQueryClient();

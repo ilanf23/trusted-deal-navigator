@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { usePageDatabases } from '@/hooks/usePageDatabases';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,6 +79,10 @@ const priorityLabels: Record<string, string> = {
 const Projects = () => {
   const navigate = useNavigate();
   const { teamMember } = useTeamMember();
+  usePageDatabases([
+    { table: 'entity_projects', access: 'readwrite', usage: 'Project records — listed, inline-edited, bulk-deleted from this page.', via: 'useQuery + direct supabase.from in Projects.tsx' },
+    { table: 'users', access: 'read', usage: 'Assignable owners + team-member avatars on each project row.', via: 'src/hooks/useAssignableUsers.ts, src/hooks/useTeamMember.ts' },
+  ]);
   const queryClient = useQueryClient();
   const { registerUndo } = useUndo();
 

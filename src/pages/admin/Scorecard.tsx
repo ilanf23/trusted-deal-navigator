@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { usePageDatabases } from '@/hooks/usePageDatabases';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
@@ -227,6 +228,12 @@ const TaskTile = ({ icon, label, value, variant, index }: TaskTileProps) => {
 
 const Scorecard = () => {
   const { teamMember } = useTeamMember();
+  usePageDatabases([
+    { table: 'potential', access: 'read', usage: 'Deal records used to calculate weekly/monthly scoring metrics.', via: 'useQuery in Scorecard.tsx' },
+    { table: 'tasks', access: 'read', usage: 'Task completion counts contributing to the scorecard.', via: 'useQuery in Scorecard.tsx' },
+    { table: 'communications', access: 'read', usage: 'Call/email activity counts feeding the scorecard.', via: 'useQuery in Scorecard.tsx' },
+    { table: 'users', access: 'read', usage: 'Current team-member context for scoping metrics.', via: 'src/hooks/useTeamMember.ts' },
+  ]);
   const pipelineGridRef = useRef<HTMLDivElement>(null);
   const now = new Date();
   const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 });

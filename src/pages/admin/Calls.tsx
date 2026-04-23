@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { usePageDatabases } from '@/hooks/usePageDatabases';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -139,6 +140,14 @@ const formatDuration = (seconds: number | null) => {
 
 const Calls = () => {
   const { teamMember } = useTeamMember();
+  usePageDatabases([
+    { table: 'active_calls', access: 'read', usage: 'Live call state for in-progress Twilio sessions.', via: 'src/contexts/CallContext.tsx' },
+    { table: 'call_events', access: 'read', usage: 'Historical call timeline/events shown in the list.', via: 'useQuery in Calls.tsx' },
+    { table: 'communications', access: 'read', usage: 'Completed calls persisted as communications records.', via: 'useQuery in Calls.tsx' },
+    { table: 'potential', access: 'read', usage: 'Linked lead/deal context for each call row.', via: 'useQuery in Calls.tsx' },
+    { table: 'retry-call-transcription', access: 'rpc', usage: 'Edge function re-triggering Twilio transcription on failed recordings.', via: 'supabase.functions.invoke("retry-call-transcription")' },
+    { table: 'call-to-lead-automation', access: 'rpc', usage: 'Edge function auto-creating leads from unknown inbound numbers.', via: 'supabase.functions.invoke("call-to-lead-automation")' },
+  ]);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { outboundCall } = useCall();

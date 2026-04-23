@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { usePageDatabases } from '@/hooks/usePageDatabases';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDashboardData, getDealRevenue, type TimePeriod } from '@/components/admin/dashboard/useDashboardData';
@@ -68,6 +69,13 @@ const getGreeting = (firstName: string) => {
 
 const Dashboard = () => {
   const { teamMember } = useTeamMember();
+  usePageDatabases([
+    { table: 'potential', access: 'read', usage: 'Deal records for KPI cards (revenue, deals closed, win rate) and pipeline-value chart.', via: 'src/components/admin/dashboard/useDashboardData.ts' },
+    { table: 'underwriting', access: 'read', usage: 'In-flight deals rolled into pipeline-value KPI.', via: 'src/components/admin/dashboard/useDashboardData.ts' },
+    { table: 'lender_management', access: 'read', usage: 'Lender-stage deals rolled into pipeline-value KPI.', via: 'src/components/admin/dashboard/useDashboardData.ts' },
+    { table: 'tasks', access: 'read', usage: 'Task counts displayed in KPI tiles and nudges widget.', via: 'src/components/employee/dashboard/NudgesWidget.tsx' },
+    { table: 'users', access: 'read', usage: 'Team-member name/avatar for greeting and widgets.', via: 'src/hooks/useTeamMember.ts' },
+  ]);
   const queryClient = useQueryClient();
   const { getPageState, setPageState } = useEmployeeUIState();
   const persisted = getPageState('dashboard', {
