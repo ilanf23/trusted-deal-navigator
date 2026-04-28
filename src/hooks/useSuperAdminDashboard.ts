@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   getDealRevenue,
   type ActivityDay,
+  type ChannelActivityDay,
   type SparklineDataSet,
   type PeriodComparison,
   type PeriodOverPeriod,
@@ -234,7 +235,7 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('potential')
-        .select('id, created_at, stage_changed_at, won_at')
+        .select('id, created_at, stage_changed_at, won_at, source')
         .or(`created_at.gte.${heatmapRangeStart},stage_changed_at.gte.${heatmapRangeStart},won_at.gte.${heatmapRangeStart}`);
       if (error) throw error;
       return data;
@@ -432,6 +433,29 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     }));
   }, [heatmapDealsQuery.data, heatmapCommsQuery.data]);
 
+  // Channel activity data (last 90 days) - grouped by source
+  const channelActivityData: ChannelActivityDay[] = useMemo(() => {
+    const deals = heatmapDealsQuery.data || [];
+    const dayMap = new Map<string, Record<string, number>>();
+
+    function addToChannel(dateStr: string | null, channel: string) {
+      if (!dateStr) return;
+      const day = dateStr.slice(0, 10);
+      const entry = dayMap.get(day) || {};
+      entry[channel] = (entry[channel] || 0) + 1;
+      dayMap.set(day, entry);
+    }
+
+    for (const deal of deals) {
+      const channel = deal.source || 'Unknown';
+      addToChannel(deal.created_at, channel);
+    }
+
+    return Array.from(dayMap.entries())
+      .map(([date, channels]) => ({ date, channels }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [heatmapDealsQuery.data]);
+
   // Sparkline data (last 12 months per metric)
   const sparklineData: SparklineDataSet = useMemo(() => {
     const deals = sparklineQuery.data || [];
@@ -540,6 +564,7 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     scorecard: scorecardQuery.data ?? [],
     teamUsers: usersQuery.data ?? [],
     activityHeatmapData,
+    channelActivityData,
     sparklineData,
     revenueByTeamMember,
     periodOverPeriod,

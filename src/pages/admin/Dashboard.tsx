@@ -21,7 +21,7 @@ import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDashboardData, getDealRevenue, type TimePeriod } from '@/components/admin/dashboard/useDashboardData';
 import { CompactKPITile, CompactKPITileSkeleton } from '@/components/admin/dashboard/CompactKPITile';
-import { ActivityHeatmap, ActivityHeatmapSkeleton } from '@/components/admin/dashboard/ActivityHeatmap';
+import { ChannelActivityChart, ChannelActivityChartSkeleton } from '@/components/admin/dashboard/ChannelActivityChart';
 import { PipelineStageBar, PipelineStageBarSkeleton, type PipelineStageData } from '@/components/admin/dashboard/PipelineStageBar';
 import NudgesWidget from '@/components/employee/dashboard/NudgesWidget';
 import TopActions from '@/components/employee/dashboard/TopActions';
@@ -124,7 +124,7 @@ const Dashboard = () => {
   const {
     pipelineData, fundedLeads,
     isLoading, isFetching,
-    annualGoal, periodOverPeriod, activityHeatmapData, sparklineData,
+    annualGoal, periodOverPeriod, activityHeatmapData, channelActivityData, sparklineData, heatmapLoading,
   } = useDashboardData(timePeriod, teamMember?.id);
 
   const firstName = teamMember?.name || 'Team';
@@ -325,7 +325,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left column: heatmap + pipeline bar + nudges + top actions */}
           <div className="lg:col-span-2 space-y-4">
-            {isLoading ? <ActivityHeatmapSkeleton className="bg-card" /> : <ActivityHeatmap data={activityHeatmapData} title="Deal Activity" className="bg-card" />}
+            {isLoading ? <ChannelActivityChartSkeleton className="bg-card" /> : <ChannelActivityChart data={channelActivityData} title="Activity by Channel" className="bg-card" isLoading={heatmapLoading} />}
             {isLoading ? <PipelineStageBarSkeleton className="bg-card" /> : <PipelineStageBar stages={pipelineStages} className="bg-card" />}
             <NudgesWidget evanId={evanId} />
             <TopActions evanId={evanId} />

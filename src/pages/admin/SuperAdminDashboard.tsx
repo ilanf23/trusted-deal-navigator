@@ -20,7 +20,7 @@ import { useSuperAdminDashboard, getTeamMemberUrl, getTeamMemberRole } from '@/h
 import type { TimePeriod } from '@/components/admin/dashboard/useDashboardData';
 import { CompactKPITile, CompactKPITileSkeleton } from '@/components/admin/dashboard/CompactKPITile';
 import { RevenueComboChart, type ComboChartDataPoint } from '@/components/admin/dashboard/RevenueComboChart';
-import { ActivityHeatmap, ActivityHeatmapSkeleton } from '@/components/admin/dashboard/ActivityHeatmap';
+import { ChannelActivityChart, ChannelActivityChartSkeleton } from '@/components/admin/dashboard/ChannelActivityChart';
 import { PipelineStageBar, PipelineStageBarSkeleton, type PipelineStageData } from '@/components/admin/dashboard/PipelineStageBar';
 import { cn } from '@/lib/utils';
 
@@ -84,7 +84,7 @@ const SuperAdminDashboard = () => {
 
   const {
     currentMetrics, pipelineStages, teamMembers, referrals, scorecard,
-    teamUsers, activityHeatmapData, sparklineData, revenueByTeamMember,
+    teamUsers, activityHeatmapData, channelActivityData, sparklineData, revenueByTeamMember,
     periodOverPeriod, isLoading, isError, heatmapLoading, sparklineLoading,
     annualTarget,
   } = useSuperAdminDashboard(timePeriod);
@@ -397,11 +397,12 @@ const SuperAdminDashboard = () => {
 
         {/* Activity Heatmap */}
         {heatmapLoading ? (
-          <ActivityHeatmapSkeleton />
+          <ChannelActivityChartSkeleton />
         ) : (
-          <ActivityHeatmap
-            data={activityHeatmapData}
-            title="Deal Activity"
+          <ChannelActivityChart
+            data={channelActivityData}
+            title="Activity by Channel"
+            isLoading={heatmapLoading}
           />
         )}
 

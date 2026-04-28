@@ -35,6 +35,11 @@ export interface ActivityDay {
   };
 }
 
+export interface ChannelActivityDay {
+  date: string;
+  channels: Record<string, number>;
+}
+
 export interface SparklineDataSet {
   revenue: number[];
   deals: number[];
@@ -268,7 +273,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     queryFn: async () => {
       const { data, error } = await supabase
         .from('potential')
-        .select('id, created_at, stage_changed_at, won_at')
+        .select('id, created_at, stage_changed_at, won_at, source')
         .or(`created_at.gte.${heatmapRangeStart},stage_changed_at.gte.${heatmapRangeStart},won_at.gte.${heatmapRangeStart}`);
       if (error) throw error;
       return data;
@@ -656,6 +661,29 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     return { score, status, forecast, pipelineWeighted, growthRate };
   }, [companyRevenueData, companyDealsQuery.data, pipelineQuery.data, timePeriod, annualGoal, now]);
 
+  // Channel activity data (last 90 days) - grouped by source
+  const channelActivityData: ChannelActivityDay[] = useMemo(() => {
+    const deals = heatmapDealsQuery.data || [];
+    const dayMap = new Map<string, Record<string, number>>();
+
+    function addToChannel(dateStr: string | null, channel: string) {
+      if (!dateStr) return;
+      const day = dateStr.slice(0, 10);
+      const entry = dayMap.get(day) || {};
+      entry[channel] = (entry[channel] || 0) + 1;
+      dayMap.set(day, entry);
+    }
+
+    for (const deal of deals) {
+      const channel = deal.source || 'Unknown';
+      addToChannel(deal.created_at, channel);
+    }
+
+    return Array.from(dayMap.entries())
+      .map(([date, channels]) => ({ date, channels }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [heatmapDealsQuery.data]);
+
   const isLoading = leadsQuery.isLoading || pipelineQuery.isLoading || fundedQuery.isLoading;
   const isFetching = leadsQuery.isFetching || pipelineQuery.isFetching || fundedQuery.isFetching;
 
@@ -674,6 +702,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     revenueBySource,
     periodOverPeriod,
     activityHeatmapData,
+    channelActivityData,
     sparklineData,
     isLoading,
     isFetching,
