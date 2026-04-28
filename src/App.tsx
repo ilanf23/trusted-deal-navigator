@@ -94,6 +94,7 @@ const LoanVolumeLog = lazy(() => import("./pages/admin/LoanVolumeLog"));
 const VolumeLogExpandedView = lazy(() => import("./components/admin/VolumeLogExpandedView"));
 const AdminTracking = lazy(() => import("./pages/admin/Tracking"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
+const ReferAFriend = lazy(() => import("./pages/admin/ReferAFriend"));
 
 // Partner pages — lazy-loaded
 const PartnerDashboard = lazy(() => import("./pages/partner/Dashboard"));
@@ -117,7 +118,7 @@ const AppWarmup = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       <AuthProvider>
         <AppWarmup />
         <TooltipProvider>
@@ -162,7 +163,9 @@ const App = () => (
                 <Route path="/superadmin/volume-log" element={<LoanVolumeLog />} />
                 <Route path="/superadmin/volume-log/lead/:leadId" element={<VolumeLogExpandedView />} />
                 <Route path="/superadmin/ai-changes" element={<AIChanges />} />
-                <Route path="/superadmin/settings" element={<AdminSettings />} />
+                <Route path="/superadmin/settings" element={<Navigate to="/superadmin/settings/profile" replace />} />
+                <Route path="/superadmin/settings/:section" element={<AdminSettings />} />
+                <Route path="/superadmin/refer" element={<ReferAFriend />} />
                 <Route path="/superadmin/dropbox" element={<DropboxPage />} />
                 <Route path="/superadmin/dropbox/callback" element={<DropboxCallback />} />
                 <Route path="/superadmin/inbox/callback" element={<AdminInboxCallback />} />
@@ -225,7 +228,9 @@ const App = () => (
                 <Route path="/admin/newsletter" element={<AdminRoute><AdminNewsletter /></AdminRoute>} />
                 <Route path="/admin/marketing" element={<AdminRoute><AdminMarketing /></AdminRoute>} />
                 <Route path="/admin/tracking" element={<AdminRoute><AdminTracking /></AdminRoute>} />
-                <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+                <Route path="/admin/settings" element={<Navigate to="/admin/settings/profile" replace />} />
+                <Route path="/admin/settings/:section" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+                <Route path="/admin/refer" element={<AdminRoute><ReferAFriend /></AdminRoute>} />
                 {/* Legacy redirects */}
                 <Route path="/admin/evan" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/admin/evan/*" element={<Navigate to="/admin/dashboard" replace />} />

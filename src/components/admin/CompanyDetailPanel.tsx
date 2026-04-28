@@ -15,6 +15,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
+import { PipelineRecordsSection, type PipelineRecord } from './shared/PipelineRecordsSection';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -534,6 +536,21 @@ function RelatedTabContent({ company, contactTypeConfig }: { company: Company; c
     },
   });
 
+  const { data: assignableUsers = [] } = useAssignableUsers();
+
+  // Pipeline Records — empty until linkage to deals is wired (people-side is also stubbed today).
+  const pipelineRecords: PipelineRecord[] = [];
+
+  // When the user creates a new opportunity from this Company, mirror every
+  // associated person across as a contact on the new deal so the linkage isn't lost.
+  const linkContacts = relatedPeople.map((p, idx) => ({
+    name: p.name,
+    email: p.email,
+    phone: p.phone,
+    title: p.title,
+    is_primary: idx === 0,
+  }));
+
   if (isLoading) {
     return (
       <div className="px-5 py-4 space-y-4">
@@ -549,6 +566,19 @@ function RelatedTabContent({ company, contactTypeConfig }: { company: Company; c
 
   return (
     <div className="px-5 py-4 space-y-1">
+      {/* Pipeline Records (shared component — keep in sync with PeopleDetailPanel) */}
+      <PipelineRecordsSection
+        records={pipelineRecords}
+        ownerOptions={assignableUsers.map((u) => ({ value: u.id, label: u.name }))}
+        prefill={{
+          opportunity_name: company.company_name,
+          company_name: company.company_name,
+          phone: company.phone ?? '',
+          assigned_to: company.assigned_to ?? '',
+        }}
+        linkContacts={linkContacts}
+      />
+
       {/* Associated People */}
       <Collapsible defaultOpen>
         <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 hover:bg-muted/50 px-1 rounded-lg transition-colors">

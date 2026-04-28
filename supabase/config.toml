@@ -12,9 +12,6 @@ verify_jwt = false
 [functions.gmail-api]
 verify_jwt = false
 
-[functions.seed-test-data]
-verify_jwt = false
-
 [functions.send-newsletter]
 verify_jwt = false
 
@@ -49,9 +46,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.evan-ai-assistant]
-verify_jwt = false
-
-[functions.seed-partners]
 verify_jwt = false
 
 [functions.admin-update-user]

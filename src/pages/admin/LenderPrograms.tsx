@@ -7,12 +7,16 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Building2, Loader2, Save, Trash2, Upload, Maximize2, ArrowLeft, Plus } from 'lucide-react';
+import { Building2, Loader2, Save, Trash2, Upload, Maximize2, ArrowLeft, Plus, Phone, AtSign, MapPin, CalendarDays, User, Search, Tag, DollarSign, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import DraggableTh from '@/components/admin/DraggableTh';
+import DraggableColumnsContext from '@/components/admin/DraggableColumnsContext';
+import { makeColumnDragOverlay, type ColumnHeaderDef } from '@/components/admin/columnDragOverlay';
+import { useColumnOrder } from '@/hooks/useColumnOrder';
 import LenderDetailPanel, { LenderProgram } from '@/components/admin/LenderDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
@@ -69,6 +73,25 @@ const COLUMNS: { key: ColumnKey; label: string; editable: boolean }[] = [
   { key: 'loan_size_text', label: 'Loan Size', editable: true },
   { key: 'states', label: 'States', editable: true },
 ];
+
+const REORDERABLE_LENDER_COLUMNS: ColumnKey[] = COLUMNS
+  .filter(c => c.key !== 'lender_name')
+  .map(c => c.key);
+
+const LENDER_COLUMN_HEADERS: Record<ColumnKey, ColumnHeaderDef> = {
+  lender_name:    { icon: Building2,    label: 'Institution' },
+  call_status:    { icon: Phone,        label: 'Call Y/N' },
+  last_contact:   { icon: CalendarDays, label: 'Last Contact' },
+  location:       { icon: MapPin,       label: 'Location' },
+  looking_for:    { icon: Search,       label: 'Looking For' },
+  contact_name:   { icon: User,         label: 'Name' },
+  phone:          { icon: Phone,        label: 'Phone' },
+  email:          { icon: AtSign,       label: 'Email' },
+  lender_type:    { icon: Tag,          label: 'Type of Lender' },
+  loan_types:     { icon: FileText,     label: 'Types of Loans' },
+  loan_size_text: { icon: DollarSign,   label: 'Loan Size' },
+  states:         { icon: MapPin,       label: 'States' },
+};
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   lender_name: 240,
@@ -253,8 +276,29 @@ const presetPredicate = (id: string): ((row: LenderRow) => boolean) | null => {
         const days = daysSince(r.last_contact);
         return days !== null && days <= 30;
       };
+    case 'stale_90d':
+      return (r) => {
+        const days = daysSince(r.last_contact);
+        return days === null || days >= 90;
+      };
     case 'no_contact_info':
       return (r) => !r.email.trim() && !r.phone.trim();
+    case 'banks_only':
+      return (r) => (r.lender_type || '').toLowerCase().includes('bank');
+    case 'direct_lenders':
+      return (r) => (r.lender_type || '').toLowerCase().includes('direct');
+    case 'multifamily_specialists':
+      return (r) => {
+        const haystack = `${r.loan_types || ''} ${r.looking_for || ''} ${r.lender_specialty || ''}`.toLowerCase();
+        return haystack.includes('multifamily') || haystack.includes('multi-family');
+      };
+    case 'sba_programs':
+      return (r) => (r.loan_types || '').toLowerCase().includes('sba');
+    case 'large_loan_capacity':
+      return (r) => {
+        const range = parseLoanSizeText(r.loan_size_text);
+        return !!range && range.max >= 10_000_000;
+      };
     default:
       return null;
   }
@@ -297,7 +341,13 @@ const DEFAULT_LENDER_FILTER_OPTIONS: SavedFilterOption[] = [
   { id: 'all', label: 'All Lenders', group: 'top', editable: false },
   { id: 'needs_callback', label: 'Needs Call-back', group: 'public', editable: false },
   { id: 'called_recently', label: 'Called Recently (30d)', group: 'public', editable: false },
+  { id: 'stale_90d', label: 'Stale (90+ days)', group: 'public', editable: false },
   { id: 'no_contact_info', label: 'Missing Contact', group: 'public', editable: false },
+  { id: 'banks_only', label: 'Banks', group: 'public', editable: false },
+  { id: 'direct_lenders', label: 'Direct Lenders', group: 'public', editable: false },
+  { id: 'multifamily_specialists', label: 'Multifamily Specialists', group: 'public', editable: false },
+  { id: 'sba_programs', label: 'SBA Programs', group: 'public', editable: false },
+  { id: 'large_loan_capacity', label: 'Large Loan Capacity ($10M+)', group: 'public', editable: false },
 ];
 
 const createEmptyRow = (): LenderRow => ({
@@ -568,6 +618,11 @@ const LenderPrograms = () => {
     data: filteredAndSorted,
     storageKey: 'lender-col-widths-v3',
     maxAutoWidth: 400,
+  });
+
+  const { orderedKeys: orderedColumnKeys, reorderableKeys: reorderableColumnKeys, handleDragEnd: handleColumnReorder } = useColumnOrder({
+    tableId: 'lender-programs',
+    defaultOrder: REORDERABLE_LENDER_COLUMNS,
   });
 
   const isAllSelected = useMemo(() => {
@@ -1022,74 +1077,74 @@ const LenderPrograms = () => {
     ?? customFilters.find(cf => cf.id === activeFilter)?.label
     ?? 'All Lenders';
 
-  // ── ColHeader (CRM pattern) ──
-  const ColHeader = ({
+  // Helper function (NOT a React component) — see same pattern in People.tsx.
+  const renderColHeader = ({
+    reactKey,
     colKey,
     children,
     className: extraClassName,
     style: extraStyle,
+    locked = false,
   }: {
+    reactKey?: string;
     colKey: string;
     children: React.ReactNode;
     className?: string;
     style?: React.CSSProperties;
+    locked?: boolean;
   }) => {
     const width = columnWidths[colKey] ?? 120;
     const sortOptions = COLUMN_SORT_OPTIONS[colKey];
     const isMenuOpen = colMenuOpen === colKey;
-    return (
-      <th
-        className={`px-4 py-1.5 text-left whitespace-nowrap group/col transition-colors hover:z-20 ${extraClassName ?? ''}`}
-        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#d8cce8'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
-      >
-        <ResizableColumnHeader
-          columnId={colKey}
-          currentWidth={`${width}px`}
-          onResize={handleColumnResize}
+    const sortMenu = sortOptions ? (
+      <div className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setColMenuOpen(isMenuOpen ? null : colKey)}
+          title="Sort options"
+          style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
+          onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
+          onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
         >
-          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
-            {children}
-          </span>
-          {sortOptions && (
-            <div className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+          ⋮
+        </button>
+        {isMenuOpen && (
+          <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, backgroundColor: '#fff', border: '1px solid #e4dced', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, padding: '4px 0', overflow: 'hidden' }}>
+            {sortOptions.map((opt) => (
               <button
-                onClick={() => setColMenuOpen(isMenuOpen ? null : colKey)}
-                title="Sort options"
-                style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
-                onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
-                onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+                key={`${opt.field}-${opt.dir}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSortField(opt.field);
+                  setSortDir(opt.dir);
+                  setColMenuOpen(null);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
               >
-                ⋮
+                {opt.dir === 'asc' ? (
+                  <span style={{ color: '#3b2778', fontSize: 16 }}>↑</span>
+                ) : (
+                  <span style={{ color: '#5f6368', fontSize: 16 }}>↓</span>
+                )}
+                <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
               </button>
-              {isMenuOpen && (
-                <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, backgroundColor: '#fff', border: '1px solid #e4dced', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, padding: '4px 0', overflow: 'hidden' }}>
-                  {sortOptions.map((opt) => (
-                    <button
-                      key={`${opt.field}-${opt.dir}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSortField(opt.field);
-                        setSortDir(opt.dir);
-                        setColMenuOpen(null);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
-                    >
-                      {opt.dir === 'asc' ? (
-                        <span style={{ color: '#3b2778', fontSize: 16 }}>↑</span>
-                      ) : (
-                        <span style={{ color: '#5f6368', fontSize: 16 }}>↓</span>
-                      )}
-                      <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </ResizableColumnHeader>
-      </th>
+            ))}
+          </div>
+        )}
+      </div>
+    ) : null;
+    return (
+      <DraggableTh
+        key={reactKey}
+        columnId={colKey}
+        width={width}
+        onResize={handleColumnResize}
+        draggable={!locked}
+        className={extraClassName}
+        style={extraStyle}
+        trailing={sortMenu}
+      >
+        {children}
+      </DraggableTh>
     );
   };
 
@@ -1204,28 +1259,44 @@ const LenderPrograms = () => {
 
               <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr>
-                    <ColHeader
-                      colKey="lender_name"
-                      className="sticky top-0 z-30 group/hdr"
-                      style={{ left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}
-                    >
-                      <div className="shrink-0 mr-1" title="Select all" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={isAllSelected}
-                          onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
-                          className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
-                        />
-                      </div>
-                      <Building2 className="h-4 w-4" /> Institution
-                    </ColHeader>
-                    {COLUMNS.filter(c => c.key !== 'lender_name').map((col) => (
-                      <ColHeader key={col.key} colKey={col.key} className="sticky top-0 z-10">
-                        {col.label}
-                      </ColHeader>
-                    ))}
-                    <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
-                  </tr>
+                  <DraggableColumnsContext
+                    items={reorderableColumnKeys}
+                    onDragEnd={handleColumnReorder}
+                    renderOverlay={makeColumnDragOverlay(LENDER_COLUMN_HEADERS, k => columnWidths[k])}
+                  >
+                    <tr>
+                      {renderColHeader({
+                        reactKey: 'lender_name',
+                        colKey: 'lender_name',
+                        locked: true,
+                        className: 'sticky top-0 z-30 group/hdr',
+                        style: { left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
+                        children: (
+                          <>
+                            <div className="shrink-0 mr-1" title="Select all" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={isAllSelected}
+                                onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                                className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                              />
+                            </div>
+                            <Building2 className="h-4 w-4" /> Institution
+                          </>
+                        ),
+                      })}
+                      {(orderedColumnKeys as ColumnKey[]).map((key) => {
+                        const def = LENDER_COLUMN_HEADERS[key];
+                        const Icon = def.icon;
+                        return renderColHeader({
+                          reactKey: key,
+                          colKey: key,
+                          className: 'sticky top-0 z-10',
+                          children: (<><Icon className="h-4 w-4" /> {def.label}</>),
+                        });
+                      })}
+                      <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
+                    </tr>
+                  </DraggableColumnsContext>
                 </thead>
                 <tbody>
                   {filteredAndSorted.length === 0 ? (
@@ -1338,8 +1409,11 @@ const LenderPrograms = () => {
                             )}
                           </td>
 
-                          {/* Other columns */}
-                          {COLUMNS.filter(c => c.key !== 'lender_name').map((col) => {
+                          {/* Other columns — rendered in user-driven order from useColumnOrder. */}
+                          {(orderedColumnKeys as ColumnKey[])
+                            .map(k => COLUMNS.find(c => c.key === k))
+                            .filter((c): c is { key: ColumnKey; label: string; editable: boolean } => !!c)
+                            .map((col) => {
                             const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key;
                             const value = (row[col.key] as string) || '';
                             const isLookingFor = col.key === 'looking_for';

@@ -248,15 +248,24 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     setIncomingCall(null);
     setOutboundCall(null);
 
-    // Update the outbound communications row with final status and duration
+    // Update the outbound communications row with final status and duration.
+    // Server-side twilio-call-status will also finalize this row when the
+    // statusCallback fires, so this is fast-path optimism: try once, retry once
+    // on transient failure, then give up — the server is the source of truth.
     if (callSid) {
-      supabase
-        .from('communications')
-        .update({ status: 'completed', duration_seconds: durationSeconds })
-        .eq('call_sid', callSid)
-        .then(({ error }) => {
-          if (error) console.error('[CallContext] Failed to update communication on disconnect:', error);
-        });
+      void (async () => {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          const { error } = await supabase
+            .from('communications')
+            .update({ status: 'completed', duration_seconds: durationSeconds })
+            .eq('call_sid', callSid);
+          if (!error) return;
+          console.error(
+            `[CallContext] Failed to update communication on disconnect (attempt ${attempt}):`,
+            error,
+          );
+        }
+      })();
     }
 
     queryClient.invalidateQueries({ queryKey: ['active-calls-ringing'] });
@@ -792,12 +801,15 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       });
     }
 
-    // Update DB status — fire-and-forget so a DB/RLS error never blocks the live call
+    // Update DB status — fire-and-forget so a DB/RLS error never blocks the live call.
+    // Stamp user_id here so the downstream twilio-call-status webhook propagates
+    // the correct attribution into communications (otherwise call history is empty).
     supabase
       .from('active_calls')
       .update({
         status: 'in-progress',
         answered_at: new Date().toISOString(),
+        user_id: teamMember?.id ?? null,
       })
       .eq('call_sid', incomingCall.call_sid)
       .then(({ error: dbErr }) => {
@@ -806,7 +818,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
 
     await logCallEvent(incomingCall.call_sid, 'call_answered', incomingCall.call_flow_id);
     toast.success('Call connected!');
-  }, [incomingCall, activeCall, initializeTwilioDevice, logCallEvent, startCallTimer, handleCallEnd]);
+  }, [incomingCall, activeCall, initializeTwilioDevice, logCallEvent, startCallTimer, handleCallEnd, teamMember?.id]);
 
   const hangupCall = useCallback(async () => {
     if (activeCall) {
@@ -815,21 +827,22 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     
     if (incomingCall) {
       await logCallEvent(incomingCall.call_sid, 'hangup', incomingCall.call_flow_id);
-      
+
       const { error } = await supabase
         .from('active_calls')
-        .update({ 
+        .update({
           status: 'completed',
           ended_at: new Date().toISOString(),
+          user_id: teamMember?.id ?? null,
         })
         .eq('id', incomingCall.id);
-      
+
       if (error) throw error;
     }
     
     handleCallEnd();
     toast.info('Call ended');
-  }, [activeCall, incomingCall, handleCallEnd, logCallEvent]);
+  }, [activeCall, incomingCall, handleCallEnd, logCallEvent, teamMember?.id]);
 
   const declineCall = useCallback(async () => {
     if (!incomingCall) throw new Error('No incoming call');
@@ -842,17 +855,18 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     
     const { error } = await supabase
       .from('active_calls')
-      .update({ 
+      .update({
         status: 'declined',
         ended_at: new Date().toISOString(),
+        user_id: teamMember?.id ?? null,
       })
       .eq('id', incomingCall.id);
-    
+
     if (error) throw error;
-    
+
     toast.info('Call declined');
     handleCallEnd();
-  }, [incomingCall, activeCall, handleCallEnd, logCallEvent]);
+  }, [incomingCall, activeCall, handleCallEnd, logCallEvent, teamMember?.id]);
 
   const toggleMute = useCallback(() => {
     if (activeCall) {

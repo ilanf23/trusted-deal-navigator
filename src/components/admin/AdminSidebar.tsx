@@ -51,6 +51,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AvatarUpload from '@/components/admin/AvatarUpload';
 import CreatePipelineModal from '@/components/admin/CreatePipelineModal';
+import WorkspaceMenu from '@/components/admin/WorkspaceSwitcher';
 import {
   Collapsible,
   CollapsibleContent,
@@ -146,7 +147,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
           { title: 'Volume Log', url: '/superadmin/volume-log', icon: ScrollText },
           { title: 'AI Changes', url: '/superadmin/ai-changes', icon: BrainCircuit },
-          { title: 'Settings', url: '/superadmin/settings', icon: Settings },
+          { title: 'Settings', url: '/superadmin/settings/profile', icon: Settings },
         ],
       });
 
@@ -242,7 +243,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
           { title: 'Bug Reporting', url: '/admin/bug-reporting', icon: Bug },
-          { title: 'Settings', url: '/admin/settings', icon: Settings },
+          { title: 'Settings', url: '/admin/settings/profile', icon: Settings },
         ],
         noCollapse: true,
       });
@@ -374,18 +375,37 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         '--sidebar-width-icon': '4rem',
       } as React.CSSProperties}
     >
-      <SidebarHeader className={`border-b border-sidebar-border/40 overflow-visible ${isCollapsed ? 'px-2 pt-3 pb-3' : 'px-4 pt-0 pb-0'}`}>
-        <Link to={homeUrl} className={`flex items-center justify-center group ${isCollapsed ? '' : 'relative z-10 -mt-6 -mb-10'}`}>
-          {isCollapsed ? (
-            <span className="font-playfair text-white font-bold text-2xl tracking-tight">CLX</span>
-          ) : (
-            <img
-              src="/logo.png"
-              alt="CommercialLendingX"
-              className="max-h-[180px] max-w-full object-contain brightness-0 invert opacity-95"
-            />
-          )}
-        </Link>
+      <SidebarHeader className={`relative border-b border-sidebar-border/40 overflow-visible ${isCollapsed ? 'px-2 pt-3 pb-3' : 'px-4 pt-0 pb-2'}`}>
+        {isCollapsed ? (
+          <WorkspaceMenu>
+            <button
+              type="button"
+              aria-label="Workspace menu"
+              className={`flex items-center justify-center w-full rounded ${focusRing}`}
+            >
+              <span className="font-playfair text-white font-bold text-2xl tracking-tight">CLX</span>
+            </button>
+          </WorkspaceMenu>
+        ) : (
+          <>
+            <Link to={homeUrl} className="flex items-center justify-center group relative z-10 -mt-6 -mb-10">
+              <img
+                src="/logo.png"
+                alt="CommercialLendingX"
+                className="max-h-[180px] max-w-full object-contain brightness-0 invert opacity-95"
+              />
+            </Link>
+            <WorkspaceMenu>
+              <button
+                type="button"
+                aria-label="Workspace menu"
+                className={`absolute top-2 right-2 z-20 inline-flex items-center justify-center w-7 h-7 rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors ${focusRing}`}
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            </WorkspaceMenu>
+          </>
+        )}
       </SidebarHeader>
       
       <SidebarContent ref={scrollRef} className={`relative pt-1.5 ${isCollapsed ? 'px-1.5' : 'px-2.5'}`}>

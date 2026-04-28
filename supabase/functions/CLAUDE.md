@@ -68,10 +68,6 @@
 - `google-calendar-auth` — OAuth flow for Calendar (60/60s)
 - `google-calendar-sync` — sync appointments to Calendar (America/New_York timezone)
 
-### Seeding & Test Data
-- `seed-partners` — create 5 test partner accounts (3/60s)
-- `seed-test-data` — create test clients and conversations (3/60s)
-
 ## External API Integrations
 - **Twilio**: Voice, SMS, conferencing, recording, transcription
 - **OpenAI**: GPT (chat/email), Whisper (transcription)

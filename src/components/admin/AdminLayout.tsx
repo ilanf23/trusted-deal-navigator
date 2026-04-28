@@ -11,10 +11,9 @@ import { SplitViewProvider, useSplitView } from '@/contexts/SplitViewContext';
 import SplitViewContainer from './splitview/SplitViewContainer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, createContext, useContext } from 'react';
-import { AdminTopBarProvider, useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { AdminTopBarProvider } from '@/contexts/AdminTopBarContext';
 import NotificationBell from './NotificationBell';
-import AdminTopBarSearch from './AdminTopBarSearch';
-import PageDatabasesButton from './dev/PageDatabasesButton';
+import PageDatabasesDot from './dev/PageDatabasesDot';
 
 export const AdminLayoutMountedContext = createContext(false);
 
@@ -72,21 +71,10 @@ const SplitViewContent = ({ children }: AdminLayoutProps) => {
   );
 };
 
-const DefaultTopBarSearch = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  return (
-    <AdminTopBarSearch
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-    />
-  );
-};
-
 const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
   const [inboxOpen, setInboxOpen] = useState(false);
   const { lastAction, isUndoing, executeUndo } = useUndo();
   const { isOpen: aiChatOpen, setIsOpen: setAiChatOpen } = useAIAssistant();
-  const { pageTitle, searchComponent, actionsComponent } = useAdminTopBar();
 
   return (
     <SidebarProvider>
@@ -99,32 +87,15 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
         />
 
         <main className="flex-1 flex flex-col h-screen min-w-0 overflow-x-auto">
-          {/* Top Bar - responsive padding and layout */}
-          <header className="h-14 md:h-16 flex items-center border-b border-border bg-card sticky top-0 z-[5] px-3 md:px-4 lg:pl-4 lg:pr-8 gap-3">
-            {/* Left: hamburger + page title */}
-            <div className="flex items-center gap-2 md:gap-4 shrink-0">
+          {/* Top Bar - hamburger + global actions */}
+          <header className="h-14 md:h-16 flex items-center justify-between border-b border-border bg-card sticky top-0 z-[5] px-3 md:px-4 lg:pl-4 lg:pr-8">
+            <div className="flex items-center gap-2 md:gap-5">
               <SidebarTrigger className="w-10 h-10 md:w-11 md:h-11 rounded-xl hover:bg-muted transition-colors flex items-center justify-center group">
                 <Menu className="w-5 h-5 md:w-6 md:h-6 text-muted-foreground group-hover:text-foreground" />
               </SidebarTrigger>
-              {pageTitle && (
-                <h1 className="text-lg font-bold text-foreground whitespace-nowrap hidden sm:block">
-                  {pageTitle}
-                </h1>
-              )}
             </div>
 
-            {/* Center: search bar (page-specific or default CRM search) */}
-            <div className="flex-1 flex justify-center min-w-0" key="topbar-center">
-              <div className="w-full max-w-[614px]">
-                {searchComponent || <DefaultTopBarSearch />}
-              </div>
-            </div>
-
-            {/* Right: page actions + global actions */}
-            <div className="flex items-center gap-2 md:gap-4 shrink-0">
-              {actionsComponent}
-              {/* Dev-mode: per-page DB footprint popup (owners only) */}
-              <PageDatabasesButton />
+            <div className="flex items-center gap-2 md:gap-4">
               {/* Notification Bell */}
               <NotificationBell />
               {/* Undo Button - Always Visible */}
@@ -170,13 +141,15 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
         </main>
         
         <FloatingInbox isOpen={inboxOpen} onClose={() => setInboxOpen(false)} />
-        <AIEmailAssistant 
-          isOpen={false} 
+        <AIEmailAssistant
+          isOpen={false}
           onClose={() => {}}
           lead={null}
           onUseEmail={() => {}}
         />
         <FloatingBugReport />
+        {/* Dev-mode: per-page DB footprint dot (sales rep admin portal only) */}
+        <PageDatabasesDot />
       </div>
     </SidebarProvider>
   );

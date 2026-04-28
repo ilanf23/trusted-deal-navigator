@@ -47,9 +47,8 @@ Eight React contexts managing global application state. All follow the provider 
 - **Consumer**: `useSplitView()`
 
 ### AdminTopBarContext
-- **State**: pageTitle, searchComponent, actionsComponent (all ReactNode | null), pageDatabases (PageDatabaseDeclaration[] | null)
-- **Purpose**: Pages set their own top bar title, search UI, action buttons, and DB-footprint declarations dynamically.
-- **pageDatabases**: dev-mode per-page list of Supabase tables used. Registered via `usePageDatabases(...)` hook, surfaced by a yellow `PageDatabasesButton` inside the topbar (owners only) that opens a modal listing each table + its usage.
+- **State**: pageTitle, searchComponent, actionsComponent (all ReactNode | null)
+- **Purpose**: Pages set their own top bar title, search UI, and action buttons dynamically.
 - **Consumer**: `useAdminTopBar()`
 
 ## Provider Hierarchy

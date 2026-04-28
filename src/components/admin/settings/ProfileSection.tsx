@@ -7,7 +7,7 @@ import { useTeamMember } from '@/hooks/useTeamMember';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,21 @@ import {
   FormControl,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import SecuritySection from './SecuritySection';
+import SessionSection from './SessionSection';
+import { Switch } from '@/components/ui/switch';
+import { useState } from 'react';
 
 const profileSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
@@ -33,12 +48,20 @@ const profileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
+const SectionHeading = ({ title, description }: { title: string; description?: string }) => (
+  <div>
+    <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+    {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
+  </div>
+);
+
 const ProfileSection = () => {
   const { user } = useAuth();
   const { teamMember } = useTeamMember();
   const queryClient = useQueryClient();
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
-  const { data: fullProfile, isLoading, error: profileError } = useQuery({
+  const { data: fullProfile, isLoading } = useQuery({
     queryKey: ['user-profile', teamMember?.id],
     queryFn: async () => {
       if (!teamMember) return null;
@@ -76,12 +99,11 @@ const ProfileSection = () => {
         zip_code: fullProfile.zip_code || '',
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullProfile]);
 
   const onSubmit = async (values: ProfileFormValues) => {
     if (!teamMember) return;
-
     const { error } = await supabase
       .from('users')
       .update({
@@ -106,6 +128,10 @@ const ProfileSection = () => {
     queryClient.invalidateQueries({ queryKey: ['user-profile', teamMember.id] });
   };
 
+  const handleDeleteAccount = async () => {
+    toast.error('Account deletion requires admin approval — please contact your workspace owner.');
+  };
+
   if (isLoading || !teamMember) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -114,149 +140,227 @@ const ProfileSection = () => {
     );
   }
 
-  if (profileError) {
-    return (
-      <div className="text-sm text-destructive py-6">
-        Failed to load profile. Please try refreshing the page.
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Avatar */}
-      <div className="flex items-center gap-4">
-        <AvatarUpload
-          userId={teamMember.id}
-          currentAvatarUrl={fullProfile?.avatar_url}
-          fallbackInitials={(teamMember.name || '??').substring(0, 2).toUpperCase()}
-          size="lg"
-          tableName="users"
-          tableIdColumn="id"
-          queryKeysToInvalidate={[['team-member', user?.id || ''], ['team-members'], ['user-profile', teamMember.id]]}
-        />
-        <div>
-          <p className="font-medium">{teamMember.name}</p>
-          <p className="text-sm text-muted-foreground">{fullProfile?.email}</p>
-        </div>
+    <div className="space-y-10">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Manage your personal information, security, and active sessions.
+        </p>
       </div>
+
+      {/* Photo */}
+      <section className="space-y-4">
+        <SectionHeading title="Profile photo" description="JPEG or PNG, recommended 400×400, max 5 MB." />
+        <div className="flex items-center gap-4">
+          <AvatarUpload
+            userId={teamMember.id}
+            currentAvatarUrl={fullProfile?.avatar_url}
+            fallbackInitials={(teamMember.name || '??').substring(0, 2).toUpperCase()}
+            size="lg"
+            tableName="users"
+            tableIdColumn="id"
+            queryKeysToInvalidate={[['team-member', user?.id || ''], ['team-members'], ['user-profile', teamMember.id]]}
+          />
+          <div>
+            <p className="font-medium">{teamMember.name}</p>
+            <p className="text-sm text-muted-foreground">{fullProfile?.email}</p>
+          </div>
+        </div>
+      </section>
 
       <Separator />
 
-      {/* Profile Form */}
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Display Name</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      {/* Name + contact */}
+      <section className="space-y-4">
+        <SectionHeading title="Personal information" />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Display Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Email</Label>
-              <Input value={fullProfile?.email || ''} disabled className="bg-muted" />
-              <p className="text-xs text-muted-foreground">Change email in the Security section</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm">Email</Label>
+                <Input value={fullProfile?.email || ''} disabled className="bg-muted" />
+                <p className="text-xs text-muted-foreground">Update via Change Email below.</p>
+              </div>
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="(555) 123-4567" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <FormField
               control={form.control}
-              name="phone"
+              name="position"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone</FormLabel>
+                  <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="(555) 123-4567" />
+                    <Input {...field} placeholder="e.g. Senior Loan Officer" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
 
-          <FormField
-            control={form.control}
-            name="position"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Position / Title</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="e.g. Loan Officer" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>City</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="state"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>State</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="zip_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Zip Code</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="pt-2">
+              <Button type="submit" disabled={form.formState.isSubmitting || !form.formState.isDirty}>
+                {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save changes'
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </section>
+
+      <Separator />
+
+      {/* Security (email + password) */}
+      <section className="space-y-4">
+        <SectionHeading title="Security" description="Update your email or password." />
+        <SecuritySection />
+      </section>
+
+      <Separator />
+
+      {/* 2FA */}
+      <section className="space-y-3">
+        <SectionHeading title="Two-factor authentication" description="Add an extra step at sign-in." />
+        <div className="flex items-center justify-between rounded-md border border-border p-4">
+          <div>
+            <p className="text-sm font-medium">Authenticator app</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {twoFactorEnabled ? 'Enabled — codes required at every sign-in.' : 'Coming soon — authenticator-based MFA.'}
+            </p>
+          </div>
+          <Switch
+            checked={twoFactorEnabled}
+            onCheckedChange={(v) => {
+              setTwoFactorEnabled(v);
+              toast.info('Two-factor enrollment will be available shortly.');
+            }}
+            disabled
           />
+        </div>
+      </section>
 
-          <Separator />
+      <Separator />
 
-          <p className="text-sm font-medium">Location</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <FormField
-              control={form.control}
-              name="city"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>City</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      {/* Sessions */}
+      <section className="space-y-4">
+        <SectionHeading title="Sessions" description="Where you're signed in." />
+        <SessionSection />
+      </section>
 
-            <FormField
-              control={form.control}
-              name="state"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>State</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      <Separator />
 
-            <FormField
-              control={form.control}
-              name="zip_code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Zip Code</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      {/* Danger zone */}
+      <section className="space-y-3">
+        <SectionHeading title="Danger zone" />
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Delete account</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Permanently delete your account and remove your data. This action can't be undone.
+            </p>
           </div>
-
-          <div className="pt-2">
-            <Button type="submit" disabled={form.formState.isSubmitting || !form.formState.isDirty}>
-              {form.formState.isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save Changes'
-              )}
-            </Button>
-          </div>
-        </form>
-      </Form>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm">
+                Delete account
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove your data from the workspace. Account deletion is processed by an
+                  admin — you'll receive a confirmation email.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Yes, request deletion
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </section>
     </div>
   );
 };

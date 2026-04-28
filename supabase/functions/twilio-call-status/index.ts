@@ -105,6 +105,11 @@ Deno.serve(async (req) => {
     const dialCallSid = formData?.get('DialCallSid')?.toString() || '';
     const dialCallDuration = formData?.get('DialCallDuration')?.toString() || '';
 
+    // From/To are present on per-Number statusCallbacks (used as the outbound
+    // backstop when no active_calls row exists for this call_sid).
+    const fromNumber = formData?.get('From')?.toString() || '';
+    const toNumber = formData?.get('To')?.toString() || '';
+
     console.log(
       `Twilio callback: CallSid=${callSid} CallStatus=${callStatus} CallDuration=${callDuration}s`
     );
@@ -197,60 +202,84 @@ Deno.serve(async (req) => {
     if (['completed', 'busy', 'failed', 'no-answer', 'canceled', 'cancelled'].includes(effectiveStatus)) {
       updateData.ended_at = new Date().toISOString();
 
-      // Also log to communications
+      // Look up the active_calls row (only inbound calls create one) and any
+      // existing communications row keyed by call_sid (outbound calls insert
+      // this client-side at initiation).
       const { data: activeCall } = await supabase
         .from('active_calls')
         .select('*')
         .eq('call_sid', callSid)
-        .single();
+        .maybeSingle();
 
-      if (activeCall) {
-        // Check if communication already exists for this call
-        const { data: existingComm } = await supabase
+      const { data: existingComm } = await supabase
+        .from('communications')
+        .select('id')
+        .eq('call_sid', callSid)
+        .maybeSingle();
+
+      const finalDuration = parseInt(callDuration) || parseInt(dialCallDuration) || null;
+
+      if (existingComm) {
+        // Always safe to finalize an existing row regardless of which path
+        // (inbound active_calls vs outbound client-insert) created it.
+        await supabase
           .from('communications')
-          .select('id')
-          .eq('call_sid', callSid)
-          .single();
+          .update({
+            status: effectiveStatus,
+            duration_seconds: finalDuration,
+          })
+          .eq('id', existingComm.id);
+        console.log('Updated existing communication');
+      } else if (activeCall) {
+        // Inbound completion path: client never inserted a communications row,
+        // create it now using metadata captured at webhook time.
+        await supabase
+          .from('communications')
+          .insert({
+            lead_id: activeCall.lead_id,
+            communication_type: 'call',
+            direction: activeCall.direction,
+            phone_number: activeCall.from_number,
+            duration_seconds: finalDuration,
+            status: effectiveStatus,
+            content: `${activeCall.direction === 'inbound' ? 'Incoming' : 'Outgoing'} call - ${effectiveStatus}`,
+            call_sid: callSid,
+            user_id: activeCall.user_id || null,
+          });
+        console.log('Communication logged from active_call');
+      } else {
+        // Outbound backstop: no active_calls row exists and the client-side
+        // insert never landed (e.g. tab closed before insert completed).
+        // Insert what we can derive from the webhook payload so the call still
+        // shows up in history. user_id is unknown server-side and stays null —
+        // the Calls.tsx history query allows null user_id as a safety net.
+        await supabase
+          .from('communications')
+          .insert({
+            lead_id: null,
+            communication_type: 'call',
+            direction: 'outbound',
+            phone_number: toNumber || fromNumber || null,
+            duration_seconds: finalDuration,
+            status: effectiveStatus,
+            content: `Outgoing call - ${effectiveStatus}`,
+            call_sid: callSid,
+            user_id: null,
+          });
+        console.log('Communication logged as outbound backstop (no active_call)');
+      }
 
-        if (!existingComm) {
-          await supabase
-            .from('communications')
-            .insert({
-              lead_id: activeCall.lead_id,
-              communication_type: 'call',
-              direction: activeCall.direction,
-              phone_number: activeCall.from_number,
-              duration_seconds: parseInt(callDuration) || parseInt(dialCallDuration) || null,
-              status: effectiveStatus,
-              content: `${activeCall.direction === 'inbound' ? 'Incoming' : 'Outgoing'} call - ${effectiveStatus}`,
-              call_sid: callSid,
-              user_id: activeCall.user_id || null,
-            });
-          console.log('Communication logged with call_sid');
+      // Update lead's last_activity_at for scorecard tracking
+      if (activeCall?.lead_id) {
+        const { error: leadError } = await supabase
+          .from('people')
+          .update({ last_activity_at: new Date().toISOString() })
+          .eq('id', activeCall.lead_id);
+
+        if (leadError) {
+          console.error('Failed to update lead last_activity_at:', leadError);
         } else {
-          // Update existing communication with final status and duration
-          await supabase
-            .from('communications')
-            .update({
-              status: effectiveStatus,
-              duration_seconds: parseInt(callDuration) || parseInt(dialCallDuration) || null,
-            })
-            .eq('id', existingComm.id);
-          console.log('Updated existing communication');
-        }
-
-        // Update lead's last_activity_at for scorecard tracking
-        if (activeCall.lead_id) {
-          const { error: leadError } = await supabase
-            .from('people')
-            .update({ last_activity_at: new Date().toISOString() })
-            .eq('id', activeCall.lead_id);
-
-          if (leadError) {
-            console.error('Failed to update lead last_activity_at:', leadError);
-          } else {
-            console.log(`Updated last_activity_at for lead ${activeCall.lead_id}`);
-          }
+          console.log(`Updated last_activity_at for lead ${activeCall.lead_id}`);
         }
       }
     }

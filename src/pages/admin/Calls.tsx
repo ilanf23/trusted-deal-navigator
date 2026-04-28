@@ -238,7 +238,10 @@ const Calls = () => {
     enabled: !!teamMember?.id,
   });
 
-  // Fetch call history from communications
+  // Fetch call history from communications. Mirror the active-calls query
+  // above by accepting rows with a null user_id as well — the outbound backstop
+  // in twilio-call-status cannot determine user_id server-side, and any future
+  // attribution gap should still surface in history rather than vanish.
   const { data: callHistory = [], isLoading: historyLoading } = useQuery({
     queryKey: ['call-history', teamMember?.id],
     queryFn: async () => {
@@ -255,7 +258,7 @@ const Calls = () => {
         .order('created_at', { ascending: false })
         .limit(100);
       if (teamMember?.id) {
-        query = query.eq('user_id', teamMember.id);
+        query = query.or(`user_id.eq.${teamMember.id},user_id.is.null`);
       }
       const { data, error } = await query;
       if (error) throw error;

@@ -4,6 +4,7 @@ import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { EditableTextBox } from '@/components/admin/shared/EditableTextBox';
 import { Maximize2, PanelRightOpen, DollarSign, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PIPELINE_REORDERABLE_COLUMNS, type PipelineColumnKey } from './pipelineColumns';
 
 // ─────────────────────────────────────────────────────────────────
 // Single source of truth for pipeline table row design.
@@ -90,6 +91,12 @@ export interface PipelineTableRowProps {
   // ── UI state ─────────────────────────────────────────
   columnVisibility: PipelineColumnVisibility;
   columnWidths: PipelineColumnWidths;
+  /**
+   * Render cells in this order. Defaults to `PIPELINE_REORDERABLE_COLUMNS`
+   * for backwards-compatible callers; pass the result of `useColumnOrder`
+   * to enable user-driven reordering.
+   */
+  orderedKeys?: PipelineColumnKey[];
   isDetailSelected: boolean;
   isBulkSelected: boolean;
   /** Tailwind padding class for vertical row padding, e.g., 'py-1.5' or 'py-0.5'. */
@@ -200,6 +207,7 @@ export function PipelineTableRow(props: PipelineTableRowProps) {
     tags,
     columnVisibility,
     columnWidths,
+    orderedKeys = PIPELINE_REORDERABLE_COLUMNS,
     isDetailSelected,
     isBulkSelected,
     rowPad = 'py-1.5',
@@ -288,205 +296,140 @@ export function PipelineTableRow(props: PipelineTableRowProps) {
         </div>
       </td>
 
-      {/* ── Company ── */}
-      {columnVisibility.company && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.company, ...CELL_BORDER }}
-        >
-          {showCompanyIcon && companyName && !companyEdit ? (
-            <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
-              <div className="h-6 w-6 rounded-full bg-white dark:bg-background flex items-center justify-center shrink-0">
-                <Building2 className="h-3 w-3 text-muted-foreground" />
+      {orderedKeys.map((k) => {
+        if (!columnVisibility[k]) return null;
+        const cellClass = cn('px-3 overflow-hidden', rowPad);
+        const cellStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+          width: columnWidths[k],
+          ...CELL_BORDER,
+          ...extra,
+        });
+        let content: React.ReactNode;
+        switch (k) {
+          case 'company':
+            content = showCompanyIcon && companyName && !companyEdit ? (
+              <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
+                <div className="h-6 w-6 rounded-full bg-white dark:bg-background flex items-center justify-center shrink-0">
+                  <Building2 className="h-3 w-3 text-muted-foreground" />
+                </div>
+                <span className="text-[16px] text-[#202124] dark:text-foreground truncate">
+                  {companyName}
+                </span>
+              </span>
+            ) : (
+              <EditablePill display={companyName} edit={companyEdit} ariaLabel="Company" />
+            );
+            break;
+          case 'contact':
+            content = <EditablePill display={contactName} edit={contactEdit} ariaLabel="Contact" />;
+            break;
+          case 'value':
+            content = (
+              <EditablePill
+                display={dealValueDisplay}
+                edit={dealValueEdit}
+                numeric
+                prefix={
+                  dealValueEdit ? (
+                    <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  ) : undefined
+                }
+                ariaLabel="Deal value"
+              />
+            );
+            break;
+          case 'ownedBy':
+            content = ownerSlot ? (
+              <div
+                className="inline-flex items-center rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {ownerSlot}
               </div>
-              <span className="text-[16px] text-[#202124] dark:text-foreground truncate">
-                {companyName}
-              </span>
-            </span>
-          ) : (
-            <EditablePill display={companyName} edit={companyEdit} ariaLabel="Company" />
-          )}
-        </td>
-      )}
-
-      {/* ── Contact ── */}
-      {columnVisibility.contact && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.contact, ...CELL_BORDER }}
-        >
-          <EditablePill display={contactName} edit={contactEdit} ariaLabel="Contact" />
-        </td>
-      )}
-
-      {/* ── Value ── */}
-      {columnVisibility.value && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.value, ...CELL_BORDER }}
-        >
-          <EditablePill
-            display={dealValueDisplay}
-            edit={dealValueEdit}
-            numeric
-            prefix={
-              dealValueEdit ? (
-                <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              ) : undefined
-            }
-            ariaLabel="Deal value"
-          />
-        </td>
-      )}
-
-      {/* ── Owner ── */}
-      {columnVisibility.ownedBy && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.ownedBy, ...CELL_BORDER }}
-        >
-          {ownerSlot ? (
-            <div
-              className="inline-flex items-center rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {ownerSlot}
-            </div>
-          ) : ownerName ? (
-            <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
-              <CrmAvatar name={ownerName} imageUrl={ownerAvatarUrl ?? null} size="sm" />
-              <span className="text-[16px] text-[#202124] dark:text-foreground truncate">
-                {ownerName}
-              </span>
-            </span>
-          ) : (
-            <StaticPill value={null} />
-          )}
-        </td>
-      )}
-
-      {/* ── Tasks ── */}
-      {columnVisibility.tasks && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.tasks, ...CELL_BORDER }}
-        >
-          <StaticPill value={taskCount ?? 0} numeric />
-        </td>
-      )}
-
-      {/* ── Status ── */}
-      {columnVisibility.status && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.status ?? 100, ...CELL_BORDER }}
-        >
-          <StaticPill value={statusDisplay} />
-        </td>
-      )}
-
-      {/* ── Stage ── */}
-      {columnVisibility.stage && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.stage, ...CELL_BORDER }}
-        >
-          {stageSlot ? (
-            <div
-              className="inline-flex items-center rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {stageSlot}
-            </div>
-          ) : (
-            <StaticPill value={stageLabel} />
-          )}
-        </td>
-      )}
-
-      {/* ── Days in stage ── */}
-      {columnVisibility.daysInStage && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.daysInStage, ...CELL_BORDER }}
-        >
-          <StaticPill
-            value={daysInStage != null ? `${daysInStage}d` : null}
-            numeric
-          />
-        </td>
-      )}
-
-      {/* ── Stage updated ── */}
-      {columnVisibility.stageUpdated && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.stageUpdated, ...CELL_BORDER }}
-        >
-          <StaticPill value={stageUpdatedDate} numeric />
-        </td>
-      )}
-
-      {/* ── Last contacted ── */}
-      {columnVisibility.lastContacted && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.lastContacted, ...CELL_BORDER }}
-        >
-          <StaticPill value={lastContactedDate} numeric />
-        </td>
-      )}
-
-      {/* ── Interactions ── */}
-      {columnVisibility.interactions && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.interactions, ...CELL_BORDER }}
-        >
-          <StaticPill value={interactionCount ?? 0} numeric />
-        </td>
-      )}
-
-      {/* ── Inactive days ── */}
-      {columnVisibility.inactiveDays && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.inactiveDays, ...CELL_BORDER }}
-        >
-          <StaticPill
-            value={inactiveDays != null ? `${inactiveDays}d` : null}
-            numeric
-          />
-        </td>
-      )}
-
-      {/* ── Tags ── */}
-      {columnVisibility.tags && (
-        <td
-          className={cn('px-3 overflow-hidden', rowPad)}
-          style={{ width: columnWidths.tags, ...CELL_BORDER }}
-        >
-          {tags && tags.length > 0 ? (
-            <span className="flex items-center gap-1 flex-wrap">
-              {tags.slice(0, 2).map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground"
-                >
-                  {tag}
+            ) : ownerName ? (
+              <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
+                <CrmAvatar name={ownerName} imageUrl={ownerAvatarUrl ?? null} size="sm" />
+                <span className="text-[16px] text-[#202124] dark:text-foreground truncate">
+                  {ownerName}
                 </span>
-              ))}
-              {tags.length > 2 && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
-                  +{tags.length - 2}
-                </span>
-              )}
-            </span>
-          ) : (
-            <StaticPill value={null} />
-          )}
-        </td>
-      )}
+              </span>
+            ) : (
+              <StaticPill value={null} />
+            );
+            break;
+          case 'tasks':
+            content = <StaticPill value={taskCount ?? 0} numeric />;
+            break;
+          case 'status':
+            content = <StaticPill value={statusDisplay} />;
+            break;
+          case 'stage':
+            content = stageSlot ? (
+              <div
+                className="inline-flex items-center rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {stageSlot}
+              </div>
+            ) : (
+              <StaticPill value={stageLabel} />
+            );
+            break;
+          case 'daysInStage':
+            content = (
+              <StaticPill
+                value={daysInStage != null ? `${daysInStage}d` : null}
+                numeric
+              />
+            );
+            break;
+          case 'stageUpdated':
+            content = <StaticPill value={stageUpdatedDate} numeric />;
+            break;
+          case 'lastContacted':
+            content = <StaticPill value={lastContactedDate} numeric />;
+            break;
+          case 'interactions':
+            content = <StaticPill value={interactionCount ?? 0} numeric />;
+            break;
+          case 'inactiveDays':
+            content = (
+              <StaticPill
+                value={inactiveDays != null ? `${inactiveDays}d` : null}
+                numeric
+              />
+            );
+            break;
+          case 'tags':
+            content = tags && tags.length > 0 ? (
+              <span className="flex items-center gap-1 flex-wrap">
+                {tags.slice(0, 2).map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground"
+                  >
+                    {tag}
+                  </span>
+                ))}
+                {tags.length > 2 && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
+                    +{tags.length - 2}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <StaticPill value={null} />
+            );
+            break;
+          default:
+            return null;
+        }
+        return (
+          <td key={k} className={cellClass} style={cellStyle()}>
+            {content}
+          </td>
+        );
+      })}
 
       {/* ── Detail arrow ── */}
       <td className={cn('px-2 w-10', rowPad)} style={{ ...CELL_BORDER }}>

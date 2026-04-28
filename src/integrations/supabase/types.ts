@@ -4442,15 +4442,23 @@ export type Database = {
           company_name: string | null
           contact_person: string | null
           created_at: string
+          currency: string | null
+          date_format: string | null
           email: string | null
+          email_signature: string | null
           id: string
           is_active: boolean
           is_assignable: boolean
           is_owner: boolean | null
+          language: string | null
           name: string
+          notification_preferences: Json | null
           phone: string | null
           position: string | null
+          preferences: Json | null
           state: string | null
+          time_format: string | null
+          timezone: string | null
           updated_at: string
           user_id: string | null
           zip_code: string | null
@@ -4463,15 +4471,23 @@ export type Database = {
           company_name?: string | null
           contact_person?: string | null
           created_at?: string
+          currency?: string | null
+          date_format?: string | null
           email?: string | null
+          email_signature?: string | null
           id?: string
           is_active?: boolean
           is_assignable?: boolean
           is_owner?: boolean | null
+          language?: string | null
           name: string
+          notification_preferences?: Json | null
           phone?: string | null
           position?: string | null
+          preferences?: Json | null
           state?: string | null
+          time_format?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id?: string | null
           zip_code?: string | null
@@ -4484,18 +4500,332 @@ export type Database = {
           company_name?: string | null
           contact_person?: string | null
           created_at?: string
+          currency?: string | null
+          date_format?: string | null
           email?: string | null
+          email_signature?: string | null
           id?: string
           is_active?: boolean
           is_assignable?: boolean
           is_owner?: boolean | null
+          language?: string | null
           name?: string
+          notification_preferences?: Json | null
           phone?: string | null
           position?: string | null
+          preferences?: Json | null
           state?: string | null
+          time_format?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id?: string | null
           zip_code?: string | null
+        }
+        Relationships: []
+      }
+      workspace_settings: {
+        Row: {
+          id: string
+          workspace_name: string
+          logo_url: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          accent_color: string | null
+          default_theme: string | null
+          invite_admins_only: boolean | null
+          default_invite_role: string | null
+          default_google_sync: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_name?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          accent_color?: string | null
+          default_theme?: string | null
+          invite_admins_only?: boolean | null
+          default_invite_role?: string | null
+          default_google_sync?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_name?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          accent_color?: string | null
+          default_theme?: string | null
+          invite_admins_only?: boolean | null
+          default_invite_role?: string | null
+          default_google_sync?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      custom_field_sections: {
+        Row: {
+          id: string
+          workspace_id: string | null
+          entity_type: string
+          name: string
+          position: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id?: string | null
+          entity_type: string
+          name: string
+          position?: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string | null
+          entity_type?: string
+          name?: string
+          position?: number
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      custom_fields: {
+        Row: {
+          id: string
+          workspace_id: string | null
+          entity_type: string
+          section_id: string | null
+          field_key: string
+          label: string
+          field_type: string
+          options: Json | null
+          required: boolean | null
+          default_value: string | null
+          position: number
+          visibility: Json | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id?: string | null
+          entity_type: string
+          section_id?: string | null
+          field_key: string
+          label: string
+          field_type: string
+          options?: Json | null
+          required?: boolean | null
+          default_value?: string | null
+          position?: number
+          visibility?: Json | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string | null
+          entity_type?: string
+          section_id?: string | null
+          field_key?: string
+          label?: string
+          field_type?: string
+          options?: Json | null
+          required?: boolean | null
+          default_value?: string | null
+          position?: number
+          visibility?: Json | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      custom_field_values: {
+        Row: {
+          id: string
+          custom_field_id: string
+          record_id: string
+          record_type: string
+          value: Json | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          custom_field_id: string
+          record_id: string
+          record_type: string
+          value?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          custom_field_id?: string
+          record_id?: string
+          record_type?: string
+          value?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      record_layouts: {
+        Row: {
+          id: string
+          workspace_id: string | null
+          entity_type: string
+          pipeline_name: string | null
+          field_keys: Json
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id?: string | null
+          entity_type: string
+          pipeline_name?: string | null
+          field_keys: Json
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string | null
+          entity_type?: string
+          pipeline_name?: string | null
+          field_keys?: Json
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      activity_types: {
+        Row: {
+          id: string
+          workspace_id: string | null
+          name: string
+          icon: string
+          color: string
+          is_system: boolean | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id?: string | null
+          name: string
+          icon: string
+          color: string
+          is_system?: boolean | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string | null
+          name?: string
+          icon?: string
+          color?: string
+          is_system?: boolean | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      nav_config: {
+        Row: {
+          id: string
+          workspace_id: string | null
+          role: string
+          items: Json
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id?: string | null
+          role: string
+          items: Json
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string | null
+          role?: string
+          items?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          id: string
+          workspace_id: string | null
+          user_id: string | null
+          name: string
+          subject: string
+          body: string
+          variables: Json | null
+          is_shared: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id?: string | null
+          user_id?: string | null
+          name: string
+          subject: string
+          body: string
+          variables?: Json | null
+          is_shared?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string | null
+          user_id?: string | null
+          name?: string
+          subject?: string
+          body?: string
+          variables?: Json | null
+          is_shared?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      webhooks: {
+        Row: {
+          id: string
+          workspace_id: string | null
+          name: string
+          url: string
+          secret: string
+          events: Json
+          active: boolean | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id?: string | null
+          name: string
+          url: string
+          secret: string
+          events: Json
+          active?: boolean | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string | null
+          name?: string
+          url?: string
+          secret?: string
+          events?: Json
+          active?: boolean | null
+          created_at?: string | null
         }
         Relationships: []
       }
@@ -4651,6 +4981,7 @@ export type Database = {
         | "people"
         | "companies"
         | "potential"
+        | "lender_programs"
       invoice_status:
         | "draft"
         | "sent"
@@ -4839,6 +5170,7 @@ export const Constants = {
         "people",
         "companies",
         "potential",
+        "lender_programs",
       ],
       invoice_status: [
         "draft",

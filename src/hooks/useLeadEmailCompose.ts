@@ -17,7 +17,7 @@ import type { Attachment } from '@/components/admin/GmailComposeDialog';
  * `dialogProps` onto the dialog and call `openCompose(...)` from any button.
  */
 
-export type LeadEmailComposeTable = 'potential' | 'underwriting' | 'lender_management';
+export type LeadEmailComposeTable = 'potential' | 'underwriting' | 'lender_management' | 'lender_programs';
 
 export interface OpenComposeArgs {
   /** Recipient email address. Required. */
@@ -145,6 +145,7 @@ export function useLeadEmailCompose({ leadId, tableName, onSent }: UseLeadEmailC
           });
 
           // Nudge the deal row so sort-by-recent-activity reflects the send.
+          // lender_programs has no `last_activity_at` column, so it's skipped here.
           const updates = { last_activity_at: new Date().toISOString() } as const;
           switch (tableName) {
             case 'potential':
@@ -156,6 +157,8 @@ export function useLeadEmailCompose({ leadId, tableName, onSent }: UseLeadEmailC
             case 'lender_management':
               await supabase.from('lender_management').update(updates).eq('id', leadId);
               break;
+            case 'lender_programs':
+              break;
           }
         }
 
@@ -163,6 +166,8 @@ export function useLeadEmailCompose({ leadId, tableName, onSent }: UseLeadEmailC
         queryClient.invalidateQueries({ queryKey: ['pipeline-lead-gmail-emails', leadId] });
         queryClient.invalidateQueries({ queryKey: ['underwriting-lead-gmail-emails', leadId] });
         queryClient.invalidateQueries({ queryKey: ['lender-management-lead-gmail-emails', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['lender-program-gmail-emails', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['lender-program-activities', leadId] });
         queryClient.invalidateQueries({ queryKey: ['activities', tableName, leadId] });
 
         toast.success('Email sent');

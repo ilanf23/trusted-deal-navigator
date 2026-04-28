@@ -24,6 +24,10 @@ import { SavedFiltersSidebar, type SavedFilterOption } from '@/components/admin/
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import DraggableTh from '@/components/admin/DraggableTh';
+import DraggableColumnsContext from '@/components/admin/DraggableColumnsContext';
+import { makeColumnDragOverlay } from '@/components/admin/columnDragOverlay';
+import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import {
@@ -67,6 +71,7 @@ import {
   MoreVertical,
   ArrowUp,
   ArrowDown,
+  GitMerge,
 } from 'lucide-react';
 import {
   KanbanBoard,
@@ -83,6 +88,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAllPipelineLeads } from '@/hooks/useAllPipelineLeads';
 import BulkImportDialog from '@/components/admin/BulkImportDialog';
+import MergePeopleDialog from '@/components/admin/MergePeopleDialog';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
 
@@ -221,6 +227,26 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   tags: 'Tags',
 };
 
+// Order matters here: this is the default left-to-right column order.
+// Reordering at runtime is persisted per-user via `useColumnOrder`.
+const REORDERABLE_COLUMNS: ColumnKey[] = [
+  'title', 'company', 'tasks', 'email', 'contactType',
+  'pipeline', 'lastContacted', 'interactions', 'inactiveDays', 'tags',
+];
+
+const COLUMN_HEADERS: Record<ColumnKey, { icon: React.ComponentType<{ className?: string }>; label: string }> = {
+  title: { icon: Equal, label: 'Title' },
+  company: { icon: Landmark, label: 'Company' },
+  tasks: { icon: CheckSquare, label: 'Tasks' },
+  email: { icon: AtSign, label: 'Email' },
+  contactType: { icon: Tag, label: 'Type' },
+  pipeline: { icon: Workflow, label: 'Pipeline' },
+  lastContacted: { icon: CalendarDays, label: 'Contacted' },
+  interactions: { icon: MessageSquare, label: 'Activity' },
+  inactiveDays: { icon: Moon, label: 'Dormant' },
+  tags: { icon: Tag, label: 'Tags' },
+};
+
 // Column sort menu options per column (colKey or 'person')
 const COLUMN_SORT_OPTIONS: Record<string, { label: string; field: SortField; dir: SortDir }[]> = {
   person: [
@@ -331,6 +357,7 @@ const People = () => {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [selectedPersonIds, setSelectedPersonIds] = useState<Set<string>>(new Set());
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
 
   // ── Column sort menu state ──
   const [colMenuOpen, setColMenuOpen] = useState<string | null>(null);
@@ -769,6 +796,15 @@ const People = () => {
     storageKey: 'people-col-widths-v2',
   });
 
+  const { orderedKeys, reorderableKeys, handleDragEnd: handleColumnReorder } = useColumnOrder({
+    tableId: 'people',
+    defaultOrder: REORDERABLE_COLUMNS,
+  });
+  const visibleOrderedKeys = useMemo(
+    () => (orderedKeys as ColumnKey[]).filter(k => columnVisibility[k]),
+    [orderedKeys, columnVisibility],
+  );
+
   function handleColSort(field: SortField) {
     if (sortField === field) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -838,6 +874,36 @@ const People = () => {
     onError: () => toast.error('Failed to update contact type'),
   });
 
+  // ── Merge two people ──
+  const mergeMutation = useMutation({
+    mutationFn: async (args: {
+      winnerId: string;
+      loserId: string;
+      resolvedFields: Record<string, unknown>;
+    }) => {
+      const { error } = await (supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ error: { message: string } | null }>)('merge_people', {
+        p_winner_id: args.winnerId,
+        p_loser_id: args.loserId,
+        p_resolved_fields: args.resolvedFields,
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['people'] });
+      queryClient.invalidateQueries({ queryKey: ['allPipelineLeads'] });
+      clearSelection();
+      setMergeDialogOpen(false);
+      toast.success('People merged successfully');
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      toast.error(`Merge failed: ${msg}`);
+    },
+  });
+
   // ── Export Selected as CSV ──
   const handleExportSelected = () => {
     const selected = filteredAndSorted.filter(p => selectedPersonIds.has(p.id));
@@ -874,12 +940,22 @@ const People = () => {
 
   const rowPad = rowDensity === 'comfortable' ? 'py-1.5' : 'py-0.5';
 
-  const ColHeader = ({
+  // IMPORTANT: this is a regular helper function, NOT a React component.
+  // Defining it as a component (e.g. `const ColHeader = (...) => ...`) inside
+  // the parent body would create a new component reference on every render of
+  // `People`, causing React to unmount + remount each `<th>` whenever any
+  // state changes. With `DndContext` tracking pointer movement, that
+  // remount-thrashing manifests as the column flashing white→purple on hover.
+  // Calling it as `{renderColHeader({...})}` keeps the th part of the
+  // parent's JSX and avoids the remount entirely.
+  const renderColHeader = ({
+    reactKey,
     colKey,
     children,
     className: extraClassName,
     style: extraStyle,
   }: {
+    reactKey?: string;
     colKey?: ColumnKey;
     children: React.ReactNode;
     className?: string;
@@ -890,60 +966,55 @@ const People = () => {
     const width = columnWidths[widthKey] ?? 120;
     const sortOptions = COLUMN_SORT_OPTIONS[widthKey];
     const isMenuOpen = colMenuOpen === widthKey;
-    return (
-      <th
-        className={`px-4 py-1.5 text-left whitespace-nowrap group/col transition-colors hover:z-20 ${extraClassName ?? ''}`}
-        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#d8cce8'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
-      >
-        <ResizableColumnHeader
-          columnId={widthKey}
-          currentWidth={`${width}px`}
-          onResize={handleColumnResize}
+    const sortMenu = sortOptions ? (
+      <div className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
+          title="Sort options"
+          style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
+          onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
+          onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
         >
-          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
-            {children}
-          </span>
-          {/* Three-dot menu button — inline so it's never hidden */}
-          {sortOptions && (
-            <div className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+          ⋮
+        </button>
+        {isMenuOpen && (
+          <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, backgroundColor: '#fff', border: '1px solid #e4dced', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, padding: '4px 0', overflow: 'hidden' }}>
+            {sortOptions.map((opt) => (
               <button
-                onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
-                title="Sort options"
-                style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
-                onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
-                onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+                key={`${opt.field}-${opt.dir}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSortField(opt.field);
+                  setSortDir(opt.dir);
+                  setColMenuOpen(null);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
               >
-                ⋮
+                {opt.dir === 'asc' ? (
+                  <span style={{ color: '#3b2778', fontSize: 16 }}>↑</span>
+                ) : (
+                  <span style={{ color: '#5f6368', fontSize: 16 }}>↓</span>
+                )}
+                <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
               </button>
-              {isMenuOpen && (
-                <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, backgroundColor: '#fff', border: '1px solid #e4dced', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, padding: '4px 0', overflow: 'hidden' }}>
-                  {sortOptions.map((opt) => (
-                    <button
-                      key={`${opt.field}-${opt.dir}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSortField(opt.field);
-                        setSortDir(opt.dir);
-                        setColMenuOpen(null);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
-                    >
-                      {opt.dir === 'asc' ? (
-                        <span style={{ color: '#3b2778', fontSize: 16 }}>↑</span>
-                      ) : (
-                        <span style={{ color: '#5f6368', fontSize: 16 }}>↓</span>
-                      )}
-                      <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </ResizableColumnHeader>
-      </th>
+            ))}
+          </div>
+        )}
+      </div>
+    ) : null;
+    return (
+      <DraggableTh
+        key={reactKey}
+        columnId={widthKey}
+        width={width}
+        onResize={handleColumnResize}
+        draggable={!!colKey}
+        className={extraClassName}
+        style={extraStyle}
+        trailing={sortMenu}
+      >
+        {children}
+      </DraggableTh>
     );
   };
 
@@ -1088,6 +1159,28 @@ const People = () => {
                   </Tooltip>
                 </div>
 
+                {/* Merge button — enabled only when exactly 2 people are selected */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="ml-2">
+                      <button
+                        type="button"
+                        disabled={selectedPersonIds.size !== 2}
+                        onClick={() => setMergeDialogOpen(true)}
+                        className="h-9 px-3 text-[13px] font-semibold rounded-md flex items-center gap-2 border border-[#dadce0] dark:border-border bg-white dark:bg-card text-[#3b2778] dark:text-purple-300 hover:bg-[#f0ebf5] dark:hover:bg-purple-950/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <GitMerge className="h-4 w-4" />
+                        Merge
+                      </button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    {selectedPersonIds.size === 2
+                      ? 'Merge the two selected people'
+                      : 'Select exactly 2 people to merge'}
+                  </TooltipContent>
+                </Tooltip>
+
                 {/* Add Person button (Copper dark indigo style) */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -1136,49 +1229,42 @@ const People = () => {
                 )}
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr>
-                      <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                        <div className="shrink-0" title="Select all">
-                          <Checkbox
-                            checked={isAllSelected}
-                            onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
-                            className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
-                          />
-                        </div>
-                        <User className="h-4 w-4" /> Person
-                      </ColHeader>
-                      <ColHeader colKey="title" className="sticky top-0 z-10">
-                        <Equal className="h-4 w-4" /> Title
-                      </ColHeader>
-                      <ColHeader colKey="company" className="sticky top-0 z-10">
-                        <Landmark className="h-4 w-4" /> Company
-                      </ColHeader>
-                      <ColHeader colKey="tasks" className="sticky top-0 z-10">
-                        <CheckSquare className="h-4 w-4" /> Tasks
-                      </ColHeader>
-                      <ColHeader colKey="email" className="sticky top-0 z-10">
-                        <AtSign className="h-4 w-4" /> Email
-                      </ColHeader>
-                      <ColHeader colKey="contactType" className="sticky top-0 z-10">
-                        <Tag className="h-4 w-4" /> Type
-                      </ColHeader>
-                      <ColHeader colKey="pipeline" className="sticky top-0 z-10">
-                        <Workflow className="h-4 w-4" /> Pipeline
-                      </ColHeader>
-                      <ColHeader colKey="lastContacted" className="sticky top-0 z-10">
-                        <CalendarDays className="h-4 w-4" /> Contacted
-                      </ColHeader>
-                      <ColHeader colKey="interactions" className="sticky top-0 z-10">
-                        <MessageSquare className="h-4 w-4" /> Activity
-                      </ColHeader>
-                      <ColHeader colKey="inactiveDays" className="sticky top-0 z-10">
-                        <Moon className="h-4 w-4" /> Dormant
-                      </ColHeader>
-                      <ColHeader colKey="tags" className="sticky top-0 z-10">
-                        <Tag className="h-4 w-4" /> Tags
-                      </ColHeader>
-                      <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
-                    </tr>
+                    <DraggableColumnsContext
+                      items={reorderableKeys.filter(k => columnVisibility[k as ColumnKey])}
+                      onDragEnd={handleColumnReorder}
+                      renderOverlay={makeColumnDragOverlay(COLUMN_HEADERS, k => columnWidths[k])}
+                    >
+                      <tr>
+                        {renderColHeader({
+                          reactKey: 'person',
+                          className: 'sticky top-0 z-30 group/hdr',
+                          style: { left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
+                          children: (
+                            <>
+                              <div className="shrink-0" title="Select all">
+                                <Checkbox
+                                  checked={isAllSelected}
+                                  onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                                  className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                                />
+                              </div>
+                              <User className="h-4 w-4" /> Person
+                            </>
+                          ),
+                        })}
+                        {visibleOrderedKeys.map((key) => {
+                          const def = COLUMN_HEADERS[key];
+                          const Icon = def.icon;
+                          return renderColHeader({
+                            reactKey: key,
+                            colKey: key,
+                            className: 'sticky top-0 z-10',
+                            children: (<><Icon className="h-4 w-4" /> {def.label}</>),
+                          });
+                        })}
+                        <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
+                      </tr>
+                    </DraggableColumnsContext>
                   </thead>
                   <tbody>
                     {isLoading ? (
@@ -1194,16 +1280,19 @@ const People = () => {
                               </div>
                             </div>
                           </td>
-                          {columnVisibility.title && <td className="px-4 py-1.5" style={{ width: columnWidths.title, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.company && <td className="px-4 py-1.5" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.tasks && <td className="px-4 py-1.5" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.email && <td className="px-4 py-1.5" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-32 rounded" /></td>}
-                          {columnVisibility.contactType && <td className="px-4 py-1.5" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
-                          {columnVisibility.pipeline && <td className="px-4 py-1.5" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-28 rounded" /></td>}
-                          {columnVisibility.lastContacted && <td className="px-4 py-1.5" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.interactions && <td className="px-4 py-1.5" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.inactiveDays && <td className="px-4 py-1.5" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.tags && <td className="px-4 py-1.5" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                          {visibleOrderedKeys.map((key) => {
+                            const skeletonW: Record<ColumnKey, string> = {
+                              title: 'h-3.5 w-24 rounded', company: 'h-3.5 w-24 rounded', tasks: 'h-3.5 w-8 rounded',
+                              email: 'h-3.5 w-32 rounded', contactType: 'h-5 w-20 rounded-full', pipeline: 'h-3.5 w-28 rounded',
+                              lastContacted: 'h-3.5 w-20 rounded', interactions: 'h-3.5 w-8 rounded',
+                              inactiveDays: 'h-3.5 w-10 rounded', tags: 'h-3.5 w-16 rounded',
+                            };
+                            return (
+                              <td key={key} className="px-4 py-1.5" style={{ width: columnWidths[key], border: '1px solid #c8bdd6' }}>
+                                <Skeleton className={skeletonW[key]} />
+                              </td>
+                            );
+                          })}
                         </tr>
                       ))
                     ) : filteredAndSorted.length === 0 ? (
@@ -1282,129 +1371,119 @@ const People = () => {
                               </div>
                             </td>
 
-                            {/* Title */}
-                            {columnVisibility.title && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.title, border: '1px solid #c8bdd6' }}>
-                                {person.title ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{person.title}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Company */}
-                            {columnVisibility.company && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
-                                {person.company_name ? (
-                                  <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
-                                    <div className="h-6 w-6 rounded-full bg-white dark:bg-card flex items-center justify-center shrink-0">
-                                      <Building2 className="h-3 w-3 text-muted-foreground" />
-                                    </div>
-                                    <span className="text-[16px] text-[#202124] dark:text-foreground truncate">{person.company_name}</span>
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Tasks */}
-                            {columnVisibility.tasks && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{taskCount}</span>
-                              </td>
-                            )}
-
-                            {/* Email */}
-                            {columnVisibility.email && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}>
-                                {person.email ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{person.email}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Contact Type */}
-                            {columnVisibility.contactType && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}>
-                                {typeCfg ? (
-                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${typeCfg.bg} ${typeCfg.color}`}>
-                                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${typeCfg.dot}`} />
-                                    {typeCfg.label}
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{person.contact_type}</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Pipeline / Stage */}
-                            {columnVisibility.pipeline && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}>
-                                {person._pipelineName ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full whitespace-nowrap">
-                                    {person._pipelineName}
-                                    {person._stageName && (
-                                      <span className="text-muted-foreground">{' > '}{person._stageName}</span>
-                                    )}
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">--</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Last Contacted */}
-                            {columnVisibility.lastContacted && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
-                                {person.last_activity_at ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums">{formatShortDate(person.last_activity_at)}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Interactions */}
-                            {columnVisibility.interactions && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{interactionCount}</span>
-                              </td>
-                            )}
-
-                            {/* Inactive Days */}
-                            {columnVisibility.inactiveDays && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
-                                {inactiveDays !== null ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{inactiveDays}d</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Tags */}
-                            {columnVisibility.tags && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
-                                {person.tags && person.tags.length > 0 ? (
-                                  <span className="flex items-center gap-1 flex-wrap">
-                                    {person.tags.slice(0, 2).map((tag) => (
-                                      <span key={tag} className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
-                                        {tag}
-                                      </span>
-                                    ))}
-                                    {person.tags.length > 2 && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-muted-foreground">+{person.tags.length - 2}</span>
-                                    )}
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
+                            {visibleOrderedKeys.map((key) => {
+                              const cellStyle: React.CSSProperties = { width: columnWidths[key], border: '1px solid #c8bdd6' };
+                              const cellClass = 'px-3 py-1.5 overflow-hidden';
+                              const dashPill = (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
+                              );
+                              switch (key) {
+                                case 'title':
+                                  return (
+                                    <td key={key} className={cellClass} style={cellStyle}>
+                                      {person.title ? (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{person.title}</span>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                case 'company':
+                                  return (
+                                    <td key={key} className={cellClass} style={cellStyle}>
+                                      {person.company_name ? (
+                                        <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
+                                          <div className="h-6 w-6 rounded-full bg-white dark:bg-card flex items-center justify-center shrink-0">
+                                            <Building2 className="h-3 w-3 text-muted-foreground" />
+                                          </div>
+                                          <span className="text-[16px] text-[#202124] dark:text-foreground truncate">{person.company_name}</span>
+                                        </span>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                case 'tasks':
+                                  return (
+                                    <td key={key} className={cellClass} style={cellStyle}>
+                                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{taskCount}</span>
+                                    </td>
+                                  );
+                                case 'email':
+                                  return (
+                                    <td key={key} className={cellClass} style={cellStyle}>
+                                      {person.email ? (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{person.email}</span>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                case 'contactType':
+                                  return (
+                                    <td key={key} className={cellClass} style={cellStyle}>
+                                      {typeCfg ? (
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${typeCfg.bg} ${typeCfg.color}`}>
+                                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${typeCfg.dot}`} />
+                                          {typeCfg.label}
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{person.contact_type}</span>
+                                      )}
+                                    </td>
+                                  );
+                                case 'pipeline':
+                                  return (
+                                    <td key={key} className={cellClass} style={cellStyle}>
+                                      {person._pipelineName ? (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full whitespace-nowrap">
+                                          {person._pipelineName}
+                                          {person._stageName && (
+                                            <span className="text-muted-foreground">{' > '}{person._stageName}</span>
+                                          )}
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">--</span>
+                                      )}
+                                    </td>
+                                  );
+                                case 'lastContacted':
+                                  return (
+                                    <td key={key} className={cellClass} style={cellStyle}>
+                                      {person.last_activity_at ? (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground tabular-nums">{formatShortDate(person.last_activity_at)}</span>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                case 'interactions':
+                                  return (
+                                    <td key={key} className={cellClass} style={cellStyle}>
+                                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{interactionCount}</span>
+                                    </td>
+                                  );
+                                case 'inactiveDays':
+                                  return (
+                                    <td key={key} className={cellClass} style={cellStyle}>
+                                      {inactiveDays !== null ? (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{inactiveDays}d</span>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                case 'tags':
+                                  return (
+                                    <td key={key} className={cellClass} style={cellStyle}>
+                                      {person.tags && person.tags.length > 0 ? (
+                                        <span className="flex items-center gap-1 flex-wrap">
+                                          {person.tags.slice(0, 2).map((tag) => (
+                                            <span key={tag} className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
+                                              {tag}
+                                            </span>
+                                          ))}
+                                          {person.tags.length > 2 && (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-muted-foreground">+{person.tags.length - 2}</span>
+                                          )}
+                                        </span>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                default:
+                                  return null;
+                              }
+                            })}
 
                             {/* Detail arrow */}
                             <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }} title="Open detail panel">
@@ -1539,6 +1618,15 @@ const People = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <MergePeopleDialog
+        open={mergeDialogOpen}
+        onOpenChange={(o) => { if (!mergeMutation.isPending) setMergeDialogOpen(o); }}
+        personAId={selectedPersonIds.size === 2 ? Array.from(selectedPersonIds)[0] : null}
+        personBId={selectedPersonIds.size === 2 ? Array.from(selectedPersonIds)[1] : null}
+        isPending={mergeMutation.isPending}
+        onConfirm={(args) => mergeMutation.mutate(args)}
+      />
 
       <Dialog open={addPersonOpen} onOpenChange={setAddPersonOpen}>
         <DialogContent className="sm:max-w-[560px] p-0 max-h-[90vh] flex flex-col">

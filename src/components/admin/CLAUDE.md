@@ -31,8 +31,72 @@
 
 **Pipeline Components:**
 - `PipelineColumnHeader`, `ResizableColumnHeader` — board UI
+- `SortableColumnHeader`, `DraggableColumnsContext` — drag-to-reorder primitives (pair with `useColumnOrder`)
 - `PipelineBulkToolbar`, `SelectAllHeader` — bulk operations
 - `InlineEditableCell`, `InlineEditableFields` — data display/edit
+
+### Column reorder pattern (drag-to-reorder) — unified
+
+The sales rep admin portal uses a single shared component set for drag-to-reorder. **Always use these primitives**; do not roll your own per-table.
+
+**Primitives** (all under `src/components/admin/` and `src/hooks/`):
+
+| Module | Role |
+|---|---|
+| `useColumnOrder` (hook) | Per-user-per-table order persistence (localStorage, scoped by `useAuth().user.id`). Returns `orderedKeys`, `reorderableKeys`, `handleDragEnd`. |
+| `<DraggableColumnsContext>` | Wraps the `<thead>` `<tr>` row. Sets up dnd-kit `DndContext` + horizontal `SortableContext` + `DragOverlay`. Takes `items`, `onDragEnd`, `renderOverlay`. |
+| `<DraggableTh>` | The unified header cell. Wraps `ResizableColumnHeader` (locked) / `SortableColumnHeader` (draggable). Handles th styling, hover bg, drag wiring, visibility. |
+| `<SortableColumnHeader>` | Internal — used by `DraggableTh` when `draggable={true}`. Adds the grip handle and drop indicators. |
+| `makeColumnDragOverlay(headers, getWidth)` | Factory for `renderOverlay` — returns the floating chip rendered while dragging. |
+
+**The 4-step recipe** (used by all migrated tables):
+
+1. **Module-level definitions** — declare a `ColumnKey` union, a `REORDERABLE_COLUMNS: ColumnKey[]` array (default left-to-right order), and a `COLUMN_HEADERS: Record<ColumnKey, ColumnHeaderDef>` map (icon + label per key). For pipeline tables (Underwriting/Potential/LenderManagement) the shared `pipelineColumns.ts` module already exports these.
+
+2. **Hook in the component**:
+   ```ts
+   const { orderedKeys, reorderableKeys, handleDragEnd } = useColumnOrder({
+     tableId: 'unique-id',
+     defaultOrder: REORDERABLE_COLUMNS,
+   });
+   ```
+
+3. **Replace the header `<ColHeader>` helper** — convert it from a *React component declaration* (e.g. `const ColHeader = (...) => ...`) to a *helper function* (e.g. `const renderColHeader = (...) => ...`), called as `{renderColHeader({...})}`. **This is non-negotiable.** A component declared inside the parent body becomes a new component reference on every render → React unmounts/remounts the th → under `DndContext`'s pointer-tracking re-renders, the column flashes white/purple on hover. Helper functions don't have a component boundary, so no remount. Comments explaining this gotcha are inlined in `People.tsx` and the other migrated files.
+
+4. **Wrap thead + render body in order**:
+   ```tsx
+   <thead>
+     <DraggableColumnsContext
+       items={reorderableKeys.filter(k => columnVisibility[k])}
+       onDragEnd={handleDragEnd}
+       renderOverlay={makeColumnDragOverlay(COLUMN_HEADERS, k => columnWidths[k])}
+     >
+       <tr>
+         {/* leading locked column rendered outside the map */}
+         {orderedKeys.map(key => renderColHeader({ reactKey: key, colKey: key, ... }))}
+         {/* trailing locked column outside the map */}
+       </tr>
+     </DraggableColumnsContext>
+   </thead>
+   <tbody>
+     {rows.map(row => (
+       <tr key={row.id}>
+         {/* leading sticky cell */}
+         {orderedKeys.map(key => { switch (key) { case 'foo': return <td>...</td>; ... } })}
+         {/* trailing actions cell */}
+       </tr>
+     ))}
+   </tbody>
+   ```
+
+   The body cells **must** render via `orderedKeys.map(key => ...)` — keep the same key set as the header. If they don't, drag-reorder appears to do nothing because the cells stay in their hardcoded positions.
+
+**Migrated tables** (full drag-and-drop): `People.tsx`, `Underwriting.tsx`, `Potential.tsx`, `LenderManagement.tsx`, `Companies.tsx`, `LenderPrograms.tsx`, `TaskTableView.tsx`. Underwriting / Potential / LenderManagement share the body row component `PipelineTableRow.tsx`, which accepts `orderedKeys` and renders cells in that order.
+
+**Not yet migrated** (different architecture or scope; follow the same recipe to add):
+- `LoanVolumeLog.tsx` — 19 columns; same recipe applies, just substantial body refactor.
+- `EmployeePipeline.tsx` — uses a different column-management system (`usePipelineColumns`) with runtime-added columns; needs a custom integration.
+- `Projects.tsx` — minimal table (5 cols, no visibility state); can be added with a slightly trimmed recipe.
 
 **Floating UI:**
 - `FloatingBugReport`, `FloatingInbox` — persistent overlay tools

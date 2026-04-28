@@ -19,12 +19,12 @@ import { formatPhoneNumber } from './InlineEditableFields';
 import { useInlineSave as useSharedInlineSave } from './shared/useInlineSave';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
+import { PipelineRecordsSection, type PipelineRecord } from './shared/PipelineRecordsSection';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
-import { usePipelines } from '@/hooks/usePipelines';
 import { sanitizeFileName } from '@/lib/utils';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
@@ -969,10 +969,6 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
   const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
-  // ── Pipeline state ──
-  const [pipelineSearchText, setPipelineSearchText] = useState('');
-  const [pipelineSearchFocused, setPipelineSearchFocused] = useState(false);
-
   // ── File state ──
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -993,37 +989,7 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
   const { data: teamMembers = [] } = useAssignableUsers();
 
   // ── Pipeline records — people are standalone entities, no longer in pipelines directly ──
-  const pipelineRecords: Array<{
-    id: string;
-    pipeline_id: string;
-    stage_id: string;
-    added_at: string;
-    updated_at: string;
-    pipeline: { id: string; name: string };
-    stage: { id: string; name: string; color: string | null };
-  }> = [];
-
-  const { data: allPipelines = [] } = usePipelines();
-
-  const filteredPipelines = useMemo(() => {
-    if (!pipelineSearchText.trim()) return allPipelines;
-    const q = pipelineSearchText.toLowerCase();
-    return allPipelines.filter((p: any) => p.name?.toLowerCase().includes(q));
-  }, [allPipelines, pipelineSearchText]);
-
-  // Add to pipeline — disabled, people are standalone entities now
-  const addToPipelineMutation = useMutation({
-    mutationFn: async (_pipelineId: string) => {
-      // People are no longer added to pipelines directly.
-      // Use pipeline_people junction table to link people to deals instead.
-    },
-    onSuccess: () => {
-      toast.success('Added to pipeline');
-      setPipelineSearchText('');
-      setPipelineSearchFocused(false);
-    },
-    onError: () => toast.error('Failed to add to pipeline'),
-  });
+  const pipelineRecords: PipelineRecord[] = [];
 
   // ── Person files query ──
   const { data: personFiles = [] } = useQuery({
@@ -1055,17 +1021,6 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
       return (data ?? []) as Array<{ id: string; name: string }>;
     },
     enabled: !!person.company_name,
-  });
-
-  // Remove from pipeline — disabled, people are standalone entities now
-  const removeFromPipelineMutation = useMutation({
-    mutationFn: async (_recordId: string) => {
-      // People are no longer in pipelines directly.
-    },
-    onSuccess: () => {
-      toast.success('Removed from pipeline');
-    },
-    onError: () => toast.error('Failed to remove from pipeline'),
   });
 
   // ── Core file upload logic ──
@@ -1214,64 +1169,26 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
       </div>
 
       {/* ── Pipeline Records ── */}
-      <RelatedSection label="Pipeline Records" count={pipelineRecords.length} defaultOpen>
-        <div className="space-y-1.5">
-          {pipelineRecords.map((rec: any) => (
-            <button
-              key={rec.id}
-              onClick={() => navigate(getPipelineLeadRoute(rec.pipeline.name, person.id))}
-              className="flex items-center gap-2.5 text-[13px] p-2 rounded-lg hover:bg-muted/40 transition-colors w-full text-left group"
-            >
-              <div
-                className="h-2.5 w-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: rec.stage?.color || '#6b7280' }}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground truncate">{rec.pipeline.name}</p>
-                <p className="text-[11px] text-muted-foreground truncate">
-                  {rec.stage?.name} · {formatDate(rec.added_at)}
-                </p>
-              </div>
-              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                <button
-                  onClick={(e) => { e.stopPropagation(); removeFromPipelineMutation.mutate(rec.id); }}
-                  className="p-1 rounded hover:bg-muted"
-                  title="Remove from pipeline"
-                >
-                  <X className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                </button>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-            </button>
-          ))}
-
-          <div className="relative mt-1">
-            <input
-              value={pipelineSearchText}
-              onChange={(e) => setPipelineSearchText(e.target.value)}
-              onFocus={() => setPipelineSearchFocused(true)}
-              placeholder="Add Pipeline Record"
-              className="w-full text-[13px] text-foreground bg-transparent border-0 border-b border-muted-foreground/20 focus:border-[#3b2778] px-0 py-1.5 outline-none placeholder:text-muted-foreground/50 transition-colors"
-            />
-            {pipelineSearchFocused && filteredPipelines.length > 0 && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => { setPipelineSearchFocused(false); setPipelineSearchText(''); }} />
-                <div className="absolute z-50 top-full left-0 mt-1 w-full bg-popover border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto">
-                  {filteredPipelines.map((p: any) => (
-                    <button
-                      key={p.id}
-                      onClick={() => addToPipelineMutation.mutate(p.id)}
-                      className="w-full text-left px-3 py-2 text-[13px] text-foreground hover:bg-muted/50 transition-colors"
-                    >
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </RelatedSection>
+      <PipelineRecordsSection
+        records={pipelineRecords}
+        getRecordRoute={(pipelineName) => getPipelineLeadRoute(pipelineName, person.id)}
+        ownerOptions={teamMembers.map((m) => ({ value: m.id, label: m.name }))}
+        prefill={{
+          opportunity_name: person.name,
+          company_name: person.company_name ?? '',
+          phone: person.phone ?? '',
+          assigned_to: person.assigned_to ?? '',
+        }}
+        linkContacts={[
+          {
+            name: person.name,
+            email: person.email,
+            phone: person.phone,
+            title: person.title,
+            is_primary: true,
+          },
+        ]}
+      />
 
       {/* ── People ── */}
       <RelatedSection label="People" count={1 + relatedPeople.length}>
@@ -1421,6 +1338,7 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
           queryClient.invalidateQueries({ queryKey: ['person-tasks', person.id] });
         }}
       />
+
     </div>
   );
 }

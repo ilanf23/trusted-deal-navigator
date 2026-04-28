@@ -20,6 +20,10 @@ import { formatPhoneNumber } from './InlineEditableFields';
 import { useInlineSave as useSharedInlineSave } from './shared/useInlineSave';
 import { PipelineSelectField } from './PipelineSelectField';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
+import { AddOpportunityDialog } from './AddOpportunityDialog';
+import { useAddOpportunityFromPanel } from './shared/useAddOpportunityFromPanel';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
+import { Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -792,6 +796,13 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
 
   const isLoading = loadingContacts || loadingTasks || loadingMilestones || loadingWaiting;
 
+  const { data: assignableUsers = [] } = useAssignableUsers();
+  const { setOpen: setAddOppOpen, dialogProps: addOppDialogProps } = useAddOpportunityFromPanel({
+    defaultPipeline: 'underwriting',
+    sourceContacts: contacts,
+    ownerOptions: assignableUsers.map((u) => ({ value: u.id, label: u.name })),
+  });
+
   if (isLoading) {
     return (
       <div className="px-5 py-4 space-y-4">
@@ -810,6 +821,17 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
 
   return (
     <div className="px-5 py-4 space-y-1">
+      {/* Add Opportunity (tab-level action) */}
+      <div className="pb-2">
+        <Button
+          type="button"
+          onClick={() => setAddOppOpen(true)}
+          className="h-8 px-3 text-[12px] font-semibold text-white bg-[#3b2778] hover:bg-[#4a3490]"
+        >
+          <Plus className="h-3.5 w-3.5 mr-1" /> Add Opportunity
+        </Button>
+      </div>
+
       {/* People */}
       <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} iconColor="text-blue-500">
         {contacts.length === 0 ? (
@@ -974,6 +996,8 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
           )}
         </div>
       </RelatedSection>
+
+      <AddOpportunityDialog {...addOppDialogProps} />
     </div>
   );
 }

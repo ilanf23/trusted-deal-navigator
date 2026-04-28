@@ -319,7 +319,7 @@ const Dashboard = () => {
         )}
 
         {/* Full-width revenue combo chart */}
-        <RevenueChart evanId={evanId} annualGoal={annualGoal} className="bg-card" />
+        <RevenueChart evanId={evanId} className="bg-card" />
 
         {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

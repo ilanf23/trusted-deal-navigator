@@ -17,7 +17,12 @@ import UnderwritingDetailPanel from '@/components/admin/UnderwritingDetailPanel'
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import { SavedFiltersSidebar, type SavedFilterOption } from '@/components/admin/SavedFiltersSidebar';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import DraggableTh from '@/components/admin/DraggableTh';
+import DraggableColumnsContext from '@/components/admin/DraggableColumnsContext';
+import { makeColumnDragOverlay } from '@/components/admin/columnDragOverlay';
+import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { PipelineTableRow } from '@/components/admin/pipeline/PipelineTableRow';
+import { PIPELINE_COLUMN_HEADERS, PIPELINE_REORDERABLE_COLUMNS, type PipelineColumnKey } from '@/components/admin/pipeline/pipelineColumns';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { useAutoFitColumns, CHAR_W_SM } from '@/hooks/useAutoFitColumns';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
@@ -580,6 +585,11 @@ const Underwriting = () => {
     storageKey: 'uw-col-widths-v4',
   });
 
+  const { orderedKeys: orderedColumnKeys, reorderableKeys: reorderableColumnKeys, handleDragEnd: handleColumnReorder } = useColumnOrder({
+    tableId: 'underwriting',
+    defaultOrder: PIPELINE_REORDERABLE_COLUMNS,
+  });
+
   const { dragged: draggedLead, handleDragStart, handleDragEnd } = useKanbanDrag<FlatPipelineLead>({
     items: filteredAndSorted,
     getGroupKey: (l) => l._stageId,
@@ -733,12 +743,17 @@ const Underwriting = () => {
   // Row padding based on density
   const rowPad = rowDensity === 'comfortable' ? 'py-1.5' : 'py-0.5';
 
-  const ColHeader = ({
+  // Helper function (NOT a React component) — see same pattern in People.tsx.
+  // Defining as a component inside the body would cause unmount/remount on
+  // every parent render, producing a hover flicker under DndContext.
+  const renderColHeader = ({
+    reactKey,
     colKey,
     children,
     className: extraClassName,
     style: extraStyle,
   }: {
+    reactKey?: string;
     colKey?: ColumnKey;
     children: React.ReactNode;
     className?: string;
@@ -749,57 +764,54 @@ const Underwriting = () => {
     const width = columnWidths[widthKey] ?? 120;
     const sortOptions = COLUMN_SORT_OPTIONS[widthKey];
     const isMenuOpen = colMenuOpen === widthKey;
-    return (
-      <th
-        className={`px-4 py-1.5 text-left whitespace-nowrap group/col ${extraClassName ?? ''}`}
-        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
-      >
-        <ResizableColumnHeader
-          columnId={widthKey}
-          currentWidth={`${width}px`}
-          onResize={handleColumnResize}
+    const sortMenu = sortOptions ? (
+      <div className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
+          style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
+          onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
+          onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
         >
-          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
-            {children}
-          </span>
-          {/* Three-dot menu button */}
-          {sortOptions && (
-            <div className="relative ml-auto shrink-0" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+          &#8942;
+        </button>
+        {isMenuOpen && (
+          <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, backgroundColor: '#fff', border: '1px solid #e4dced', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, padding: '4px 0', overflow: 'hidden' }}>
+            {sortOptions.map((opt) => (
               <button
-                onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
-                style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
-                onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
-                onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+                key={`${opt.field}-${opt.dir}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSortField(opt.field);
+                  setSortDir(opt.dir);
+                  setColMenuOpen(null);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
               >
-                &#8942;
+                {opt.dir === 'asc' ? (
+                  <span style={{ color: '#3b2778', fontSize: 16 }}>&#8593;</span>
+                ) : (
+                  <span style={{ color: '#5f6368', fontSize: 16 }}>&#8595;</span>
+                )}
+                <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
               </button>
-              {isMenuOpen && (
-                <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, backgroundColor: '#fff', border: '1px solid #e4dced', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, padding: '4px 0', overflow: 'hidden' }}>
-                  {sortOptions.map((opt) => (
-                    <button
-                      key={`${opt.field}-${opt.dir}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSortField(opt.field);
-                        setSortDir(opt.dir);
-                        setColMenuOpen(null);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
-                    >
-                      {opt.dir === 'asc' ? (
-                        <span style={{ color: '#3b2778', fontSize: 16 }}>&#8593;</span>
-                      ) : (
-                        <span style={{ color: '#5f6368', fontSize: 16 }}>&#8595;</span>
-                      )}
-                      <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </ResizableColumnHeader>
-      </th>
+            ))}
+          </div>
+        )}
+      </div>
+    ) : null;
+    return (
+      <DraggableTh
+        key={reactKey}
+        columnId={widthKey}
+        width={width}
+        onResize={handleColumnResize}
+        draggable={!!colKey}
+        className={extraClassName}
+        style={extraStyle}
+        trailing={sortMenu}
+      >
+        {children}
+      </DraggableTh>
     );
   };
 
@@ -954,58 +966,42 @@ const Underwriting = () => {
                 ) : (
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ backgroundColor: '#eee6f6' }}>
-                      <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                        <div className="shrink-0">
-                          <Checkbox
-                            checked={isAllSelected}
-                            onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
-                            className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
-                          />
-                        </div>
-                        <User className="h-4 w-4" /> Opportunity
-                      </ColHeader>
-                      <ColHeader colKey="company" className="sticky top-0 z-10">
-                        <Landmark className="h-4 w-4" /> Company
-                      </ColHeader>
-                      <ColHeader colKey="contact" className="sticky top-0 z-10">
-                        <User className="h-4 w-4" /> Contact
-                      </ColHeader>
-                      <ColHeader colKey="value" className="sticky top-0 z-10">
-                        <DollarSign className="h-4 w-4" /> Value
-                      </ColHeader>
-                      <ColHeader colKey="ownedBy" className="sticky top-0 z-10">
-                        <User className="h-4 w-4" /> Owner
-                      </ColHeader>
-                      <ColHeader colKey="tasks" className="sticky top-0 z-10">
-                        <CheckSquare className="h-4 w-4" /> Tasks
-                      </ColHeader>
-                      <ColHeader colKey="status" className="sticky top-0 z-10">
-                        <Tag className="h-4 w-4" /> Status
-                      </ColHeader>
-                      <ColHeader colKey="stage" className="sticky top-0 z-10">
-                        <Sparkles className="h-4 w-4" /> Stage
-                      </ColHeader>
-                      <ColHeader colKey="daysInStage" className="sticky top-0 z-10">
-                        <Clock className="h-4 w-4" /> Days
-                      </ColHeader>
-                      <ColHeader colKey="stageUpdated" className="sticky top-0 z-10">
-                        <CalendarDays className="h-4 w-4" /> Updated
-                      </ColHeader>
-                      <ColHeader colKey="lastContacted" className="sticky top-0 z-10">
-                        <CalendarDays className="h-4 w-4" /> Contacted
-                      </ColHeader>
-                      <ColHeader colKey="interactions" className="sticky top-0 z-10">
-                        <MessageSquare className="h-4 w-4" /> Activity
-                      </ColHeader>
-                      <ColHeader colKey="inactiveDays" className="sticky top-0 z-10">
-                        <Moon className="h-4 w-4" /> Dormant
-                      </ColHeader>
-                      <ColHeader colKey="tags" className="sticky top-0 z-10" style={{ borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
-                        <Tag className="h-4 w-4" /> Tags
-                      </ColHeader>
-                      <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
-                    </tr>
+                    <DraggableColumnsContext
+                      items={reorderableColumnKeys.filter(k => columnVisibility[k as ColumnKey])}
+                      onDragEnd={handleColumnReorder}
+                      renderOverlay={makeColumnDragOverlay(PIPELINE_COLUMN_HEADERS, k => columnWidths[k])}
+                    >
+                      <tr style={{ backgroundColor: '#eee6f6' }}>
+                        {renderColHeader({
+                          reactKey: 'opportunity',
+                          className: 'sticky top-0 z-30 group/hdr',
+                          style: { left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
+                          children: (
+                            <>
+                              <div className="shrink-0">
+                                <Checkbox
+                                  checked={isAllSelected}
+                                  onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                                  className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                                />
+                              </div>
+                              <User className="h-4 w-4" /> Opportunity
+                            </>
+                          ),
+                        })}
+                        {(orderedColumnKeys as ColumnKey[]).map((key) => {
+                          const def = PIPELINE_COLUMN_HEADERS[key];
+                          const Icon = def.icon;
+                          return renderColHeader({
+                            reactKey: key,
+                            colKey: key,
+                            className: 'sticky top-0 z-10',
+                            children: (<><Icon className="h-4 w-4" /> {def.label}</>),
+                          });
+                        })}
+                        <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
+                      </tr>
+                    </DraggableColumnsContext>
                   </thead>
                   <tbody>
                     {filteredAndSorted.length === 0 ? (
@@ -1070,6 +1066,7 @@ const Underwriting = () => {
                             tags={lead.tags}
                             columnVisibility={columnVisibility}
                             columnWidths={columnWidths}
+                            orderedKeys={orderedColumnKeys as PipelineColumnKey[]}
                             isDetailSelected={isDetailSelected}
                             isBulkSelected={isBulkSelected}
                             rowPad="py-1.5"

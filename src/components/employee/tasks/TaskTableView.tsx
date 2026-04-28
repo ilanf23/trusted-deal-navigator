@@ -4,9 +4,24 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import DraggableTh from '@/components/admin/DraggableTh';
+import DraggableColumnsContext from '@/components/admin/DraggableColumnsContext';
+import { makeColumnDragOverlay, type ColumnHeaderDef } from '@/components/admin/columnDragOverlay';
+import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { Trash2, Plus, Building2, Calendar, Mail, Phone, User, CheckSquare, ArrowUpRight, Tag, Clock, FileSearch } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+
+type TaskColumnKey = 'type' | 'customer' | 'dueDate' | 'status' | 'priority';
+
+const TASK_REORDERABLE_COLUMNS: TaskColumnKey[] = ['type', 'customer', 'dueDate', 'status', 'priority'];
+
+const TASK_COLUMN_HEADERS: Record<TaskColumnKey, ColumnHeaderDef> = {
+  type:     { icon: Tag,       label: 'Type' },
+  customer: { icon: Building2, label: 'Customer' },
+  dueDate:  { icon: Calendar,  label: 'Due Date' },
+  status:   { icon: Clock,     label: 'Status' },
+  priority: { icon: Tag,       label: 'Priority' },
+};
 
 interface TaskTableViewProps {
   tasks: Task[];
@@ -78,6 +93,11 @@ export const TaskTableView = ({
   const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
     setColumnWidths(prev => ({ ...prev, [columnId]: newWidth }));
   }, []);
+
+  const { orderedKeys: orderedColumnKeys, reorderableKeys: reorderableColumnKeys, handleDragEnd: handleColumnReorder } = useColumnOrder({
+    tableId: 'tasks-table',
+    defaultOrder: TASK_REORDERABLE_COLUMNS,
+  });
 
   const handleAddTask = () => {
     if (!newTaskTitle.trim()) return;
@@ -173,13 +193,15 @@ export const TaskTableView = ({
     );
   };
 
-  // ColHeader — matches People.tsx CRM header style
-  const ColHeader = ({
+  // Helper function (NOT a React component) — see same pattern in People.tsx.
+  const renderColHeader = ({
+    reactKey,
     colKey,
     children,
     className: extraClassName,
     style: extraStyle,
   }: {
+    reactKey?: string;
     colKey?: string;
     children: React.ReactNode;
     className?: string;
@@ -189,91 +211,59 @@ export const TaskTableView = ({
     const width = columnWidths[widthKey] ?? 120;
     const sortOptions = COLUMN_SORT_OPTIONS[widthKey];
     const isMenuOpen = colMenuOpen === widthKey;
-
-    return (
-      <th
-        className={`px-4 py-1.5 text-left whitespace-nowrap group/col transition-colors hover:z-20 ${extraClassName ?? ''}`}
-        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#d8cce8'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
+    const sortMenu = sortOptions ? (
+      <div
+        className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
-        <ResizableColumnHeader
-          columnId={widthKey}
-          currentWidth={`${width}px`}
-          onResize={handleColumnResize}
+        <button
+          onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
+          title="Sort options"
+          style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
+          onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
+          onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
         >
-          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
-            {children}
-          </span>
-          {sortOptions && (
-            <div
-              className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-            >
+          ⋮
+        </button>
+        {isMenuOpen && (
+          <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, backgroundColor: '#fff', border: '1px solid #e4dced', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, padding: '4px 0', overflow: 'hidden' }}>
+            {sortOptions.map((opt) => (
               <button
-                onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
-                title="Sort options"
-                style={{
-                  color: '#202124',
-                  backgroundColor: isMenuOpen ? '#d8cce8' : undefined,
-                  width: 24,
-                  height: 24,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 18,
-                  fontWeight: 'bold',
-                  lineHeight: 1,
+                key={`${opt.field}-${opt.dir}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSortField(opt.field);
+                  setSortDir(opt.dir);
+                  setColMenuOpen(null);
                 }}
-                onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
-                onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
               >
-                ⋮
+                {opt.dir === 'asc' ? (
+                  <span style={{ color: '#3b2778', fontSize: 16 }}>↑</span>
+                ) : (
+                  <span style={{ color: '#5f6368', fontSize: 16 }}>↓</span>
+                )}
+                <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
               </button>
-              {isMenuOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: '100%',
-                    marginTop: 4,
-                    zIndex: 50,
-                    backgroundColor: '#fff',
-                    border: '1px solid #e4dced',
-                    borderRadius: 8,
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                    minWidth: 220,
-                    padding: '4px 0',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {sortOptions.map((opt) => (
-                    <button
-                      key={`${opt.field}-${opt.dir}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSortField(opt.field);
-                        setSortDir(opt.dir);
-                        setColMenuOpen(null);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
-                    >
-                      {opt.dir === 'asc' ? (
-                        <span style={{ color: '#3b2778', fontSize: 16 }}>↑</span>
-                      ) : (
-                        <span style={{ color: '#5f6368', fontSize: 16 }}>↓</span>
-                      )}
-                      <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </ResizableColumnHeader>
-      </th>
+            ))}
+          </div>
+        )}
+      </div>
+    ) : null;
+    return (
+      <DraggableTh
+        key={reactKey}
+        columnId={widthKey}
+        width={width}
+        onResize={handleColumnResize}
+        draggable={widthKey !== 'task'}
+        className={extraClassName}
+        style={extraStyle}
+        trailing={sortMenu}
+      >
+        {children}
+      </DraggableTh>
     );
   };
 
@@ -283,39 +273,47 @@ export const TaskTableView = ({
     <div className="flex-1 overflow-auto">
       <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
         <thead>
-          <tr>
-            {/* Checkbox + Task Name (sticky) */}
-            <ColHeader colKey="task" className="sticky top-0 z-30 group/hdr" style={{ left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-              <div className="shrink-0" title="Select all" onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={isAllSelected}
-                  onCheckedChange={(checked) => {
-                    tasks.forEach(t => {
-                      if (checked && !selectedTasks.has(t.id)) onToggleSelect(t.id);
-                      if (!checked && selectedTasks.has(t.id)) onToggleSelect(t.id);
-                    });
-                  }}
-                  className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
-                />
-              </div>
-              <CheckSquare className="h-4 w-4" /> Task
-            </ColHeader>
-            <ColHeader colKey="type" className="sticky top-0 z-10">
-              <Tag className="h-4 w-4" /> Type
-            </ColHeader>
-            <ColHeader colKey="customer" className="sticky top-0 z-10">
-              <Building2 className="h-4 w-4" /> Customer
-            </ColHeader>
-            <ColHeader colKey="dueDate" className="sticky top-0 z-10">
-              <Calendar className="h-4 w-4" /> Due Date
-            </ColHeader>
-            <ColHeader colKey="status" className="sticky top-0 z-10">
-              <Clock className="h-4 w-4" /> Status
-            </ColHeader>
-            <ColHeader colKey="priority" className="sticky top-0 z-10">
-              <Tag className="h-4 w-4" /> Priority
-            </ColHeader>
-          </tr>
+          <DraggableColumnsContext
+            items={reorderableColumnKeys}
+            onDragEnd={handleColumnReorder}
+            renderOverlay={makeColumnDragOverlay(TASK_COLUMN_HEADERS, k => columnWidths[k])}
+          >
+            <tr>
+              {renderColHeader({
+                reactKey: 'task',
+                colKey: 'task',
+                className: 'sticky top-0 z-30 group/hdr',
+                style: { left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
+                children: (
+                  <>
+                    <div className="shrink-0" title="Select all" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={(checked) => {
+                          tasks.forEach(t => {
+                            if (checked && !selectedTasks.has(t.id)) onToggleSelect(t.id);
+                            if (!checked && selectedTasks.has(t.id)) onToggleSelect(t.id);
+                          });
+                        }}
+                        className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                      />
+                    </div>
+                    <CheckSquare className="h-4 w-4" /> Task
+                  </>
+                ),
+              })}
+              {(orderedColumnKeys as TaskColumnKey[]).map((key) => {
+                const def = TASK_COLUMN_HEADERS[key];
+                const Icon = def.icon;
+                return renderColHeader({
+                  reactKey: key,
+                  colKey: key,
+                  className: 'sticky top-0 z-10',
+                  children: (<><Icon className="h-4 w-4" /> {def.label}</>),
+                });
+              })}
+            </tr>
+          </DraggableColumnsContext>
         </thead>
         <tbody>
           {sortedTasks.length === 0 && !isAddingTask ? (
@@ -389,58 +387,71 @@ export const TaskTableView = ({
                     </div>
                   </td>
 
-                  {/* Type */}
-                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.type, border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
-                    <TaskTypeChip task={task} />
-                  </td>
-
-                  {/* Customer */}
-                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.customer, border: '1px solid #c8bdd6' }}>
-                    {task.lead ? (
-                      <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
-                          <Building2 className="h-3 w-3 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[13px] text-[#202124] dark:text-foreground/80 truncate max-w-[120px] font-medium">{task.lead.name}</p>
-                          {task.lead.company_name && (
-                            <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground truncate max-w-[120px]">{task.lead.company_name}</p>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground/40">—</span>
-                    )}
-                  </td>
-
-                  {/* Due Date */}
-                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.dueDate, border: '1px solid #c8bdd6' }}>
-                    {task.due_date ? (
-                      <span className="text-[12px] text-muted-foreground tabular-nums">
-                        {format(parseISO(task.due_date), 'MMM d, yyyy')}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground/40">—</span>
-                    )}
-                  </td>
-
-                  {/* Status */}
-                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.status, border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
-                    <StatusPill task={task} />
-                  </td>
-
-                  {/* Priority + Delete */}
-                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.priority, border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-between">
-                      {renderPriorityIndicator(task.priority)}
-                      <button
-                        onClick={() => onDeleteTask(task.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
+                  {(orderedColumnKeys as TaskColumnKey[]).map((k) => {
+                    const cellStyle: React.CSSProperties = { width: columnWidths[k], border: '1px solid #c8bdd6' };
+                    switch (k) {
+                      case 'type':
+                        return (
+                          <td key={k} className="px-4 py-1.5 overflow-hidden" style={cellStyle} onClick={(e) => e.stopPropagation()}>
+                            <TaskTypeChip task={task} />
+                          </td>
+                        );
+                      case 'customer':
+                        return (
+                          <td key={k} className="px-4 py-1.5 overflow-hidden" style={cellStyle}>
+                            {task.lead ? (
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                  <Building2 className="h-3 w-3 text-muted-foreground" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-[13px] text-[#202124] dark:text-foreground/80 truncate max-w-[120px] font-medium">{task.lead.name}</p>
+                                  {task.lead.company_name && (
+                                    <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground truncate max-w-[120px]">{task.lead.company_name}</p>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground/40">—</span>
+                            )}
+                          </td>
+                        );
+                      case 'dueDate':
+                        return (
+                          <td key={k} className="px-4 py-1.5 overflow-hidden" style={cellStyle}>
+                            {task.due_date ? (
+                              <span className="text-[12px] text-muted-foreground tabular-nums">
+                                {format(parseISO(task.due_date), 'MMM d, yyyy')}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground/40">—</span>
+                            )}
+                          </td>
+                        );
+                      case 'status':
+                        return (
+                          <td key={k} className="px-4 py-1.5 overflow-hidden" style={cellStyle} onClick={(e) => e.stopPropagation()}>
+                            <StatusPill task={task} />
+                          </td>
+                        );
+                      case 'priority':
+                        return (
+                          <td key={k} className="px-4 py-1.5 overflow-hidden" style={cellStyle} onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between">
+                              {renderPriorityIndicator(task.priority)}
+                              <button
+                                onClick={() => onDeleteTask(task.id)}
+                                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        );
+                      default:
+                        return null;
+                    }
+                  })}
                 </tr>
               );
             })

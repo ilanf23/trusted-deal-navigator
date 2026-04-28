@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Info, Loader2 } from 'lucide-react';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -20,6 +20,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useCrmMutations, type CrmTable, PIPELINE_LABELS } from '@/hooks/usePipelineMutations';
+import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
+import { usePipelineStages } from '@/hooks/usePipelineStages';
+import { buildStageConfig } from '@/utils/pipelineStageConfig';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -28,15 +32,32 @@ import { cn } from '@/lib/utils';
 type StageOption = { id: string; name: string };
 type StageConfigMap = Record<string, { title?: string }>;
 
+export type LinkContact = {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
+  is_primary?: boolean;
+};
+
 export interface AddOpportunityDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Initial / locked pipeline. Required even when allowPipelineSwitch is true (sets the picker default). */
   tableName: CrmTable;
-  stages: StageOption[];
-  stageConfig: StageConfigMap;
+  /** Required for legacy (locked) callers; ignored when allowPipelineSwitch is true (stages load internally). */
+  stages?: StageOption[];
+  /** Required for legacy (locked) callers; ignored when allowPipelineSwitch is true. */
+  stageConfig?: StageConfigMap;
   ownerOptions: { value: string; label: string }[];
   initialStageId?: string;
   onCreated?: (lead: { id: string; name: string }) => void;
+  /** When true, the Pipeline picker is interactive and stages are loaded internally for the selected pipeline. */
+  allowPipelineSwitch?: boolean;
+  /** Form fields to seed once the dialog opens (name/email/phone/company etc.). */
+  prefill?: Partial<NewOpportunityForm>;
+  /** Rows to insert into entity_contacts after the deal is created, linking it to people. */
+  linkContacts?: LinkContact[];
 }
 
 type NewOpportunityForm = {
@@ -145,21 +166,71 @@ export function AddOpportunityDialog({
   ownerOptions,
   initialStageId,
   onCreated,
+  allowPipelineSwitch = false,
+  prefill,
+  linkContacts,
 }: AddOpportunityDialogProps) {
-  const { addLeadToPipeline } = useCrmMutations(tableName);
+  const [activeTable, setActiveTable] = useState<CrmTable>(tableName);
+  const { addLeadToPipeline } = useCrmMutations(activeTable);
   const [form, setForm] = useState<NewOpportunityForm>(BLANK);
 
-  // Reset form every time the dialog opens.
+  // When the picker is enabled, load stages internally for whichever pipeline is selected.
+  // The query is cached forever and shared with pipeline pages, so this is a no-op on warm caches.
+  const { data: pipelineRecord } = useSystemPipelineByName(PIPELINE_LABELS[activeTable]);
+  const { data: loadedStages } = usePipelineStages(
+    allowPipelineSwitch ? pipelineRecord?.id : undefined,
+  );
+  const dynamicStages = useMemo<StageOption[]>(
+    () => (loadedStages ?? []).map((s) => ({ id: s.id, name: s.name })),
+    [loadedStages],
+  );
+  const dynamicStageConfig = useMemo(
+    () => buildStageConfig(loadedStages ?? []),
+    [loadedStages],
+  );
+  const activeStages = useMemo<StageOption[]>(
+    () => (allowPipelineSwitch ? dynamicStages : stages ?? []),
+    [allowPipelineSwitch, dynamicStages, stages],
+  );
+  const activeStageConfig = useMemo<StageConfigMap>(
+    () => (allowPipelineSwitch ? dynamicStageConfig : stageConfig ?? {}),
+    [allowPipelineSwitch, dynamicStageConfig, stageConfig],
+  );
+
+  // Refs for once-per-open data so they don't churn the reset effect.
+  const prefillRef = useRef(prefill);
+  prefillRef.current = prefill;
+  const linkContactsRef = useRef(linkContacts);
+  linkContactsRef.current = linkContacts;
+
+  // On open: reset to BLANK, apply prefill, reset active pipeline to the prop default.
   useEffect(() => {
     if (!open) return;
-    const defaultStage = initialStageId || stages[0]?.id || '';
+    setActiveTable(tableName);
     setForm({
       ...BLANK,
-      stage_id: defaultStage,
-      status: defaultStage,
-      assigned_to: ownerOptions[0]?.value || '',
+      ...(prefillRef.current ?? {}),
+      stage_id: '',
+      status: '',
+      assigned_to: prefillRef.current?.assigned_to || ownerOptions[0]?.value || '',
     });
-  }, [open, initialStageId, stages, ownerOptions]);
+  }, [open, tableName, ownerOptions]);
+
+  // When stages are available (initial load or pipeline switch), pick a default stage
+  // if the current selection isn't valid for the active pipeline.
+  useEffect(() => {
+    if (!open) return;
+    if (activeStages.length === 0) return;
+    setForm((prev) => {
+      const currentIsValid = activeStages.some((s) => s.id === prev.stage_id);
+      if (currentIsValid) return prev;
+      const defaultStage =
+        initialStageId && activeStages.some((s) => s.id === initialStageId)
+          ? initialStageId
+          : activeStages[0].id;
+      return { ...prev, stage_id: defaultStage, status: defaultStage };
+    });
+  }, [open, activeStages, initialStageId]);
 
   const canSubmit = form.opportunity_name.trim().length > 0 && !!form.stage_id;
 
@@ -184,7 +255,7 @@ export function AddOpportunityDialog({
           // DB `name` is NOT NULL — derive from the opportunity name at top.
           name,
           opportunity_name: name,
-          loan_stage: stageConfig[form.stage_id]?.title ?? null,
+          loan_stage: activeStageConfig[form.stage_id]?.title ?? null,
           clx_file_name: form.clx_file_name.trim() || null,
           waiting_on: form.waiting_on.trim() || null,
           tags: tags.length ? tags : null,
@@ -210,7 +281,29 @@ export function AddOpportunityDialog({
       // persisted — there are no matching columns on the pipeline tables yet.
 
       const createdLead = created as { id: string; name: string } | null;
-      toast.success(`"${createdLead?.name ?? name}" added to ${stageConfig[form.stage_id]?.title ?? 'pipeline'}`);
+
+      // Link contacts to the new deal (entity_contacts is the canonical join table —
+      // entity_type matches the pipeline the deal landed in).
+      if (createdLead && linkContactsRef.current?.length) {
+        const rows = linkContactsRef.current.map((c) => ({
+          entity_id: createdLead.id,
+          entity_type: activeTable,
+          name: c.name,
+          email: c.email ?? null,
+          phone: c.phone ?? null,
+          title: c.title ?? null,
+          is_primary: c.is_primary ?? false,
+        }));
+        const { error: linkErr } = await supabase.from('entity_contacts').insert(rows);
+        if (linkErr) {
+          console.error('Failed to link contacts to new opportunity', linkErr);
+          toast.error('Opportunity created, but linking contacts failed');
+        }
+      }
+
+      toast.success(
+        `"${createdLead?.name ?? name}" added to ${activeStageConfig[form.stage_id]?.title ?? 'pipeline'}`,
+      );
       onOpenChange(false);
       if (createdLead) onCreated?.(createdLead);
     } catch {
@@ -246,9 +339,14 @@ export function AddOpportunityDialog({
           {/* Pipeline + Stage (2 cols) */}
           <div className="grid grid-cols-2 gap-3">
             <FieldRow label="Pipeline" htmlFor="opp-pipeline">
-              <Select value={tableName} onValueChange={() => { /* locked */ }}>
-                <SelectTrigger id="opp-pipeline" disabled>
-                  <SelectValue>{PIPELINE_LABELS[tableName]}</SelectValue>
+              <Select
+                value={activeTable}
+                onValueChange={(v) => {
+                  if (allowPipelineSwitch) setActiveTable(v as CrmTable);
+                }}
+              >
+                <SelectTrigger id="opp-pipeline" disabled={!allowPipelineSwitch}>
+                  <SelectValue>{PIPELINE_LABELS[activeTable]}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {(Object.keys(PIPELINE_LABELS) as CrmTable[]).map((t) => (
@@ -269,9 +367,9 @@ export function AddOpportunityDialog({
                   <SelectValue placeholder="Select stage" />
                 </SelectTrigger>
                 <SelectContent>
-                  {stages.map((s) => (
+                  {activeStages.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {stageConfig[s.id]?.title ?? s.name}
+                      {activeStageConfig[s.id]?.title ?? s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -351,9 +449,9 @@ export function AddOpportunityDialog({
                 <SelectValue placeholder="Open" />
               </SelectTrigger>
               <SelectContent>
-                {stages.map((s) => (
+                {activeStages.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {stageConfig[s.id]?.title ?? s.name}
+                    {activeStageConfig[s.id]?.title ?? s.name}
                   </SelectItem>
                 ))}
               </SelectContent>

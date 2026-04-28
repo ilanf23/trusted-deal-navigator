@@ -2,11 +2,10 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  RevenueComboChart,
-  type ComboChartDataPoint,
-  type TimeRange,
-  type Scope,
-} from '@/components/admin/dashboard/RevenueComboChart';
+  RevenueLineChart,
+  type LineChartDataPoint,
+} from '@/components/employee/dashboard/RevenueLineChart';
+import type { TimeRange, Scope } from '@/components/admin/dashboard/RevenueComboChart';
 import { getDealRevenue } from '@/components/admin/dashboard/useDashboardData';
 import {
   format,
@@ -24,7 +23,6 @@ import {
 
 interface RevenueChartProps {
   evanId: string | undefined;
-  annualGoal?: number;
   className?: string;
 }
 
@@ -36,7 +34,7 @@ function deriveGranularity(range: TimeRange): Granularity {
   return 'monthly';
 }
 
-const RevenueChart = ({ evanId, annualGoal = 1500000, className }: RevenueChartProps) => {
+const RevenueChart = ({ evanId, className }: RevenueChartProps) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('ytd');
   const [scope, setScope] = useState<Scope>('company');
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
@@ -59,7 +57,7 @@ const RevenueChart = ({ evanId, annualGoal = 1500000, className }: RevenueChartP
     return Array.from(sources).sort();
   }, [revenueData]);
 
-  const chartData = useMemo((): ComboChartDataPoint[] => {
+  const chartData = useMemo((): LineChartDataPoint[] => {
     if (!revenueData) return [];
 
     const now = new Date();
@@ -74,10 +72,6 @@ const RevenueChart = ({ evanId, annualGoal = 1500000, className }: RevenueChartP
       case 'all': periodStart = new Date(2020, 0, 1); break;
     }
 
-    const periodDurationMs = now.getTime() - periodStart.getTime();
-    const prevStart = new Date(periodStart.getTime() - periodDurationMs);
-    const prevEnd = new Date(periodStart.getTime() - 1);
-
     const filterLeads = (leads: typeof revenueData, start: Date, end: Date) =>
       leads.filter((lead) => {
         if (!lead.won_at) return false;
@@ -89,7 +83,6 @@ const RevenueChart = ({ evanId, annualGoal = 1500000, className }: RevenueChartP
       });
 
     const currentLeads = filterLeads(revenueData, periodStart, now);
-    const previousLeads = filterLeads(revenueData, prevStart, prevEnd);
 
     const getBuckets = (start: Date, end: Date): Date[] => {
       const safeEnd = end > now ? now : end;
@@ -123,8 +116,6 @@ const RevenueChart = ({ evanId, annualGoal = 1500000, className }: RevenueChartP
     if (buckets.length === 0) return [];
 
     const labelFmt = getLabelFormat();
-    const bucketsPerYear = granularity === 'daily' ? 365 : granularity === 'weekly' ? 52 : 12;
-    const goalPerBucket = annualGoal / bucketsPerYear;
 
     const aggregateBucket = (leads: typeof revenueData, bStart: Date, bEnd: Date) =>
       leads
@@ -134,32 +125,23 @@ const RevenueChart = ({ evanId, annualGoal = 1500000, className }: RevenueChartP
         })
         .reduce((sum, l) => sum + getDealRevenue(l), 0);
 
-    const prevBuckets = getBuckets(prevStart, prevEnd);
-    const prevBucketRevenues = prevBuckets.map((bStart) =>
-      aggregateBucket(previousLeads, bStart, getBucketEnd(bStart)),
-    );
-
     let cumulative = 0;
-    let prevCumulative = 0;
 
-    return buckets.map((bStart, i) => {
+    return buckets.map((bStart) => {
       const bEnd = getBucketEnd(bStart);
       const revenue = Math.round(aggregateBucket(currentLeads, bStart, bEnd));
       cumulative += revenue;
-      prevCumulative += Math.round(prevBucketRevenues[i] || 0);
 
       return {
-        label: format(bStart, labelFmt),
-        revenue,
+        date: bStart,
         cumulative,
-        target: Math.round(goalPerBucket * (i + 1)),
-        previous: prevCumulative,
+        label: format(bStart, labelFmt),
       };
     });
-  }, [revenueData, timeRange, scope, evanId, selectedSources, annualGoal]);
+  }, [revenueData, timeRange, scope, evanId, selectedSources]);
 
   return (
-    <RevenueComboChart
+    <RevenueLineChart
       data={chartData}
       isLoading={isLoading}
       timeRange={timeRange}

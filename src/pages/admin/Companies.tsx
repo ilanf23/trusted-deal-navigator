@@ -1,5 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
+import DraggableTh from '@/components/admin/DraggableTh';
+import DraggableColumnsContext from '@/components/admin/DraggableColumnsContext';
+import { makeColumnDragOverlay, type ColumnHeaderDef } from '@/components/admin/columnDragOverlay';
+import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { usePageDatabases } from '@/hooks/usePageDatabases';
 import { useNavigate } from 'react-router-dom';
@@ -137,6 +141,24 @@ const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
 ];
 
 type ColumnKey = 'phone' | 'contact' | 'deals' | 'website' | 'contactType' | 'emailDomain' | 'lastActivity' | 'interactions' | 'inactiveDays' | 'tags';
+
+const REORDERABLE_COMPANIES_COLUMNS: ColumnKey[] = [
+  'phone', 'contact', 'deals', 'website', 'contactType',
+  'emailDomain', 'lastActivity', 'interactions', 'inactiveDays', 'tags',
+];
+
+const COMPANIES_COLUMN_HEADERS: Record<ColumnKey, ColumnHeaderDef> = {
+  phone:        { icon: Phone,         label: 'Phone' },
+  contact:      { icon: User,          label: 'Contact' },
+  deals:        { icon: DollarSign,    label: 'Deals' },
+  website:      { icon: Globe,         label: 'Website' },
+  contactType:  { icon: Tag,           label: 'Type' },
+  emailDomain:  { icon: AtSign,        label: 'Email Domain' },
+  lastActivity: { icon: CalendarDays,  label: 'Last Activity' },
+  interactions: { icon: MessageSquare, label: 'Activity' },
+  inactiveDays: { icon: Moon,          label: 'Dormant' },
+  tags:         { icon: Tag,           label: 'Tags' },
+};
 
 const COLUMN_LABELS: Record<ColumnKey, string> = {
   phone: 'Phone',
@@ -600,6 +622,15 @@ const Companies = () => {
     storageKey: 'companies-col-widths-v2',
   });
 
+  const { orderedKeys: orderedColumnKeys, reorderableKeys: reorderableColumnKeys, handleDragEnd: handleColumnReorder } = useColumnOrder({
+    tableId: 'companies',
+    defaultOrder: REORDERABLE_COMPANIES_COLUMNS,
+  });
+  const visibleOrderedKeys = useMemo(
+    () => (orderedColumnKeys as ColumnKey[]).filter(k => columnVisibility[k]),
+    [orderedColumnKeys, columnVisibility],
+  );
+
   function handleColSort(field: SortField) {
     if (sortField === field) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -616,12 +647,15 @@ const Companies = () => {
   // Row padding based on density
   const rowPad = rowDensity === 'comfortable' ? 'py-1.5' : 'py-0.5';
 
-  const ColHeader = ({
+  // Helper function (NOT a React component) — see same pattern in People.tsx.
+  const renderColHeader = ({
+    reactKey,
     colKey,
     children,
     className: extraClassName,
     style: extraStyle,
   }: {
+    reactKey?: string;
     colKey?: ColumnKey;
     children: React.ReactNode;
     className?: string;
@@ -632,57 +666,54 @@ const Companies = () => {
     const width = columnWidths[widthKey] ?? 120;
     const sortOptions = COLUMN_SORT_OPTIONS[widthKey];
     const isMenuOpen = colMenuOpen === widthKey;
-    return (
-      <th
-        className={`px-4 py-1.5 text-left whitespace-nowrap group/col ${extraClassName ?? ''}`}
-        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
-      >
-        <ResizableColumnHeader
-          columnId={widthKey}
-          currentWidth={`${width}px`}
-          onResize={handleColumnResize}
+    const sortMenu = sortOptions ? (
+      <div className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
+          style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
+          onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
+          onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
         >
-          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
-            {children}
-          </span>
-          {/* Three-dot menu button — inline so it's never hidden */}
-          {sortOptions && (
-            <div className="relative ml-auto shrink-0" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+          ⋮
+        </button>
+        {isMenuOpen && (
+          <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, backgroundColor: '#fff', border: '1px solid #e4dced', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, padding: '4px 0', overflow: 'hidden' }}>
+            {sortOptions.map((opt) => (
               <button
-                onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
-                style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
-                onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
-                onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+                key={`${opt.field}-${opt.dir}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSortField(opt.field);
+                  setSortDir(opt.dir);
+                  setColMenuOpen(null);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
               >
-                ⋮
+                {opt.dir === 'asc' ? (
+                  <span style={{ color: '#3b2778', fontSize: 16 }}>↑</span>
+                ) : (
+                  <span style={{ color: '#5f6368', fontSize: 16 }}>↓</span>
+                )}
+                <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
               </button>
-              {isMenuOpen && (
-                <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, backgroundColor: '#fff', border: '1px solid #e4dced', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, padding: '4px 0', overflow: 'hidden' }}>
-                  {sortOptions.map((opt) => (
-                    <button
-                      key={`${opt.field}-${opt.dir}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSortField(opt.field);
-                        setSortDir(opt.dir);
-                        setColMenuOpen(null);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
-                    >
-                      {opt.dir === 'asc' ? (
-                        <span style={{ color: '#3b2778', fontSize: 16 }}>↑</span>
-                      ) : (
-                        <span style={{ color: '#5f6368', fontSize: 16 }}>↓</span>
-                      )}
-                      <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </ResizableColumnHeader>
-      </th>
+            ))}
+          </div>
+        )}
+      </div>
+    ) : null;
+    return (
+      <DraggableTh
+        key={reactKey}
+        columnId={widthKey}
+        width={width}
+        onResize={handleColumnResize}
+        draggable={!!colKey}
+        className={extraClassName}
+        style={extraStyle}
+        trailing={sortMenu}
+      >
+        {children}
+      </DraggableTh>
     );
   };
 
@@ -851,43 +882,32 @@ const Companies = () => {
               <div className="flex-1 overflow-auto">
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ backgroundColor: '#eee6f6' }}>
-                      <th className="w-12 pl-2 pr-4 py-1.5 text-center sticky top-0 left-0 z-30" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6' }} />
-                      <ColHeader className="sticky top-0 z-30" style={{ left: 48, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
-                        <Building2 className="h-4 w-4" /> Company
-                      </ColHeader>
-                      <ColHeader colKey="phone" className="sticky top-0 z-10">
-                        <Phone className="h-4 w-4" /> Phone
-                      </ColHeader>
-                      <ColHeader colKey="contact" className="sticky top-0 z-10">
-                        <User className="h-4 w-4" /> Contact
-                      </ColHeader>
-                      <ColHeader colKey="deals" className="sticky top-0 z-10">
-                        <DollarSign className="h-4 w-4" /> Deals
-                      </ColHeader>
-                      <ColHeader colKey="website" className="sticky top-0 z-10">
-                        <Globe className="h-4 w-4" /> Website
-                      </ColHeader>
-                      <ColHeader colKey="contactType" className="sticky top-0 z-10">
-                        <Tag className="h-4 w-4" /> Type
-                      </ColHeader>
-                      <ColHeader colKey="emailDomain" className="sticky top-0 z-10">
-                        <AtSign className="h-4 w-4" /> Email Domain
-                      </ColHeader>
-                      <ColHeader colKey="lastActivity" className="sticky top-0 z-10">
-                        <CalendarDays className="h-4 w-4" /> Last Activity
-                      </ColHeader>
-                      <ColHeader colKey="interactions" className="sticky top-0 z-10">
-                        <MessageSquare className="h-4 w-4" /> Activity
-                      </ColHeader>
-                      <ColHeader colKey="inactiveDays" className="sticky top-0 z-10">
-                        <Moon className="h-4 w-4" /> Dormant
-                      </ColHeader>
-                      <ColHeader colKey="tags" className="sticky top-0 z-10" style={{ borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
-                        <Tag className="h-4 w-4" /> Tags
-                      </ColHeader>
-                      <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
-                    </tr>
+                    <DraggableColumnsContext
+                      items={reorderableColumnKeys.filter(k => columnVisibility[k as ColumnKey])}
+                      onDragEnd={handleColumnReorder}
+                      renderOverlay={makeColumnDragOverlay(COMPANIES_COLUMN_HEADERS, k => columnWidths[k])}
+                    >
+                      <tr style={{ backgroundColor: '#eee6f6' }}>
+                        <th className="w-12 pl-2 pr-4 py-1.5 text-center sticky top-0 left-0 z-30" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6' }} />
+                        {renderColHeader({
+                          reactKey: 'company',
+                          className: 'sticky top-0 z-30',
+                          style: { left: 48, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 },
+                          children: (<><Building2 className="h-4 w-4" /> Company</>),
+                        })}
+                        {visibleOrderedKeys.map((key) => {
+                          const def = COMPANIES_COLUMN_HEADERS[key];
+                          const Icon = def.icon;
+                          return renderColHeader({
+                            reactKey: key,
+                            colKey: key,
+                            className: 'sticky top-0 z-10',
+                            children: (<><Icon className="h-4 w-4" /> {def.label}</>),
+                          });
+                        })}
+                        <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
+                      </tr>
+                    </DraggableColumnsContext>
                   </thead>
                   <tbody>
                     {isLoading ? (
@@ -900,16 +920,19 @@ const Companies = () => {
                               <Skeleton className="h-3.5 w-36" />
                             </div>
                           </td>
-                          {columnVisibility.phone && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.contact && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.deals && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.website && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-32 rounded" /></td>}
-                          {columnVisibility.contactType && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
-                          {columnVisibility.emailDomain && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-28 rounded" /></td>}
-                          {columnVisibility.lastActivity && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.interactions && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.inactiveDays && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.tags && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                          {visibleOrderedKeys.map((k) => {
+                            const skel: Record<ColumnKey, string> = {
+                              phone: 'h-3.5 w-24 rounded', contact: 'h-3.5 w-24 rounded', deals: 'h-3.5 w-8 rounded',
+                              website: 'h-3.5 w-32 rounded', contactType: 'h-5 w-20 rounded-full',
+                              emailDomain: 'h-3.5 w-28 rounded', lastActivity: 'h-3.5 w-20 rounded',
+                              interactions: 'h-3.5 w-8 rounded', inactiveDays: 'h-3.5 w-10 rounded', tags: 'h-3.5 w-16 rounded',
+                            };
+                            return (
+                              <td key={k} className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}>
+                                <Skeleton className={skel[k]} />
+                              </td>
+                            );
+                          })}
                         </tr>
                       ))
                     ) : filteredAndSorted.length === 0 ? (
@@ -983,135 +1006,125 @@ const Companies = () => {
                               </div>
                             </td>
 
-                            {/* Phone */}
-                            {columnVisibility.phone && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.phone, border: '1px solid #c8bdd6' }}>
-                                {company.phone ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{company.phone}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Contact */}
-                            {columnVisibility.contact && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
-                                {company.contact_name ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{company.contact_name}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Deals */}
-                            {columnVisibility.deals && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.deals, border: '1px solid #c8bdd6' }}>
-                                {company.deals_count > 0 ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
-                                    {company.deals_count}
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">0</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Website */}
-                            {columnVisibility.website && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.website, border: '1px solid #c8bdd6' }}>
-                                {company.website ? (
-                                  <a
-                                    href={company.website}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full hover:underline"
-                                    onClick={e => e.stopPropagation()}
-                                  >
-                                    {company.website.replace(/^https?:\/\//, '')}
-                                  </a>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Contact Type */}
-                            {columnVisibility.contactType && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}>
-                                {typeCfg ? (
-                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${typeCfg.bg} ${typeCfg.color}`}>
-                                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${typeCfg.dot}`} />
-                                    {typeCfg.label}
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{company.contact_type}</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Email Domain */}
-                            {columnVisibility.emailDomain && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.emailDomain, border: '1px solid #c8bdd6' }}>
-                                {company.email_domain ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{company.email_domain}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Last Activity */}
-                            {columnVisibility.lastActivity && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.lastActivity, border: '1px solid #c8bdd6' }}>
-                                {formatShortDate(company.last_activity_at) ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{formatShortDate(company.last_activity_at)}</span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Interactions (derived from deals_count) */}
-                            {columnVisibility.interactions && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
-                                {company.deals_count > 0 ? (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
-                                    {company.deals_count}
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">0</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Inactive Days */}
-                            {columnVisibility.inactiveDays && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{inactiveDaysVal}d</span>
-                              </td>
-                            )}
-
-                            {/* Tags */}
-                            {columnVisibility.tags && (
-                              <td className="px-3 py-1.5 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
-                                {company.tags && company.tags.length > 0 ? (
-                                  <span className="flex items-center gap-1 flex-wrap">
-                                    {company.tags.slice(0, 2).map((tag) => (
-                                      <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
-                                        {tag}
-                                      </span>
-                                    ))}
-                                    {company.tags.length > 2 && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">+{company.tags.length - 2}</span>
-                                    )}
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
+                            {visibleOrderedKeys.map((k) => {
+                              const cellStyle: React.CSSProperties = { width: columnWidths[k], border: '1px solid #c8bdd6' };
+                              const cellClass = 'px-3 py-1.5 overflow-hidden';
+                              const dashPill = (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
+                              );
+                              switch (k) {
+                                case 'phone':
+                                  return (
+                                    <td key={k} className={cellClass} style={cellStyle}>
+                                      {company.phone ? (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{company.phone}</span>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                case 'contact':
+                                  return (
+                                    <td key={k} className={cellClass} style={cellStyle}>
+                                      {company.contact_name ? (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{company.contact_name}</span>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                case 'deals':
+                                  return (
+                                    <td key={k} className={cellClass} style={cellStyle}>
+                                      {company.deals_count > 0 ? (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
+                                          {company.deals_count}
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">0</span>
+                                      )}
+                                    </td>
+                                  );
+                                case 'website':
+                                  return (
+                                    <td key={k} className={cellClass} style={cellStyle}>
+                                      {company.website ? (
+                                        <a
+                                          href={company.website}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full hover:underline"
+                                          onClick={e => e.stopPropagation()}
+                                        >
+                                          {company.website.replace(/^https?:\/\//, '')}
+                                        </a>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                case 'contactType':
+                                  return (
+                                    <td key={k} className={cellClass} style={cellStyle}>
+                                      {typeCfg ? (
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${typeCfg.bg} ${typeCfg.color}`}>
+                                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${typeCfg.dot}`} />
+                                          {typeCfg.label}
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{company.contact_type}</span>
+                                      )}
+                                    </td>
+                                  );
+                                case 'emailDomain':
+                                  return (
+                                    <td key={k} className={cellClass} style={cellStyle}>
+                                      {company.email_domain ? (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{company.email_domain}</span>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                case 'lastActivity':
+                                  return (
+                                    <td key={k} className={cellClass} style={cellStyle}>
+                                      {formatShortDate(company.last_activity_at) ? (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground truncate max-w-full">{formatShortDate(company.last_activity_at)}</span>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                case 'interactions':
+                                  return (
+                                    <td key={k} className={cellClass} style={cellStyle}>
+                                      {company.deals_count > 0 ? (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">
+                                          {company.deals_count}
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">0</span>
+                                      )}
+                                    </td>
+                                  );
+                                case 'inactiveDays':
+                                  return (
+                                    <td key={k} className={cellClass} style={cellStyle}>
+                                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-[#202124] dark:text-foreground">{inactiveDaysVal}d</span>
+                                    </td>
+                                  );
+                                case 'tags':
+                                  return (
+                                    <td key={k} className={cellClass} style={cellStyle}>
+                                      {company.tags && company.tags.length > 0 ? (
+                                        <span className="flex items-center gap-1 flex-wrap">
+                                          {company.tags.slice(0, 2).map((tag) => (
+                                            <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
+                                              {tag}
+                                            </span>
+                                          ))}
+                                          {company.tags.length > 2 && (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">+{company.tags.length - 2}</span>
+                                          )}
+                                        </span>
+                                      ) : dashPill}
+                                    </td>
+                                  );
+                                default:
+                                  return null;
+                              }
+                            })}
 
                             {/* Detail arrow */}
                             <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }}>

@@ -14,10 +14,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/address-autocomplete';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import {
   ArrowLeft, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, CheckSquare, FileText,
-  CalendarDays, Layers, Plus,
+  CalendarDays, Layers, List, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle,
   User, Mail, Phone, PhoneCall, Tag, Briefcase, Loader2,
   Linkedin, Check, Upload, Download, Trash2, FolderOpen, AtSign, MapPin, Send, X, Copy, Globe, Eye,
@@ -278,6 +279,17 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   todo: { icon: CheckSquare, color: 'text-muted-foreground' },
   type_change: { icon: Layers, color: 'text-violet-500' },
 };
+
+// Filterable activity types shown in the "Earlier" Filters dropdown.
+// Types not listed here (todo, type_change, comment, etc.) always show.
+const TIMELINE_TYPE_FILTERS = [
+  { label: 'Notes',           value: 'note',           icon: Pencil },
+  { label: 'Emails',          value: 'email',          icon: Mail },
+  { label: 'Phone Calls',     value: 'call',           icon: Phone },
+  { label: 'Meetings',        value: 'meeting',        icon: Users },
+  { label: 'SMSs',            value: 'sms',            icon: MessageSquare },
+  { label: 'Calendar Events', value: 'calendar_event', icon: CalendarDays },
+] as const;
 
 // ── Available extra fields for "Add new field" ──
 const EXTRA_FIELD_OPTIONS: { field: string; label: string }[] = [
@@ -1168,6 +1180,11 @@ export default function PeopleExpandedView() {
   const [savingActivity, setSavingActivity] = useState(false);
   const [activityDropdownOpen, setActivityDropdownOpen] = useState(false);
 
+  // Timeline filter state — checked types are visible
+  const [selectedTimelineTypes, setSelectedTimelineTypes] = useState<Set<string>>(
+    () => new Set(TIMELINE_TYPE_FILTERS.map((f) => f.value))
+  );
+
   // Custom contact types
   const [contactTypeDropdownOpen, setContactTypeDropdownOpen] = useState(false);
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false);
@@ -1294,6 +1311,15 @@ export default function PeopleExpandedView() {
     },
     enabled: !!personId,
   });
+
+  // Filter timeline by selected activity types. Types not in the filterable set always show.
+  const filteredActivities = useMemo(() => {
+    return (activities as any[]).filter((act) => {
+      const t = act.activity_type;
+      if (!TIMELINE_TYPE_FILTERS.some((f) => f.value === t)) return true;
+      return selectedTimelineTypes.has(t);
+    });
+  }, [activities, selectedTimelineTypes]);
 
   const { data: tasks = [] } = useQuery({
     queryKey: ['person-tasks', personId],
@@ -2615,10 +2641,81 @@ export default function PeopleExpandedView() {
               </div>
 
               {/* Activity timeline */}
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
+              <div className="flex items-center justify-between mb-4 gap-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Earlier</h3>
+                <div className="flex items-center gap-3">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs font-semibold text-foreground hover:text-violet-700 transition-colors"
+                      >
+                        <span>Filters ({filteredActivities.length})</span>
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-64 p-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allSelected = selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length;
+                          setSelectedTimelineTypes(
+                            allSelected ? new Set() : new Set(TIMELINE_TYPE_FILTERS.map((f) => f.value))
+                          );
+                        }}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                      >
+                        <List className="h-4 w-4 text-muted-foreground" />
+                        <span className="flex-1 text-left text-sm text-foreground">All Activities</span>
+                        <div
+                          className={`w-4 h-4 rounded flex items-center justify-center ${
+                            selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length
+                              ? 'bg-violet-600 text-white'
+                              : 'border border-slate-300'
+                          }`}
+                        >
+                          {selectedTimelineTypes.size === TIMELINE_TYPE_FILTERS.length && (
+                            <Check className="h-3 w-3" />
+                          )}
+                        </div>
+                      </button>
+                      <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-t border-border">
+                        Default Filters
+                      </div>
+                      {TIMELINE_TYPE_FILTERS.map((f) => {
+                        const Icon = f.icon;
+                        const isSelected = selectedTimelineTypes.has(f.value);
+                        return (
+                          <button
+                            key={f.value}
+                            type="button"
+                            onClick={() => {
+                              const next = new Set(selectedTimelineTypes);
+                              if (next.has(f.value)) next.delete(f.value);
+                              else next.add(f.value);
+                              setSelectedTimelineTypes(next);
+                            }}
+                            className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                          >
+                            <Icon className="h-4 w-4 text-foreground" />
+                            <span className="flex-1 text-left text-sm text-foreground">{f.label}</span>
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center ${
+                                isSelected ? 'bg-violet-600 text-white' : 'border border-slate-300'
+                              }`}
+                            >
+                              {isSelected && <Check className="h-3 w-3" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
               <div className="space-y-3 pb-5">
-                {activities.length > 0 ? (
-                  activities.map((act: any) => {
+                {filteredActivities.length > 0 ? (
+                  filteredActivities.map((act: any) => {
                     const typeInfo = ACTIVITY_TYPE_ICONS[act.activity_type] ?? ACTIVITY_TYPE_ICONS.note;
                     const IconComp = typeInfo.icon;
 
