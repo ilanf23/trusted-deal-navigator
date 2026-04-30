@@ -1,5 +1,6 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from '../_shared/supabase.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
+import { requireAdmin } from '../_shared/auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,61 +16,17 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    // --- 1. Extract caller identity from JWT ---
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      console.error('Admin-update-user: missing or invalid Authorization header')
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    })
-
-    const token = authHeader.replace('Bearer ', '')
-    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token)
-
-    if (claimsError || !claimsData?.claims?.sub) {
-      console.error('Admin-update-user: invalid JWT -', claimsError?.message)
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const callerId = claimsData.claims.sub as string
-
-    // --- 2. Verify caller is admin via team_members table ---
     const supabaseAdmin = createClient(
-      supabaseUrl,
+      Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    const { data: roleData } = await supabaseAdmin
-      .from('users')
-      .select('app_role')
-      .eq('user_id', callerId)
-      .in('app_role', ['admin', 'super_admin'])
-      .maybeSingle()
+    const authResult = await requireAdmin(req, supabaseAdmin, { corsHeaders })
+    if (!authResult.ok) return authResult.response
 
     const { user_id, email, password } = await req.json()
 
-    if (!roleData) {
-      console.error(`Admin-update-user: FORBIDDEN - caller=${callerId} target=${user_id} at=${new Date().toISOString()}`)
-      return new Response(
-        JSON.stringify({ error: 'Forbidden: admin role required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // --- 3. Existing update logic ---
     if (!user_id) {
       return new Response(
         JSON.stringify({ error: 'user_id is required' }),

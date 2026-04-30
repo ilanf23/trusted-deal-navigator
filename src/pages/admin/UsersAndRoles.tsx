@@ -135,6 +135,11 @@ const UsersAndRoles = () => {
     },
   });
 
+  const currentUserIsSuperAdmin = useMemo(
+    () => users?.some((u) => u.user_id === user?.id && u.role === 'super_admin') ?? false,
+    [users, user?.id],
+  );
+
   // Derived data
   const filteredAndSortedUsers = useMemo(() => {
     if (!users) return [];
@@ -333,12 +338,14 @@ const UsersAndRoles = () => {
           <div className="flex gap-2 ml-auto">
             {(['super_admin', 'admin', 'partner'] as AppRole[]).map((role) => {
               const cfg = ROLE_CONFIG[role];
+              const blockedBySuperAdminRule = role === 'super_admin' && !currentUserIsSuperAdmin;
               return (
                 <Button
                   key={role}
                   size="sm"
                   variant="outline"
                   className="text-xs"
+                  disabled={blockedBySuperAdminRule}
                   onClick={() => {
                     toast({
                       title: 'Bulk role change',
@@ -473,13 +480,15 @@ const UsersAndRoles = () => {
                                 const cfg = ROLE_CONFIG[role];
                                 const Icon = cfg.icon;
                                 const isCurrent = u.role === role;
+                                const isSuperAdminOp = role === 'super_admin' || u.role === 'super_admin';
+                                const blockedBySuperAdminRule = isSuperAdminOp && !currentUserIsSuperAdmin;
                                 return (
                                   <Button
                                     key={role}
                                     size="sm"
                                     variant={isCurrent ? 'default' : 'ghost'}
                                     className={`h-7 px-2 text-xs ${isCurrent ? '' : 'opacity-60 hover:opacity-100'}`}
-                                    disabled={isCurrent || u.user_id === user?.id}
+                                    disabled={isCurrent || u.user_id === user?.id || blockedBySuperAdminRule}
                                     onClick={() => handleRoleChange(u.user_id, u.email, role)}
                                   >
                                     <Icon className="w-3 h-3 mr-0.5" />
@@ -502,10 +511,12 @@ const UsersAndRoles = () => {
                                 {(['super_admin', 'admin', 'partner'] as AppRole[]).map((role) => {
                                   const cfg = ROLE_CONFIG[role];
                                   const Icon = cfg.icon;
+                                  const isSuperAdminOp = role === 'super_admin' || u.role === 'super_admin';
+                                  const blockedBySuperAdminRule = isSuperAdminOp && !currentUserIsSuperAdmin;
                                   return (
                                     <DropdownMenuItem
                                       key={role}
-                                      disabled={u.role === role || u.user_id === user?.id}
+                                      disabled={u.role === role || u.user_id === user?.id || blockedBySuperAdminRule}
                                       onClick={() => handleRoleChange(u.user_id, u.email, role)}
                                     >
                                       <Icon className={`w-3.5 h-3.5 mr-2 ${cfg.color}`} />
@@ -572,10 +583,12 @@ const UsersAndRoles = () => {
                           {(['super_admin', 'admin', 'partner'] as AppRole[]).map((role) => {
                             const cfg = ROLE_CONFIG[role];
                             const Icon = cfg.icon;
+                            const isSuperAdminOp = role === 'super_admin' || u.role === 'super_admin';
+                            const blockedBySuperAdminRule = isSuperAdminOp && !currentUserIsSuperAdmin;
                             return (
                               <DropdownMenuItem
                                 key={role}
-                                disabled={u.role === role || u.user_id === user?.id}
+                                disabled={u.role === role || u.user_id === user?.id || blockedBySuperAdminRule}
                                 onClick={() => handleRoleChange(u.user_id, u.email, role)}
                               >
                                 <Icon className={`w-3.5 h-3.5 mr-2 ${cfg.color}`} />

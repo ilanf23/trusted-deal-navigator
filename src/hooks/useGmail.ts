@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { gmailActionToFunction } from '@/lib/gmailRouter';
 
 export interface GmailMessage {
   id: string;
@@ -37,7 +38,8 @@ export function useGmail() {
     const authHeader = await getAuthHeader();
     if (!authHeader) throw new Error('Not authenticated');
 
-    const url = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-api`);
+    const fnName = gmailActionToFunction(action);
+    const url = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fnName}`);
     url.searchParams.set('action', action);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {

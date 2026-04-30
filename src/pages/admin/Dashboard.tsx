@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { useEmployeeUIState } from '@/contexts/EmployeeUIStateContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { Loader2, Kanban, Phone, Mail, Calendar, Building2, RefreshCw } from 'lucide-react';
+import { BarChart3, Check, Filter, Loader2, Kanban, Phone, Mail, Calendar, Building2, RefreshCw, Waves } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -19,7 +20,7 @@ import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { usePageDatabases } from '@/hooks/usePageDatabases';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDashboardData, getDealRevenue, type TimePeriod } from '@/components/admin/dashboard/useDashboardData';
+import { useDashboardData, getDealRevenue, type ChannelDateBasis, type TimePeriod } from '@/components/admin/dashboard/useDashboardData';
 import { CompactKPITile, CompactKPITileSkeleton } from '@/components/admin/dashboard/CompactKPITile';
 import { ChannelActivityChart, ChannelActivityChartSkeleton } from '@/components/admin/dashboard/ChannelActivityChart';
 import { PipelineStageBar, PipelineStageBarSkeleton, type PipelineStageData } from '@/components/admin/dashboard/PipelineStageBar';
@@ -67,6 +68,26 @@ const getGreeting = (firstName: string) => {
   return `Good evening, ${firstName}`;
 };
 
+const CHANNEL_DATE_BASIS_OPTIONS: Array<{ value: ChannelDateBasis; label: string; description: string }> = [
+  {
+    value: 'created_at',
+    label: 'Created Date',
+    description: 'Group by when opportunities entered the CRM.',
+  },
+  {
+    value: 'won_at',
+    label: 'Actual Close Date',
+    description: 'Group by when deals actually closed.',
+  },
+];
+
+const CHANNEL_DATE_BASIS_LABELS: Record<ChannelDateBasis, string> = {
+  created_at: 'created date',
+  won_at: 'actual close date',
+};
+
+type ChannelChartType = 'area' | 'bar';
+
 const Dashboard = () => {
   const { teamMember } = useTeamMember();
   usePageDatabases([
@@ -81,14 +102,30 @@ const Dashboard = () => {
   const persisted = getPageState('dashboard', {
     timePeriod: 'ytd' as TimePeriod,
     chartPeriod: 'ytd' as TimePeriod,
+    channelDateBasis: 'created_at' as ChannelDateBasis,
+    channelChartType: 'area' as ChannelChartType,
     calcLoanAmount: '500000',
     calcExtraDeals: '0',
   });
 
   const [timePeriod, setTimePeriodLocal] = useState<TimePeriod>(persisted.timePeriod);
+  const [channelDateBasis, setChannelDateBasisLocal] = useState<ChannelDateBasis>(
+    persisted.channelDateBasis === 'won_at' ? 'won_at' : 'created_at',
+  );
+  const [channelChartType, setChannelChartTypeLocal] = useState<ChannelChartType>(
+    persisted.channelChartType === 'bar' ? 'bar' : 'area',
+  );
   const setTimePeriod = useCallback((v: TimePeriod) => {
     setTimePeriodLocal(v);
     setPageState('dashboard', { timePeriod: v, chartPeriod: v });
+  }, [setPageState]);
+  const setChannelDateBasis = useCallback((v: ChannelDateBasis) => {
+    setChannelDateBasisLocal(v);
+    setPageState('dashboard', { channelDateBasis: v });
+  }, [setPageState]);
+  const setChannelChartType = useCallback((v: ChannelChartType) => {
+    setChannelChartTypeLocal(v);
+    setPageState('dashboard', { channelChartType: v });
   }, [setPageState]);
 
   const { setPageTitle, setSearchComponent } = useAdminTopBar();
@@ -125,7 +162,7 @@ const Dashboard = () => {
     pipelineData, fundedLeads,
     isLoading, isFetching,
     annualGoal, periodOverPeriod, activityHeatmapData, channelActivityData, sparklineData, heatmapLoading,
-  } = useDashboardData(timePeriod, teamMember?.id);
+  } = useDashboardData(timePeriod, teamMember?.id, channelDateBasis);
 
   const firstName = teamMember?.name || 'Team';
   const evanId = teamMember?.id;
@@ -230,6 +267,83 @@ const Dashboard = () => {
     return { totalRevenue, totalDeals, pipelineValue, pipelineDeals, periodGoal, goalProgress };
   }, [fundedLeads, pipelineData, timePeriod, annualGoal]);
 
+  const channelFilterAction = (
+    <div className="flex items-center gap-2">
+      <div className="inline-flex h-8 rounded-full border border-border bg-background p-0.5">
+        <button
+          type="button"
+          onClick={() => setChannelChartType('area')}
+          aria-pressed={channelChartType === 'area'}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors',
+            channelChartType === 'area' && 'bg-primary text-primary-foreground shadow-sm',
+          )}
+        >
+          <Waves className="h-3.5 w-3.5" />
+          Area
+        </button>
+        <button
+          type="button"
+          onClick={() => setChannelChartType('bar')}
+          aria-pressed={channelChartType === 'bar'}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors',
+            channelChartType === 'bar' && 'bg-primary text-primary-foreground shadow-sm',
+          )}
+        >
+          <BarChart3 className="h-3.5 w-3.5" />
+          Bar
+        </button>
+      </div>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 rounded-full px-3 text-xs"
+          >
+            <Filter className="h-3.5 w-3.5" />
+            {CHANNEL_DATE_BASIS_OPTIONS.find(option => option.value === channelDateBasis)?.label ?? 'Date Basis'}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-3" align="end">
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-medium">Chart x-axis</p>
+              <p className="text-xs text-muted-foreground">
+                The range follows the dashboard {timePeriod.toUpperCase()} period.
+              </p>
+            </div>
+            <div className="space-y-1">
+              {CHANNEL_DATE_BASIS_OPTIONS.map((option) => {
+                const active = option.value === channelDateBasis;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setChannelDateBasis(option.value)}
+                    className={cn(
+                      'flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-muted',
+                      active && 'bg-primary/10 text-primary hover:bg-primary/10',
+                    )}
+                  >
+                    <span className="mt-0.5 flex h-4 w-4 items-center justify-center">
+                      {active && <Check className="h-3.5 w-3.5" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-xs font-medium">{option.label}</span>
+                      <span className="block text-[11px] text-muted-foreground">{option.description}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+
   return (
     <EmployeeLayout>
       <div className="-m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 bg-muted/40 dark:bg-background min-h-[calc(100vh-4rem)]">
@@ -325,7 +439,17 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left column: heatmap + pipeline bar + nudges + top actions */}
           <div className="lg:col-span-2 space-y-4">
-            {isLoading ? <ChannelActivityChartSkeleton className="bg-card" /> : <ChannelActivityChart data={channelActivityData} title="Activity by Channel" className="bg-card" isLoading={heatmapLoading} />}
+            {isLoading ? <ChannelActivityChartSkeleton className="bg-card" /> : (
+              <ChannelActivityChart
+                data={channelActivityData}
+                title="Deal Size by Channel"
+                subtitle={`Grouped by ${CHANNEL_DATE_BASIS_LABELS[channelDateBasis]} · ${timePeriod.toUpperCase()}`}
+                headerAction={channelFilterAction}
+                className="bg-card"
+                isLoading={heatmapLoading}
+                chartType={channelChartType}
+              />
+            )}
             {isLoading ? <PipelineStageBarSkeleton className="bg-card" /> : <PipelineStageBar stages={pipelineStages} className="bg-card" />}
             <NudgesWidget evanId={evanId} />
             <TopActions evanId={evanId} />

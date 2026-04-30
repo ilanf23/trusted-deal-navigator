@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,11 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, ListTodo } from 'lucide-react';
+import { Plus, Trash2, ListTodo, Filter, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useSavedTaskFilters, findFilterById } from '@/hooks/useSavedTaskFilters';
+import { applyTaskFilter } from '@/components/employee/tasks/savedFilters/applyTaskFilter';
+import { useTeamMember } from '@/hooks/useTeamMember';
+import type { Task as FullTask } from '@/components/employee/tasks/types';
 
-interface Task {
+interface WidgetTask {
   id: string;
   title: string;
   description: string | null;
@@ -23,25 +28,36 @@ interface Task {
 export const TasksWidget = () => {
   const [newTask, setNewTask] = useState('');
   const queryClient = useQueryClient();
+  const { teamMember } = useTeamMember();
+  const { filters, defaultFilterId } = useSavedTaskFilters();
+  const activeFilter = useMemo(
+    () => findFilterById(filters, defaultFilterId),
+    [filters, defaultFilterId],
+  );
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
-    queryFn: async () => {
+    queryFn: async (): Promise<WidgetTask[]> => {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .order('is_completed', { ascending: true })
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as Task[];
+      return data as WidgetTask[];
     },
   });
 
+  const filteredTasks = useMemo<WidgetTask[]>(() => {
+    if (!activeFilter) return tasks;
+    return applyTaskFilter(tasks as unknown as FullTask[], activeFilter.criteria, {
+      currentUserId: teamMember?.id ?? null,
+    }) as unknown as WidgetTask[];
+  }, [tasks, activeFilter, teamMember?.id]);
+
   const addTask = useMutation({
     mutationFn: async (title: string) => {
-      const { error } = await supabase
-        .from('tasks')
-        .insert({ title });
+      const { error } = await supabase.from('tasks').insert({ title });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -54,10 +70,7 @@ export const TasksWidget = () => {
 
   const toggleTask = useMutation({
     mutationFn: async ({ id, is_completed }: { id: string; is_completed: boolean }) => {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ is_completed })
-        .eq('id', id);
+      const { error } = await supabase.from('tasks').update({ is_completed }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
@@ -65,10 +78,7 @@ export const TasksWidget = () => {
 
   const deleteTask = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('tasks').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -90,13 +100,29 @@ export const TasksWidget = () => {
     low: 'bg-muted text-muted-foreground',
   };
 
+  const tasksHref = activeFilter ? `/admin/tasks?filterId=${activeFilter.id}` : '/admin/tasks';
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <ListTodo className="h-5 w-5 text-primary" />
-          Tasks
-        </CardTitle>
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <ListTodo className="h-5 w-5 text-primary" />
+            Tasks
+          </CardTitle>
+          <Button asChild variant="ghost" size="sm" className="h-7 -mr-2 text-xs text-muted-foreground hover:text-foreground">
+            <Link to={tasksHref}>
+              View all
+              <ArrowRight className="h-3 w-3 ml-1" />
+            </Link>
+          </Button>
+        </div>
+        {activeFilter && (
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-1">
+            <Filter className="h-3 w-3" />
+            Filter: <span className="font-medium text-foreground">{activeFilter.name}</span>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="flex-1 flex flex-col min-h-0">
         <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
@@ -114,10 +140,12 @@ export const TasksWidget = () => {
         <div className="flex-1 overflow-y-auto space-y-2">
           {isLoading ? (
             <div className="text-center text-muted-foreground py-4">Loading...</div>
-          ) : tasks.length === 0 ? (
-            <div className="text-center text-muted-foreground py-4">No tasks yet</div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="text-center text-muted-foreground py-4">
+              {activeFilter ? `No tasks match "${activeFilter.name}"` : 'No tasks yet'}
+            </div>
           ) : (
-            tasks.map((task) => (
+            filteredTasks.map((task) => (
               <div
                 key={task.id}
                 className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${

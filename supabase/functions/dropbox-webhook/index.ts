@@ -1,4 +1,6 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '../_shared/supabase.ts';
+import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { constantTimeEquals } from '../_shared/timingSafeEqual.ts';
 
 const DROPBOX_APP_SECRET = Deno.env.get('DROPBOX_APP_SECRET')!;
 
@@ -12,6 +14,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimited = await enforceRateLimit(req, 'dropbox-webhook', 300, 60);
+  if (rateLimited) return rateLimited;
 
   // GET: Dropbox webhook verification
   if (req.method === 'GET') {
@@ -51,7 +56,7 @@ Deno.serve(async (req) => {
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 
-      if (signature !== expectedSignature) {
+      if (!constantTimeEquals(signature, expectedSignature)) {
         console.error('Invalid webhook signature');
         return new Response('Invalid signature', { status: 403 });
       }

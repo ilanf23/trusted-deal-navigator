@@ -1,5 +1,6 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { requireAdmin } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -612,11 +613,6 @@ async function handleSearchContent(body: any, supabase: any) {
   return { results, count: results.length };
 }
 
-// --- Admin role cache ---
-
-const adminRoleCache = new Map<string, { isAdmin: boolean; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
 // --- Main handler ---
 
 Deno.serve(async (req) => {
@@ -628,62 +624,11 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     // Create Supabase client with service role for DB operations
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Create client with user's auth header for JWT validation
-    const supabaseAnon = createClient(
-      SUPABASE_URL,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    // Verify JWT using getUser (getClaims can return null in edge environments)
-    const token = authHeader.replace('Bearer ', '');
-    const { data: userData, error: authError } = await supabaseAnon.auth.getUser(token);
-
-    if (authError || !userData?.user) {
-      console.error('Auth error:', authError);
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const userId = userData.user.id;
-
-    // Check admin role cache first
-    const cachedRole = adminRoleCache.get(userId);
-    let isAdmin = false;
-
-    if (cachedRole && (Date.now() - cachedRole.timestamp) < CACHE_TTL) {
-      isAdmin = cachedRole.isAdmin;
-    } else {
-      const { data: roleData } = await supabaseAdmin
-        .from('users')
-        .select('app_role')
-        .eq('user_id', userId)
-        .in('app_role', ['admin', 'super_admin'])
-        .maybeSingle();
-
-      isAdmin = !!roleData;
-      adminRoleCache.set(userId, { isAdmin, timestamp: Date.now() });
-    }
-
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: 'Admin access required' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const authResult = await requireAdmin(req, supabaseAdmin, { corsHeaders });
+    if (!authResult.ok) return authResult.response;
 
     // Parse request body - action comes from body
     let body: any = {};

@@ -1,8 +1,10 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { verifyTwilioSignature } from '../_shared/twilioSignature.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Content-Type': 'application/xml',
   'Cache-Control': 'no-store',
@@ -25,15 +27,6 @@ function escapeXml(str: string): string {
     .replace(/>/g, '&gt;')
     .replace(/'/g, '&apos;')
     .replace(/"/g, '&quot;');
-}
-
-/** Read a comma-separated environment variable into a trimmed string array. */
-function parseCsvEnv(key: string): string[] {
-  const raw = Deno.env.get(key) || '';
-  return raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
 }
 
 /** Generate a unique flow ID for correlating all events in a single call flow. */
@@ -146,37 +139,61 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Rate limit in background — don't block TwiML response for Twilio webhooks
-  waitUntil(
-    enforceRateLimit(req, 'twilio-inbound', 300, 60).then((resp) => {
-      if (resp) console.warn('[twilio-inbound] Rate limit would have blocked:', resp.status);
-    })
-  );
+  // Verify the Twilio signature BEFORE doing any DB work. HMAC-SHA1 is sub-millisecond
+  // and rejects unauthenticated POSTs that would otherwise trigger active_calls inserts
+  // and lookups (see issue #78). The helper consumes the request body and hands back a
+  // URLSearchParams — do NOT call req.formData() afterward, the body is gone.
+  const verified = await verifyTwilioSignature(req, corsHeaders);
+  if (!verified.ok) return verified.response;
+  const params = verified.params;
 
-  let callSid = '';
-  let fromNumber = '';
-  let toNumber = '';
-  let rawParams: Record<string, string> | undefined;
+  // Synchronous rate limit. A valid Twilio signature is itself a throttle, but this
+  // is a defense-in-depth bound on per-IP request rate.
+  const rateLimited = await enforceRateLimit(req, 'twilio-inbound', 300, 60);
+  if (rateLimited) return rateLimited;
 
-  try {
-    const formData = await req.formData().catch(() => null);
-    callSid = formData?.get('CallSid')?.toString() || '';
-    fromNumber = formData?.get('From')?.toString() || '';
-    toNumber = formData?.get('To')?.toString() || '';
-    rawParams = formData
-      ? Object.fromEntries([...formData.entries()].map(([k, v]) => [k, String(v)]))
-      : undefined;
-  } catch {
-    // ignore
-  }
+  const callSid = params.get('CallSid') ?? '';
+  const fromNumber = params.get('From') ?? '';
+  const toNumber = params.get('To') ?? '';
+  const rawParams: Record<string, string> = Object.fromEntries(params.entries());
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const statusCallbackUrl = supabaseUrl ? `${supabaseUrl}/functions/v1/twilio-call-status` : undefined;
-  const clientIdentities = parseCsvEnv('TWILIO_INBOUND_CLIENT_IDENTITIES');
   const fallbackNumber = Deno.env.get('TWILIO_FALLBACK_NUMBER') || '';
   const callerId = Deno.env.get('TWILIO_PHONE_NUMBER') || '';
 
-  const resolvedClients = clientIdentities.length ? clientIdentities : ['clx-admin'];
+  // Resolve the Twilio Client identity by looking up which user owns the dialed
+  // Twilio number. Each calling-enabled user has a unique identity (clx-admin-<userId>),
+  // so an inbound call only rings the browser of the rep whose number was dialed.
+  // If the lookup fails or no row matches, dial no client — fallback number / voicemail
+  // still cover the call.
+  let resolvedClients: string[] = [];
+  if (supabaseUrl && supabaseServiceKey && toNumber) {
+    try {
+      const sbLookup = createClient(supabaseUrl, supabaseServiceKey);
+      const normalizedTo = toNumber.replace(/\D/g, '').slice(-10);
+      const { data: ownerRows, error: ownerErr } = await sbLookup
+        .from('users')
+        .select('id, twilio_phone_number')
+        .not('twilio_phone_number', 'is', null);
+      if (ownerErr) {
+        console.error('[twilio-inbound] users lookup error:', ownerErr.message);
+      } else if (ownerRows) {
+        const owner = ownerRows.find(
+          (row) => (row.twilio_phone_number ?? '').replace(/\D/g, '').slice(-10) === normalizedTo
+        );
+        if (owner) {
+          resolvedClients = [`clx-admin-${owner.id}`];
+        } else {
+          console.warn('[twilio-inbound] no user owns dialed number:', toNumber);
+        }
+      }
+    } catch (err) {
+      console.error('[twilio-inbound] users lookup threw:', err);
+    }
+  }
+
   const dialTimeoutSeconds = 45;
 
   // CRITICAL: Prevent recursive loop — if the fallback number is the same as
@@ -244,6 +261,56 @@ Deno.serve(async (req) => {
     routingDecision,
   };
 
+  // Synchronously create the communications row keyed on call_sid before
+  // returning TwiML. Post-call webhooks (twilio-call-status recording action,
+  // twilio-transcription) look up by call_sid; without this the row would not
+  // exist until end-of-call and those handlers would fall back to fuzzy
+  // matching against unrelated calls. See issue #80.
+  //
+  // Failure here is non-fatal — TwiML still returns so the call connects.
+  // Reuses the supabaseUrl/supabaseServiceKey already pulled earlier in this handler.
+  let resolvedLeadId: string | null = null;
+  const sb = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null;
+
+  if (sb && callSid) {
+    try {
+      if (fromNumber) {
+        const normalized = fromNumber.replace(/\D/g, '').slice(-10);
+        const { data: phoneMatch } = await sb
+          .from('entity_phones')
+          .select('entity_id')
+          .ilike('phone_number', `%${normalized}`)
+          .limit(1)
+          .maybeSingle();
+        if (phoneMatch) {
+          resolvedLeadId = phoneMatch.entity_id;
+        }
+      }
+
+      // Idempotent: Twilio retries on TwiML 5xx become no-ops via the partial
+      // unique index on communications.call_sid.
+      const { error: commErr } = await sb
+        .from('communications')
+        .upsert(
+          {
+            call_sid: callSid,
+            communication_type: 'call',
+            direction: 'inbound',
+            phone_number: fromNumber,
+            status: 'ringing',
+            lead_id: resolvedLeadId,
+            content: 'Incoming call - ringing',
+          },
+          { onConflict: 'call_sid', ignoreDuplicates: true },
+        );
+      if (commErr) {
+        console.error('[twilio-inbound] communications upsert failed (non-fatal):', commErr);
+      }
+    } catch (err) {
+      console.error('[twilio-inbound] communications upsert threw (non-fatal):', err);
+    }
+  }
+
   waitUntil(
     (async () => {
       try {
@@ -251,35 +318,17 @@ Deno.serve(async (req) => {
       } catch (err) {
         console.error('Failed to persist provider boundary log:', err);
       }
-      // Insert into active_calls so the frontend can detect the inbound call via realtime
-      try {
-        const supabaseUrl = Deno.env.get('SUPABASE_URL');
-        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-        if (supabaseUrl && supabaseKey && callSid) {
-          const sb = createClient(supabaseUrl, supabaseKey);
-
-          // Try to match the caller to a lead by phone number
-          let leadId: string | null = null;
-          if (fromNumber) {
-            const normalized = fromNumber.replace(/\D/g, '').slice(-10);
-            const { data: phoneMatch } = await sb
-              .from('entity_phones')
-              .select('entity_id')
-              .ilike('phone_number', `%${normalized}`)
-              .limit(1)
-              .maybeSingle();
-            if (phoneMatch) {
-              leadId = phoneMatch.entity_id;
-            }
-          }
-
+      // Insert into active_calls so the frontend can detect the inbound call via realtime.
+      // active_calls is realtime-UI plumbing; brief lag is tolerable, so this stays async.
+      if (sb && callSid) {
+        try {
           const { error: insertErr } = await sb.from('active_calls').insert({
             call_sid: callSid,
             from_number: fromNumber,
             to_number: toNumber,
             direction: 'inbound',
             status: 'ringing',
-            lead_id: leadId,
+            lead_id: resolvedLeadId,
             call_flow_id: callFlowId,
             webhook_timestamp: webhookTimestamp,
           });
@@ -288,9 +337,9 @@ Deno.serve(async (req) => {
           } else {
             console.log('Inserted active_call for inbound call:', callSid);
           }
+        } catch (err) {
+          console.error('Failed to insert active_call:', err);
         }
-      } catch (err) {
-        console.error('Failed to insert active_call:', err);
       }
     })()
   );

@@ -86,7 +86,7 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
       });
       if (fetchPhotos) params.set('fetchPhotos', 'true');
 
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/gmail-api?${params}`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/gmail-mailbox?${params}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
@@ -165,7 +165,7 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
       const session = await getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/gmail-api?action=send`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/gmail-write?action=send`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -194,7 +194,7 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
       }
 
       const callbackUrl = getGmailCallbackUrl(callbackPrefix);
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/gmail-api?action=get-oauth-url`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/gmail-auth?action=get-oauth-url`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,

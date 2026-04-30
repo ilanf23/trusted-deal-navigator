@@ -1,7 +1,7 @@
 // Stops an active Google Drive file-change watch.
 // Called when the SheetEditor unmounts.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getValidSheetsAccessToken } from '../_shared/googleTokenRefresh.ts';
 
@@ -74,6 +74,7 @@ Deno.serve(async (req) => {
       .from('sheets_connections')
       .update({
         drive_watch_channel_id: null,
+        drive_watch_channel_token: null,
         drive_watch_resource_id: null,
         drive_watch_expiry: null,
         drive_watch_spreadsheet_id: null,

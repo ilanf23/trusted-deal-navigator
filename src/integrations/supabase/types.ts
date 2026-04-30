@@ -3895,6 +3895,50 @@ export type Database = {
         }
         Relationships: []
       }
+      task_saved_filters: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          criteria: Json
+          description: string | null
+          id: string
+          name: string
+          position: number
+          updated_at: string | null
+          visibility: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          criteria?: Json
+          description?: string | null
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string | null
+          visibility?: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          criteria?: Json
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string | null
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_saved_filters_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_activities: {
         Row: {
           activity_type: string
@@ -4459,6 +4503,7 @@ export type Database = {
           state: string | null
           time_format: string | null
           timezone: string | null
+          twilio_phone_number: string | null
           updated_at: string
           user_id: string | null
           zip_code: string | null
@@ -4488,6 +4533,7 @@ export type Database = {
           state?: string | null
           time_format?: string | null
           timezone?: string | null
+          twilio_phone_number?: string | null
           updated_at?: string
           user_id?: string | null
           zip_code?: string | null
@@ -4517,6 +4563,7 @@ export type Database = {
           state?: string | null
           time_format?: string | null
           timezone?: string | null
+          twilio_phone_number?: string | null
           updated_at?: string
           user_id?: string | null
           zip_code?: string | null

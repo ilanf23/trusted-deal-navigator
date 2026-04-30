@@ -27,7 +27,7 @@
 - `manage-user-role` — manage roles: admin, super_admin, client, partner (3/60s)
 
 ### AI Assistants
-- `evan-ai-assistant` — merged assistant + agent executor. Uses OpenAI.
+- `ai-assistant` — merged assistant + agent executor. Uses OpenAI. Resolves the calling team member from the JWT.
 - `lead-ai-assistant` — lead-specific assistant with activity context (10/60s)
 - `ai-email-chat` — AI email chat for leads. Builds lead context from questionnaire/rate_watch data (10/60s)
 - `lender-program-assistant` — match leads to lender programs via OpenAI (10/60s)
@@ -45,7 +45,10 @@
 - `retry-call-transcription` — retry failed transcriptions via Whisper
 
 ### Gmail & Email
-- `gmail-api` — Gmail API wrapper with token refresh. OAuth callback handling.
+- `gmail-auth` — OAuth callback, get-oauth-url, status, disconnect (30/60s). Issues #84 split.
+- `gmail-mailbox` — Read ops: list, get, get-attachment, list-drafts-count, labels (120/60s). Issue #84 split.
+- `gmail-write` — Mutations: send, archive, trash, mark-read, create-draft (60/60s). Issue #84 split.
+- Shared helpers in `_shared/gmail/api.ts` (token validation, MIME builders, message ops).
 - `generate-lead-email` — AI-generated contextual emails for leads (60/60s)
 - `call-to-lead-automation` — automate lead follow-up after calls (email drafts via Resend/Gmail)
 - `send-prequalification-email` — send questionnaire emails with unique token URLs (60/60s)
@@ -53,7 +56,7 @@
 ### Newsletter
 - `send-newsletter` — bulk send via Resend with click/open tracking pixel injection (60/60s)
 - `newsletter-track` — tracking pixel + link redirect. Bot detection for accurate metrics (300/60s)
-- `newsletter-webhook` — Resend webhook events: delivered, opened, clicked (300/60s)
+- `newsletter-webhook` — Resend webhook events (delivered, opened, clicked, bounced, complained, unsubscribed). Svix HMAC-SHA256 signature verified via `_shared/svixSignature.ts` against `RESEND_WEBHOOK_SECRET`; 5-min replay window (300/60s)
 
 ### Dropbox (4 functions)
 - `dropbox-auth` — OAuth flow, token storage in `dropbox_connections` (60/60s)

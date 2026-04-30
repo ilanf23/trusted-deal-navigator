@@ -1,5 +1,6 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { verifyTwilioSignature } from '../_shared/twilioSignature.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,23 +8,33 @@ const corsHeaders = {
   'Content-Type': 'application/xml',
 };
 
-// This endpoint handles TwiML for outbound calls and conference joins
+// This endpoint handles TwiML for outbound calls and conference joins.
+// Invoked by Twilio (not the browser directly) when the SDK Device.connect()
+// requests TwiML from this TwiML-application URL — so requests are signed.
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Verify Twilio signature first — sub-millisecond HMAC check that rejects
+  // unauthenticated POSTs (issues #78, #2/#3). The helper consumes the body
+  // and returns URLSearchParams; do not call req.formData() afterward.
+  const verified = await verifyTwilioSignature(req, corsHeaders);
+  if (!verified.ok) return verified.response;
+  const params = verified.params;
 
   const rateLimitResponse = await enforceRateLimit(req, 'twilio-voice', 300, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const url = new URL(req.url);
-    const formData = await req.formData().catch(() => null);
-    
-    // Get the "To" number from the request
+
+    // Get the "To" number — Twilio includes both query params and body params
+    // in the signed canonical string, so both are protected by the check above.
     let toNumber = url.searchParams.get('To') || '';
-    if (formData) {
-      toNumber = formData.get('To')?.toString() || toNumber;
+    const bodyTo = params.get('To');
+    if (bodyTo) {
+      toNumber = bodyTo;
     }
 
     const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER');

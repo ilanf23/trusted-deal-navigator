@@ -1,7 +1,7 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "../_shared/supabase.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { getGmailAccessTokenForUser } from "../_shared/gmailToken.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,63 +18,6 @@ interface RequestBody {
   callDirection: string;
   callDate: string;
   teamMemberId?: string;
-}
-
-async function getEvanGmailAccessToken(supabase: ReturnType<typeof createClient>): Promise<{ accessToken: string; email: string } | null> {
-  try {
-    const { data: connections, error } = await supabase
-      .from('gmail_connections')
-      .select('access_token, email, refresh_token, token_expiry')
-      .limit(1);
-
-    if (error || !connections || connections.length === 0) {
-      return null;
-    }
-
-    const conn = connections[0];
-    const expiry = new Date(conn.token_expiry);
-    const now = new Date();
-
-    if (expiry.getTime() - now.getTime() > 5 * 60 * 1000) {
-      return { accessToken: conn.access_token, email: conn.email };
-    }
-
-    // Refresh the token
-    const clientId = Deno.env.get('GOOGLE_CLIENT_ID') || '';
-    const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET') || '';
-
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: conn.refresh_token,
-        grant_type: 'refresh_token',
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('Gmail token refresh failed:', await response.text());
-      return null;
-    }
-
-    const data = await response.json();
-    const newExpiry = new Date(Date.now() + data.expires_in * 1000).toISOString();
-
-    await supabase
-      .from('gmail_connections')
-      .update({
-        access_token: data.access_token,
-        token_expiry: newExpiry,
-      })
-      .eq('email', conn.email);
-
-    return { accessToken: data.access_token, email: conn.email };
-  } catch (err) {
-    console.error('Error getting Gmail access token:', err);
-    return null;
-  }
 }
 
 async function createGmailDraft(
@@ -117,7 +60,7 @@ async function createGmailDraft(
   }
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -138,6 +81,32 @@ serve(async (req) => {
     const { leadId, communicationId, leadName, leadEmail, leadPhone, transcript, callDirection, callDate, teamMemberId } = body;
 
     console.log("Processing call-to-lead automation for:", leadName);
+
+    // Resolve the rep (team member) who owned this call. Prefer the explicit
+    // teamMemberId from the request body; fall back to the communication
+    // record's user_id when present. Used for: which Gmail account drafts the
+    // follow-up, and which name to display in notification copy.
+    let repTeamMemberId: string | null = teamMemberId ?? null;
+    if (!repTeamMemberId && communicationId) {
+      const { data: commRow } = await supabase
+        .from('communications')
+        .select('user_id')
+        .eq('id', communicationId)
+        .maybeSingle();
+      repTeamMemberId = (commRow?.user_id as string | undefined) ?? null;
+    }
+
+    let repName = 'Our team';
+    if (repTeamMemberId) {
+      const { data: rep } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', repTeamMemberId)
+        .maybeSingle();
+      if (rep?.name && (rep.name as string).trim().length > 0) {
+        repName = rep.name as string;
+      }
+    }
 
     let callRating = 5;
     let ratingReasoning = "No transcript available for analysis.";
@@ -213,7 +182,7 @@ Respond with a JSON object (no markdown) with these exact fields:
       }
     }
 
-    // Step 2: Create a follow-up task in Evan's Tasks
+    // Step 2: Create a follow-up task assigned to the call's rep
     console.log("Creating follow-up task...");
     
     const taskDueDate = new Date();
@@ -240,7 +209,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
         status: 'todo',
         due_date: taskDueDate.toISOString(),
         group_name: 'To Do',
-        user_id: teamMemberId || null,
+        user_id: repTeamMemberId,
         tags: ['follow-up', 'new-lead', 'phone-call'],
       })
       .select()
@@ -260,32 +229,36 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
       });
     }
 
-    // Step 3: Create Gmail draft for Evan if lead has email
+    // Step 3: Create Gmail draft from the call rep's Gmail account if lead has email
     let gmailDraftCreated = false;
-    
+
     if (followUpEmailContent && leadEmail) {
-      console.log("Creating Gmail draft for Evan...");
-      
-      const gmailCreds = await getEvanGmailAccessToken(supabase);
-      
-      if (gmailCreds) {
-        try {
-          gmailDraftCreated = await createGmailDraft(
-            gmailCreds.accessToken,
-            gmailCreds.email,
-            leadEmail,
-            followUpEmailSubject,
-            followUpEmailContent
-          );
-          
-          if (gmailDraftCreated) {
-            console.log("Gmail draft created successfully");
-          }
-        } catch (draftError) {
-          console.error("Failed to create Gmail draft:", draftError);
-        }
+      if (!repTeamMemberId) {
+        console.log("No rep team member id resolved for this call — skipping Gmail draft");
       } else {
-        console.log("Evan's Gmail not connected - skipping draft creation");
+        console.log(`Creating Gmail draft for ${repName}...`);
+
+        const gmailCreds = await getGmailAccessTokenForUser(supabase, repTeamMemberId);
+
+        if (gmailCreds) {
+          try {
+            gmailDraftCreated = await createGmailDraft(
+              gmailCreds.accessToken,
+              gmailCreds.email,
+              leadEmail,
+              followUpEmailSubject,
+              followUpEmailContent
+            );
+
+            if (gmailDraftCreated) {
+              console.log("Gmail draft created successfully");
+            }
+          } catch (draftError) {
+            console.error("Failed to create Gmail draft:", draftError);
+          }
+        } else {
+          console.log(`${repName}'s Gmail not connected - skipping draft creation`);
+        }
       }
     }
 
@@ -310,8 +283,8 @@ ${followUpEmailContent}`;
         .eq('id', leadId);
     }
 
-    // Step 5: Send rating notification email to Adam and Brad
-    console.log("Sending rating notification to Adam and Brad...");
+    // Step 5: Send rating notification email to founders (owner role)
+    console.log("Sending rating notification to founders...");
 
     const ratingEmoji = callRating >= 8 ? '🌟' : callRating >= 6 ? '👍' : callRating >= 4 ? '📊' : '⚠️';
     const ratingColor = callRating >= 8 ? '#22c55e' : callRating >= 6 ? '#3b82f6' : callRating >= 4 ? '#f59e0b' : '#ef4444';
@@ -338,7 +311,7 @@ ${followUpEmailContent}`;
   <div class="container">
     <div class="header">
       <h1 style="margin: 0;">${ratingEmoji} New Call Rating</h1>
-      <p style="margin: 10px 0 0 0; opacity: 0.9;">Evan just completed a call with a new lead</p>
+      <p style="margin: 10px 0 0 0; opacity: 0.9;">${repName} just completed a call with a new lead</p>
     </div>
     <div class="content">
       <div class="rating-box">
@@ -400,22 +373,36 @@ ${followUpEmailContent}`;
       console.log("Notification saved:", notification.id);
     }
 
-    // Send to Adam and Brad via email
-    const ILAN_EMAIL = Deno.env.get("ILAN_EMAIL") || "ilan@maverich.ai";
-    const ADAM_EMAIL = Deno.env.get("ADAM_EMAIL") || "adam@company.com";
-    const recipients = [ADAM_EMAIL, ILAN_EMAIL];
+    // Resolve founder recipients from the users table — never hardcode names.
+    const { data: owners, error: ownersError } = await supabase
+      .from('users')
+      .select('email')
+      .eq('is_owner', true)
+      .eq('is_active', true);
 
-    try {
-      const emailResult = await resend.emails.send({
-        from: "CLX CRM <onboarding@resend.dev>",
-        to: recipients,
-        subject: `${ratingEmoji} Evan's Call Rating: ${callRating}/10 - ${leadName}`,
-        html: notificationHtml,
-      });
+    if (ownersError) {
+      console.error("Failed to load founder recipients:", ownersError);
+    }
 
-      console.log("Rating notification sent:", emailResult);
-    } catch (emailError) {
-      console.error("Failed to send rating email:", emailError);
+    const recipients = (owners ?? [])
+      .map((row) => (row.email as string | null) ?? '')
+      .filter((email) => email.length > 0);
+
+    if (recipients.length === 0) {
+      console.warn("No active founder emails found — skipping rating notification email");
+    } else {
+      try {
+        const emailResult = await resend.emails.send({
+          from: "CLX CRM <onboarding@resend.dev>",
+          to: recipients,
+          subject: `${ratingEmoji} ${repName}'s Call Rating: ${callRating}/10 - ${leadName}`,
+          html: notificationHtml,
+        });
+
+        console.log("Rating notification sent:", emailResult);
+      } catch (emailError) {
+        console.error("Failed to send rating email:", emailError);
+      }
     }
 
     return new Response(

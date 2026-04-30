@@ -40,7 +40,7 @@ const InboxCallback = () => {
         const redirectUri = `${window.location.origin}/admin/inbox/callback`;
         
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-api?action=oauth-callback&code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(redirectUri)}`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-auth?action=oauth-callback&code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(redirectUri)}`,
           {
             method: 'GET',
             headers: {

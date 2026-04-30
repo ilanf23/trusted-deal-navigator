@@ -71,11 +71,13 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const queryClient = useQueryClient();
   
-  // Use stable role-based check instead of fragile name comparison.
-  // Any authenticated admin can initialize the Twilio Device.
-  // The twilio-token edge function enforces server-side authorization.
-  const isCallEnabled = isAdmin && !!user;
-  
+  // Calling is gated per-user on a configured Twilio number. An admin without
+  // twilio_phone_number is not registered to any Twilio Client identity and must not
+  // see incoming-call popups, initialize a Device, or attempt outbound calls.
+  // The twilio-token edge function enforces the same gate server-side.
+  const hasTwilioPhone = !!teamMember?.twilio_phone_number;
+  const isCallEnabled = isAdmin && !!user && hasTwilioPhone;
+
   // Keep isEvan in the context type for backward compat, mapped to isCallEnabled
   const isEvan = isCallEnabled;
   
@@ -557,13 +559,41 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     
     // Initial fetch for any ringing calls - process buffered calls
     const fetchRingingCalls = async () => {
-      const { data, error } = await supabase
+      // Note: `active_calls.lead_id` has no FK constraint declared in the schema,
+      // and there is no `leads` table — names live on `people`. So we can't use a
+      // PostgREST embed (`select('*, leads(name)')` returns 400). Instead we fetch
+      // the call rows, then resolve names from `people` in a second query and
+      // merge them into the legacy `leads: { name }` shape that consumers expect.
+      const { data: rows, error } = await supabase
         .from('active_calls')
-        .select('*, leads(name)')
+        .select('*')
         .eq('status', 'ringing')
         .eq('direction', 'inbound')
         .order('created_at', { ascending: false });
-      
+
+      let data: ActiveCallData[] | null = null;
+      if (!error && rows) {
+        const leadIds = Array.from(
+          new Set(rows.map((r) => r.lead_id).filter((id): id is string => !!id))
+        );
+        const nameById = new Map<string, string>();
+        if (leadIds.length > 0) {
+          const { data: people } = await supabase
+            .from('people')
+            .select('id, name')
+            .in('id', leadIds);
+          if (people) {
+            for (const p of people) nameById.set(p.id, p.name);
+          }
+        }
+        data = rows.map((r) => ({
+          ...r,
+          leads: r.lead_id && nameById.has(r.lead_id)
+            ? { name: nameById.get(r.lead_id)! }
+            : null,
+        })) as ActiveCallData[];
+      }
+
       if (!error && data && data.length > 0) {
         const now = Date.now();
         const STALE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
@@ -879,7 +909,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   // Make outbound call using Twilio Device
   const makeOutboundCall = useCallback(async (phoneNumber: string, leadId?: string, leadName?: string) => {
     if (!isEvan) {
-      toast.error('Only Evan can make calls');
+      toast.error('Calling is not configured for your account. Contact an admin to assign a Twilio number.');
       return;
     }
 
@@ -949,19 +979,35 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
         handleCallEnd();
       });
 
-      // Log the call to communications
-      const { error: insertError } = await supabase.from('communications').insert({
-        lead_id: leadId || null,
-        communication_type: 'call',
-        direction: 'outbound',
-        content: `Call initiated to ${formattedPhone}`,
-        phone_number: formattedPhone,
-        status: 'ringing',
-        call_sid: call.parameters.CallSid,
-        user_id: teamMember?.id || null,
-      });
+      // Log the call to communications. One retry on transient failure —
+      // mirrors the disconnect UPDATE retry pattern. The server-side path-3
+      // backstop in twilio-call-status will recover at end-of-call if both
+      // attempts fail (with null user_id/lead_id).
+      let insertError: unknown = null;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const { error } = await supabase.from('communications').insert({
+          lead_id: leadId || null,
+          communication_type: 'call',
+          direction: 'outbound',
+          content: `Call initiated to ${formattedPhone}`,
+          phone_number: formattedPhone,
+          status: 'ringing',
+          call_sid: call.parameters.CallSid,
+          user_id: teamMember?.id || null,
+        });
+        if (!error) {
+          insertError = null;
+          break;
+        }
+        insertError = error;
+        console.error(
+          `[CallContext] Failed to log outbound call to communications (attempt ${attempt}):`,
+          error,
+        );
+        if (attempt === 1) await new Promise((r) => setTimeout(r, 250));
+      }
       if (insertError) {
-        console.error('[CallContext] Failed to log outbound call to communications:', insertError);
+        toast.error('Call started but logging failed — call history may be incomplete.');
       }
 
     } catch (error) {

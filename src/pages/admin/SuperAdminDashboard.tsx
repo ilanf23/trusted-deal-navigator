@@ -403,6 +403,7 @@ const SuperAdminDashboard = () => {
             data={channelActivityData}
             title="Activity by Channel"
             isLoading={heatmapLoading}
+            valueMode="count"
           />
         )}
 

@@ -48,7 +48,7 @@ function AttachmentList({ attachments }: { attachments: GmailEmail['attachments'
         messageId: attachment.messageId,
         attachmentId: attachment.id,
       });
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/gmail-api?${params}`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/gmail-mailbox?${params}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (!response.ok) throw new Error('Failed to download attachment');

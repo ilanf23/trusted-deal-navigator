@@ -29,7 +29,7 @@ export const useActionExecutor = () => {
       if (!session) throw new Error('Not authenticated');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evan-ai-assistant`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
         {
           method: 'POST',
           headers: {
@@ -72,7 +72,7 @@ export const useActionExecutor = () => {
       if (!session) throw new Error('Not authenticated');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evan-ai-assistant`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
         {
           method: 'POST',
           headers: {

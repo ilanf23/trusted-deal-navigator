@@ -1,7 +1,7 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "../_shared/supabase.ts";
 import { ILAN_EMAIL } from "../_shared/constants.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { requireAdmin } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,7 +46,7 @@ function wrapLinksForTracking(html: string, campaignId: string, subscriberId: st
   );
 }
 
-serve(async (req: Request): Promise<Response> => {
+Deno.serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -58,47 +58,12 @@ serve(async (req: Request): Promise<Response> => {
   try {
     console.log("send-newsletter function invoked");
 
-    // Verify admin authentication
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      console.error("No authorization header");
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify user is admin
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      console.error("Auth error:", authError);
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
-
-    // Check if user has admin role
-    const { data: roleData } = await supabase
-      .from("users")
-      .select("app_role")
-      .eq("user_id", user.id)
-      .in("app_role", ["admin", "super_admin"])
-      .maybeSingle();
-
-    if (!roleData) {
-      console.error("User is not admin");
-      return new Response(JSON.stringify({ error: "Admin access required" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
+    const authResult = await requireAdmin(req, supabase, { corsHeaders });
+    if (!authResult.ok) return authResult.response;
 
     const { campaignId, recipientIds, subject, content, fromName = "Commercial Lending X" }: SendNewsletterRequest = await req.json();
 

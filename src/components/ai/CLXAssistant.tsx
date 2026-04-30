@@ -281,7 +281,7 @@ const CLXAssistant = () => {
       if (!session) throw new Error('Not authenticated');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evan-ai-assistant`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
         {
           method: 'POST',
           headers: {
@@ -290,8 +290,7 @@ const CLXAssistant = () => {
           },
           body: JSON.stringify({
             messages: newMessages,
-            evanId: teamMember?.id,
-            userName: teamMember?.name || 'User',
+            teamMemberId: teamMember?.id,
             file,
             mode: 'chat',
             currentPage: location.pathname,
@@ -380,7 +379,7 @@ const CLXAssistant = () => {
       if (!session) throw new Error('Not authenticated');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evan-ai-assistant`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
         {
           method: 'POST',
           headers: {
@@ -389,8 +388,7 @@ const CLXAssistant = () => {
           },
           body: JSON.stringify({
             messages: newMessages.map(m => ({ role: m.role, content: m.content })),
-            evanId: teamMember?.id,
-            userName: teamMember?.name || 'User',
+            teamMemberId: teamMember?.id,
             file,
             mode: 'assist',
             currentPage: location.pathname,
@@ -492,7 +490,7 @@ const CLXAssistant = () => {
       if (!session) throw new Error('Not authenticated');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evan-ai-assistant`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
         {
           method: 'POST',
           headers: {

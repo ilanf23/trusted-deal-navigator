@@ -2,12 +2,13 @@
 // Validates the channel by looking it up in sheets_connections, then inserts
 // a row into sheets_change_events (broadcast via Supabase Realtime to the client).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { constantTimeEquals } from '../_shared/timingSafeEqual.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-goog-channel-id, x-goog-resource-id, x-goog-resource-state',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-goog-channel-id, x-goog-channel-token, x-goog-resource-id, x-goog-resource-state',
 };
 
 Deno.serve(async (req) => {
@@ -24,6 +25,7 @@ Deno.serve(async (req) => {
 
   try {
     const channelId = req.headers.get('x-goog-channel-id');
+    const channelToken = req.headers.get('x-goog-channel-token') ?? '';
     const resourceId = req.headers.get('x-goog-resource-id');
     const resourceState = req.headers.get('x-goog-resource-state') ?? 'unknown';
 
@@ -39,12 +41,22 @@ Deno.serve(async (req) => {
 
     const { data: connection } = await admin
       .from('sheets_connections')
-      .select('id, drive_watch_channel_id, drive_watch_resource_id, drive_watch_spreadsheet_id')
+      .select('id, drive_watch_channel_id, drive_watch_channel_token, drive_watch_resource_id, drive_watch_spreadsheet_id')
       .eq('drive_watch_channel_id', channelId)
       .maybeSingle();
 
     // Unknown channel (already stopped, or spoofed). Return 200 so Google stops retrying.
     if (!connection || !connection.drive_watch_spreadsheet_id) {
+      return new Response('OK', { status: 200, headers: corsHeaders });
+    }
+
+    // Verify the per-channel token Google echoes back from the watch.token we set in
+    // sheets-watch-start. Without this, anyone who knows the channel UUID can forge events.
+    if (
+      !connection.drive_watch_channel_token ||
+      !constantTimeEquals(channelToken, connection.drive_watch_channel_token)
+    ) {
+      console.warn('channel-token mismatch for channel', channelId);
       return new Response('OK', { status: 200, headers: corsHeaders });
     }
 

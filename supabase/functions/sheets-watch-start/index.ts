@@ -1,7 +1,7 @@
 // Registers a Google Drive file-change watch for a spreadsheet.
 // Called when the SheetEditor mounts. Stores channel metadata in sheets_connections.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getValidSheetsAccessToken } from '../_shared/googleTokenRefresh.ts';
 
@@ -61,6 +61,9 @@ Deno.serve(async (req) => {
 
     // Channel ID must be unique per watch. Use a fresh UUID.
     const channelId = crypto.randomUUID();
+    // Per-channel secret. Google echoes it in x-goog-channel-token on every notification;
+    // sheets-watch-webhook compares it constant-time before accepting the change event.
+    const channelToken = crypto.randomUUID();
     // Google default is 7d; we request 6d 23h to leave renewal headroom.
     const expirationMs = Date.now() + (6 * 24 + 23) * 60 * 60 * 1000;
     const webhookUrl = `${supabaseUrl}/functions/v1/sheets-watch-webhook`;
@@ -77,6 +80,7 @@ Deno.serve(async (req) => {
           id: channelId,
           type: 'web_hook',
           address: webhookUrl,
+          token: channelToken,
           expiration: String(expirationMs),
         }),
       },
@@ -95,6 +99,7 @@ Deno.serve(async (req) => {
       .from('sheets_connections')
       .update({
         drive_watch_channel_id: channelId,
+        drive_watch_channel_token: channelToken,
         drive_watch_resource_id: watch.resourceId ?? null,
         drive_watch_expiry: expiration,
         drive_watch_spreadsheet_id: spreadsheetId,

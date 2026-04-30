@@ -23,7 +23,7 @@
 - `useWendysDashboard` — Wendy's follow-ups, daily targets, communication log.
 
 ## Gmail & Email
-- `useGmail` — low-level Gmail API access via `gmail-api` edge function. Operations: fetchMessages, send, archive, trash, markAsRead.
+- `useGmail` — low-level Gmail API access. Routes through `gmail-auth` / `gmail-mailbox` / `gmail-write` edge functions via `src/lib/gmailRouter.ts`. Operations: fetchMessages, send, archive, trash, markAsRead.
 - `useGmailConnection` — higher-level Gmail connection. OAuth flow, folder queries, send, disconnect.
 - `useGmailPeopleSync` — auto-creates leads from unknown Gmail senders. Backfills `pipeline_leads`.
 - `useHiddenThreads` — hide/unhide email threads. Queries `hidden_email_threads`.
@@ -44,7 +44,7 @@
 
 ## AI & Automation
 - `useActionParser` — parses `<action>` XML tags from AI responses. Returns `cleanText` + `actions[]`.
-- `useActionExecutor` — executes AI-proposed actions via `evan-ai-assistant` edge function. Supports undo batches.
+- `useActionExecutor` — executes AI-proposed actions via `ai-assistant` edge function. Supports undo batches.
 - `useAIChanges` — AI change history with undo/redo. Queries `ai_agent_changes`/`ai_agent_batches`. Filters by date, user, mode, status, table.
 
 ## System

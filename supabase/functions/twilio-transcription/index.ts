@@ -1,5 +1,6 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { verifyTwilioSignature } from '../_shared/twilioSignature.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,21 +17,22 @@ Deno.serve(async (req) => {
   const rateLimitResponse = await enforceRateLimit(req, 'twilio-transcription', 300, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
+  const verified = await verifyTwilioSignature(req, corsHeaders);
+  if (!verified.ok) return verified.response;
+  const params = verified.params;
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Parse form data from Twilio webhook
-    const formData = await req.formData().catch(() => null);
-
-    const callSid = formData?.get('CallSid')?.toString() || '';
-    const transcriptionSid = formData?.get('TranscriptionSid')?.toString() || '';
-    const transcriptionText = formData?.get('TranscriptionText')?.toString() || '';
-    const transcriptionStatus = formData?.get('TranscriptionStatus')?.toString() || '';
-    const transcriptionUrl = formData?.get('TranscriptionUrl')?.toString() || '';
-    const recordingUrl = formData?.get('RecordingUrl')?.toString() || '';
-    const recordingSid = formData?.get('RecordingSid')?.toString() || '';
+    const callSid = params.get('CallSid') ?? '';
+    const transcriptionSid = params.get('TranscriptionSid') ?? '';
+    const transcriptionText = params.get('TranscriptionText') ?? '';
+    const transcriptionStatus = params.get('TranscriptionStatus') ?? '';
+    const transcriptionUrl = params.get('TranscriptionUrl') ?? '';
+    const recordingUrl = params.get('RecordingUrl') ?? '';
+    const recordingSid = params.get('RecordingSid') ?? '';
 
     console.log(`Transcription received: CallSid=${callSid} Status=${transcriptionStatus}`);
     console.log(`TranscriptionSid=${transcriptionSid}`);
@@ -49,104 +51,53 @@ Deno.serve(async (req) => {
       return new Response('OK', { headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
     }
 
-    // Find the active call record
-    const { data: activeCall, error: callError } = await supabase
-      .from('active_calls')
-      .select('*')
-      .eq('call_sid', callSid)
-      .single();
-
-    if (callError) {
-      console.error('Error finding active call:', callError);
-    }
-
-    // First try to find by call_sid directly
-    let commToUpdate = null;
-    
-    const { data: commByCallSid } = await supabase
+    // Exact lookup by call_sid only — no fuzzy fallback. If the row is not
+    // found, return 503 so Twilio retries (transcripts retried ~5 times over
+    // ~15 min). Fuzzy phone-number fallbacks attached transcripts to wrong
+    // rows under concurrent calls. See issue #80.
+    const { data: comm, error: lookupErr } = await supabase
       .from('communications')
-      .select('*')
+      .select('id')
       .eq('call_sid', callSid)
-      .single();
+      .maybeSingle();
 
-    if (commByCallSid) {
-      commToUpdate = commByCallSid;
-      console.log(`Found communication by call_sid: ${commByCallSid.id}`);
-    } else {
-      // Fallback: Find the most recent communication for this call by phone number
-      let commQuery = supabase
-        .from('communications')
-        .select('*')
-        .eq('communication_type', 'call')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (activeCall?.from_number) {
-        const normalizedPhone = activeCall.from_number.replace(/\D/g, '').slice(-10);
-        commQuery = supabase
-          .from('communications')
-          .select('*')
-          .eq('communication_type', 'call')
-          .or(`phone_number.ilike.%${normalizedPhone}%`)
-          .order('created_at', { ascending: false })
-          .limit(5);
-      }
-
-      const { data: recentComms, error: commError } = await commQuery;
-
-      if (commError) {
-        console.error('Error finding communications:', commError);
-      }
-
-      if (recentComms && recentComms.length > 0) {
-        commToUpdate = recentComms[0];
-        console.log(`Found communication by phone number: ${commToUpdate.id}`);
-      }
+    if (lookupErr) {
+      console.error('[twilio-transcription] lookup error:', lookupErr);
+      return new Response('Lookup error', {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+      });
     }
 
-    // Update the matching communication with the transcript
-    if (commToUpdate) {
-      const { error: updateError } = await supabase
-        .from('communications')
-        .update({ 
-          transcript: transcriptionText,
-          recording_url: recordingUrl || null,
-          recording_sid: recordingSid || null,
-          call_sid: callSid,
-        })
-        .eq('id', commToUpdate.id);
-
-      if (updateError) {
-        console.error('Error updating communication with transcript:', updateError);
-      } else {
-        console.log(`Transcript added to communication ${commToUpdate.id}`);
-      }
-    } else {
-      // If no matching communication found, create one
-      console.log('No matching communication found, creating new record');
-      
-      const { error: insertError } = await supabase
-        .from('communications')
-        .insert({
-          lead_id: activeCall?.lead_id || null,
-          communication_type: 'call',
-          direction: activeCall?.direction || 'inbound',
-          phone_number: activeCall?.from_number || null,
-          content: 'Call with transcript',
-          transcript: transcriptionText,
-          recording_url: recordingUrl || null,
-          recording_sid: recordingSid || null,
-          call_sid: callSid,
-          status: 'transcribed',
-        });
-
-      if (insertError) {
-        console.error('Error creating communication with transcript:', insertError);
-      } else {
-        console.log('Created new communication with transcript');
-      }
+    if (!comm) {
+      console.warn(
+        '[twilio-transcription] no communications row for call_sid — returning 503 for Twilio retry',
+        { callSid },
+      );
+      return new Response('Comm row not found', {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+      });
     }
 
+    const { error: updateError } = await supabase
+      .from('communications')
+      .update({
+        transcript: transcriptionText,
+        recording_url: recordingUrl || null,
+        recording_sid: recordingSid || null,
+      })
+      .eq('id', comm.id);
+
+    if (updateError) {
+      console.error('[twilio-transcription] update failed:', updateError);
+      return new Response('Update error', {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+      });
+    }
+
+    console.log(`[twilio-transcription] transcript saved for communication ${comm.id}`);
     return new Response('OK', { headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
 
   } catch (error) {

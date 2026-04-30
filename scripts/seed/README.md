@@ -1,8 +1,8 @@
 # Local Seed Scripts
 
-These were previously deployed as Supabase edge functions (`seed-test-data`, `seed-partners`). They were moved here so they don't run as production endpoints.
+These were previously deployed as Supabase edge functions (`seed-test-data`, `seed-partners`). They were moved here and refactored into plain one-shot Deno scripts so they can't run as production endpoints.
 
-They're still Deno scripts. Run locally with:
+Run locally:
 
 ```bash
 SUPABASE_URL="..." SUPABASE_SERVICE_ROLE_KEY="..." \
@@ -12,6 +12,6 @@ SUPABASE_URL="..." SUPABASE_SERVICE_ROLE_KEY="..." \
   deno run --allow-net --allow-env scripts/seed/seed-partners/index.ts
 ```
 
-Each `index.ts` exposes a `Deno.serve` handler — invoke its inner logic by POSTing to `http://localhost:8000` after `deno run`, or refactor the inner block into a plain async function if you want a one-shot.
+Each script runs its `main()` once and exits. There's no HTTP listener — do not deploy these as edge functions.
 
 **Never run these against production.** They create users with predictable passwords.

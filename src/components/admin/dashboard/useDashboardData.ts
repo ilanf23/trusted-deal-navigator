@@ -6,6 +6,7 @@ import {
   getDaysInMonth, eachMonthOfInterval, differenceInDays,
 } from 'date-fns';
 export type TimePeriod = 'mtd' | 'ytd' | 'qtd';
+export type ChannelDateBasis = 'created_at' | 'won_at';
 
 const STAGE_WEIGHTS: Record<string, number> = {
   discovery: 0.10,
@@ -68,6 +69,15 @@ export interface RevenueBySource {
   count: number;
 }
 
+type ChannelDealSourceRow = {
+  id: string;
+  created_at: string;
+  won_at: string | null;
+  source: string | null;
+  referral_source: string | null;
+  deal_value: number | null;
+};
+
 // Consistent revenue calculation: use potential_revenue when available,
 // otherwise fall back to deal_value * fee_percent (or 2% default).
 export function getDealRevenue(deal: {
@@ -93,6 +103,67 @@ function getPeriodStartUTC(period: TimePeriod): string {
     case 'qtd': return new Date(Date.UTC(y, Math.floor(m / 3) * 3, 1)).toISOString();
     case 'mtd': return new Date(Date.UTC(y, m, 1)).toISOString();
   }
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+function getUTCMonthKey(date: Date): string {
+  return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}`;
+}
+
+function getUTCDayKey(date: Date): string {
+  return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+}
+
+function getChannelName(deal: Pick<ChannelDealSourceRow, 'source' | 'referral_source'>): string {
+  const source = deal.source?.trim();
+  if (source) return source;
+
+  const referralSource = deal.referral_source?.trim();
+  if (referralSource) return referralSource;
+
+  return 'Unknown';
+}
+
+function getChannelBucketKey(dateStr: string | null, period: TimePeriod): string | null {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return null;
+  return period === 'ytd' ? getUTCMonthKey(date) : getUTCDayKey(date);
+}
+
+function makeChannelBuckets(period: TimePeriod, periodStartISO: string, now: Date): string[] {
+  const start = new Date(periodStartISO);
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const buckets: string[] = [];
+
+  if (period === 'ytd') {
+    let year = start.getUTCFullYear();
+    let month = start.getUTCMonth();
+    const endYear = end.getUTCFullYear();
+    const endMonth = end.getUTCMonth();
+
+    while (year < endYear || (year === endYear && month <= endMonth)) {
+      buckets.push(`${year}-${pad2(month + 1)}`);
+      month += 1;
+      if (month > 11) {
+        month = 0;
+        year += 1;
+      }
+    }
+
+    return buckets;
+  }
+
+  const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  while (cursor <= end) {
+    buckets.push(getUTCDayKey(cursor));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return buckets;
 }
 
 function getPreviousPeriodRange(period: TimePeriod): { start: string; end: string } {
@@ -135,7 +206,11 @@ function makePeriodComparison(current: number, previous: number): PeriodComparis
   return { current, previous, delta, deltaPercent };
 }
 
-export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string | null) {
+export function useDashboardData(
+  timePeriod: TimePeriod,
+  teamMemberId?: string | null,
+  channelDateBasis: ChannelDateBasis = 'created_at',
+) {
   const now = useMemo(() => new Date(), []);
   const weekStart = useMemo(() => startOfWeek(now, { weekStartsOn: 1 }), [now]);
   const weekEnd = useMemo(() => endOfDay(addDays(weekStart, 6)), [weekStart]);
@@ -290,6 +365,37 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
         .gte('created_at', heatmapRangeStart);
       if (error) throw error;
       return data;
+    },
+    staleTime: 60_000,
+  });
+
+  const channelDealSizeQuery = useQuery({
+    queryKey: ['dashboard-channel-deal-size', timePeriod, periodStartISO, channelDateBasis],
+    queryFn: async (): Promise<ChannelDealSourceRow[]> => {
+      const selectColumns = 'id, created_at, won_at, source, referral_source, deal_value';
+      const [potentialResult, underwritingResult, lenderResult] = await Promise.all([
+        supabase
+          .from('potential')
+          .select(selectColumns)
+          .gte(channelDateBasis, periodStartISO),
+        supabase
+          .from('underwriting')
+          .select(selectColumns)
+          .gte(channelDateBasis, periodStartISO),
+        supabase
+          .from('lender_management')
+          .select(selectColumns)
+          .gte(channelDateBasis, periodStartISO),
+      ]);
+
+      const error = potentialResult.error || underwritingResult.error || lenderResult.error;
+      if (error) throw error;
+
+      return [
+        ...(potentialResult.data || []),
+        ...(underwritingResult.data || []),
+        ...(lenderResult.data || []),
+      ] as ChannelDealSourceRow[];
     },
     staleTime: 60_000,
   });
@@ -661,28 +767,29 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     return { score, status, forecast, pipelineWeighted, growthRate };
   }, [companyRevenueData, companyDealsQuery.data, pipelineQuery.data, timePeriod, annualGoal, now]);
 
-  // Channel activity data (last 90 days) - grouped by source
+  // Deal size by channel for the active dashboard period.
   const channelActivityData: ChannelActivityDay[] = useMemo(() => {
-    const deals = heatmapDealsQuery.data || [];
-    const dayMap = new Map<string, Record<string, number>>();
+    const deals = channelDealSizeQuery.data || [];
+    const bucketMap = new Map<string, Record<string, number>>();
 
-    function addToChannel(dateStr: string | null, channel: string) {
-      if (!dateStr) return;
-      const day = dateStr.slice(0, 10);
-      const entry = dayMap.get(day) || {};
-      entry[channel] = (entry[channel] || 0) + 1;
-      dayMap.set(day, entry);
+    for (const bucket of makeChannelBuckets(timePeriod, periodStartISO, now)) {
+      bucketMap.set(bucket, {});
     }
 
     for (const deal of deals) {
-      const channel = deal.source || 'Unknown';
-      addToChannel(deal.created_at, channel);
+      const bucket = getChannelBucketKey(deal[channelDateBasis], timePeriod);
+      if (!bucket) continue;
+
+      const entry = bucketMap.get(bucket) || {};
+      const channel = getChannelName(deal);
+      entry[channel] = (entry[channel] || 0) + (Number(deal.deal_value) || 0);
+      bucketMap.set(bucket, entry);
     }
 
-    return Array.from(dayMap.entries())
+    return Array.from(bucketMap.entries())
       .map(([date, channels]) => ({ date, channels }))
       .sort((a, b) => a.date.localeCompare(b.date));
-  }, [heatmapDealsQuery.data]);
+  }, [channelDateBasis, channelDealSizeQuery.data, now, periodStartISO, timePeriod]);
 
   const isLoading = leadsQuery.isLoading || pipelineQuery.isLoading || fundedQuery.isLoading;
   const isFetching = leadsQuery.isFetching || pipelineQuery.isFetching || fundedQuery.isFetching;
@@ -710,7 +817,7 @@ export function useDashboardData(timePeriod: TimePeriod, teamMemberId?: string |
     tasksLoading: tasksQuery.isLoading,
     scorecardLoading: scorecardCommsQuery.isLoading || scorecardLeadsQuery.isLoading,
     lenderLoading: lenderQuery.isLoading,
-    heatmapLoading: heatmapDealsQuery.isLoading || heatmapCommsQuery.isLoading,
+    heatmapLoading: heatmapDealsQuery.isLoading || heatmapCommsQuery.isLoading || channelDealSizeQuery.isLoading,
     sparklineLoading: sparklineQuery.isLoading,
   };
 }

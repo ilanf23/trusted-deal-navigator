@@ -1,5 +1,6 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { requireAdmin } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -108,69 +109,46 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const authResult = await requireAdmin(req, supabase, { corsHeaders });
+    if (!authResult.ok) return authResult.response;
 
-    if (authError || !user) {
-      console.error('[twilio-token] Auth error:', authError?.message);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const { auth } = authResult;
+    const userId = auth.authUserId;
+    const teamMemberId = auth.teamMember!.id;
+    console.log('[twilio-token] Authenticated user:', userId, 'email:', auth.authUserEmail);
 
-    const userId = user.id;
-    console.log('[twilio-token] Authenticated user:', userId, 'email:', user.email);
-
-    // Check admin/super_admin role — also fetch the raw role for diagnostics
-    const { data: roleData, error: roleError } = await supabase
+    // Fetch fields needed beyond the role gate.
+    const { data: extraData, error: extraError } = await supabase
       .from('users')
-      .select('app_role, is_active')
-      .eq('user_id', userId)
+      .select('is_active, twilio_phone_number')
+      .eq('id', teamMemberId)
       .maybeSingle();
 
-    if (roleError) {
-      console.error('[twilio-token] Error querying users table:', roleError.message);
+    if (extraError) {
+      console.error('[twilio-token] Error querying users table:', extraError.message);
       return new Response(
         JSON.stringify({ error: 'Failed to verify admin role' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!roleData) {
-      console.error('[twilio-token] No users row found for user_id:', userId, 'email:', user.email);
-      return new Response(
-        JSON.stringify({ error: 'Admin access required — no user record found' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const isAdminRole = roleData.app_role === 'admin' || roleData.app_role === 'super_admin';
-    if (!isAdminRole) {
-      console.error('[twilio-token] User', userId, 'has role', roleData.app_role, '— admin required');
-      return new Response(
-        JSON.stringify({ error: 'Admin access required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!roleData.is_active) {
+    if (!extraData?.is_active) {
       console.warn('[twilio-token] User', userId, 'is inactive but has admin role — allowing access');
     }
 
-    // Use a stable, well-known identity for Twilio Client registration.
-    // This must match the <Client> identity dialed in twilio-inbound.
-    const identity = 'clx-admin';
+    if (!extraData?.twilio_phone_number) {
+      console.log('[twilio-token] User', userId, 'has no twilio_phone_number — calling not configured');
+      return new Response(
+        JSON.stringify({ error: 'Calling not configured for this user' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Per-user Twilio Client identity. Must match the <Client> identity dialed by twilio-inbound,
+    // which is built from users.id (public.users primary key) of the row owning the dialed To number.
+    const identity = `clx-admin-${teamMemberId}`;
     
     console.log('[twilio-token] Authorized admin user:', userId, 'identity:', identity);
     

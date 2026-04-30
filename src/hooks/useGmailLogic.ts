@@ -681,7 +681,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
       if (inReplyToSend) payload.inReplyTo = inReplyToSend;
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-api?action=send`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-write?action=send`,
         {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
@@ -818,7 +818,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-api?action=send`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-write?action=send`,
         { method: 'POST', headers: { Authorization: authHeader, 'Content-Type': 'application/json' }, body: JSON.stringify(sendPayload) }
       );
       if (!response.ok) {

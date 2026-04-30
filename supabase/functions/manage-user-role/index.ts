@@ -1,5 +1,6 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from '../_shared/supabase.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
+import { requireAdmin } from '../_shared/auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,54 +16,18 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    })
-
-    const token = authHeader.replace('Bearer ', '')
-    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token)
-
-    if (claimsError || !claimsData?.claims?.sub) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const callerId = claimsData.claims.sub as string
-
     const supabaseAdmin = createClient(
-      supabaseUrl,
+      Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Verify caller is admin or super_admin
-    const { data: roleData } = await supabaseAdmin
-      .from('users')
-      .select('app_role')
-      .eq('user_id', callerId)
-      .in('app_role', ['admin', 'super_admin'])
-      .maybeSingle()
+    const authResult = await requireAdmin(req, supabaseAdmin, { corsHeaders })
+    if (!authResult.ok) return authResult.response
 
-    if (!roleData) {
-      console.error(`manage-user-role: FORBIDDEN - caller=${callerId}`)
-      return new Response(
-        JSON.stringify({ error: 'Forbidden: admin role required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    const { auth } = authResult
+    const callerId = auth.authUserId
+    const callerRole = auth.teamMember?.app_role
 
     const { target_user_id, new_role } = await req.json()
 
@@ -81,7 +46,6 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Prevent changing own role
     if (target_user_id === callerId) {
       return new Response(
         JSON.stringify({ error: 'Cannot change your own role' }),
@@ -89,7 +53,34 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Update app_role on team_members
+    const { data: targetRow } = await supabaseAdmin
+      .from('users')
+      .select('app_role')
+      .eq('user_id', target_user_id)
+      .maybeSingle()
+
+    if (!targetRow) {
+      return new Response(
+        JSON.stringify({ error: 'Target user not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Only super_admin may grant or revoke super_admin.
+    const isSuperAdminOperation =
+      new_role === 'super_admin' || targetRow.app_role === 'super_admin'
+
+    if (isSuperAdminOperation && callerRole !== 'super_admin') {
+      console.error(
+        `manage-user-role: FORBIDDEN super_admin op - caller=${callerId} target=${target_user_id} ` +
+        `target_role=${targetRow.app_role} new_role=${new_role}`
+      )
+      return new Response(
+        JSON.stringify({ error: 'Only super_admin can grant or revoke super_admin' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { error: updateError } = await supabaseAdmin
       .from('users')
       .update({ app_role: new_role })

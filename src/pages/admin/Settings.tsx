@@ -13,6 +13,7 @@ import {
   Sliders,
   Mail,
   Bell,
+  Filter,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ import BrandingSection from '@/components/admin/settings/BrandingSection';
 import IntegrationsSection from '@/components/admin/settings/IntegrationsSection';
 import CustomizationSection from '@/components/admin/settings/CustomizationSection';
 import EditNavigationSection from '@/components/admin/settings/EditNavigationSection';
+import SavedFiltersSection from '@/components/admin/settings/SavedFiltersSection';
 
 interface SettingsTabDef {
   to: string;
@@ -97,6 +99,8 @@ const Settings = () => {
         return <CustomizationSection />;
       case 'navigation':
         return <EditNavigationSection />;
+      case 'saved-filters':
+        return <SavedFiltersSection />;
       default:
         return <Navigate to={`${settingsBase}/profile`} replace />;
     }
@@ -111,6 +115,7 @@ const Settings = () => {
     { to: `${settingsBase}/navigation`, icon: Pencil, label: 'Edit navigation', adminOnly: true },
     { to: `${settingsBase}/profile`, icon: User, label: 'Profile' },
     { to: `${settingsBase}/preferences`, icon: Sliders, label: 'Preferences' },
+    { to: `${settingsBase}/saved-filters`, icon: Filter, label: 'Saved filters' },
     { to: `${settingsBase}/email-templates`, icon: Mail, label: 'Email & templates' },
     { to: `${settingsBase}/notifications`, icon: Bell, label: 'Notifications' },
   ], [settingsBase]);

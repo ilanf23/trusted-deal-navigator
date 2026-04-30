@@ -34,6 +34,9 @@ import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { FormattedPhoneInput } from '@/components/admin/FormattedPhoneInput';
 import { LeadFilesSection } from '@/components/admin/LeadFilesSection';
 import { LeadDealSheetTab } from '@/components/admin/LeadDealSheetTab';
+import { useSavedTaskFilters, findFilterById } from '@/hooks/useSavedTaskFilters';
+import { applyTaskFilter } from '@/components/employee/tasks/savedFilters/applyTaskFilter';
+import { Filter as FilterIcon } from 'lucide-react';
 
 // Helper to format activity timestamps - show time if <24h, otherwise show date and time
 const formatActivityTimestamp = (date: Date | string) => {
@@ -474,7 +477,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       // Query from tasks which has richer data (descriptions, etc)
       const { data } = await supabase
         .from('tasks')
-        .select('id, title, description, due_date, status, priority, estimated_hours')
+        .select('id, title, description, due_date, status, priority, estimated_hours, is_completed, source, task_type, tags, lead_id, user_id, group_name, created_at, updated_at')
         .eq('lead_id', lead.id)
         .order('created_at', { ascending: false });
       return (data || []) as Array<{
@@ -485,21 +488,44 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         status: string | null;
         priority: string | null;
         estimated_hours: number | null;
+        is_completed: boolean;
+        source: string | null;
+        task_type: string | null;
+        tags: string[] | null;
+        lead_id: string | null;
+        user_id: string | null;
+        group_name: string | null;
+        created_at: string;
+        updated_at: string;
       }>;
     },
     enabled: !!lead && open,
   });
 
-  // Sort tasks: incomplete first, completed at bottom
+  // Saved-filter dropdown state for the Tasks tab.
+  const [taskSavedFilterId, setTaskSavedFilterId] = useState<string>('all');
+  const { filters: savedTaskFilters } = useSavedTaskFilters();
+  const activeTaskSavedFilter = useMemo(
+    () => findFilterById(savedTaskFilters, taskSavedFilterId === 'all' ? null : taskSavedFilterId),
+    [savedTaskFilters, taskSavedFilterId],
+  );
+
+  // Sort tasks: incomplete first, completed at bottom. Apply saved filter on top of lead scope.
   const tasks = useMemo(() => {
-    return [...rawTasks].sort((a, b) => {
+    const sorted = [...rawTasks].sort((a, b) => {
       const aCompleted = a.status === 'done' || a.status === 'completed';
       const bCompleted = b.status === 'done' || b.status === 'completed';
       if (aCompleted && !bCompleted) return 1;
       if (!aCompleted && bCompleted) return -1;
       return 0;
     });
-  }, [rawTasks]);
+    if (!activeTaskSavedFilter) return sorted;
+    return applyTaskFilter(
+      sorted as unknown as Task[],
+      activeTaskSavedFilter.criteria,
+      { currentUserId: teamMember?.id ?? null },
+    ) as unknown as typeof sorted;
+  }, [rawTasks, activeTaskSavedFilter, teamMember?.id]);
 
   const { data: teamMembers = [] } = useAssignableUsers();
 
@@ -611,7 +637,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       const searchQuery = leadEmailAddresses.map(email => `from:${email} OR to:${email}`).join(' OR ');
       
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-api?action=list&q=${encodeURIComponent(searchQuery)}&maxResults=50`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-mailbox?action=list&q=${encodeURIComponent(searchQuery)}&maxResults=50`,
         { headers: { 'Authorization': `Bearer ${session.access_token}` } }
       );
 
@@ -1897,7 +1923,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                   {/* Tasks Tab */}
                   <TabsContent value="tasks" className="m-0 space-y-3">
                     {/* Add Task Button - opens full dialog like To Do's page */}
-                    <Button 
+                    <Button
                       onClick={() => setShowAddTask(true)}
                       className="w-full gap-2"
                       variant="outline"
@@ -1905,12 +1931,35 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                       <Plus className="h-4 w-4" />
                       Add New Task
                     </Button>
-                    
+
+                    {/* Saved-filter dropdown — narrows lead-scoped tasks */}
+                    {savedTaskFilters.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <FilterIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Filter:</span>
+                        <Select value={taskSavedFilterId} onValueChange={setTaskSavedFilterId}>
+                          <SelectTrigger className="h-8 w-56 text-xs">
+                            <SelectValue placeholder="All tasks" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All tasks for this lead</SelectItem>
+                            {savedTaskFilters.map(f => (
+                              <SelectItem key={f.id} value={f.id}>
+                                {f.visibility === 'public' ? '🌐 ' : '🔒 '}{f.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
                     {/* Tasks List - Card Style */}
                     {tasks.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         <ListTodo className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No tasks yet</p>
+                        <p className="text-sm">
+                          {activeTaskSavedFilter ? `No tasks match "${activeTaskSavedFilter.name}"` : 'No tasks yet'}
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-2">

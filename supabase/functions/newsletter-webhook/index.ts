@@ -1,6 +1,6 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { verifySvixSignature } from "../_shared/svixSignature.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,7 +19,7 @@ interface ResendWebhookEvent {
   };
 }
 
-serve(async (req: Request): Promise<Response> => {
+Deno.serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -28,6 +28,9 @@ serve(async (req: Request): Promise<Response> => {
   const rateLimitResponse = await enforceRateLimit(req, "newsletter-webhook", 300, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
+  const verifyResult = await verifySvixSignature(req, "RESEND_WEBHOOK_SECRET", corsHeaders);
+  if (!verifyResult.ok) return verifyResult.response;
+
   try {
     console.log("newsletter-webhook: Received webhook event");
 
@@ -35,7 +38,7 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const event: ResendWebhookEvent = await req.json();
+    const event: ResendWebhookEvent = JSON.parse(verifyResult.rawBody);
     console.log("newsletter-webhook: Event type:", event.type);
     console.log("newsletter-webhook: Email ID:", event.data.email_id);
 

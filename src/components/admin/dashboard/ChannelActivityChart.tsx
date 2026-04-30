@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import EChartsReact from 'echarts-for-react';
+import * as echarts from 'echarts';
 import type { EChartsOption } from 'echarts';
 
 export interface ChannelActivityData {
@@ -14,25 +15,64 @@ export interface ChannelActivityChartProps {
   days?: number;
   className?: string;
   title?: string;
+  subtitle?: string;
+  headerAction?: React.ReactNode;
   isLoading?: boolean;
+  valueMode?: 'currency' | 'count';
+  chartType?: 'area' | 'bar';
 }
 
-// Channel colors - distinct colors for different sources
-const CHANNEL_COLORS: Record<string, string> = {
-  crm: '#7c3aed', // Purple-600
-  referral: '#db2777', // Pink-600
-  inbound: '#0891b2', // Cyan-600
-  direct: '#d97706', // Amber-600
-  partner: '#059669', // Emerald-600
-  broker: '#1d4ed8', // Blue-600
-  cold_call: '#84cc16', // Lime-500
-  email: '#f59e0b', // Amber-500
-  outbound: '#8b5cf6', // Violet-500
-  unknown: '#6b7280', // Gray-500
-};
+const GRADIENT_PALETTE = [
+  { solid: '#80FFA5', stops: ['rgb(128, 255, 165)', 'rgb(1, 191, 236)'] },
+  { solid: '#00DDFF', stops: ['rgb(0, 221, 255)', 'rgb(77, 119, 255)'] },
+  { solid: '#37A2FF', stops: ['rgb(55, 162, 255)', 'rgb(116, 21, 219)'] },
+  { solid: '#FF0087', stops: ['rgb(255, 0, 135)', 'rgb(135, 0, 157)'] },
+  { solid: '#FFBF00', stops: ['rgb(255, 191, 0)', 'rgb(224, 62, 76)'] },
+];
 
-function getChannelColor(channel: string): string {
-  return CHANNEL_COLORS[channel.toLowerCase()] || CHANNEL_COLORS.unknown;
+function getChannelDisplayName(channel: string): string {
+  return channel.charAt(0).toUpperCase() + channel.slice(1).replace(/_/g, ' ');
+}
+
+function getPalette(index: number) {
+  return GRADIENT_PALETTE[index % GRADIENT_PALETTE.length];
+}
+
+function formatCurrency(value: number): string {
+  if (value >= 1000000000) return `$${(value / 1000000000).toFixed(1)}B`;
+  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+  if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+  return `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+}
+
+function formatCurrencyFull(value: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatDateLabel(date: string): string {
+  if (/^\d{4}-\d{2}$/.test(date)) {
+    const [year, month] = date.split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+  }
+
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return parsed.toLocaleDateString('en-US', {
+    month: 'numeric',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function formatChartValue(value: number, valueMode: 'currency' | 'count'): string {
+  return valueMode === 'currency' ? formatCurrency(value) : value.toLocaleString();
 }
 
 export function ChannelActivityChartSkeleton({ className }: { className?: string }) {
@@ -50,15 +90,14 @@ export function ChannelActivityChartSkeleton({ className }: { className?: string
 
 export function ChannelActivityChart({
   data,
-  days = 90,
   className,
-  title = 'Activity by Channel',
+  title = 'Deal Size by Channel',
+  subtitle,
+  headerAction,
   isLoading = false,
+  valueMode = 'currency',
+  chartType = 'area',
 }: ChannelActivityChartProps) {
-  if (isLoading) {
-    return <ChannelActivityChartSkeleton className={className} />;
-  }
-
   const chartData = useMemo(() => {
     if (!data || data.length === 0) {
       return [];
@@ -69,31 +108,61 @@ export function ChannelActivityChart({
   }, [data]);
 
   const allChannels = useMemo(() => {
-    const channels = new Set<string>();
+    const totals = new Map<string, number>();
     for (const d of chartData) {
-      Object.keys(d.channels).forEach(ch => channels.add(ch));
+      for (const [channel, value] of Object.entries(d.channels)) {
+        totals.set(channel, (totals.get(channel) || 0) + value);
+      }
     }
-    return Array.from(channels).sort();
+    return Array.from(totals.entries())
+      .filter(([, value]) => value > 0)
+      .sort((a, b) => b[1] - a[1])
+      .map(([channel]) => channel);
   }, [chartData]);
 
   const option: EChartsOption = useMemo(() => {
+    const labels = chartData.map(d => formatDateLabel(d.date));
+    const isBar = chartType === 'bar';
+    const labelOption = {
+      show: isBar,
+      position: 'insideBottom',
+      distance: 15,
+      align: 'left',
+      verticalAlign: 'middle',
+      rotate: 90,
+      formatter: (params: any) => {
+        const value = Number(params.value) || 0;
+        if (value <= 0) return '';
+        return `${formatChartValue(value, valueMode)}  {name|${params.seriesName}}`;
+      },
+      fontSize: 11,
+      rich: {
+        name: {},
+      },
+    };
+
     return {
+      color: allChannels.map((_, index) => getPalette(index).solid),
       tooltip: {
         trigger: 'axis',
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        borderColor: '#666',
-        textStyle: {
-          color: '#fff',
+        axisPointer: {
+          type: isBar ? 'shadow' : 'cross',
+          label: {
+            backgroundColor: '#6a7985',
+          },
         },
         formatter: (params: any) => {
           if (!Array.isArray(params) || params.length === 0) return '';
 
           const date = params[0].name;
-          let html = `<div class="font-semibold mb-2">${date}</div>`;
+          let html = `<div style="font-weight:600;margin-bottom:8px;">${date}</div>`;
 
           for (const param of params) {
             if (param.value > 0) {
-              html += `<div style="color: ${param.color}">● ${param.seriesName}: ${param.value}</div>`;
+              html += `<div style="display:flex;gap:8px;justify-content:space-between;min-width:180px;">
+                <span style="color:${param.color};">● ${param.seriesName}</span>
+                <strong>${valueMode === 'currency' ? formatCurrencyFull(Number(param.value) || 0) : Number(param.value || 0).toLocaleString()}</strong>
+              </div>`;
             }
           }
 
@@ -101,19 +170,28 @@ export function ChannelActivityChart({
         },
       },
       grid: {
-        left: '3%',
+        left: '2%',
         right: '3%',
-        bottom: '3%',
-        top: '3%',
+        bottom: '4%',
+        top: allChannels.length > 0 ? isBar ? '20%' : '18%' : '8%',
         containLabel: true,
+      },
+      legend: {
+        type: 'scroll',
+        top: 0,
+        data: allChannels.map(getChannelDisplayName),
+        textStyle: {
+          fontSize: 11,
+          color: '#6b7280',
+        },
       },
       xAxis: {
         type: 'category',
-        data: chartData.map(d => {
-          const date = new Date(d.date);
-          return `${date.getMonth() + 1}/${date.getDate()}`;
-        }),
-        boundaryGap: false,
+        data: labels,
+        boundaryGap: isBar,
+        axisTick: {
+          show: isBar ? false : undefined,
+        },
         axisLine: {
           lineStyle: {
             color: '#e5e7eb',
@@ -134,32 +212,58 @@ export function ChannelActivityChart({
         axisLabel: {
           fontSize: 11,
           color: '#6b7280',
+          formatter: (value: number) => valueMode === 'currency' ? formatCurrency(value) : value.toLocaleString(),
         },
       },
-      series: allChannels.map(channel => ({
-        name: channel.charAt(0).toUpperCase() + channel.slice(1).replace(/_/g, ' '),
-        type: 'area',
-        stack: 'Total',
-        smooth: true,
-        emphasis: {
-          focus: 'series',
-        },
-        areaStyle: {
-          opacity: 0.7,
-        },
-        lineStyle: {
-          width: 2,
-        },
-        itemStyle: {
-          color: getChannelColor(channel),
-        },
-        data: chartData.map(d => d.channels[channel] || 0),
-      })),
-      color: allChannels.map(ch => getChannelColor(ch)),
-    };
-  }, [chartData, allChannels]);
+      series: allChannels.map((channel, index) => {
+        const palette = getPalette(index);
+        if (isBar) {
+          return {
+            name: getChannelDisplayName(channel),
+            type: 'bar',
+            barGap: index === 0 ? 0 : undefined,
+            label: labelOption,
+            emphasis: {
+              focus: 'series',
+            },
+            data: chartData.map(d => d.channels[channel] || 0),
+          };
+        }
 
-  const totalActivity = useMemo(() => {
+        return {
+          name: getChannelDisplayName(channel),
+          type: 'line',
+          stack: 'Total',
+          smooth: true,
+          lineStyle: {
+            width: 0,
+          },
+          showSymbol: false,
+          label: index === allChannels.length - 1 ? {
+            show: true,
+            position: 'top',
+            formatter: (params: any) => {
+              if (params.value <= 0) return '';
+              return valueMode === 'currency' ? formatCurrency(params.value) : params.value.toLocaleString();
+            },
+          } : undefined,
+          areaStyle: {
+            opacity: 0.8,
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: palette.stops[0] },
+              { offset: 1, color: palette.stops[1] },
+            ]),
+          },
+          emphasis: {
+            focus: 'series',
+          },
+          data: chartData.map(d => d.channels[channel] || 0),
+        };
+      }),
+    };
+  }, [chartData, allChannels, valueMode, chartType]);
+
+  const totalDealSize = useMemo(() => {
     return chartData.reduce((sum, d) => sum + Object.values(d.channels).reduce((a, b) => a + b, 0), 0);
   }, [chartData]);
 
@@ -170,29 +274,58 @@ export function ChannelActivityChart({
       totals[channel] = chartData.reduce((sum, d) => sum + (d.channels[channel] || 0), 0);
     }
     const top = Object.entries(totals).sort((a, b) => b[1] - a[1])[0];
-    return top ? `${top[0].charAt(0).toUpperCase() + top[0].slice(1).replace(/_/g, ' ')} (${top[1]})` : '-';
-  }, [chartData, allChannels]);
+    return top
+      ? `${getChannelDisplayName(top[0])} (${valueMode === 'currency' ? formatCurrency(top[1]) : top[1].toLocaleString()})`
+      : '-';
+  }, [chartData, allChannels, valueMode]);
+
+  if (isLoading) {
+    return <ChannelActivityChartSkeleton className={className} />;
+  }
+
+  const hasChartValues = totalDealSize > 0 && allChannels.length > 0;
+  const totalLabel = valueMode === 'currency' ? 'Total Deal Size' : 'Total Activity';
 
   return (
     <Card className={className}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-semibold tracking-tight">{title}</CardTitle>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle className="text-lg font-semibold tracking-tight">{title}</CardTitle>
+            {subtitle && (
+              <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+            )}
+          </div>
+          {headerAction && (
+            <div className="shrink-0">{headerAction}</div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div className="h-64">
-            <EChartsReact
-              option={option}
-              style={{ width: '100%', height: '100%' }}
-              opts={{ renderer: 'svg' }}
-              notMerge={true}
-            />
+            {hasChartValues ? (
+              <EChartsReact
+                option={option}
+                style={{ width: '100%', height: '100%' }}
+                opts={{ renderer: 'svg' }}
+                notMerge={true}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
+                <p className="text-sm text-muted-foreground">
+                  No {valueMode === 'currency' ? 'deal size' : 'activity'} by channel for this period.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-muted-foreground">Total Activity</p>
-              <p className="text-xl font-semibold">{totalActivity.toLocaleString()}</p>
+              <p className="text-muted-foreground">{totalLabel}</p>
+              <p className="text-xl font-semibold">
+                {valueMode === 'currency' ? formatCurrencyFull(totalDealSize) : totalDealSize.toLocaleString()}
+              </p>
             </div>
             <div>
               <p className="text-muted-foreground">Top Channel</p>
@@ -201,14 +334,14 @@ export function ChannelActivityChart({
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {allChannels.map(channel => (
+            {allChannels.map((channel, index) => (
               <div key={channel} className="flex items-center gap-2 text-xs">
                 <div
                   className="h-3 w-3 rounded-full"
-                  style={{ backgroundColor: getChannelColor(channel) }}
+                  style={{ backgroundColor: getPalette(index).solid }}
                 />
                 <span className="text-muted-foreground">
-                  {channel.charAt(0).toUpperCase() + channel.slice(1).replace(/_/g, ' ')}
+                  {getChannelDisplayName(channel)}
                 </span>
               </div>
             ))}

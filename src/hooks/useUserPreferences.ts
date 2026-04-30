@@ -15,6 +15,8 @@ export interface UserPreferences {
   quiet_hours_start?: string | null;
   quiet_hours_end?: string | null;
   email_digest?: 'daily' | 'weekly' | 'off';
+  // Saved task filters
+  default_task_filter_id?: string | null;
 }
 
 export interface UserSettings {

@@ -1,5 +1,6 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { requireAdmin } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,7 +56,11 @@ async function transcribeWithWhisper(audioBlob: Blob): Promise<string> {
   return await response.text();
 }
 
-async function addSpeakerLabels(rawTranscript: string, direction: string): Promise<string> {
+async function addSpeakerLabels(
+  rawTranscript: string,
+  direction: string,
+  agentName: string,
+): Promise<string> {
   const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
   if (!lovableApiKey) {
     return rawTranscript;
@@ -73,7 +78,7 @@ async function addSpeakerLabels(rawTranscript: string, direction: string): Promi
         messages: [
           {
             role: 'system',
-            content: `You are a transcript formatter. Add speaker labels to the following call transcript. The call direction is "${direction}". For inbound calls, the external caller speaks first. For outbound calls, our team member (Evan) speaks first. Label speakers as "Evan:" and "Caller:" on each line. Return ONLY the labeled transcript, no other text.`,
+            content: `You are a transcript formatter. Add speaker labels to the following call transcript. The call direction is "${direction}". For inbound calls, the external caller speaks first. For outbound calls, our team member (${agentName}) speaks first. Label speakers as "${agentName}:" and "Caller:" on each line. Return ONLY the labeled transcript, no other text.`,
           },
           { role: 'user', content: rawTranscript },
         ],
@@ -104,38 +109,12 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    const authHeader = req.headers.get('Authorization') || '';
-
-    const userSupabase = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: userData, error: userErr } = await userSupabase.auth.getUser();
-    if (userErr || !userData?.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: corsHeaders,
-      });
-    }
 
     const adminSupabase = createClient(supabaseUrl, serviceKey);
 
-    const { data: role } = await adminSupabase
-      .from('users')
-      .select('app_role')
-      .eq('user_id', userData.user.id)
-      .in('app_role', ['admin', 'super_admin'])
-      .maybeSingle();
-
-    if (!role) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: corsHeaders,
-      });
-    }
+    const authResult = await requireAdmin(req, adminSupabase, { corsHeaders });
+    if (!authResult.ok) return authResult.response;
 
     const body = await req.json().catch(() => ({}));
     const communicationId = body?.communicationId as string | undefined;
@@ -149,7 +128,7 @@ Deno.serve(async (req) => {
 
     const { data: comm, error: commErr } = await adminSupabase
       .from('communications')
-      .select('id, communication_type, recording_url, transcript, call_sid, direction')
+      .select('id, communication_type, recording_url, transcript, call_sid, direction, user_id')
       .eq('id', communicationId)
       .single();
 
@@ -196,9 +175,24 @@ Deno.serve(async (req) => {
 
     const audioBlob = await fetchTwilioRecordingAsBlob(comm.recording_url);
     const rawTranscript = await transcribeWithWhisper(audioBlob);
-    
+
+    // Resolve the agent's display name from the call's owning user.
+    // Falls back to "Agent" when the communication has no user_id or the
+    // user has no name set.
+    let agentName = 'Agent';
+    if (comm.user_id) {
+      const { data: agent } = await adminSupabase
+        .from('users')
+        .select('name')
+        .eq('id', comm.user_id)
+        .maybeSingle();
+      if (agent?.name && agent.name.trim().length > 0) {
+        agentName = agent.name;
+      }
+    }
+
     // Add speaker labels using GPT
-    const transcript = await addSpeakerLabels(rawTranscript, direction);
+    const transcript = await addSpeakerLabels(rawTranscript, direction, agentName);
 
     const { error: updateErr } = await adminSupabase
       .from('communications')

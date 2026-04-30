@@ -757,7 +757,7 @@ const EmployeePipeline = () => {
       }));
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-api?action=send-email`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-write?action=send`,
         {
           method: 'POST',
           headers: {

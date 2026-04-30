@@ -158,20 +158,9 @@ const Calls = () => {
     return () => { setPageTitle(null); };
   }, [setPageTitle]);
 
-  // Check if this user has their own call setup (any communications records)
-  const { data: hasCallSetup, isLoading: checkingCallSetup } = useQuery({
-    queryKey: ['call-setup-check', teamMember?.id],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from('communications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', teamMember!.id)
-        .limit(1);
-      return (count ?? 0) > 0;
-    },
-    enabled: !!teamMember,
-    staleTime: 1000 * 60 * 10,
-  });
+  // The user is set up for calling iff they have a Twilio phone number assigned on
+  // their users row. Sourced via useTeamMember(); no extra query needed.
+  const hasCallSetup = !!teamMember?.twilio_phone_number;
 
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [transcriptDialogOpen, setTranscriptDialogOpen] = useState(false);
@@ -349,16 +338,8 @@ const Calls = () => {
       direction: string;
       callDate: string;
     }) => {
-      // First, get Evan's team_member id
-      const { data: evanMember } = await supabase
-        .from('users')
-        .select('id')
-        .ilike('name', '%evan%')
-        .limit(1)
-        .single();
-
-      // Build notes with transcript reference
-      const transcriptNote = hasTranscript 
+      // Assign new lead to the rep who took the call (current user).
+      const transcriptNote = hasTranscript
         ? `📞 Initial call: ${callDate}\n📝 Transcript available (Communication ID: ${communicationId})`
         : `📞 Initial call: ${callDate}\n⏳ No transcript available yet`;
 
@@ -371,7 +352,7 @@ const Calls = () => {
           company_name: company || null,
           source: 'phone_call',
           status: 'discovery',
-          assigned_to: evanMember?.id || null,
+          assigned_to: teamMember?.id || null,
           notes: transcriptNote,
         })
         .select()
@@ -551,7 +532,7 @@ const Calls = () => {
     toast.info('Automation skipped - lead created without follow-up task');
   };
 
-  if (!checkingCallSetup && teamMember && hasCallSetup === false) {
+  if (teamMember && !hasCallSetup) {
     return (
       <EmployeeLayout>
         <div className="flex items-center justify-center py-20">

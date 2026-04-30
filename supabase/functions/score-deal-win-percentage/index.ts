@@ -8,8 +8,7 @@
 //
 // Modeled on supabase/functions/lead-ai-assistant/index.ts.
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
@@ -414,7 +413,7 @@ Heuristics:
 // Main handler
 // ─────────────────────────────────────────────────────────────────────────────
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -433,7 +432,7 @@ serve(async (req) => {
       });
     }
 
-    // JWT auth — match the evan-ai-assistant pattern: create the client with the
+    // JWT auth — match the ai-assistant pattern: create the client with the
     // service role key and validate the caller's JWT by passing it explicitly
     // to auth.getUser(token). Calling auth.getUser() without an argument
     // doesn't work in Deno edge functions because the client has no stored

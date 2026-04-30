@@ -9,7 +9,13 @@ verify_jwt = false
 [functions.ai-email-chat]
 verify_jwt = false
 
-[functions.gmail-api]
+[functions.gmail-auth]
+verify_jwt = false
+
+[functions.gmail-mailbox]
+verify_jwt = false
+
+[functions.gmail-write]
 verify_jwt = false
 
 [functions.send-newsletter]
@@ -43,9 +49,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.twilio-transcription]
-verify_jwt = false
-
-[functions.evan-ai-assistant]
 verify_jwt = false
 
 [functions.admin-update-user]

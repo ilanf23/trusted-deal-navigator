@@ -10,7 +10,7 @@ import type { Attachment } from '@/components/admin/GmailComposeDialog';
  * Hook for composing + sending emails from the pipeline expanded views.
  *
  * Encapsulates all compose dialog state (to / subject / body / attachments / sending)
- * and the send flow against the `gmail-api` edge function. Logs the send as an
+ * and the send flow against the `gmail-write` edge function. Logs the send as an
  * activity on the current deal so it shows up in the timeline immediately.
  *
  * Designed to be used with `<GmailComposeDialog />` — spread the returned
@@ -106,7 +106,7 @@ export function useLeadEmailCompose({ leadId, tableName, onSent }: UseLeadEmailC
         );
 
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-api?action=send`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-write?action=send`,
           {
             method: 'POST',
             headers: {

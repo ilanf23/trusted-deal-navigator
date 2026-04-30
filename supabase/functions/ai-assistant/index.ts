@@ -1,6 +1,6 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { getUserFromRequest } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,37 +10,6 @@ const corsHeaders = {
 // Module-level constants (needed by agent functions)
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-// ========== Agent Functions (merged from ai-agent-executor) ==========
-
-// Get user info from JWT
-async function getUserFromRequest(req: Request) {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) throw new Error("No authorization header");
-
-  const token = authHeader.replace("Bearer ", "");
-  const supabase = createClient(supabaseUrl, supabaseKey);
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) throw new Error("Invalid token");
-
-  // Get team member
-  const { data: teamMember } = await supabase
-    .from("users")
-    .select("id, name")
-    .eq("user_id", user.id)
-    .single();
-
-  // Check if owner
-  const { data: memberData } = await supabase
-    .from("users")
-    .select("app_role")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const isOwner = memberData?.app_role === "admin" || memberData?.app_role === "super_admin";
-
-  return { user, teamMember, isOwner };
-}
 
 // Execute a single action and log the change
 async function executeAction(
@@ -493,7 +462,7 @@ const agentTools = [
 async function handleAgentAction(req: Request, body: Record<string, any>) {
   const { action } = body;
   const supabase = createClient(supabaseUrl, supabaseKey);
-  const { user, teamMember, isOwner } = await getUserFromRequest(req);
+  const { authUserId, teamMember, isOwner } = await getUserFromRequest(req, supabase);
 
   // === Single action execution (Assist mode confirms) ===
   if (action === "execute") {
@@ -506,7 +475,7 @@ async function handleAgentAction(req: Request, body: Record<string, any>) {
         .from("ai_agent_batches")
         .insert({
           conversation_id: conversationId,
-          user_id: user.id,
+          user_id: authUserId,
           mode,
           prompt_summary: `${actionType}: ${params?.label || ""}`,
           total_changes: 1,
@@ -522,7 +491,7 @@ async function handleAgentAction(req: Request, body: Record<string, any>) {
       supabase,
       actionType,
       params,
-      user.id,
+      authUserId,
       teamMember?.id || null,
       conversationId,
       mode,
@@ -538,7 +507,7 @@ async function handleAgentAction(req: Request, body: Record<string, any>) {
 
   // === Undo single change ===
   if (action === "undo") {
-    const result = await undoChange(supabase, body.changeId, user.id);
+    const result = await undoChange(supabase, body.changeId, authUserId);
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -565,7 +534,7 @@ async function handleAgentAction(req: Request, body: Record<string, any>) {
     let undone = 0;
     for (const change of (changes || [])) {
       try {
-        await undoChange(supabase, change.id, user.id);
+        await undoChange(supabase, change.id, authUserId);
         undone++;
       } catch (e) {
         console.error(`Failed to undo change ${change.id}:`, e);
@@ -592,8 +561,10 @@ async function handleAgentAction(req: Request, body: Record<string, any>) {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
-    // Fetch context data (leads, tasks)
-    const memberId = tmId || teamMember?.id;
+    // Fetch context data (leads, tasks). Owners can target other team members
+    // via the `teamMemberId` body param; non-owners are scoped to themselves
+    // regardless of the client-supplied id.
+    const memberId = isOwner ? (tmId || teamMember?.id) : teamMember?.id;
     let leadsQuery = supabase
       .from("leads")
       .select("id, name, company_name, status, email, phone, updated_at, notes, next_action, waiting_on")
@@ -625,7 +596,7 @@ Today: ${new Date().toISOString().split("T")[0]}`;
         .from("ai_agent_batches")
         .insert({
           conversation_id: conversationId,
-          user_id: user.id,
+          user_id: authUserId,
           mode: "agent",
           prompt_summary: prompt.substring(0, 200),
           total_changes: 0,
@@ -734,7 +705,7 @@ ${contextStr}`,
 
                 const result = await executeAction(
                   supabase, fnName, actionParams,
-                  user.id, memberId || null, conversationId,
+                  authUserId, memberId || null, conversationId,
                   "agent", batchId, totalChanges, isOwner,
                 );
 
@@ -801,12 +772,12 @@ ${contextStr}`,
 
 // ========== Main serve handler ==========
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = await enforceRateLimit(req, "evan-ai-assistant", 10, 60);
+  const rateLimitResponse = await enforceRateLimit(req, "ai-assistant", 10, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
@@ -817,9 +788,6 @@ serve(async (req) => {
       return handleAgentAction(req, body);
     }
 
-    // Existing chat/assist logic...
-    const { messages, evanId, userName, mode = 'chat', currentPage = '' } = body;
-
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY is not configured");
@@ -827,15 +795,23 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch Evan's data for context
+    // Resolve the calling team member from the JWT — never trust a
+    // client-supplied name. Owners can scope context to another team member
+    // via `teamMemberId` in the body; non-owners are always self-scoped.
+    const { teamMember, isOwner } = await getUserFromRequest(req, supabase);
+
+    const { messages, teamMemberId: requestedMemberId, mode = 'chat', currentPage = '' } = body;
+    const scopedMemberId = isOwner ? (requestedMemberId || teamMember?.id) : teamMember?.id;
+    const displayName = teamMember?.name?.trim() || 'there';
+
+    // Fetch the scoped team member's data for context
     let contextData = "";
 
-    if (evanId) {
-      // Fetch leads assigned to Evan with full details
+    if (scopedMemberId) {
       const { data: leads } = await supabase
         .from("leads")
         .select("id, name, company_name, status, email, phone, updated_at, notes, source, tags, next_action, waiting_on")
-        .eq("assigned_to", evanId)
+        .eq("assigned_to", scopedMemberId)
         .order("updated_at", { ascending: false })
         .limit(50);
 
@@ -885,7 +861,7 @@ serve(async (req) => {
 
       // Build context string
       contextData = `
-## Evan's CRM Data (Current as of ${new Date().toISOString()})
+## ${displayName}'s CRM Data (Current as of ${new Date().toISOString()})
 
 ### Leads (${leads?.length || 0} total)
 ${leads?.map(l => `- **${l.name}**${l.company_name ? ` (${l.company_name})` : ''}: Status: ${l.status}, Source: ${l.source || 'unknown'}${l.next_action ? `, Next: ${l.next_action}` : ''}${l.waiting_on ? `, Waiting on: ${l.waiting_on}` : ''}${l.notes ? `, Notes: ${l.notes.substring(0, 150)}` : ''}`).join('\n') || 'No leads found'}
@@ -979,8 +955,6 @@ ${dropboxFiles.map(f => {
 `;
       }
     }
-
-    const displayName = userName || 'Evan';
 
     const pageContext = currentPage ? `\n\n## Current Page\nThe user is currently viewing: ${currentPage}\nTailor your suggestions to be relevant to this page when possible.` : '';
 
@@ -1079,7 +1053,7 @@ Include these tags inline in your response text. Each action will be rendered as
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {
-    console.error("evan-ai-assistant error:", error);
+    console.error("ai-assistant error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       {
