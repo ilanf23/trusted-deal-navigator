@@ -24,9 +24,12 @@ import {
 interface RevenueChartProps {
   evanId: string | undefined;
   className?: string;
+  annualGoal?: number;
 }
 
 type Granularity = 'daily' | 'weekly' | 'monthly';
+
+const MS_PER_YEAR = 365 * 24 * 60 * 60 * 1000;
 
 function deriveGranularity(range: TimeRange): Granularity {
   if (range === 'mtd') return 'daily';
@@ -34,7 +37,7 @@ function deriveGranularity(range: TimeRange): Granularity {
   return 'monthly';
 }
 
-const RevenueChart = ({ evanId, className }: RevenueChartProps) => {
+const RevenueChart = ({ evanId, className, annualGoal = 1_500_000 }: RevenueChartProps) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('ytd');
   const [scope, setScope] = useState<Scope>('company');
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
@@ -129,16 +132,21 @@ const RevenueChart = ({ evanId, className }: RevenueChartProps) => {
 
     return buckets.map((bStart) => {
       const bEnd = getBucketEnd(bStart);
+      const safeEnd = bEnd > now ? now : bEnd;
       const revenue = Math.round(aggregateBucket(currentLeads, bStart, bEnd));
       cumulative += revenue;
+      const goal = Math.round(
+        ((safeEnd.getTime() - periodStart.getTime()) / MS_PER_YEAR) * annualGoal,
+      );
 
       return {
         date: bStart,
         cumulative,
+        goal,
         label: format(bStart, labelFmt),
       };
     });
-  }, [revenueData, timeRange, scope, evanId, selectedSources]);
+  }, [revenueData, timeRange, scope, evanId, selectedSources, annualGoal]);
 
   return (
     <RevenueLineChart
@@ -151,6 +159,7 @@ const RevenueChart = ({ evanId, className }: RevenueChartProps) => {
       sources={allSources}
       selectedSources={selectedSources}
       onSourcesChange={setSelectedSources}
+      annualGoal={annualGoal}
       className={className}
     />
   );

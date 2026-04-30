@@ -1,0 +1,78 @@
+# Pencil MCP Server Setup
+
+Pencil (pencil.dev) is used for wireframing and UI design. Its MCP server lets AI agents read/write `.pen` files directly — enabling a wireframe → review → implement workflow.
+
+## Prerequisites
+
+1. **VS Code Extension**: `highagency.pencildev` — install from the Extensions marketplace.
+2. **MCP binary**: Ships with the extension at:
+   - **macOS (ARM)**: `~/.pencil/mcp/visual_studio_code/out/mcp-server-darwin-arm64`
+   - **macOS (Intel)**: `~/.pencil/mcp/visual_studio_code/out/mcp-server-darwin-x64`
+   - **Windows**: `~/.pencil/mcp/visual_studio_code/out/mcp-server-win32-x64.exe`
+   - **Linux**: `~/.pencil/mcp/visual_studio_code/out/mcp-server-linux-x64`
+
+## VS Code MCP Configuration
+
+Add to `~/Library/Application Support/Code/User/mcp.json` (macOS) or the equivalent on other OS:
+
+```json
+{
+  "servers": {
+    "pencil": {
+      "type": "stdio",
+      "command": "~/.pencil/mcp/visual_studio_code/out/mcp-server-darwin-arm64",
+      "args": []
+    }
+  }
+}
+```
+
+Adjust the binary path for your OS/arch.
+
+## Activation
+
+1. Open a `.pen` file in VS Code (or have the Pencil extension active).
+2. In the MCP panel (or via Command Palette → "MCP: List Servers"), verify the pencil server shows as connected.
+3. If it's not listed, reload the VS Code window (`Cmd+Shift+P → Developer: Reload Window`).
+
+## Available Tools
+
+| Tool | Purpose |
+|---|---|
+| `get_editor_state` | Get active file, selection, document structure. **Call with `include_schema: true` first time.** |
+| `open_document` | Open a `.pen` file or create new (`"new"`). |
+| `get_guidelines` | Load design guides and styles. |
+| `batch_get` | Read nodes by pattern or ID. Combine multiple reads in one call. |
+| `batch_design` | Insert/Copy/Update/Replace/Move/Delete/Image ops (max 25 per call). |
+| `snapshot_layout` | Check computed layout rectangles. |
+| `get_screenshot` | Screenshot a node — use to visually verify changes. |
+| `get_variables` | Read variables and themes. |
+| `set_variables` | Add/update variables. |
+| `find_empty_space_on_canvas` | Find space for new frames. |
+| `search_all_unique_properties` | Discover properties across a subtree. |
+| `replace_all_matching_properties` | Bulk property replacement. |
+| `export_nodes` | Export to PNG/JPEG/WEBP/PDF. |
+
+## Key Gotchas
+
+- **Font families**: Many common fonts (monospace, Courier New, ui-monospace) are flagged as invalid by Pencil. Use `Inter` for wireframes.
+- **Image fills**: There is no `image` node type. Apply image fills to `frame` or `rectangle` nodes using `fill: { type: "image", url: "relative/path.png", mode: "fit" }`.
+- **Relative image paths**: URLs in image fills are relative to the `.pen` file location.
+- **`.pen` files are encrypted**: Never use `read_file` or `grep` on `.pen` files — only use Pencil MCP tools.
+- **Schema required**: Always call `get_editor_state({ include_schema: true })` before any read/write ops in a new session.
+- **Bindings are per-call**: Binding names from one `batch_design` call cannot be reused in the next.
+
+## Workflow
+
+1. **Create/open** the `.pen` file → `open_document`
+2. **Get state + schema** → `get_editor_state({ include_schema: true })`
+3. **Read structure** → `batch_get` with patterns or node IDs
+4. **Design** → `batch_design` with insert/update/delete operations
+5. **Verify** → `get_screenshot` to visually check the result
+6. **Iterate** with user feedback
+7. **Implement** → use the wireframe as a spec to write HTML/CSS/React code
+
+## Project Design Files
+
+Our wireframes live in `docs/design/`:
+- `chat-page.pen` — main chat UI wireframe (header, chat area, reasoning group, composer, thinking indicator)

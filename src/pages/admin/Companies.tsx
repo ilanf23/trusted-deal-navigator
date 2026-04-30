@@ -268,6 +268,7 @@ const Companies = () => {
   const [sortField, setSortField] = useState<SortField>('last_activity_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [selectedCompanyIds, setSelectedCompanyIds] = useState<Set<string>>(new Set());
 
   // ── Column sort menu state ──
   const [colMenuOpen, setColMenuOpen] = useState<string | null>(null);
@@ -608,8 +609,8 @@ const Companies = () => {
 
   const { columnWidths, handleColumnResize } = useAutoFitColumns({
     minWidths: {
-      company: 200, phone: 130, contact: 140, deals: 80, website: 150,
-      contactType: 120, emailDomain: 140, lastActivity: 120, interactions: 90, inactiveDays: 90, tags: 100,
+      company: 300, phone: 195, contact: 210, deals: 120, website: 225,
+      contactType: 180, emailDomain: 210, lastActivity: 180, interactions: 135, inactiveDays: 135, tags: 150,
     },
     autoFitConfig: {
       company: { getText: (c: any) => c.name, extraPx: 58 },
@@ -643,6 +644,26 @@ const Companies = () => {
   function handleRowClick(company: Company) {
     setSelectedCompany(company);
   }
+
+  const toggleCompanySelection = (companyId: string) => {
+    setSelectedCompanyIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(companyId)) next.delete(companyId);
+      else next.add(companyId);
+      return next;
+    });
+  };
+
+  const isAllSelected = useMemo(
+    () =>
+      filteredAndSorted.length > 0 &&
+      filteredAndSorted.every((c) => selectedCompanyIds.has(c.id)),
+    [filteredAndSorted, selectedCompanyIds],
+  );
+
+  const selectAll = () =>
+    setSelectedCompanyIds(new Set(filteredAndSorted.map((c) => c.id)));
+  const clearSelection = () => setSelectedCompanyIds(new Set());
 
   // Row padding based on density
   const rowPad = rowDensity === 'comfortable' ? 'py-1.5' : 'py-0.5';
@@ -888,12 +909,22 @@ const Companies = () => {
                       renderOverlay={makeColumnDragOverlay(COMPANIES_COLUMN_HEADERS, k => columnWidths[k])}
                     >
                       <tr style={{ backgroundColor: '#eee6f6' }}>
-                        <th className="w-12 pl-2 pr-4 py-1.5 text-center sticky top-0 left-0 z-30" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6' }} />
                         {renderColHeader({
                           reactKey: 'company',
-                          className: 'sticky top-0 z-30',
-                          style: { left: 48, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 },
-                          children: (<><Building2 className="h-4 w-4" /> Company</>),
+                          className: 'sticky top-0 z-30 group/hdr',
+                          style: { left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
+                          children: (
+                            <>
+                              <div className="shrink-0 mr-1" title="Select all" onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={isAllSelected}
+                                  onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                                  className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                                />
+                              </div>
+                              <Building2 className="h-4 w-4" /> Company
+                            </>
+                          ),
                         })}
                         {visibleOrderedKeys.map((key) => {
                           const def = COMPANIES_COLUMN_HEADERS[key];
@@ -913,9 +944,9 @@ const Companies = () => {
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
                         <tr key={i} className="bg-white dark:bg-card">
-                          <td className="pl-2 pr-3 py-1.5 w-12 text-center sticky left-0 z-[5] bg-white dark:bg-card" style={{ border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6' }}><Skeleton className="h-5 w-5 rounded" /></td>
-                          <td className="px-4 py-1.5 sticky z-[5] bg-white dark:bg-card" style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6' }}>
+                          <td className="px-4 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.company, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                             <div className="flex items-center gap-2.5">
+                              <Skeleton className="h-5 w-5 rounded shrink-0" />
                               <Skeleton className="h-7 w-7 rounded-md shrink-0" />
                               <Skeleton className="h-3.5 w-36" />
                             </div>
@@ -937,7 +968,7 @@ const Companies = () => {
                       ))
                     ) : filteredAndSorted.length === 0 ? (
                       <tr>
-                        <td colSpan={13} style={{ border: '1px solid #c8bdd6' }}>
+                        <td colSpan={12} style={{ border: '1px solid #c8bdd6' }}>
                           <div className="flex flex-col items-center justify-center py-24 gap-4">
                             <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted">
                               <FileSearch className="h-6 w-6 text-muted-foreground" />
@@ -963,33 +994,38 @@ const Companies = () => {
                       filteredAndSorted.map((company) => {
                         const typeCfg = contactTypeConfig[company.contact_type ?? 'Other'];
                         const inactiveDaysVal = daysSince(company.last_activity_at) ?? 0;
-                        const isSelected = selectedCompany?.id === company.id;
+                        const isDetailSelected = selectedCompany?.id === company.id;
+                        const isBulkSelected = selectedCompanyIds.has(company.id);
+                        const isSelected = isDetailSelected;
 
-                        const stickyBg = isSelected
+                        const stickyBg = isDetailSelected
                           ? 'bg-[#eee6f6] dark:bg-purple-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-950/40'
-                          : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
+                          : isBulkSelected
+                            ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
+                            : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
 
                         return (
                           <tr
                             key={company.id}
                             onClick={() => handleRowClick(company)}
                             className={`cursor-pointer transition-colors duration-100 group ${
-                              isSelected
+                              isDetailSelected
                                 ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40'
-                                : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
+                                : isBulkSelected
+                                  ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
+                                  : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >
-                            {/* Checkbox */}
-                            <td className={`pl-2 pr-3 py-1.5 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg} ${isSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6' }}>
-                              <Checkbox
-                                checked={isSelected}
-                                className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
-                              />
-                            </td>
-
-                            {/* Company (sticky) */}
-                            <td className={`pl-2 pr-1.5 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                            {/* Company + Checkbox (sticky) */}
+                            <td className={`pl-2 pr-1.5 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                               <div className="flex items-center gap-2">
+                                <div className="shrink-0" title="Select" onClick={(e) => e.stopPropagation()}>
+                                  <Checkbox
+                                    checked={isBulkSelected}
+                                    onCheckedChange={() => toggleCompanySelection(company.id)}
+                                    className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                                  />
+                                </div>
                                 <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
                                   <CrmAvatar name={company.company_name} />
                                   <span className="text-[16px] text-[#202124] dark:text-foreground truncate">
@@ -1008,7 +1044,7 @@ const Companies = () => {
 
                             {visibleOrderedKeys.map((k) => {
                               const cellStyle: React.CSSProperties = { width: columnWidths[k], border: '1px solid #c8bdd6' };
-                              const cellClass = 'px-3 py-1.5 overflow-hidden';
+                              const cellClass = 'px-3 py-1.5 overflow-hidden whitespace-nowrap';
                               const dashPill = (
                                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                               );
@@ -1108,7 +1144,7 @@ const Companies = () => {
                                   return (
                                     <td key={k} className={cellClass} style={cellStyle}>
                                       {company.tags && company.tags.length > 0 ? (
-                                        <span className="flex items-center gap-1 flex-wrap">
+                                        <span className="inline-flex items-center gap-1 flex-nowrap">
                                           {company.tags.slice(0, 2).map((tag) => (
                                             <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
                                               {tag}

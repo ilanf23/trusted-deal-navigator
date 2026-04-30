@@ -11,6 +11,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Progress } from '@/components/ui/progress';
+import { Target } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -162,12 +164,40 @@ const Dashboard = () => {
     pipelineData, fundedLeads,
     isLoading, isFetching,
     annualGoal, periodOverPeriod, activityHeatmapData, channelActivityData, sparklineData, heatmapLoading,
-  } = useDashboardData(timePeriod, teamMember?.id, channelDateBasis);
+  } = useDashboardData(timePeriod, undefined, channelDateBasis);
 
   const firstName = teamMember?.name || 'Team';
   const evanId = teamMember?.id;
   const memberSlug = teamMember?.name?.toLowerCase() || '';
   const basePath = `/admin/${memberSlug}`;
+
+  const { data: ytdFundedDeals, isLoading: ytdGoalLoading } = useQuery({
+    queryKey: ['dashboard-ytd-funded'],
+    queryFn: async () => {
+      const yearStart = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1)).toISOString();
+      const { data, error } = await supabase
+        .from('potential')
+        .select('id, won_at, deal_value, potential_revenue, fee_percent')
+        .eq('deal_outcome', 'won')
+        .gte('won_at', yearStart);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const annualGoalTracker = useMemo(() => {
+    const goal = 1_500_000;
+    const raised = (ytdFundedDeals || []).reduce((sum, d) => sum + getDealRevenue(d), 0);
+    const percent = goal > 0 ? (raised / goal) * 100 : 0;
+    const remaining = Math.max(0, goal - raised);
+    return {
+      goal,
+      raised,
+      remaining,
+      percent,
+      percentClamped: Math.min(100, percent),
+    };
+  }, [ytdFundedDeals]);
 
   const { data: todaysAppointments, isLoading: appointmentsLoading } = useQuery({
     queryKey: ['todays-appointments', evanId],
@@ -276,7 +306,7 @@ const Dashboard = () => {
           aria-pressed={channelChartType === 'area'}
           className={cn(
             'inline-flex items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors',
-            channelChartType === 'area' && 'bg-primary text-primary-foreground shadow-sm',
+            channelChartType === 'area' && 'bg-orange-500 text-white shadow-sm',
           )}
         >
           <Waves className="h-3.5 w-3.5" />
@@ -288,7 +318,7 @@ const Dashboard = () => {
           aria-pressed={channelChartType === 'bar'}
           className={cn(
             'inline-flex items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors',
-            channelChartType === 'bar' && 'bg-primary text-primary-foreground shadow-sm',
+            channelChartType === 'bar' && 'bg-orange-500 text-white shadow-sm',
           )}
         >
           <BarChart3 className="h-3.5 w-3.5" />
@@ -388,6 +418,43 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Annual Goal Tracker — YTD revenue vs $1.5M annual goal */}
+        <Card className="bg-card">
+          <CardContent className="px-4 py-3">
+            {ytdGoalLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-full" />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-end justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Target className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground">Annual Goal</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {formatCurrencyFull(annualGoalTracker.raised)} of {formatCurrency(annualGoalTracker.goal)} raised YTD
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-2xl font-semibold tabular-nums text-foreground">
+                      {annualGoalTracker.percent.toFixed(1)}%
+                    </span>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatCurrency(annualGoalTracker.remaining)} to go
+                    </p>
+                  </div>
+                </div>
+                <Progress value={annualGoalTracker.percentClamped} className="h-2" />
+              </>
+            )}
+          </CardContent>
+        </Card>
+
         {/* KPI tiles — 5 across on desktop */}
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -433,7 +500,7 @@ const Dashboard = () => {
         )}
 
         {/* Full-width revenue combo chart */}
-        <RevenueChart evanId={evanId} className="bg-card" />
+        <RevenueChart evanId={evanId} className="bg-card" annualGoal={annualGoal} />
 
         {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

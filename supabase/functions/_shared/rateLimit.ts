@@ -2,7 +2,7 @@
 // Shared across all edge function isolates via atomic DB upserts.
 // Fail-open: if DB is unreachable, requests are allowed through.
 
-import { createClient } from './supabase.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 function getClientIp(req: Request): string {
   const xff = req.headers.get('x-forwarded-for');

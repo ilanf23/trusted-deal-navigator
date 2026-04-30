@@ -1,9 +1,28 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import EChartsReact from 'echarts-for-react';
 import * as echarts from 'echarts';
 import type { EChartsOption } from 'echarts';
+
+const TOOLTIP_DIM_COLOR = '#9ca3af';
+
+type TooltipParam = {
+  name?: string;
+  value?: number | string;
+  dataIndex?: number;
+  seriesIndex?: number;
+  seriesName?: string;
+  color?: string;
+  componentType?: string;
+};
+
+type ChartMouseEvent = {
+  componentType?: string;
+  seriesName?: string;
+  seriesIndex?: number;
+  dataIndex?: number;
+};
 
 export interface ChannelActivityData {
   date: string;
@@ -75,6 +94,26 @@ function formatChartValue(value: number, valueMode: 'currency' | 'count'): strin
   return valueMode === 'currency' ? formatCurrency(value) : value.toLocaleString();
 }
 
+function isTooltipParamArray(params: unknown): params is TooltipParam[] {
+  return Array.isArray(params);
+}
+
+function isChartMouseEvent(params: unknown): params is ChartMouseEvent {
+  return typeof params === 'object' && params !== null;
+}
+
+function getFallbackActiveSeries(params: TooltipParam[]): string | null {
+  const visibleParams = params.filter(param => Number(param.value) > 0);
+  if (visibleParams.length === 0) return null;
+  return visibleParams[visibleParams.length - 1]?.seriesName ?? null;
+}
+
+function getSeriesColor(seriesName: string | undefined, allChannels: string[]): string {
+  if (!seriesName) return '#111827';
+  const index = allChannels.findIndex(channel => getChannelDisplayName(channel) === seriesName);
+  return index >= 0 ? getPalette(index).solid : '#111827';
+}
+
 export function ChannelActivityChartSkeleton({ className }: { className?: string }) {
   return (
     <Card className={className}>
@@ -98,6 +137,9 @@ export function ChannelActivityChart({
   valueMode = 'currency',
   chartType = 'area',
 }: ChannelActivityChartProps) {
+  const hoveredSeriesRef = useRef<string | null>(null);
+  const chartRef = useRef<EChartsReact | null>(null);
+
   const chartData = useMemo(() => {
     if (!data || data.length === 0) {
       return [];
@@ -123,21 +165,19 @@ export function ChannelActivityChart({
   const option: EChartsOption = useMemo(() => {
     const labels = chartData.map(d => formatDateLabel(d.date));
     const isBar = chartType === 'bar';
-    const labelOption = {
-      show: isBar,
-      position: 'insideBottom',
-      distance: 15,
-      align: 'left',
-      verticalAlign: 'middle',
-      rotate: 90,
-      formatter: (params: any) => {
-        const value = Number(params.value) || 0;
-        if (value <= 0) return '';
-        return `${formatChartValue(value, valueMode)}  {name|${params.seriesName}}`;
-      },
+    const totalsByDate = chartData.map(d =>
+      Object.values(d.channels).reduce((a, b) => a + b, 0),
+    );
+    const topLabelOption = {
+      show: true,
+      position: 'top',
       fontSize: 11,
-      rich: {
-        name: {},
+      fontWeight: 600,
+      color: '#111827',
+      formatter: (params: TooltipParam) => {
+        const total = totalsByDate[params.dataIndex] ?? 0;
+        if (total <= 0) return '';
+        return formatChartValue(total, valueMode);
       },
     };
 
@@ -151,17 +191,22 @@ export function ChannelActivityChart({
             backgroundColor: '#6a7985',
           },
         },
-        formatter: (params: any) => {
-          if (!Array.isArray(params) || params.length === 0) return '';
+        formatter: (params: unknown) => {
+          if (!isTooltipParamArray(params) || params.length === 0) return '';
 
           const date = params[0].name;
+          const hovered = hoveredSeriesRef.current ?? getFallbackActiveSeries(params);
           let html = `<div style="font-weight:600;margin-bottom:8px;">${date}</div>`;
 
           for (const param of params) {
             if (param.value > 0) {
-              html += `<div style="display:flex;gap:8px;justify-content:space-between;min-width:180px;">
-                <span style="color:${param.color};">● ${param.seriesName}</span>
-                <strong>${valueMode === 'currency' ? formatCurrencyFull(Number(param.value) || 0) : Number(param.value || 0).toLocaleString()}</strong>
+              const isActive = hovered === param.seriesName;
+              const rowColor = isActive ? getSeriesColor(param.seriesName, allChannels) : TOOLTIP_DIM_COLOR;
+              const fontWeight = isActive ? 700 : 400;
+              const opacity = isActive ? 1 : 0.62;
+              html += `<div style="display:flex;gap:8px;justify-content:space-between;min-width:180px;color:${rowColor};opacity:${opacity};font-weight:${fontWeight};">
+                <span>● ${param.seriesName}</span>
+                <strong style="color:${rowColor};">${valueMode === 'currency' ? formatCurrencyFull(Number(param.value) || 0) : Number(param.value || 0).toLocaleString()}</strong>
               </div>`;
             }
           }
@@ -173,12 +218,13 @@ export function ChannelActivityChart({
         left: '2%',
         right: '3%',
         bottom: '4%',
-        top: allChannels.length > 0 ? isBar ? '20%' : '18%' : '8%',
+        top: allChannels.length > 0 ? isBar ? '14%' : '18%' : '8%',
         containLabel: true,
       },
       legend: {
         type: 'scroll',
         top: 0,
+        itemGap: 12,
         data: allChannels.map(getChannelDisplayName),
         textStyle: {
           fontSize: 11,
@@ -218,11 +264,12 @@ export function ChannelActivityChart({
       series: allChannels.map((channel, index) => {
         const palette = getPalette(index);
         if (isBar) {
+          const isTopSeries = index === allChannels.length - 1;
           return {
             name: getChannelDisplayName(channel),
             type: 'bar',
-            barGap: index === 0 ? 0 : undefined,
-            label: labelOption,
+            stack: 'Total',
+            label: isTopSeries ? topLabelOption : { show: false },
             emphasis: {
               focus: 'series',
             },
@@ -242,9 +289,10 @@ export function ChannelActivityChart({
           label: index === allChannels.length - 1 ? {
             show: true,
             position: 'top',
-            formatter: (params: any) => {
+            formatter: (params: TooltipParam) => {
               if (params.value <= 0) return '';
-              return valueMode === 'currency' ? formatCurrency(params.value) : params.value.toLocaleString();
+              const value = Number(params.value) || 0;
+              return valueMode === 'currency' ? formatCurrency(value) : value.toLocaleString();
             },
           } : undefined,
           areaStyle: {
@@ -279,6 +327,30 @@ export function ChannelActivityChart({
       : '-';
   }, [chartData, allChannels, valueMode]);
 
+  const onChartEvents = useMemo(() => ({
+    mouseover: (params: unknown) => {
+      if (!isChartMouseEvent(params) || params.componentType !== 'series' || !params.seriesName) return;
+      if (hoveredSeriesRef.current === params.seriesName) return;
+      hoveredSeriesRef.current = params.seriesName;
+      const inst = chartRef.current?.getEchartsInstance();
+      if (inst) {
+        inst.dispatchAction({
+          type: 'showTip',
+          seriesIndex: params.seriesIndex,
+          dataIndex: params.dataIndex,
+        });
+      }
+    },
+    mousemove: (params: unknown) => {
+      if (!isChartMouseEvent(params) || params.componentType !== 'series' || !params.seriesName) return;
+      hoveredSeriesRef.current = params.seriesName;
+    },
+    globalout: () => {
+      if (hoveredSeriesRef.current === null) return;
+      hoveredSeriesRef.current = null;
+    },
+  }), []);
+
   if (isLoading) {
     return <ChannelActivityChartSkeleton className={className} />;
   }
@@ -303,13 +375,15 @@ export function ChannelActivityChart({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="h-64">
+          <div className="h-72">
             {hasChartValues ? (
               <EChartsReact
+                ref={chartRef}
                 option={option}
                 style={{ width: '100%', height: '100%' }}
                 opts={{ renderer: 'svg' }}
                 notMerge={true}
+                onEvents={onChartEvents}
               />
             ) : (
               <div className="flex h-full items-center justify-center rounded-md border border-dashed border-border bg-muted/30">

@@ -1,23 +1,10 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Zap,
-  Clock,
-  Phone,
-  FileText,
-  Mail,
-  ArrowRight,
-  Target,
-  CheckCircle2,
-  Loader2
-} from 'lucide-react';
+import { ArrowUpRight, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface TopActionsProps {
   evanId?: string;
@@ -30,10 +17,6 @@ interface ActionItem {
   companyName?: string;
   action: string;
   actionType: 'call' | 'email' | 'document' | 'follow_up' | 'close';
-  impact: string;
-  urgencyScore: number;
-  closeProximity: number; // 1-5, 5 = closest to closing
-  blockerSeverity: number; // 1-5, 5 = most severe
   waitingTime: number; // in hours
   dueDate?: string;
   status: string;
@@ -43,23 +26,9 @@ interface ActionItem {
   taskId?: string;
 }
 
-const ACTION_ICONS = {
-  call: Phone,
-  email: Mail,
-  document: FileText,
-  follow_up: Clock,
-  close: Target,
-};
-
-const STAGE_CLOSE_PROXIMITY: Record<string, number> = {
-  approval: 5,
-  underwriting: 4,
-  document_collection: 3,
-  pre_qualification: 2,
-  discovery: 1,
-};
-
 export const TopActions = ({ evanId }: TopActionsProps) => {
+  const navigate = useNavigate();
+
   type OverdueTaskLead = {
     id: string;
     name: string | null;
@@ -117,10 +86,6 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
         companyName: lead?.company_name ?? undefined,
         action: task.title,
         actionType: 'follow_up',
-        impact: task.description ?? 'Complete this task',
-        urgencyScore: 0,
-        closeProximity: lead ? STAGE_CLOSE_PROXIMITY[lead.status] ?? 1 : 1,
-        blockerSeverity: 0,
         waitingTime: 0,
         dueDate: task.due_date ?? undefined,
         status: lead?.status ?? 'discovery',
@@ -144,25 +109,6 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
     return `$${value.toFixed(0)}`;
   };
 
-  const getStageColor = (status: string) => {
-    switch (status) {
-      case 'approval': return 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400';
-      case 'underwriting': return 'bg-primary/10 text-primary';
-      case 'document_collection': return 'bg-muted text-muted-foreground';
-      case 'pre_qualification': return 'bg-muted text-muted-foreground';
-      case 'discovery': return 'bg-muted text-muted-foreground';
-      default: return 'bg-muted text-muted-foreground';
-    }
-  };
-
-  const getUrgencyIndicator = (score: number) => {
-    if (score >= 4) return { color: 'text-destructive', label: 'Critical' };
-    if (score >= 3) return { color: 'text-primary', label: 'High' };
-    if (score >= 2) return { color: 'text-muted-foreground', label: 'Medium' };
-    return { color: 'text-muted-foreground/60', label: 'Low' };
-  };
-
-  // Build the deep-link URL based on action type and available contact info
   const getActionUrl = (item: ActionItem): string => {
     switch (item.actionType) {
       case 'email':
@@ -213,7 +159,6 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
     }
   };
 
-  // Short label showing where the action link goes
   const getDestinationLabel = (item: ActionItem): string => {
     switch (item.actionType) {
       case 'email': return 'Email';
@@ -233,65 +178,37 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
     approval: 'Approval',
   };
 
-  // Helper to truncate and clean impact text
-  const formatImpactText = (text: string, maxLength: number = 60) => {
-    if (!text) return '';
-    // Remove markdown-style formatting
-    let cleaned = text
-      .replace(/\*\*/g, '')
-      .replace(/\n/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    if (cleaned.length <= maxLength) return cleaned;
-    return cleaned.substring(0, maxLength).trim() + '...';
+  const openAction = (item: ActionItem) => {
+    navigate(getActionUrl(item));
   };
 
   return (
-    <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3" style={{ backgroundColor: '#eee6f6', borderBottom: '1px solid #c8bdd6' }}>
-        <div className="flex items-center gap-2.5">
-          <Zap className="h-4 w-4" style={{ color: '#3b2778' }} />
-          <h3 className="text-sm font-semibold" style={{ color: '#3b2778' }}>Top Actions</h3>
-          <span className="text-xs" style={{ color: '#3b2778', opacity: 0.6 }}>{actions.length} items</span>
+    <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
+      <div className="flex items-center justify-between px-5 py-3" style={{ backgroundColor: '#eee6f6', borderBottom: '1px solid #d8cee6' }}>
+        <div>
+          <h3 className="text-sm font-semibold leading-none" style={{ color: '#3b2778' }}>Top Actions</h3>
+          <p className="mt-1 text-xs leading-none" style={{ color: 'rgba(59, 39, 120, 0.62)' }}>
+            {actions.length} item{actions.length === 1 ? '' : 's'}
+          </p>
         </div>
       </div>
 
-      {/* Content */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : actions.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
-          <p className="text-sm font-medium">All caught up!</p>
+        <div className="py-12 text-center text-muted-foreground">
+          <p className="text-sm font-medium">All caught up</p>
         </div>
       ) : (
         <ScrollArea className="h-[460px]">
-          <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', minWidth: 600, borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] border-collapse text-sm">
+            <thead className="sticky top-0 z-10">
               <tr>
-                {['#', 'Action', 'Go To', 'Stage', 'Timing'].map((label) => (
-                  <th
-                    key={label}
-                    style={{
-                      backgroundColor: '#eee6f6',
-                      border: '1px solid #c8bdd6',
-                      color: '#3b2778',
-                      fontSize: '10px',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                      textAlign: 'left',
-                      padding: '6px 10px',
-                      position: 'sticky',
-                      top: 0,
-                      zIndex: 1,
-                    }}
-                  >
+                {['#', 'Action', 'Go to', 'Stage', 'Timing'].map((label) => (
+                  <th key={label} className="border-b px-4 py-2.5 text-left text-xs font-medium" style={{ backgroundColor: '#eee6f6', borderColor: '#d8cee6', color: '#3b2778' }}>
                     {label}
                   </th>
                 ))}
@@ -299,83 +216,69 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
             </thead>
             <tbody>
               {actions.map((item, index) => {
-                const Icon = ACTION_ICONS[item.actionType];
                 const isOverdue = item.dueDate && new Date(item.dueDate) < new Date();
                 const destination = getDestinationLabel(item);
-                const DestIcon = destination === 'Email' ? Mail : destination === 'Call' ? Phone : ArrowRight;
-                const cellBorder = '1px solid #c8bdd6';
 
                 return (
-                  <Link
+                  <tr
                     key={item.id}
-                    to={getActionUrl(item)}
-                    className="contents"
+                    role="link"
+                    tabIndex={0}
+                    className="cursor-pointer border-b transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-[-2px]"
+                    style={{ borderColor: '#ece6f3' }}
+                    onClick={() => openAction(item)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openAction(item);
+                      }
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f6f1fb'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
                   >
-                    <tr
-                      className="cursor-pointer"
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
-                    >
-                      {/* # */}
-                      <td style={{ border: cellBorder, padding: '8px 10px', width: 40, color: '#3b2778', fontWeight: 600 }}>
-                        {index + 1}
-                      </td>
+                    <td className="w-12 px-4 py-3 align-middle text-xs font-medium tabular-nums" style={{ color: 'rgba(59, 39, 120, 0.72)' }}>
+                      {index + 1}
+                    </td>
 
-                      {/* Action */}
-                      <td style={{ border: cellBorder, padding: '8px 10px' }}>
-                        <div className="flex items-center gap-2" style={{ overflow: 'hidden' }}>
-                          <div className="flex-shrink-0 p-1 rounded" style={{ backgroundColor: isOverdue ? '#fef2f2' : '#f3eef9' }}>
-                            <Icon className="h-3.5 w-3.5" style={{ color: isOverdue ? '#dc2626' : '#3b2778' }} />
-                          </div>
-                          <div style={{ overflow: 'hidden' }}>
-                            <div style={{ color: '#1a1a2e', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {item.action}
-                            </div>
-                            <div style={{ color: '#6b7280', fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
-                              {item.leadName}
-                              {item.companyName && ` · ${item.companyName}`}
-                              {item.loanAmount ? ` · ${formatCurrency(item.loanAmount)}` : ''}
-                            </div>
-                          </div>
+                    <td className="px-4 py-3 align-middle">
+                      <div className="min-w-0">
+                        <div className="truncate text-[13px] font-medium leading-5 text-foreground">
+                          {item.action}
                         </div>
-                      </td>
+                        <div className="mt-0.5 truncate text-xs leading-5 text-muted-foreground">
+                          {item.leadName}
+                          {item.companyName && ` · ${item.companyName}`}
+                          {item.loanAmount ? ` · ${formatCurrency(item.loanAmount)}` : ''}
+                        </div>
+                      </div>
+                    </td>
 
-                      {/* Go To */}
-                      <td style={{ border: cellBorder, padding: '8px 10px', width: 70, color: '#1a1a2e', whiteSpace: 'nowrap' }}>
-                        <span className="inline-flex items-center gap-1">
-                          <DestIcon className="h-3 w-3" />
-                          {destination}
+                    <td className="w-24 px-4 py-3 align-middle text-[13px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                        {destination}
+                        <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      </span>
+                    </td>
+
+                    <td className="w-32 px-4 py-3 align-middle text-[13px] text-foreground">
+                      <span className="whitespace-nowrap">{stageLabels[item.status] || item.status}</span>
+                    </td>
+
+                    <td className="w-36 px-4 py-3 align-middle text-[13px]">
+                      {item.dueDate ? (
+                        <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+                          <span className="font-medium text-foreground">{format(new Date(item.dueDate), 'MMM d')}</span>
+                          {isOverdue && <span className="text-xs text-muted-foreground">Past due</span>}
                         </span>
-                      </td>
-
-                      {/* Stage */}
-                      <td style={{ border: cellBorder, padding: '8px 10px', width: 110, color: '#1a1a2e', whiteSpace: 'nowrap' }}>
-                        {stageLabels[item.status] || item.status}
-                      </td>
-
-                      {/* Timing */}
-                      <td style={{ border: cellBorder, padding: '8px 10px', width: 90, whiteSpace: 'nowrap' }}>
-                        {item.dueDate ? (
-                          <>
-                            <span style={{ color: isOverdue ? '#dc2626' : '#1a1a2e' }}>
-                              {format(new Date(item.dueDate), 'MMM d')}
-                            </span>
-                            {isOverdue && (
-                              <span style={{ color: '#dc2626', fontSize: '11px', marginLeft: 4 }}>
-                                Overdue
-                              </span>
-                            )}
-                          </>
-                        ) : item.waitingTime > 0 ? (
-                          <span style={{ color: '#1a1a2e' }}>
-                            {formatWaitingTime(item.waitingTime)} ago
-                          </span>
-                        ) : (
-                          <span style={{ color: '#d1d5db' }}>—</span>
-                        )}
-                      </td>
-                    </tr>
-                  </Link>
+                      ) : item.waitingTime > 0 ? (
+                        <span className="whitespace-nowrap text-foreground">
+                          {formatWaitingTime(item.waitingTime)} ago
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/60">-</span>
+                      )}
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>

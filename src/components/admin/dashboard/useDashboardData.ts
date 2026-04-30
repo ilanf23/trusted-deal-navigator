@@ -238,12 +238,14 @@ export function useDashboardData(
 
   // Leads analytics — new leads created in period
   const leadsQuery = useQuery({
-    queryKey: ['admin-leads-analytics', timePeriod],
+    queryKey: ['admin-leads-analytics', timePeriod, teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('potential')
         .select('id, name, status, source, created_at, won_at, deal_value, potential_revenue, fee_percent, deal_outcome')
         .gte('created_at', periodStartISO);
+      if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -251,12 +253,14 @@ export function useDashboardData(
 
   // Pipeline analytics — open deals
   const pipelineQuery = useQuery({
-    queryKey: ['admin-pipeline-analytics'],
+    queryKey: ['admin-pipeline-analytics', teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('potential')
         .select('id, name, status, deal_value, potential_revenue, fee_percent, deal_outcome')
         .eq('deal_outcome', 'open');
+      if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -264,13 +268,15 @@ export function useDashboardData(
 
   // Won deals in current period
   const fundedQuery = useQuery({
-    queryKey: ['admin-funded-analytics', timePeriod],
+    queryKey: ['admin-funded-analytics', timePeriod, teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('potential')
         .select('id, won_at, deal_value, potential_revenue, fee_percent, source')
         .eq('deal_outcome', 'won')
         .gte('won_at', periodStartISO);
+      if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -278,13 +284,15 @@ export function useDashboardData(
 
   // Lost deals in current period (for proper win rate: won / (won + lost))
   const lostDealsQuery = useQuery({
-    queryKey: ['admin-lost-analytics', timePeriod],
+    queryKey: ['admin-lost-analytics', timePeriod, teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('potential')
         .select('id, lost_at')
         .eq('deal_outcome', 'lost')
         .gte('lost_at', periodStartISO);
+      if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -292,14 +300,16 @@ export function useDashboardData(
 
   // Previous period won deals (for period-over-period comparison)
   const prevFundedQuery = useQuery({
-    queryKey: ['admin-prev-funded', timePeriod],
+    queryKey: ['admin-prev-funded', timePeriod, teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('potential')
         .select('id, won_at, deal_value, potential_revenue, fee_percent')
         .eq('deal_outcome', 'won')
         .gte('won_at', prevRange.start)
         .lte('won_at', prevRange.end);
+      if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -307,14 +317,16 @@ export function useDashboardData(
 
   // Previous period lost deals (for period-over-period win rate)
   const prevLostQuery = useQuery({
-    queryKey: ['admin-prev-lost', timePeriod],
+    queryKey: ['admin-prev-lost', timePeriod, teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('potential')
         .select('id')
         .eq('deal_outcome', 'lost')
         .gte('lost_at', prevRange.start)
         .lte('lost_at', prevRange.end);
+      if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -322,14 +334,16 @@ export function useDashboardData(
 
   // Company won deals YTD (always YTD for company revenue banner)
   const companyDealsQuery = useQuery({
-    queryKey: ['company-funded-deals-leads'],
+    queryKey: ['company-funded-deals-leads', teamMemberId],
     queryFn: async () => {
       const ytdStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1)).toISOString();
-      const { data } = await supabase
+      let query = supabase
         .from('potential')
         .select('id, name, won_at, deal_value, potential_revenue, fee_percent')
         .eq('deal_outcome', 'won')
         .gte('won_at', ytdStart);
+      if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
+      const { data } = await query;
       return (data || []).map(d => ({
         rep_name: d.name,
         fee_earned: getDealRevenue(d),
@@ -344,12 +358,14 @@ export function useDashboardData(
   )).toISOString();
 
   const heatmapDealsQuery = useQuery({
-    queryKey: ['dashboard-heatmap-deals'],
+    queryKey: ['dashboard-heatmap-deals', teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('potential')
         .select('id, created_at, stage_changed_at, won_at, source')
         .or(`created_at.gte.${heatmapRangeStart},stage_changed_at.gte.${heatmapRangeStart},won_at.gte.${heatmapRangeStart}`);
+      if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -357,12 +373,14 @@ export function useDashboardData(
   });
 
   const heatmapCommsQuery = useQuery({
-    queryKey: ['dashboard-heatmap-comms'],
+    queryKey: ['dashboard-heatmap-comms', teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('communications')
         .select('id, created_at')
         .gte('created_at', heatmapRangeStart);
+      if (teamMemberId) query = query.eq('user_id', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -370,22 +388,32 @@ export function useDashboardData(
   });
 
   const channelDealSizeQuery = useQuery({
-    queryKey: ['dashboard-channel-deal-size', timePeriod, periodStartISO, channelDateBasis],
+    queryKey: ['dashboard-channel-deal-size', timePeriod, periodStartISO, channelDateBasis, teamMemberId],
     queryFn: async (): Promise<ChannelDealSourceRow[]> => {
       const selectColumns = 'id, created_at, won_at, source, referral_source, deal_value';
+      let potentialQuery = supabase
+        .from('potential')
+        .select(selectColumns)
+        .gte(channelDateBasis, periodStartISO);
+      let underwritingQuery = supabase
+        .from('underwriting')
+        .select(selectColumns)
+        .gte(channelDateBasis, periodStartISO);
+      let lenderQuery = supabase
+        .from('lender_management')
+        .select(selectColumns)
+        .gte(channelDateBasis, periodStartISO);
+
+      if (teamMemberId) {
+        potentialQuery = potentialQuery.eq('assigned_to', teamMemberId);
+        underwritingQuery = underwritingQuery.eq('assigned_to', teamMemberId);
+        lenderQuery = lenderQuery.eq('assigned_to', teamMemberId);
+      }
+
       const [potentialResult, underwritingResult, lenderResult] = await Promise.all([
-        supabase
-          .from('potential')
-          .select(selectColumns)
-          .gte(channelDateBasis, periodStartISO),
-        supabase
-          .from('underwriting')
-          .select(selectColumns)
-          .gte(channelDateBasis, periodStartISO),
-        supabase
-          .from('lender_management')
-          .select(selectColumns)
-          .gte(channelDateBasis, periodStartISO),
+        potentialQuery,
+        underwritingQuery,
+        lenderQuery,
       ]);
 
       const error = potentialResult.error || underwritingResult.error || lenderResult.error;
@@ -406,13 +434,15 @@ export function useDashboardData(
   )).toISOString();
 
   const sparklineQuery = useQuery({
-    queryKey: ['dashboard-sparkline-data'],
+    queryKey: ['dashboard-sparkline-data', teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('potential')
         .select('id, won_at, lost_at, deal_value, potential_revenue, fee_percent, deal_outcome')
         .or(`won_at.gte.${sparklineStart},lost_at.gte.${sparklineStart}`)
         .in('deal_outcome', ['won', 'lost']);
+      if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -421,14 +451,16 @@ export function useDashboardData(
 
   // Touchpoints this week
   const touchpointsQuery = useQuery({
-    queryKey: ['dashboard-touchpoints-this-week'],
+    queryKey: ['dashboard-touchpoints-this-week', teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('communications')
         .select('id, communication_type, direction, duration_seconds, created_at')
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString())
         .order('created_at', { ascending: true });
+      if (teamMemberId) query = query.eq('user_id', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
@@ -450,26 +482,30 @@ export function useDashboardData(
   });
 
   const scorecardCommsQuery = useQuery({
-    queryKey: ['dashboard-scorecard-comms'],
+    queryKey: ['dashboard-scorecard-comms', teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('communications')
         .select('id, communication_type, direction, created_at')
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString());
+      if (teamMemberId) query = query.eq('user_id', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
   });
 
   const scorecardLeadsQuery = useQuery({
-    queryKey: ['dashboard-scorecard-leads'],
+    queryKey: ['dashboard-scorecard-leads', teamMemberId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('potential')
         .select('id, status, created_at, converted_at')
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString());
+      if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
