@@ -5,11 +5,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev          # Start dev server (Vite)
-npm run build        # Production build
-npm run build:dev    # Development build
-npm run lint         # ESLint
-npm run preview      # Preview production build
+npm run dev              # Start dev server (Vite)
+npm run build            # Production build
+npm run build:dev        # Development build
+npm run lint             # ESLint
+npm run preview          # Preview production build
+npm run generate-schema  # Generate schema.md from Supabase DB (requires DB_PASSWORD in .env)
 ```
 
 There are no automated tests. Playwright is installed but not actively used.
@@ -81,6 +82,7 @@ Eight React contexts in `src/contexts/` — see `src/contexts/CLAUDE.md` for ful
 
 Client: `src/integrations/supabase/client.ts`
 DB types (auto-generated, ~5000 lines): `src/integrations/supabase/types.ts`
+Full database schema: `schema.md` — all public tables with columns, types, primary keys, nullable flags, and foreign key relationships. Regenerate with `npm run generate-schema` (requires `DB_PASSWORD` in `.env`).
 
 Edge functions live in `supabase/functions/`. Each function is a Deno TypeScript module. All use a shared rate limiting pattern via Postgres atomic counters (`enforceRateLimit(req, funcName, limit, window)`). See `supabase/functions/CLAUDE.md` for full catalog.
 
