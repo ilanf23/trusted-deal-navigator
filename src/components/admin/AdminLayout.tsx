@@ -11,7 +11,7 @@ import { SplitViewProvider, useSplitView } from '@/contexts/SplitViewContext';
 import SplitViewContainer from './splitview/SplitViewContainer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, createContext, useContext } from 'react';
-import { AdminTopBarProvider } from '@/contexts/AdminTopBarContext';
+import { AdminTopBarProvider, useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import NotificationBell from './NotificationBell';
 import PageDatabasesDot from './dev/PageDatabasesDot';
 
@@ -75,6 +75,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
   const [inboxOpen, setInboxOpen] = useState(false);
   const { lastAction, isUndoing, executeUndo } = useUndo();
   const { isOpen: aiChatOpen, setIsOpen: setAiChatOpen } = useAIAssistant();
+  const { pageTitle, searchComponent, actionsComponent } = useAdminTopBar();
 
   return (
     <SidebarProvider>
@@ -87,15 +88,27 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
         />
 
         <main className="flex-1 flex flex-col h-screen min-w-0 overflow-x-auto">
-          {/* Top Bar - hamburger + global actions */}
-          <header className="h-14 md:h-16 flex items-center justify-between border-b border-border bg-card sticky top-0 z-[5] px-3 md:px-4 lg:pl-4 lg:pr-8">
-            <div className="flex items-center gap-2 md:gap-5">
+          {/* Top Bar - hamburger + page title + page search + page actions + global actions */}
+          <header className="h-14 md:h-16 flex items-center gap-3 md:gap-5 border-b border-border bg-card sticky top-0 z-[5] px-3 md:px-4 lg:pl-4 lg:pr-8">
+            <div className="flex items-center gap-2 md:gap-3 shrink-0 min-w-0">
               <SidebarTrigger className="w-10 h-10 md:w-11 md:h-11 rounded-xl hover:bg-muted transition-colors flex items-center justify-center group">
                 <Menu className="w-5 h-5 md:w-6 md:h-6 text-muted-foreground group-hover:text-foreground" />
               </SidebarTrigger>
+              {pageTitle && (
+                <h1 className="text-base md:text-lg font-semibold text-foreground whitespace-nowrap truncate">
+                  {pageTitle}
+                </h1>
+              )}
             </div>
 
-            <div className="flex items-center gap-2 md:gap-4">
+            {searchComponent && (
+              <div className="flex-1 min-w-0 max-w-xl">
+                {searchComponent}
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 md:gap-3 shrink-0 ml-auto">
+              {actionsComponent}
               {/* Notification Bell */}
               <NotificationBell />
               {/* Undo Button - Always Visible */}

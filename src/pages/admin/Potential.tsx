@@ -1197,6 +1197,7 @@ const Pipeline = () => {
                             opportunityEdit={{
                               value: lead.opportunity_name || '',
                               onSave: (v) => handleInlineCellSave(lead.id, 'opportunity_name', v),
+                              dimPlaceholder: false,
                             }}
                             companyName={lead.company_name}
                             companyEdit={{

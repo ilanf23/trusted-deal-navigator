@@ -603,9 +603,9 @@ Commercial Lending X`,
   return (
     <AdminLayout>
       <TooltipProvider delayDuration={200}>
-        <div className="bg-white">
+        <div className="min-h-screen bg-white">
           {/* ─── Header strip ───────────────────────────────────────── */}
-          <div className="flex items-center gap-4 px-10 py-6 border-b border-[#c8bdd6]">
+          <div className="flex items-center gap-4 px-10 py-6 border-b border-[#e8e0f3]">
             <div className="flex flex-col gap-1">
               <h1 className="text-[22px] font-semibold text-[#1a1a1a] leading-tight">Rate Watch</h1>
               <p className="text-[13px] text-[#6b6280]">
@@ -761,19 +761,29 @@ Commercial Lending X`,
           </div>
 
           {/* ─── Filter bar ─────────────────────────────────────────── */}
-          <div className="flex items-center gap-4 px-10 py-4">
+          <div className="flex items-center gap-4 px-10 py-4 bg-white border-b border-[#e8e0f3]">
             <SegmentedTabs value={activeTab} onChange={setActiveTab} stats={stats} />
-            <div className="relative w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9b91a8]" />
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9b91a8]" />
               <Input
                 placeholder="Search name, company, location..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-8 pl-9 pr-3 rounded-full border-[#e8e0f3] text-[13px] placeholder:text-[#9b91a8] focus-visible:ring-[#3b2778]"
+                className="h-9 pl-11 pr-9 rounded-full bg-white border-[#e8e0f3] text-[13px] placeholder:text-[#9b91a8] focus-visible:ring-2 focus-visible:ring-[#3b2778]/20 focus-visible:border-[#3b2778]"
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 inline-flex items-center justify-center rounded-full text-[#9b91a8] hover:bg-[#f5f1fa] hover:text-[#1a1a1a] transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
             <div className="flex-1" />
-            <p className="text-[12px] text-[#6b6280]">
+            <p className="text-[12px] text-[#6b6280] tabular-nums">
               {displayEntries.length} result{displayEntries.length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -913,25 +923,47 @@ const KpiDivider = () => <span className="w-px h-12 bg-[#e8e0f3]" />;
 // ─── Segmented tabs ────────────────────────────────────────────────
 
 const SegmentedTabs = ({ value, onChange, stats }: { value: TabFilter; onChange: (v: TabFilter) => void; stats: { total: number; ready: number; close: number; watching: number } }) => {
-  const items: { key: TabFilter; label: string; count: number }[] = [
+  const items: { key: TabFilter; label: string; count: number; dot?: string }[] = [
     { key: 'all', label: 'All', count: stats.total },
-    { key: 'ready', label: 'Ready', count: stats.ready },
-    { key: 'close', label: 'Close', count: stats.close },
-    { key: 'watching', label: 'Watching', count: stats.watching },
+    { key: 'ready', label: 'Ready', count: stats.ready, dot: 'bg-emerald-500' },
+    { key: 'close', label: 'Close', count: stats.close, dot: 'bg-amber-500' },
+    { key: 'watching', label: 'Watching', count: stats.watching, dot: 'bg-slate-400' },
   ];
   return (
-    <div className="inline-flex h-8 items-center gap-0.5 rounded-lg bg-[#f5f1fa] p-0.5">
+    <div
+      role="tablist"
+      aria-label="Filter rate watch entries by status"
+      className="inline-flex h-10 items-center gap-1 rounded-lg border border-[#e8ddf5] bg-[#f7f3fb] p-1"
+    >
       {items.map(item => {
         const active = value === item.key;
         return (
           <button
             key={item.key}
+            type="button"
+            role="tab"
+            aria-selected={active}
             onClick={() => onChange(item.key)}
-            className={`px-3 h-7 rounded-md text-[12px] font-medium transition-colors ${
-              active ? 'bg-[#3b2778] text-white' : 'text-[#6b6280] hover:text-[#1a1a1a]'
-            }`}
+            className={[
+              'inline-flex h-8 items-center gap-2 rounded-md px-3 text-[12.5px] font-medium transition-all',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b2778]/35 focus-visible:ring-offset-1 focus-visible:ring-offset-[#f7f3fb]',
+              active
+                ? 'bg-white text-[#3b2778] shadow-[0_1px_2px_rgba(59,39,120,0.12),0_0_0_1px_rgba(59,39,120,0.08)]'
+                : 'text-[#6b6280] hover:text-[#3b2778] hover:bg-white/60',
+            ].join(' ')}
           >
-            {item.label} <span className={active ? 'opacity-90' : 'opacity-70'}>{item.count}</span>
+            {item.dot && (
+              <span className={`h-1.5 w-1.5 rounded-full ${item.dot} ${active ? '' : 'opacity-70'}`} aria-hidden />
+            )}
+            <span>{item.label}</span>
+            <span
+              className={[
+                'inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-semibold tabular-nums leading-none h-[18px]',
+                active ? 'bg-[#eee6f6] text-[#3b2778]' : 'bg-[#ece5f5] text-[#857798]',
+              ].join(' ')}
+            >
+              {item.count}
+            </span>
           </button>
         );
       })}

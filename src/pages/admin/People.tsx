@@ -443,14 +443,13 @@ const People = () => {
   });
 
   // ── Top bar: inject title + search into AdminLayout header ──
-  const { setPageTitle, setSearchComponent, setActionsComponent } = useAdminTopBar();
+  const { setPageTitle, setSearchComponent } = useAdminTopBar();
 
   useEffect(() => {
     setPageTitle('People');
     return () => {
       setPageTitle(null);
       setSearchComponent(null);
-      setActionsComponent(null);
     };
   }, []);
 
@@ -783,7 +782,7 @@ const People = () => {
   const { columnWidths, handleColumnResize } = useAutoFitColumns({
     minWidths: {
       person: 260, title: 130, company: 130, tasks: 55, email: 170,
-      contactType: 200, pipeline: 220, lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+      contactType: 200, pipeline: 220, lastContacted: 180, interactions: 130, inactiveDays: 140, tags: 200,
     },
     autoFitConfig: {
       person: { getText: (p: any) => p.name, extraPx: 58 },
@@ -1075,10 +1074,9 @@ const People = () => {
                 <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
                   {filterOptions.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Contacts'}
                 </h2>
-
                 {!isLoading && (
                   <span className="text-[#5f6368] dark:text-muted-foreground text-sm tabular-nums whitespace-nowrap">
-                    # {filteredAndSorted.length.toLocaleString()} people
+                    # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'person' : 'people'}
                   </span>
                 )}
               </div>
@@ -1234,7 +1232,7 @@ const People = () => {
                       onDragEnd={handleColumnReorder}
                       renderOverlay={makeColumnDragOverlay(COLUMN_HEADERS, k => columnWidths[k])}
                     >
-                      <tr>
+                      <tr style={{ backgroundColor: '#eee6f6' }}>
                         {renderColHeader({
                           reactKey: 'person',
                           className: 'sticky top-0 z-30 group/hdr',

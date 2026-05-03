@@ -39,6 +39,8 @@ export type PipelineColumnWidths = Record<string, number | undefined>;
 type EditHandler = {
   value: string;
   onSave: (next: string) => void | Promise<void>;
+  /** Forwarded to EditableTextBox; controls whether the placeholder text is dimmed. */
+  dimPlaceholder?: boolean;
 };
 
 export interface PipelineTableRowProps {
@@ -274,6 +276,7 @@ export function PipelineTableRow(props: PipelineTableRowProps) {
                   className="text-[16px] text-[#202124] dark:text-foreground w-full"
                   inputClassName="text-[16px]"
                   aria-label="Opportunity name"
+                  dimPlaceholder={opportunityEdit.dimPlaceholder}
                 />
               </div>
             ) : (

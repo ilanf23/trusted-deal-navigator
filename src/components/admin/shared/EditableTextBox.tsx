@@ -56,6 +56,9 @@ export interface EditableTextBoxProps {
   'aria-label'?: string;
   autoFocus?: boolean;
   saving?: boolean;
+  /** When false, the placeholder text inherits normal foreground color instead of the
+   *  dimmed muted-foreground/60. Defaults to true to preserve existing behavior. */
+  dimPlaceholder?: boolean;
 }
 
 /**
@@ -85,6 +88,7 @@ export function EditableTextBox({
   autoFocus = true,
   saving: savingProp,
   'aria-label': ariaLabel,
+  dimPlaceholder = true,
 }: EditableTextBoxProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -210,7 +214,7 @@ export function EditableTextBox({
       aria-label={ariaLabel}
     >
       {prefix}
-      <span className={cn('truncate', alignClass, !displayValue && EDITABLE_TEXTBOX_STYLES.placeholder)}>
+      <span className={cn('truncate', alignClass, !displayValue && dimPlaceholder && EDITABLE_TEXTBOX_STYLES.placeholder)}>
         {displayValue || placeholder}
       </span>
       {saving && <Loader2 className="h-3 w-3 animate-spin text-[#0066FF] shrink-0 ml-1" />}
