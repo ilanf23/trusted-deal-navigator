@@ -7,7 +7,7 @@ import { useTeamMember } from '@/hooks/useTeamMember';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -21,17 +21,6 @@ import {
   FormControl,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import SecuritySection from './SecuritySection';
 import SessionSection from './SessionSection';
 import { Switch } from '@/components/ui/switch';
@@ -126,10 +115,6 @@ const ProfileSection = () => {
     queryClient.invalidateQueries({ queryKey: ['team-members'] });
     queryClient.invalidateQueries({ queryKey: ['assignable-users'] });
     queryClient.invalidateQueries({ queryKey: ['user-profile', teamMember.id] });
-  };
-
-  const handleDeleteAccount = async () => {
-    toast.error('Account deletion requires admin approval — please contact your workspace owner.');
   };
 
   if (isLoading || !teamMember) {
@@ -324,43 +309,6 @@ const ProfileSection = () => {
         <SessionSection />
       </section>
 
-      <Separator />
-
-      {/* Danger zone */}
-      <section className="space-y-3">
-        <SectionHeading title="Danger zone" />
-        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-sm font-medium">Delete account</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Permanently delete your account and remove your data. This action can't be undone.
-            </p>
-          </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                Delete account
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently remove your data from the workspace. Account deletion is processed by an
-                  admin — you'll receive a confirmation email.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Yes, request deletion
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      </section>
     </div>
   );
 };

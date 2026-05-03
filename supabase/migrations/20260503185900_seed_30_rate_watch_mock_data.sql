@@ -1,0 +1,71 @@
+-- Seed 30 mock potential leads + rate_watch entries for the Rate Watch demo page.
+-- Mix of statuses (ready/close/watching), property types, and loan profiles.
+
+DO $$
+DECLARE
+  rec RECORD;
+  lid uuid;
+BEGIN
+  FOR rec IN
+    SELECT * FROM (VALUES
+      -- name, email, phone, company, current_rate, target_rate, loan_type, loan_amount, collateral_type, collateral_value, location, rate_type, term_yrs, amortization, lender_type, est_cf, occupancy, oo_pct, maturity, penalty, seeking, notes, confirm_email, initial_review, last_contacted, var_index_spread
+      ('Marcus Chen','marcus.chen@silverlakedev.com','(312) 555-0147','Silver Lake Development',6.25,6.50,'Commercial Real Estate',2850000,'Office Building',4200000,'Chicago, IL','Fixed',10,'25 years','Regional Bank',185000,'Office / Class A',100,'2028-06-15','2% declining','Lower monthly payment, better terms','Strong borrower, 780+ FICO. Locking in before maturity.',true,'Approved','2026-04-28T14:30:00Z',NULL),
+      ('Rachel Goldstein','rachel@goldsteinproperties.com','(646) 555-0293','Goldstein Properties LLC',7.10,6.75,'Commercial Real Estate',5400000,'Retail Center',7800000,'Brooklyn, NY','Fixed',7,'30 years','CMBS',320000,'Retail / Multi-Tenant',0,'2027-11-01','1% flat','Rate reduction, extend term','NNN leases, 92% occupied. Anchor tenant renews 2027.',true,'Pending',NULL,NULL),
+      ('David Park','dpark@parklogistics.com','(714) 555-0184','Park Logistics Inc',7.85,6.50,'Commercial Real Estate',3200000,'Industrial Warehouse',5100000,'Anaheim, CA','Variable',5,'20 years','Credit Union',210000,'Industrial / Logistics',75,'2029-03-01','None','Convert variable to fixed','Index: SOFR + 275bps. Wants fixed before rates move.',true,NULL,NULL,'SOFR + 275bps'),
+      ('Sarah Martinez','smartinez@sunbeltcapital.com','(305) 555-0362','Sunbelt Capital Group',5.90,6.25,'Commercial Real Estate',8750000,'Mixed-Use',12500000,'Miami, FL','Fixed',10,'25 years','Life Insurance Co',540000,'Mixed-Use / Retail + Residential',30,'2028-09-01',NULL,'Cash-out for upper-floor reno','Class A mixed-use in Brickell. Ground-floor retail 100% leased.',true,'Approved','2026-04-25T10:00:00Z',NULL),
+      ('James OBrien','jobrien@obrienauto.com','(617) 555-0428','OBrien Auto Group',8.25,7.00,'SBA',1850000,'Auto Dealership',3400000,'Boston, MA','Variable',25,'25 years','SBA Preferred Lender',125000,'Auto Dealership / Owner-Occupied',100,'2031-06-01','None','Convert to conventional','SBA 504 loan. Prime + 2.75%. May qualify for conventional refi.',false,NULL,NULL,'Prime + 275bps'),
+      ('Linda Tran','linda@trantreeproperties.com','(503) 555-0571','Trantree Properties',6.80,6.50,'Commercial Real Estate',4100000,'Multifamily (24 units)',6200000,'Portland, OR','Fixed',7,'30 years','Agency (Fannie)',275000,'Multifamily / Workforce Housing',0,'2027-08-01','1% yield maintenance','Rate reduction, extend term','24-unit workforce housing. 96% occupied. DSCR 1.45x.',true,'Approved','2026-04-30T16:15:00Z',NULL),
+      ('Robert Kim','rkim@pacificshore.com','(808) 555-0639','Pacific Shore Hospitality',8.50,7.00,'Commercial Real Estate',12000000,'Hotel (120 rooms)',18000000,'Honolulu, HI','Variable',5,'25 years','CMBS',890000,'Hospitality / Full-Service Hotel',0,'2027-05-01','3% declining over 3 years','Rate reduction, convert to fixed','Boutique hotel near Waikiki. RevPAR recovering post-COVID.',false,NULL,NULL,'SOFR + 325bps'),
+      ('Amanda Foster','afoster@fostermedical.com','(480) 555-0712','Foster Medical Partners',6.00,6.25,'Commercial Real Estate',1950000,'Medical Office',2800000,'Scottsdale, AZ','Fixed',10,'25 years','Community Bank',145000,'Medical Office / Single Tenant',100,'2029-01-15',NULL,'Cash-out for expansion','Owner-occupied. Cashing out for 4th-location buildout.',true,'Approved','2026-05-01T09:45:00Z',NULL),
+      ('Tony Russo','trusso@russocontractors.com','(201) 555-0845','Russo & Sons Contractors',9.10,7.50,'Equipment',780000,'Heavy Construction Equipment',1200000,'Newark, NJ','Fixed',5,'5 years','Equipment Finance Co',95000,'Construction / Heavy Equipment',100,'2028-04-01','None','Lower rate on equipment line','Fleet of excavators and cranes. Shopping for better terms.',true,NULL,NULL,NULL),
+      ('Michelle Wang','mwang@safeguardstorage.com','(512) 555-0963','Safeguard Storage Partners',7.15,6.75,'Commercial Real Estate',6500000,'Self-Storage (300 units)',9500000,'Austin, TX','Fixed',10,'25 years','Regional Bank',420000,'Self-Storage / Climate Controlled',0,'2028-12-01','1% flat first 3 years','Rate reduction, acquisition financing','300-unit climate-controlled. 89% occupied. Strong NOI growth.',true,'Pending',NULL,NULL),
+      ('Carlos Ruiz','cruiz@ruizholdings.com','(213) 555-1187','Ruiz Holdings LLC',6.40,6.50,'Commercial Real Estate',3450000,'Strip Mall',5200000,'Los Angeles, CA','Fixed',10,'25 years','Regional Bank',225000,'Retail / Anchored',0,'2028-02-01','2% step-down','Rate lock, extend term','7 tenants, 95% leased. Steady cash flow.',true,'Approved','2026-04-22T11:00:00Z',NULL),
+      ('Priya Patel','priya@patelhospitality.com','(404) 555-1342','Patel Hospitality LLC',8.95,7.25,'Commercial Real Estate',9200000,'Hotel (95 rooms)',13500000,'Atlanta, GA','Variable',5,'25 years','CMBS',680000,'Hospitality / Limited Service',0,'2027-03-15','3% declining','Convert to fixed','Hilton-flagged. Strong ADR recovery.',false,NULL,NULL,'SOFR + 350bps'),
+      ('Nathan Brooks','nbrooks@brookscapital.com','(206) 555-1521','Brooks Capital Partners',7.05,6.50,'Commercial Real Estate',5750000,'Office Building',8400000,'Seattle, WA','Fixed',10,'25 years','Insurance Co',385000,'Office / Class B',45,'2028-10-15','1% yield maintenance','Rate reduction','Class B office. 78% leased. WeWork tenant on floor 3.',true,'Pending','2026-04-18T13:20:00Z',NULL),
+      ('Olivia Hayes','ohayes@hayesindustrial.com','(469) 555-1748','Hayes Industrial REIT',6.55,6.50,'Commercial Real Estate',11500000,'Industrial Park (4 buildings)',16800000,'Dallas, TX','Fixed',7,'30 years','Life Insurance Co',780000,'Industrial / Last-Mile Distribution',0,'2027-12-15','Defeasance','Better terms, cash-out','4-building industrial park. 100% leased to 3PLs.',true,'Approved','2026-04-29T15:00:00Z',NULL),
+      ('Daniel Levi','dlevi@levirealtygroup.com','(917) 555-1933','Levi Realty Group',7.40,6.75,'Commercial Real Estate',4850000,'Multifamily (48 units)',7100000,'Queens, NY','Variable',5,'30 years','Agency (Freddie)',310000,'Multifamily / Stabilized',0,'2027-07-01','None','Convert to fixed','Stabilized 48-unit. Rent-regulated. Strong DSCR.',false,NULL,NULL,'SOFR + 285bps'),
+      ('Sophia Reyes','sreyes@reyesrestaurants.com','(713) 555-2107','Reyes Restaurant Group',8.10,7.00,'SBA',2150000,'Restaurant (3 locations)',3100000,'Houston, TX','Variable',25,'25 years','SBA Preferred Lender',165000,'Restaurant / Owner-Occupied',100,'2032-01-01','None','Lower rate, conventional refi','3 fast-casual locations. Strong same-store sales growth.',true,'Pending','2026-04-15T10:30:00Z','Prime + 250bps'),
+      ('Henry Watanabe','hwatanabe@watanabeproperties.com','(415) 555-2289','Watanabe Properties',6.10,6.25,'Commercial Real Estate',7250000,'Apartment Building',10500000,'San Francisco, CA','Fixed',10,'30 years','Agency (Fannie)',495000,'Multifamily / Class A',0,'2029-04-01','1% yield maintenance','Cash-out refi','Class A 36-unit. 100% leased. Tech corridor.',true,'Approved','2026-05-02T08:00:00Z',NULL),
+      ('Isabella Cruz','icruz@cruzlogistics.com','(602) 555-2456','Cruz Logistics',7.95,6.75,'Commercial Real Estate',3850000,'Warehouse',5800000,'Phoenix, AZ','Fixed',5,'20 years','Regional Bank',265000,'Industrial / Cold Storage',60,'2028-08-01','2% step-down','Rate reduction','Cold-storage warehouse. Owner-occupied + 2 tenants.',true,NULL,NULL,NULL),
+      ('Ethan Caldwell','ecaldwell@caldwellholdings.com','(720) 555-2614','Caldwell Holdings',6.65,6.50,'Commercial Real Estate',5950000,'Mixed-Use',8700000,'Denver, CO','Fixed',7,'25 years','Community Bank',410000,'Mixed-Use / Office + Retail',25,'2028-05-15','1% flat','Better terms','Mixed-use in RiNo district. Ground floor: 4 restaurants.',true,'Pending','2026-04-21T14:00:00Z',NULL),
+      ('Maya Singh','msingh@singhrealestate.com','(703) 555-2872','Singh Real Estate',7.25,6.75,'Commercial Real Estate',4250000,'Medical Office (multi-tenant)',6300000,'McLean, VA','Fixed',10,'25 years','Regional Bank',290000,'Medical Office / Multi-Tenant',0,'2028-11-01','1% yield maintenance','Rate reduction','Multi-tenant medical. 7 tenants. 100% leased.',true,NULL,NULL,NULL),
+      ('Lucas Romano','lromano@romanorestaurants.com','(702) 555-3018','Romano Restaurant Holdings',8.40,7.00,'Business Acquisition',2750000,'Goodwill + FF&E',3500000,'Las Vegas, NV','Fixed',10,'10 years','SBA Preferred Lender',195000,'Hospitality / Casino-Adjacent',100,'2033-03-01','None','Lower rate','Acquisition financing. 4 Italian locations on Strip.',false,'Pending',NULL,NULL),
+      ('Grace Liu','gliu@liutrustfund.com','(415) 555-3194','Liu Family Trust',5.85,6.00,'Commercial Real Estate',14500000,'Multifamily (120 units)',21000000,'Oakland, CA','Fixed',10,'30 years','Life Insurance Co',1050000,'Multifamily / Class B',0,'2029-06-01','Defeasance','Cash-out for portfolio expansion','120-unit Class B. 94% occupied. Adding 2nd asset.',true,'Approved','2026-05-01T16:30:00Z',NULL),
+      ('Wesley Adams','wadams@adamsindustrial.com','(248) 555-3370','Adams Industrial Properties',7.55,6.75,'Commercial Real Estate',6100000,'Manufacturing Facility',8900000,'Detroit, MI','Variable',5,'20 years','Regional Bank',420000,'Industrial / Manufacturing',80,'2027-09-15','2% step-down','Convert to fixed','60-year-old auto parts manufacturer. Owner-occupied 80%.',false,NULL,NULL,'SOFR + 295bps'),
+      ('Charlotte Nguyen','cnguyen@nguyenmedicalgroup.com','(763) 555-3548','Nguyen Medical Group',6.30,6.25,'Commercial Real Estate',2450000,'Medical Office',3650000,'Minneapolis, MN','Fixed',10,'25 years','Community Bank',175000,'Medical Office / Owner-Occupied',100,'2029-02-15','None','Better amortization','Practice owns building. 12 providers across 4 specialties.',true,'Approved','2026-04-26T09:00:00Z',NULL),
+      ('Ryan O''Connor','roconnor@oconnorholdings.com','(216) 555-3725','O''Connor Holdings',6.95,6.75,'Commercial Real Estate',5350000,'Office Building',7800000,'Cleveland, OH','Fixed',7,'25 years','Regional Bank',360000,'Office / Owner-Occupied',55,'2028-07-01','1% flat','Cash-out for expansion','HQ + 2 tenant floors. 55% owner-occupied by law firm.',true,'Pending','2026-04-19T12:15:00Z',NULL),
+      ('Zoe Anderson','zanderson@andersonretail.com','(801) 555-3902','Anderson Retail Trust',7.70,6.50,'Commercial Real Estate',3950000,'Retail Strip Center',5750000,'Salt Lake City, UT','Variable',5,'25 years','Credit Union',270000,'Retail / Service-Oriented',0,'2027-04-01','None','Convert to fixed','8-tenant strip. National service tenants (Starbucks, etc.).',false,NULL,NULL,'SOFR + 305bps'),
+      ('Vincent Tan','vtan@tancapitalgroup.com','(919) 555-4087','Tan Capital Group',6.45,6.50,'Commercial Real Estate',8950000,'Office Tower (partial)',13200000,'Raleigh, NC','Fixed',10,'30 years','Life Insurance Co',625000,'Office / Class A',0,'2029-08-15','Yield maintenance','Better terms','Top 4 floors of Class A tower. 88% leased to tech tenants.',true,'Approved','2026-04-30T11:45:00Z',NULL),
+      ('Bianca Moretti','bmoretti@morettihospitality.com','(305) 555-4264','Moretti Hospitality',8.75,7.00,'Commercial Real Estate',6750000,'Boutique Hotel (60 rooms)',9500000,'Miami Beach, FL','Variable',5,'25 years','CMBS',495000,'Hospitality / Boutique',0,'2027-02-15','3% declining','Rate reduction, convert to fixed','South Beach boutique. RevPAR up 14% YoY.',false,'Pending',NULL,'SOFR + 340bps'),
+      ('Jonathan Ferraro','jferraro@ferrarodev.com','(813) 555-4441','Ferraro Development',7.30,6.75,'Commercial Real Estate',4650000,'Multifamily (32 units)',6900000,'Tampa, FL','Fixed',7,'30 years','Agency (Freddie)',315000,'Multifamily / Workforce',0,'2027-10-15','1% yield maintenance','Rate reduction','32-unit garden-style. 98% occupied.',true,'Approved','2026-04-27T13:30:00Z',NULL),
+      ('Aisha Bah','abah@bahgroup.com','(202) 555-4628','Bah Group International',6.20,6.50,'Commercial Real Estate',10250000,'Mixed-Use Tower',14800000,'Washington, DC','Fixed',10,'25 years','Life Insurance Co',720000,'Mixed-Use / Office + Retail + Residential',20,'2028-12-15','Defeasance','Lower payment, lock rate','Trophy mixed-use. Ground-floor flagship retail (Apple).',true,'Approved','2026-05-01T15:15:00Z',NULL)
+    ) AS v(name,email,phone,company,current_rate,target_rate,loan_type,loan_amount,collateral_type,collateral_value,location,rate_type,term_yrs,amortization,lender_type,est_cf,occupancy,oo_pct,maturity,penalty,seeking,notes,confirm_email,initial_review,last_contacted,var_index_spread)
+  LOOP
+    -- Skip if a potential lead with this email already exists
+    SELECT id INTO lid FROM public.potential WHERE email = rec.email LIMIT 1;
+
+    IF lid IS NULL THEN
+      INSERT INTO public.potential (name, email, phone, company_name, source)
+      VALUES (rec.name, rec.email, rec.phone, rec.company, 'Rate Watch Mock Data')
+      RETURNING id INTO lid;
+    END IF;
+
+    -- Skip if already in rate_watch
+    IF NOT EXISTS (SELECT 1 FROM public.rate_watch WHERE lead_id = lid) THEN
+      INSERT INTO public.rate_watch (
+        lead_id, current_rate, target_rate, loan_type, loan_amount, is_active,
+        collateral_type, collateral_value, re_location, rate_type, original_term_years,
+        amortization, lender_type, estimated_cf, occupancy_use, owner_occupied_pct,
+        loan_maturity, penalty, seeking_to_improve, notes, confirm_email, initial_review,
+        last_contacted_at, variable_index_spread
+      )
+      VALUES (
+        lid, rec.current_rate, rec.target_rate, rec.loan_type, rec.loan_amount, true,
+        rec.collateral_type, rec.collateral_value, rec.location, rec.rate_type, rec.term_yrs,
+        rec.amortization, rec.lender_type, rec.est_cf, rec.occupancy, rec.oo_pct,
+        rec.maturity::date, rec.penalty, rec.seeking, rec.notes, rec.confirm_email, rec.initial_review,
+        rec.last_contacted::timestamptz, rec.var_index_spread
+      );
+    END IF;
+  END LOOP;
+END $$;

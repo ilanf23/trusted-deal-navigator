@@ -3,7 +3,6 @@ import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,15 +12,6 @@ import AIEmailAssistantSheet from '@/components/admin/AIEmailAssistantSheet';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import * as XLSX from 'xlsx';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -29,25 +19,17 @@ import {
 } from '@/components/ui/tooltip';
 import {
   Sparkles,
-  TrendingDown,
   Mail,
   Phone,
   Plus,
   FileSpreadsheet,
-  MapPin,
-  Building2,
   Calendar,
   Copy,
+  Search,
+  X,
+  ArrowDown,
   Eye,
-  ChevronDown,
-  ChevronUp,
   ArrowUpDown,
-  Users,
-  Activity,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
-  BarChart3,
 } from 'lucide-react';
 import {
   Dialog,
@@ -56,6 +38,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+} from '@/components/ui/sheet';
 import {
   Select,
   SelectContent,
@@ -158,13 +144,15 @@ const RateWatch = () => {
   const [prefilledEmail, setPrefilledEmail] = useState<PrefilledEmail | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
+  // Detail panel state
+  const [detailEntry, setDetailEntry] = useState<RateWatchEntry | null>(null);
+
   // Lead detail dialog state
-  const [selectedLeadForDetail, setSelectedLeadForDetail] = useState<RateWatchEntry['leads'] | null>(null);
+  const [selectedLeadForDetail, setSelectedLeadForDetail] = useState<RateWatchEntry['pipeline'] | null>(null);
   const [leadDetailOpen, setLeadDetailOpen] = useState(false);
 
   // Form state for adding new entry
@@ -246,7 +234,7 @@ const RateWatch = () => {
       setNewEntry({ lead_id: '', current_rate: '', target_rate: '', loan_type: '', loan_amount: '', notes: '' });
       toast({ title: 'Lead added to Rate Watch' });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({ title: 'Error adding to Rate Watch', description: error.message, variant: 'destructive' });
     }
   });
@@ -289,21 +277,19 @@ const RateWatch = () => {
   const stats = useMemo(() => {
     const ready = rateWatchEntries.filter(e => getStatus(e) === 'ready').length;
     const close = rateWatchEntries.filter(e => getStatus(e) === 'close').length;
-    const contacted = rateWatchEntries.filter(e => e.last_contacted_at).length;
+    const watching = rateWatchEntries.length - ready - close;
     const totalLoanValue = rateWatchEntries.reduce((sum, e) => sum + (e.loan_amount || 0), 0);
-    return { total: rateWatchEntries.length, ready, close, contacted, totalLoanValue };
+    return { total: rateWatchEntries.length, ready, close, watching, totalLoanValue };
   }, [rateWatchEntries]);
 
   // Filter + search + sort
   const displayEntries = useMemo(() => {
     let entries = rateWatchEntries;
 
-    // Tab filter
     if (activeTab !== 'all') {
       entries = entries.filter(e => getStatus(e) === activeTab);
     }
 
-    // Search
     if (searchTerm) {
       const s = searchTerm.toLowerCase();
       entries = entries.filter(e =>
@@ -316,7 +302,6 @@ const RateWatch = () => {
       );
     }
 
-    // Sort
     entries = [...entries].sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
@@ -615,372 +600,377 @@ Commercial Lending X`,
     return `$${amount.toLocaleString()}`;
   };
 
-  const SortableHeader = ({ field, children, className = '' }: { field: SortField; children: React.ReactNode; className?: string }) => (
-    <TableHead
-      className={`cursor-pointer select-none hover:bg-muted/50 transition-colors ${className}`}
-      onClick={() => handleSort(field)}
-    >
-      <div className="flex items-center gap-1">
-        {children}
-        <ArrowUpDown className={`w-3 h-3 ${sortField === field ? 'text-foreground' : 'text-muted-foreground/40'}`} />
-      </div>
-    </TableHead>
-  );
-
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        {/* Actions */}
-        <div className="flex justify-end">
-          <div className="flex items-center gap-2 flex-wrap">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={copyQuestionnaireLink}
-            >
-              <Copy className="w-3.5 h-3.5" />
-              Copy Link
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-            >
-              {isUploading ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  Importing...
-                </>
-              ) : (
-                <>
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  Import
-                </>
-              )}
-            </Button>
-            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="gap-1.5">
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Lead
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Add Lead to Rate Watch</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label>Select Lead *</Label>
-                    <Select value={newEntry.lead_id} onValueChange={(v) => setNewEntry(prev => ({ ...prev, lead_id: v }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a lead..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableLeads.map(lead => (
-                          <SelectItem key={lead.id} value={lead.id}>
-                            {lead.name} {lead.company_name ? `(${lead.company_name})` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Current Rate (%) *</Label>
-                      <Input
-                        type="number"
-                        step="0.001"
-                        placeholder="e.g. 7.5"
-                        value={newEntry.current_rate}
-                        onChange={(e) => setNewEntry(prev => ({ ...prev, current_rate: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Target Rate (%) *</Label>
-                      <Input
-                        type="number"
-                        step="0.001"
-                        placeholder="e.g. 6.0"
-                        value={newEntry.target_rate}
-                        onChange={(e) => setNewEntry(prev => ({ ...prev, target_rate: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Loan Type</Label>
-                    <Select value={newEntry.loan_type} onValueChange={(v) => setNewEntry(prev => ({ ...prev, loan_type: v }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select loan type..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Commercial Real Estate">Commercial Real Estate</SelectItem>
-                        <SelectItem value="SBA">SBA</SelectItem>
-                        <SelectItem value="Business Acquisition">Business Acquisition</SelectItem>
-                        <SelectItem value="Working Capital">Working Capital</SelectItem>
-                        <SelectItem value="Equipment">Equipment</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Loan Amount</Label>
-                    <Input
-                      type="number"
-                      placeholder="e.g. 500000"
-                      value={newEntry.loan_amount}
-                      onChange={(e) => setNewEntry(prev => ({ ...prev, loan_amount: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Notes</Label>
-                    <Textarea
-                      placeholder="Additional notes..."
-                      value={newEntry.notes}
-                      onChange={(e) => setNewEntry(prev => ({ ...prev, notes: e.target.value }))}
-                    />
-                  </div>
-
-                  <Button
-                    className="w-full"
-                    onClick={() => addToRateWatch.mutate(newEntry)}
-                    disabled={!newEntry.lead_id || !newEntry.current_rate || !newEntry.target_rate || addToRateWatch.isPending}
-                  >
-                    {addToRateWatch.isPending ? 'Adding...' : 'Add to Rate Watch'}
+      <TooltipProvider delayDuration={200}>
+        <div className="bg-white">
+          {/* ─── Header strip ───────────────────────────────────────── */}
+          <div className="flex items-center gap-4 px-10 py-6 border-b border-[#c8bdd6]">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-[22px] font-semibold text-[#1a1a1a] leading-tight">Rate Watch</h1>
+              <p className="text-[13px] text-[#6b6280]">
+                {stats.total} borrower{stats.total === 1 ? '' : 's'} · {formatCurrency(stats.totalLoanValue)} total loan value
+              </p>
+            </div>
+            <div className="flex-1" />
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 border-[#e8e0f3] text-[#1a1a1a] hover:bg-[#faf7fd]"
+                onClick={copyQuestionnaireLink}
+              >
+                <Copy className="w-3.5 h-3.5" />
+                Copy Link
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 border-[#e8e0f3] text-[#1a1a1a] hover:bg-[#faf7fd]"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    Import
+                  </>
+                )}
+              </Button>
+              <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="h-9 gap-1.5 bg-[#3b2778] hover:bg-[#2e1f5e] text-white">
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Lead
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Add Lead to Rate Watch</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label>Select Lead *</Label>
+                      <Select value={newEntry.lead_id} onValueChange={(v) => setNewEntry(prev => ({ ...prev, lead_id: v }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a lead..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableLeads.map(lead => (
+                            <SelectItem key={lead.id} value={lead.id}>
+                              {lead.name} {lead.company_name ? `(${lead.company_name})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Current Rate (%) *</Label>
+                        <Input
+                          type="number"
+                          step="0.001"
+                          placeholder="e.g. 7.5"
+                          value={newEntry.current_rate}
+                          onChange={(e) => setNewEntry(prev => ({ ...prev, current_rate: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Target Rate (%) *</Label>
+                        <Input
+                          type="number"
+                          step="0.001"
+                          placeholder="e.g. 6.0"
+                          value={newEntry.target_rate}
+                          onChange={(e) => setNewEntry(prev => ({ ...prev, target_rate: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Loan Type</Label>
+                      <Select value={newEntry.loan_type} onValueChange={(v) => setNewEntry(prev => ({ ...prev, loan_type: v }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select loan type..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Commercial Real Estate">Commercial Real Estate</SelectItem>
+                          <SelectItem value="SBA">SBA</SelectItem>
+                          <SelectItem value="Business Acquisition">Business Acquisition</SelectItem>
+                          <SelectItem value="Working Capital">Working Capital</SelectItem>
+                          <SelectItem value="Equipment">Equipment</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Loan Amount</Label>
+                      <Input
+                        type="number"
+                        placeholder="e.g. 500000"
+                        value={newEntry.loan_amount}
+                        onChange={(e) => setNewEntry(prev => ({ ...prev, loan_amount: e.target.value }))}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Notes</Label>
+                      <Textarea
+                        placeholder="Additional notes..."
+                        value={newEntry.notes}
+                        onChange={(e) => setNewEntry(prev => ({ ...prev, notes: e.target.value }))}
+                      />
+                    </div>
+
+                    <Button
+                      className="w-full bg-[#3b2778] hover:bg-[#2e1f5e]"
+                      onClick={() => addToRateWatch.mutate(newEntry)}
+                      disabled={!newEntry.lead_id || !newEntry.current_rate || !newEntry.target_rate || addToRateWatch.isPending}
+                    >
+                      {addToRateWatch.isPending ? 'Adding...' : 'Add to Rate Watch'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
-        </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Card className="border-none shadow-sm bg-gradient-to-br from-slate-50 to-slate-100/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-slate-200/80 flex items-center justify-center">
-                  <Users className="w-4 h-4 text-slate-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold leading-none">{stats.total}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Total</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-none shadow-sm bg-gradient-to-br from-green-50 to-emerald-50/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-green-200/80 flex items-center justify-center">
-                  <CheckCircle2 className="w-4 h-4 text-green-700" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold leading-none text-green-700">{stats.ready}</p>
-                  <p className="text-xs text-green-600 mt-0.5">Ready</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-none shadow-sm bg-gradient-to-br from-amber-50 to-yellow-50/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-amber-200/80 flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-amber-700" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold leading-none text-amber-700">{stats.close}</p>
-                  <p className="text-xs text-amber-600 mt-0.5">Close</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-none shadow-sm bg-gradient-to-br from-blue-50 to-indigo-50/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-blue-200/80 flex items-center justify-center">
-                  <Mail className="w-4 h-4 text-blue-700" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold leading-none text-blue-700">{stats.contacted}</p>
-                  <p className="text-xs text-blue-600 mt-0.5">Contacted</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-none shadow-sm bg-gradient-to-br from-purple-50 to-violet-50/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-purple-200/80 flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-purple-700" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold leading-none text-purple-700">
-                    {formatCurrency(stats.totalLoanValue)}
-                  </p>
-                  <p className="text-xs text-purple-600 mt-0.5">Loan Value</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters Bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabFilter)} className="w-auto">
-            <TabsList className="h-9">
-              <TabsTrigger value="all" className="text-xs px-3 h-7">
-                All ({stats.total})
-              </TabsTrigger>
-              <TabsTrigger value="ready" className="text-xs px-3 h-7">
-                Ready ({stats.ready})
-              </TabsTrigger>
-              <TabsTrigger value="close" className="text-xs px-3 h-7">
-                Close ({stats.close})
-              </TabsTrigger>
-              <TabsTrigger value="watching" className="text-xs px-3 h-7">
-                Watching ({stats.total - stats.ready - stats.close})
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="flex-1 max-w-sm">
-            <Input
-              placeholder="Search name, company, location..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 text-sm"
-            />
+          {/* ─── KPI strip ──────────────────────────────────────────── */}
+          <div className="flex items-center gap-12 px-10 py-5 border-b border-[#e8e0f3]">
+            <KpiCell number={stats.total} label="TOTAL" />
+            <KpiDivider />
+            <KpiCell number={stats.ready} label="READY" labelColor="#0F7A3E" dot="#0F7A3E" />
+            <KpiDivider />
+            <KpiCell number={stats.close} label="CLOSE" labelColor="#A45C00" />
+            <KpiDivider />
+            <KpiCell number={formatCurrency(stats.totalLoanValue)} label="LOAN VALUE" />
           </div>
-          <p className="text-xs text-muted-foreground ml-auto">
-            {displayEntries.length} result{displayEntries.length !== 1 ? 's' : ''}
-          </p>
-        </div>
 
-        {/* Table */}
-        <Card className="border shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <TooltipProvider delayDuration={200}>
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <TableHead className="w-8" />
-                    <TableHead className="w-10">Status</TableHead>
-                    <SortableHeader field="name">Borrower</SortableHeader>
-                    <TableHead>Property / Collateral</TableHead>
-                    <SortableHeader field="current_rate" className="text-right">Rate</SortableHeader>
-                    <SortableHeader field="target_rate" className="text-right">Target</SortableHeader>
-                    <SortableHeader field="gap" className="text-right">Gap</SortableHeader>
-                    <SortableHeader field="loan_amount" className="text-right">Loan Amt</SortableHeader>
-                    <SortableHeader field="loan_maturity">Maturity</SortableHeader>
-                    <SortableHeader field="last_contacted_at">Last Contact</SortableHeader>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+          {/* ─── Filter bar ─────────────────────────────────────────── */}
+          <div className="flex items-center gap-4 px-10 py-4">
+            <SegmentedTabs value={activeTab} onChange={setActiveTab} stats={stats} />
+            <div className="relative w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9b91a8]" />
+              <Input
+                placeholder="Search name, company, location..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-8 pl-9 pr-3 rounded-full border-[#e8e0f3] text-[13px] placeholder:text-[#9b91a8] focus-visible:ring-[#3b2778]"
+              />
+            </div>
+            <div className="flex-1" />
+            <p className="text-[12px] text-[#6b6280]">
+              {displayEntries.length} result{displayEntries.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {/* ─── Table ──────────────────────────────────────────────── */}
+          <div className="px-10 pb-10">
+            <div className="border border-[#e8e0f3] rounded-lg overflow-hidden bg-white">
+              <table className="w-full text-[13px] border-collapse">
+                <thead>
+                  <tr className="bg-[#eee6f6] h-10">
+                    <th className="w-10 text-left font-semibold text-[11px] tracking-wider text-[#3b2778] px-4">{''}</th>
+                    <SortableTH field="name" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="text-left">BORROWER</SortableTH>
+                    <th className="text-left font-semibold text-[11px] tracking-wider text-[#3b2778] px-3">PROPERTY / COLLATERAL</th>
+                    <SortableTH field="current_rate" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="text-right">RATE</SortableTH>
+                    <SortableTH field="target_rate" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="text-right">TARGET</SortableTH>
+                    <SortableTH field="gap" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="text-right">GAP</SortableTH>
+                    <SortableTH field="loan_amount" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="text-right">LOAN AMT</SortableTH>
+                    <SortableTH field="loan_maturity" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="text-left">MATURITY</SortableTH>
+                    <SortableTH field="last_contacted_at" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="text-left">LAST CONTACT</SortableTH>
+                    <th className="text-right font-semibold text-[11px] tracking-wider text-[#3b2778] px-3">{''}</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
+                    <tr>
+                      <td colSpan={10} className="text-center py-12 text-[#6b6280]">
                         <div className="flex items-center justify-center gap-2">
                           <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                           Loading rate watch entries...
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ) : displayEntries.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
+                    <tr>
+                      <td colSpan={10} className="text-center py-12 text-[#6b6280]">
                         {searchTerm || activeTab !== 'all' ? 'No matching entries found' : 'No leads in rate watch yet'}
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ) : (
-                    displayEntries.map(entry => {
-                      const status = getStatus(entry);
-                      const gap = getGap(entry);
-                      const isExpanded = expandedRow === entry.id;
-
-                      return (
-                        <RateWatchRow
-                          key={entry.id}
-                          entry={entry}
-                          status={status}
-                          gap={gap}
-                          isExpanded={isExpanded}
-                          onToggleExpand={() => setExpandedRow(isExpanded ? null : entry.id)}
-                          onViewLead={() => {
-                            setSelectedLeadForDetail(entry.pipeline);
-                            setLeadDetailOpen(true);
-                          }}
-                          onEmail={() => openEmailForEntry(entry, false)}
-                          onAIEmail={() => openEmailForEntry(entry, true)}
-                          onPhone={() => {
-                            if (entry.pipeline.phone) {
-                              window.open(`tel:${entry.pipeline.phone}`, '_blank');
-                              updateLastContacted.mutate(entry.id);
-                            }
-                          }}
-                          formatCurrency={formatCurrency}
-                        />
-                      );
-                    })
+                    displayEntries.map(entry => (
+                      <RateWatchRow
+                        key={entry.id}
+                        entry={entry}
+                        status={getStatus(entry)}
+                        gap={getGap(entry)}
+                        isSelected={detailEntry?.id === entry.id}
+                        onClick={() => setDetailEntry(entry)}
+                        onViewLead={() => {
+                          setSelectedLeadForDetail(entry.pipeline);
+                          setLeadDetailOpen(true);
+                        }}
+                        onEmail={() => openEmailForEntry(entry, false)}
+                        onAIEmail={() => openEmailForEntry(entry, true)}
+                        onPhone={() => {
+                          if (entry.pipeline.phone) {
+                            window.open(`tel:${entry.pipeline.phone}`, '_blank');
+                            updateLastContacted.mutate(entry.id);
+                          }
+                        }}
+                        formatCurrency={formatCurrency}
+                      />
+                    ))
                   )}
-                </TableBody>
-              </Table>
-            </TooltipProvider>
+                </tbody>
+              </table>
+            </div>
           </div>
-        </Card>
 
-        {/* Floating Inbox */}
-        <FloatingInbox
-          isOpen={inboxOpen}
-          onClose={() => setInboxOpen(false)}
-          prefilledEmail={prefilledEmail}
-          onPrefilledEmailHandled={() => setPrefilledEmail(null)}
-        />
+          {/* ─── Side detail panel ──────────────────────────────────── */}
+          <Sheet open={!!detailEntry} onOpenChange={(open) => !open && setDetailEntry(null)}>
+            <SheetContent side="right" className="w-[480px] sm:max-w-[480px] p-0 border-l border-[#e8e0f3]">
+              {detailEntry && (
+                <RateWatchDetailPanel
+                  entry={detailEntry}
+                  status={getStatus(detailEntry)}
+                  gap={getGap(detailEntry)}
+                  formatCurrency={formatCurrency}
+                  onClose={() => setDetailEntry(null)}
+                  onEmail={() => openEmailForEntry(detailEntry, false)}
+                  onAIEmail={() => openEmailForEntry(detailEntry, true)}
+                  onPhone={() => {
+                    if (detailEntry.pipeline.phone) {
+                      window.open(`tel:${detailEntry.pipeline.phone}`, '_blank');
+                      updateLastContacted.mutate(detailEntry.id);
+                    }
+                  }}
+                />
+              )}
+            </SheetContent>
+          </Sheet>
 
-        {/* AI Email Assistant */}
-        <AIEmailAssistantSheet
-          isOpen={aiAssistantOpen}
-          onClose={() => setAiAssistantOpen(false)}
-          lead={selectedLeadForAI}
-          onUseEmail={handleAIEmailUse}
-        />
+          {/* Floating Inbox */}
+          <FloatingInbox
+            isOpen={inboxOpen}
+            onClose={() => setInboxOpen(false)}
+            prefilledEmail={prefilledEmail}
+            onPrefilledEmailHandled={() => setPrefilledEmail(null)}
+          />
 
-        {/* Lead Detail Dialog */}
-        <LeadDetailDialog
-          lead={selectedLeadForDetail}
-          open={leadDetailOpen}
-          onOpenChange={setLeadDetailOpen}
-          onLeadUpdated={() => {
-            queryClient.invalidateQueries({ queryKey: ['rate-watch'] });
-          }}
-        />
-      </div>
+          {/* AI Email Assistant */}
+          <AIEmailAssistantSheet
+            isOpen={aiAssistantOpen}
+            onClose={() => setAiAssistantOpen(false)}
+            lead={selectedLeadForAI}
+            onUseEmail={handleAIEmailUse}
+          />
+
+          {/* Lead Detail Dialog */}
+          <LeadDetailDialog
+            lead={selectedLeadForDetail}
+            open={leadDetailOpen}
+            onOpenChange={setLeadDetailOpen}
+            onLeadUpdated={() => {
+              queryClient.invalidateQueries({ queryKey: ['rate-watch'] });
+            }}
+          />
+        </div>
+      </TooltipProvider>
     </AdminLayout>
   );
 };
 
-// ─── Table Row ──────────────────────────────────────────────────────
+// ─── KPI strip primitives ──────────────────────────────────────────
+
+const KpiCell = ({ number, label, labelColor = '#6b6280', dot }: { number: number | string; label: string; labelColor?: string; dot?: string }) => (
+  <div className="flex flex-col gap-1.5">
+    <div className="flex items-center gap-2">
+      {dot && <span className="w-2 h-2 rounded-full" style={{ background: dot }} />}
+      <span className="text-[26px] font-semibold text-[#1a1a1a] leading-none tabular-nums">{number}</span>
+    </div>
+    <span className="text-[11px] font-semibold tracking-[0.04em]" style={{ color: labelColor }}>{label}</span>
+  </div>
+);
+
+const KpiDivider = () => <span className="w-px h-12 bg-[#e8e0f3]" />;
+
+// ─── Segmented tabs ────────────────────────────────────────────────
+
+const SegmentedTabs = ({ value, onChange, stats }: { value: TabFilter; onChange: (v: TabFilter) => void; stats: { total: number; ready: number; close: number; watching: number } }) => {
+  const items: { key: TabFilter; label: string; count: number }[] = [
+    { key: 'all', label: 'All', count: stats.total },
+    { key: 'ready', label: 'Ready', count: stats.ready },
+    { key: 'close', label: 'Close', count: stats.close },
+    { key: 'watching', label: 'Watching', count: stats.watching },
+  ];
+  return (
+    <div className="inline-flex h-8 items-center gap-0.5 rounded-lg bg-[#f5f1fa] p-0.5">
+      {items.map(item => {
+        const active = value === item.key;
+        return (
+          <button
+            key={item.key}
+            onClick={() => onChange(item.key)}
+            className={`px-3 h-7 rounded-md text-[12px] font-medium transition-colors ${
+              active ? 'bg-[#3b2778] text-white' : 'text-[#6b6280] hover:text-[#1a1a1a]'
+            }`}
+          >
+            {item.label} <span className={active ? 'opacity-90' : 'opacity-70'}>{item.count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── Sortable TH ───────────────────────────────────────────────────
+
+const SortableTH = ({ field, sortField, sortDirection, onSort, children, className = '' }: {
+  field: SortField;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  onSort: (f: SortField) => void;
+  children: React.ReactNode;
+  className?: string;
+}) => {
+  const isActive = sortField === field;
+  return (
+    <th
+      onClick={() => onSort(field)}
+      className={`cursor-pointer select-none font-semibold text-[11px] tracking-wider text-[#3b2778] px-3 hover:bg-[#e1d6f0] transition-colors ${className}`}
+    >
+      <div className={`flex items-center gap-1 ${className.includes('text-right') ? 'justify-end' : ''}`}>
+        {children}
+        <ArrowUpDown className={`w-3 h-3 ${isActive ? 'text-[#3b2778]' : 'text-[#9b91a8]'} ${isActive && sortDirection === 'desc' ? 'rotate-180' : ''}`} />
+      </div>
+    </th>
+  );
+};
+
+// ─── Table Row ─────────────────────────────────────────────────────
 
 interface RateWatchRowProps {
   entry: RateWatchEntry;
   status: string;
   gap: number;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
+  isSelected: boolean;
+  onClick: () => void;
   onViewLead: () => void;
   onEmail: () => void;
   onAIEmail: () => void;
@@ -992,269 +982,277 @@ const RateWatchRow = ({
   entry,
   status,
   gap,
-  isExpanded,
-  onToggleExpand,
+  isSelected,
+  onClick,
   onViewLead,
   onEmail,
   onAIEmail,
   onPhone,
   formatCurrency,
 }: RateWatchRowProps) => {
-  const statusConfig = {
-    ready: { label: 'Ready', color: 'bg-green-500', badgeClass: 'bg-green-100 text-green-700 border-green-200' },
-    close: { label: 'Close', color: 'bg-amber-500', badgeClass: 'bg-amber-100 text-amber-700 border-amber-200' },
-    watching: { label: 'Watching', color: 'bg-slate-400', badgeClass: 'bg-slate-100 text-slate-600 border-slate-200' },
-  }[status] || { label: 'Watching', color: 'bg-slate-400', badgeClass: 'bg-slate-100 text-slate-600 border-slate-200' };
+  const dotColor = status === 'ready' ? '#0F7A3E' : status === 'close' ? '#A45C00' : '#9B91A8';
+  const statusLabel = status === 'ready' ? 'Ready' : status === 'close' ? 'Close' : 'Watching';
 
   return (
-    <>
-      <TableRow
-        className={`group cursor-pointer transition-colors ${
-          status === 'ready' ? 'bg-green-50/40 hover:bg-green-50/70' : 'hover:bg-muted/40'
-        }`}
-        onClick={onToggleExpand}
-      >
-        {/* Expand toggle */}
-        <TableCell className="w-8 pr-0">
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}>
-            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </Button>
-        </TableCell>
+    <tr
+      className={`group cursor-pointer border-t border-[#f1ecf7] transition-colors ${
+        isSelected ? 'bg-[#eee6f6]' : 'hover:bg-[#faf7fd]'
+      }`}
+      onClick={onClick}
+    >
+      {/* Status dot */}
+      <td className="w-10 px-4 py-3">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-block w-2 h-2 rounded-full" style={{ background: dotColor }} />
+          </TooltipTrigger>
+          <TooltipContent side="right">{statusLabel}</TooltipContent>
+        </Tooltip>
+      </td>
 
-        {/* Status dot */}
-        <TableCell className="w-10">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center justify-center">
-                <div className={`w-2.5 h-2.5 rounded-full ${statusConfig.color}`} />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{statusConfig.label}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TableCell>
+      {/* Borrower */}
+      <td className="px-3 py-2.5 max-w-[260px]">
+        <p className="font-medium text-[13px] text-[#1a1a1a] leading-tight truncate">{entry.pipeline.name}</p>
+        {entry.pipeline.company_name && (
+          <p className="text-[12px] text-[#6b6280] leading-tight mt-0.5 truncate">{entry.pipeline.company_name}</p>
+        )}
+      </td>
 
-        {/* Borrower */}
-        <TableCell>
-          <div className="min-w-[140px]">
-            <p className="font-medium text-sm leading-tight">{entry.pipeline.name}</p>
-            {entry.pipeline.company_name && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                <Building2 className="w-3 h-3 shrink-0" />
-                <span className="truncate max-w-[160px]">{entry.pipeline.company_name}</span>
-              </p>
-            )}
-          </div>
-        </TableCell>
+      {/* Property / Collateral */}
+      <td className="px-3 py-2.5 max-w-[220px]">
+        {entry.collateral_type ? (
+          <p className="text-[13px] text-[#1a1a1a] leading-tight truncate">{entry.collateral_type}</p>
+        ) : null}
+        {entry.re_location ? (
+          <p className="text-[12px] text-[#6b6280] leading-tight mt-0.5 truncate">{entry.re_location}</p>
+        ) : null}
+        {!entry.collateral_type && !entry.re_location && (
+          <span className="text-[12px] text-[#9b91a8]">—</span>
+        )}
+      </td>
 
-        {/* Property */}
-        <TableCell>
-          <div className="min-w-[120px]">
-            {entry.collateral_type && (
-              <p className="text-sm leading-tight truncate max-w-[180px]">{entry.collateral_type}</p>
-            )}
-            {entry.re_location && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                <MapPin className="w-3 h-3 shrink-0" />
-                {entry.re_location}
-              </p>
-            )}
-            {!entry.collateral_type && !entry.re_location && (
-              <span className="text-xs text-muted-foreground">-</span>
-            )}
-          </div>
-        </TableCell>
+      {/* Rate */}
+      <td className="px-3 py-2.5 text-right tabular-nums font-medium text-[13px] text-[#1a1a1a]">
+        {entry.current_rate}%
+      </td>
 
-        {/* Current Rate */}
-        <TableCell className="text-right tabular-nums font-medium text-sm">
-          {entry.current_rate}%
-        </TableCell>
+      {/* Target */}
+      <td className="px-3 py-2.5 text-right tabular-nums text-[13px] text-[#6b6280]">
+        {entry.target_rate}%
+      </td>
 
-        {/* Target Rate */}
-        <TableCell className="text-right tabular-nums text-sm text-muted-foreground">
-          {entry.target_rate}%
-        </TableCell>
+      {/* Gap — hero column */}
+      <td className="px-3 py-2.5 text-right tabular-nums text-[13px]">
+        {gap <= 0 ? (
+          <span className="inline-flex items-center gap-1 font-semibold text-[#0F7A3E]">
+            Met <ArrowDown className="w-3 h-3" />
+          </span>
+        ) : gap < 0.5 ? (
+          <span className="font-semibold text-[#A45C00]">+{gap.toFixed(2)}%</span>
+        ) : (
+          <span className="text-[#9B91A8]">+{gap.toFixed(2)}%</span>
+        )}
+      </td>
 
-        {/* Gap */}
-        <TableCell className="text-right">
-          {gap <= 0 ? (
-            <span className="inline-flex items-center gap-0.5 text-green-600 text-sm font-medium">
-              <TrendingDown className="w-3 h-3" />
-              Met
-            </span>
-          ) : gap < 0.5 ? (
-            <span className="inline-flex items-center gap-0.5 text-amber-600 text-sm tabular-nums">
-              <AlertTriangle className="w-3 h-3" />
-              {gap.toFixed(2)}%
-            </span>
-          ) : (
-            <span className="text-sm text-muted-foreground tabular-nums">
-              +{gap.toFixed(2)}%
-            </span>
+      {/* Loan Amount */}
+      <td className="px-3 py-2.5 text-right tabular-nums font-medium text-[13px] text-[#1a1a1a]">
+        {entry.loan_amount ? formatCurrency(entry.loan_amount) : <span className="text-[#9b91a8]">—</span>}
+      </td>
+
+      {/* Maturity */}
+      <td className="px-3 py-2.5 text-[12px] text-[#1a1a1a]">
+        {entry.loan_maturity ? (
+          <span className="inline-flex items-center gap-1.5">
+            <Calendar className="w-3 h-3 text-[#9b91a8]" />
+            {format(new Date(entry.loan_maturity), 'MMM yyyy')}
+          </span>
+        ) : (
+          <span className="text-[#9b91a8]">—</span>
+        )}
+      </td>
+
+      {/* Last Contact */}
+      <td className="px-3 py-2.5 text-[12px] text-[#1a1a1a]">
+        {entry.last_contacted_at ? (
+          format(new Date(entry.last_contacted_at), 'MMM d, yyyy')
+        ) : (
+          <span className="text-[#9b91a8]">Never</span>
+        )}
+      </td>
+
+      {/* Actions */}
+      <td className="px-3 py-2.5 text-right">
+        <div className="inline-flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <RowAction tip="View Lead" onClick={onViewLead}><Eye className="w-3.5 h-3.5" /></RowAction>
+          <RowAction tip="AI Email" onClick={onAIEmail}><Sparkles className="w-3.5 h-3.5 text-[#3b2778]" /></RowAction>
+          <RowAction tip="Email" onClick={onEmail}><Mail className="w-3.5 h-3.5" /></RowAction>
+          {entry.pipeline.phone && (
+            <RowAction tip="Call" onClick={onPhone}><Phone className="w-3.5 h-3.5" /></RowAction>
           )}
-        </TableCell>
-
-        {/* Loan Amount */}
-        <TableCell className="text-right text-sm tabular-nums">
-          {entry.loan_amount ? formatCurrency(entry.loan_amount) : '-'}
-        </TableCell>
-
-        {/* Maturity */}
-        <TableCell className="text-sm">
-          {entry.loan_maturity ? (
-            <span className="flex items-center gap-1 text-xs">
-              <Calendar className="w-3 h-3 text-muted-foreground" />
-              {format(new Date(entry.loan_maturity), 'MMM yyyy')}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">-</span>
-          )}
-        </TableCell>
-
-        {/* Last Contact */}
-        <TableCell className="text-sm">
-          {entry.last_contacted_at ? (
-            <span className="text-xs">{format(new Date(entry.last_contacted_at), 'MMM d, yyyy')}</span>
-          ) : (
-            <span className="text-xs text-muted-foreground">Never</span>
-          )}
-        </TableCell>
-
-        {/* Actions */}
-        <TableCell className="text-right">
-          <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onViewLead(); }}>
-                  <Eye className="w-3.5 h-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>View Lead</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onAIEmail(); }}>
-                  <Sparkles className="w-3.5 h-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>AI Email</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEmail(); }}>
-                  <Mail className="w-3.5 h-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Template Email</TooltipContent>
-            </Tooltip>
-            {entry.pipeline.phone && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onPhone(); }}>
-                    <Phone className="w-3.5 h-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Call</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-        </TableCell>
-      </TableRow>
-
-      {/* Expanded Detail Row */}
-      {isExpanded && (
-        <TableRow className="bg-muted/20 hover:bg-muted/20">
-          <TableCell colSpan={11} className="p-0">
-            <ExpandedDetail entry={entry} formatCurrency={formatCurrency} />
-          </TableCell>
-        </TableRow>
-      )}
-    </>
+        </div>
+      </td>
+    </tr>
   );
 };
 
-// ─── Expanded Detail Panel ──────────────────────────────────────────
+const RowAction = ({ tip, onClick, children }: { tip: string; onClick: () => void; children: React.ReactNode }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+        className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[#6b6280] hover:bg-white hover:text-[#1a1a1a] transition-colors"
+      >
+        {children}
+      </button>
+    </TooltipTrigger>
+    <TooltipContent>{tip}</TooltipContent>
+  </Tooltip>
+);
 
-const ExpandedDetail = ({ entry, formatCurrency }: { entry: RateWatchEntry; formatCurrency: (n: number) => string }) => {
+// ─── Side Detail Panel ─────────────────────────────────────────────
+
+interface DetailPanelProps {
+  entry: RateWatchEntry;
+  status: string;
+  gap: number;
+  formatCurrency: (n: number) => string;
+  onClose: () => void;
+  onEmail: () => void;
+  onAIEmail: () => void;
+  onPhone: () => void;
+}
+
+const RateWatchDetailPanel = ({ entry, status, gap, formatCurrency, onClose, onEmail, onAIEmail, onPhone }: DetailPanelProps) => {
+  const gapDisplay = gap <= 0
+    ? { label: 'Met', color: '#0F7A3E' }
+    : gap < 0.5
+      ? { label: `+${gap.toFixed(2)}%`, color: '#A45C00' }
+      : { label: `+${gap.toFixed(2)}%`, color: '#9B91A8' };
+
+  const summary = gap <= 0
+    ? `Rate is at or below target — ready to reach out.`
+    : gap < 0.5
+      ? `Rate needs to drop ${gap.toFixed(2)}% to hit target — currently in the close zone.`
+      : `Rate needs to drop ${gap.toFixed(2)}% to hit target — currently watching.`;
+
   return (
-    <div className="px-6 py-4 border-t border-dashed">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Loan Details */}
-        <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">Loan Details</h4>
-          <div className="space-y-1.5">
-            <DetailRow label="Loan Type" value={entry.loan_type} />
-            <DetailRow label="Rate Type" value={entry.rate_type} />
-            {entry.rate_type === 'Variable' && entry.variable_index_spread && (
-              <DetailRow label="Index & Spread" value={entry.variable_index_spread} />
-            )}
-            <DetailRow label="Original Term" value={entry.original_term_years ? `${entry.original_term_years} years` : null} />
-            <DetailRow label="Amortization" value={entry.amortization} />
-            <DetailRow label="Prepayment Penalty" value={entry.penalty} />
-            <DetailRow label="Lender Type" value={entry.lender_type} />
-          </div>
+    <div className="flex flex-col h-full bg-white">
+      {/* Header */}
+      <div className="flex items-start gap-3 px-6 py-5 border-b border-[#e8e0f3]">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[18px] font-semibold text-[#1a1a1a] truncate">{entry.pipeline.name}</h2>
+          <p className="text-[12px] text-[#6b6280] truncate mt-0.5">
+            {entry.pipeline.company_name}
+            {entry.pipeline.company_name && entry.re_location ? ' · ' : ''}
+            {entry.re_location}
+          </p>
         </div>
-
-        {/* Property / Collateral */}
-        <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">Property / Collateral</h4>
-          <div className="space-y-1.5">
-            <DetailRow label="Collateral" value={entry.collateral_type} />
-            <DetailRow label="Collateral Value" value={entry.collateral_value ? formatCurrency(entry.collateral_value) : null} />
-            <DetailRow label="Location" value={entry.re_location} />
-            <DetailRow label="Occupancy / Use" value={entry.occupancy_use} />
-            <DetailRow label="Owner Occupied" value={entry.owner_occupied_pct != null ? `${entry.owner_occupied_pct}%` : null} />
-            <DetailRow label="Est. Cash Flow" value={entry.estimated_cf ? formatCurrency(entry.estimated_cf) : null} />
-          </div>
-        </div>
-
-        {/* Status & Notes */}
-        <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">Status & Notes</h4>
-          <div className="space-y-1.5">
-            <DetailRow label="Email Confirmed" value={entry.confirm_email ? 'Yes' : 'No'} />
-            <DetailRow label="Initial Review" value={entry.initial_review} />
-            <DetailRow label="Enrolled" value={format(new Date(entry.enrolled_at), 'MMM d, yyyy')} />
-            {entry.seeking_to_improve && (
-              <div className="mt-2">
-                <p className="text-xs font-medium text-muted-foreground">Seeking to Improve</p>
-                <p className="text-sm mt-0.5">{entry.seeking_to_improve}</p>
-              </div>
-            )}
-            {entry.notes && (
-              <div className="mt-2">
-                <p className="text-xs font-medium text-muted-foreground">Notes</p>
-                <p className="text-sm mt-0.5 text-muted-foreground leading-relaxed">{entry.notes}</p>
-              </div>
-            )}
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-8 w-8 inline-flex items-center justify-center rounded-md text-[#6b6280] hover:bg-[#faf7fd] hover:text-[#1a1a1a] transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Contact Info */}
-      <div className="mt-4 pt-3 border-t flex items-center gap-4 text-xs text-muted-foreground">
-        {entry.pipeline.email && (
-          <span className="flex items-center gap-1">
-            <Mail className="w-3 h-3" /> {entry.pipeline.email}
-          </span>
-        )}
+      {/* Action row */}
+      <div className="flex items-center gap-2 px-6 py-3 border-b border-[#e8e0f3]">
+        <Button variant="outline" size="sm" className="flex-1 h-9 gap-1.5 border-[#e8e0f3]" onClick={onEmail}>
+          <Mail className="w-3.5 h-3.5" /> Email
+        </Button>
+        <Button variant="outline" size="sm" className="flex-1 h-9 gap-1.5 bg-[#f5f1fa] border-[#e1d6f0] text-[#3b2778] hover:bg-[#eee6f6]" onClick={onAIEmail}>
+          <Sparkles className="w-3.5 h-3.5" /> AI Email
+        </Button>
         {entry.pipeline.phone && (
-          <span className="flex items-center gap-1">
-            <Phone className="w-3 h-3" /> {entry.pipeline.phone}
-          </span>
+          <Button variant="outline" size="sm" className="flex-1 h-9 gap-1.5 border-[#e8e0f3]" onClick={onPhone}>
+            <Phone className="w-3.5 h-3.5" /> Call
+          </Button>
         )}
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Hero stat block */}
+        <div className="bg-[#faf7fd] px-6 py-5">
+          <div className="flex items-stretch gap-0">
+            <HeroStat label="CURRENT" value={`${entry.current_rate}%`} />
+            <span className="w-px bg-[#e8e0f3]" />
+            <HeroStat label="TARGET" value={`${entry.target_rate}%`} className="pl-4" />
+            <span className="w-px bg-[#e8e0f3]" />
+            <HeroStat label="GAP" value={gapDisplay.label} valueColor={gapDisplay.color} labelColor={gap < 0.5 && gap > 0 ? '#A45C00' : gap <= 0 ? '#0F7A3E' : '#6b6280'} className="pl-4" />
+          </div>
+          <p className="text-[13px] text-[#6b6280] mt-4 leading-snug">{summary}</p>
+        </div>
+
+        {/* Loan section */}
+        <DetailSection title="LOAN">
+          <DetailRow label="Loan Type" value={entry.loan_type} />
+          <DetailRow label="Rate Type" value={entry.rate_type} />
+          {entry.rate_type === 'Variable' && entry.variable_index_spread && (
+            <DetailRow label="Index & Spread" value={entry.variable_index_spread} />
+          )}
+          <DetailRow label="Original Term" value={entry.original_term_years ? `${entry.original_term_years} years` : null} />
+          <DetailRow label="Amortization" value={entry.amortization} />
+          <DetailRow label="Prepayment Penalty" value={entry.penalty} />
+          <DetailRow label="Lender Type" value={entry.lender_type} />
+        </DetailSection>
+
+        {/* Collateral section */}
+        <DetailSection title="COLLATERAL">
+          <DetailRow label="Type" value={entry.collateral_type} />
+          <DetailRow label="Estimated Value" value={entry.collateral_value ? formatCurrency(entry.collateral_value) : null} />
+          <DetailRow label="Location" value={entry.re_location} />
+          <DetailRow label="Occupancy / Use" value={entry.occupancy_use} />
+          <DetailRow label="Owner-Occupied" value={entry.owner_occupied_pct != null ? `${entry.owner_occupied_pct}%` : null} />
+          <DetailRow label="Est. Cash Flow" value={entry.estimated_cf ? formatCurrency(entry.estimated_cf) : null} />
+        </DetailSection>
+
+        {/* Status section */}
+        <DetailSection title="STATUS & ACTIVITY" lastSection>
+          <DetailRow label="Email Confirmed" value={entry.confirm_email ? 'Yes' : 'No'} valueColor={entry.confirm_email ? '#0F7A3E' : undefined} />
+          <DetailRow label="Initial Review" value={entry.initial_review} />
+          <DetailRow label="Enrolled" value={format(new Date(entry.enrolled_at), 'MMM d, yyyy')} />
+          <DetailRow label="Last Contact" value={entry.last_contacted_at ? format(new Date(entry.last_contacted_at), 'MMM d, yyyy') : 'Never'} />
+          {entry.seeking_to_improve && (
+            <div className="bg-[#faf7fd] rounded-md px-3.5 py-3 mt-2">
+              <p className="text-[11px] font-semibold tracking-wider text-[#6b6280]">SEEKING TO IMPROVE</p>
+              <p className="text-[13px] text-[#1a1a1a] mt-1.5 leading-snug">{entry.seeking_to_improve}</p>
+            </div>
+          )}
+          {entry.notes && (
+            <div className="bg-[#faf7fd] rounded-md px-3.5 py-3 mt-2">
+              <p className="text-[11px] font-semibold tracking-wider text-[#6b6280]">NOTES</p>
+              <p className="text-[13px] text-[#1a1a1a] mt-1.5 leading-snug">{entry.notes}</p>
+            </div>
+          )}
+        </DetailSection>
       </div>
     </div>
   );
 };
 
-const DetailRow = ({ label, value }: { label: string; value: string | null | undefined }) => {
+const HeroStat = ({ label, value, valueColor = '#1a1a1a', labelColor = '#6b6280', className = '' }: { label: string; value: string; valueColor?: string; labelColor?: string; className?: string }) => (
+  <div className={`flex-1 flex flex-col gap-1.5 ${className}`}>
+    <span className="text-[11px] font-semibold tracking-[0.04em]" style={{ color: labelColor }}>{label}</span>
+    <span className="text-[24px] font-semibold tabular-nums leading-none" style={{ color: valueColor }}>{value}</span>
+  </div>
+);
+
+const DetailSection = ({ title, children, lastSection = false }: { title: string; children: React.ReactNode; lastSection?: boolean }) => (
+  <div className={`px-6 py-5 ${lastSection ? '' : 'border-b border-[#e8e0f3]'}`}>
+    <h3 className="text-[11px] font-semibold tracking-[0.04em] text-[#3b2778] mb-3">{title}</h3>
+    <div className="space-y-2.5">{children}</div>
+  </div>
+);
+
+const DetailRow = ({ label, value, valueColor }: { label: string; value: string | null | undefined; valueColor?: string }) => {
   if (!value) return null;
   return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="text-xs text-muted-foreground shrink-0">{label}</span>
-      <span className="text-sm text-right">{value}</span>
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-[12px] text-[#6b6280] shrink-0">{label}</span>
+      <span className="text-[13px] font-medium text-right" style={{ color: valueColor || '#1a1a1a' }}>{value}</span>
     </div>
   );
 };
