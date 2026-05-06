@@ -63,6 +63,9 @@ verify_jwt = false
 [functions.dropbox-api]
 verify_jwt = false
 
+[functions.dropbox-files]
+verify_jwt = false
+
 [functions.dropbox-sync]
 verify_jwt = false
 
