@@ -1,5 +1,7 @@
 // Dropbox API helpers shared by dropbox-files, dropbox-mutations, dropbox-search edge functions.
 
+import type { SupabaseClient } from '../supabase.ts';
+
 const DROPBOX_APP_KEY = Deno.env.get('DROPBOX_APP_KEY')!;
 const DROPBOX_APP_SECRET = Deno.env.get('DROPBOX_APP_SECRET')!;
 
@@ -50,7 +52,7 @@ export function parseDropboxApiError(operation: string, errorText: string): stri
   return `Failed to ${operation}`;
 }
 
-export async function getValidAccessToken(supabase: any): Promise<string> {
+export async function getValidAccessToken(supabase: SupabaseClient): Promise<string> {
   const { data: connection, error } = await supabase
     .from('dropbox_connections')
     .select('*')
