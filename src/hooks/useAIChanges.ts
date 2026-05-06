@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { aiAssistantUrl } from '@/lib/aiAssistantRouter';
 
 export interface AIChange {
   id: string;
@@ -111,15 +112,16 @@ export const useAIChanges = (filters?: UseAIChangesFilters) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Not authenticated');
 
+    const requestBody = { action: 'undo', changeId };
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
+      aiAssistantUrl(requestBody),
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: 'undo', changeId }),
+        body: JSON.stringify(requestBody),
       }
     );
 
@@ -136,15 +138,16 @@ export const useAIChanges = (filters?: UseAIChangesFilters) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Not authenticated');
 
+    const requestBody = { action: 'redo', changeId };
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
+      aiAssistantUrl(requestBody),
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: 'redo', changeId }),
+        body: JSON.stringify(requestBody),
       }
     );
 
@@ -161,15 +164,16 @@ export const useAIChanges = (filters?: UseAIChangesFilters) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Not authenticated');
 
+    const requestBody = { action: 'undo_batch', batchId };
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
+      aiAssistantUrl(requestBody),
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: 'undo_batch', batchId }),
+        body: JSON.stringify(requestBody),
       }
     );
 
