@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { aiAssistantUrl } from '@/lib/aiAssistantRouter';
 import { toast } from 'sonner';
 import type { ActionProposal } from '@/components/ai/actions/ActionCard';
 
@@ -28,21 +29,22 @@ export const useActionExecutor = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
+      const requestBody = {
+        action: 'execute',
+        actionType: type,
+        params,
+        conversationId,
+        mode: 'assist',
+      };
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
+        aiAssistantUrl(requestBody),
         {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            action: 'execute',
-            actionType: type,
-            params,
-            conversationId,
-            mode: 'assist',
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
@@ -71,18 +73,19 @@ export const useActionExecutor = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
+      const requestBody = {
+        action: 'undo_batch',
+        batchId,
+      };
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
+        aiAssistantUrl(requestBody),
         {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            action: 'undo_batch',
-            batchId,
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
