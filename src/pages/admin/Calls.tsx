@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { usePageDatabases } from '@/hooks/usePageDatabases';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -15,26 +15,32 @@ import { Label } from '@/components/ui/label';
 import { OutboundCallCard } from '@/components/employee/OutboundCallCard';
 import { useCall } from '@/contexts/CallContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Phone, 
-  User, 
-  Building2, 
-  Mail, 
-  Calendar, 
-  DollarSign, 
-  Clock, 
+import {
+  Phone,
+  User,
+  Building2,
+  Mail,
+  Calendar,
+  DollarSign,
+  Clock,
   Loader2,
   AlertCircle,
   FileText,
   PhoneIncoming,
   PhoneOutgoing,
+  PhoneMissed,
   History,
   UserPlus,
-  Sparkles
+  Sparkles,
+  Play,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { useTeamMember } from '@/hooks/useTeamMember';
 
 interface ActiveCall {
@@ -84,11 +90,19 @@ interface CallLog {
   recording_url?: string | null;
   recording_sid?: string | null;
   call_sid?: string | null;
+  user_id?: string | null;
   pipeline?: {
     name: string;
     company_name: string | null;
   } | null;
 }
+
+type StatusFilter = 'all' | 'completed' | 'missed' | 'failed';
+type DateRangeFilter = 'today' | '7d' | '30d' | 'all';
+type TranscriptStatus = 'available' | 'generating' | 'pending' | 'no-recording';
+
+const MISSED_STATUSES = new Set(['missed', 'no-answer', 'busy', 'canceled', 'cancelled']);
+const FAILED_STATUSES = new Set(['failed']);
 
 const formatCurrency = (amount: number | null) => {
   if (amount === null || amount === undefined) return 'N/A';
@@ -139,6 +153,115 @@ const formatDuration = (seconds: number | null) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+const isMissedStatus = (status: string | null): boolean => {
+  if (!status) return false;
+  return MISSED_STATUSES.has(status);
+};
+
+const isFailedStatus = (status: string | null): boolean => {
+  if (!status) return false;
+  return FAILED_STATUSES.has(status);
+};
+
+const getDateThreshold = (range: DateRangeFilter): Date | null => {
+  const now = new Date();
+  switch (range) {
+    case 'today': {
+      const d = new Date(now);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    case '7d': {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 7);
+      return d;
+    }
+    case '30d': {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 30);
+      return d;
+    }
+    default:
+      return null;
+  }
+};
+
+const getTranscriptStatus = (
+  call: CallLog,
+  generatingId: string | null,
+): TranscriptStatus => {
+  if (call.transcript && call.transcript.trim().length > 0) return 'available';
+  if (generatingId === call.id) return 'generating';
+  if (call.recording_url) return 'pending';
+  return 'no-recording';
+};
+
+const getCallStatusBadge = (status: string | null) => {
+  if (!status) return null;
+  if (status === 'completed') {
+    return (
+      <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] h-5 px-1.5">
+        Completed
+      </Badge>
+    );
+  }
+  if (isMissedStatus(status)) {
+    return (
+      <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] h-5 px-1.5">
+        {status === 'no-answer' ? 'No answer' : status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
+  }
+  if (isFailedStatus(status)) {
+    return (
+      <Badge variant="secondary" className="bg-red-100 text-red-700 border-red-200 text-[10px] h-5 px-1.5">
+        Failed
+      </Badge>
+    );
+  }
+  if (status === 'in-progress' || status === 'ringing') {
+    return (
+      <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] h-5 px-1.5">
+        {status === 'ringing' ? 'Ringing' : 'In progress'}
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+      {status}
+    </Badge>
+  );
+};
+
+const getTranscriptBadge = (ts: TranscriptStatus) => {
+  switch (ts) {
+    case 'available':
+      return (
+        <Badge variant="secondary" className="bg-violet-100 text-violet-700 border-violet-200 text-[10px] h-5 px-1.5">
+          <FileText className="h-2.5 w-2.5 mr-1" /> Transcript
+        </Badge>
+      );
+    case 'generating':
+      return (
+        <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] h-5 px-1.5">
+          <Loader2 className="h-2.5 w-2.5 mr-1 animate-spin" /> Generating…
+        </Badge>
+      );
+    case 'pending':
+      return (
+        <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] h-5 px-1.5">
+          Pending
+        </Badge>
+      );
+    case 'no-recording':
+      return (
+        <Badge variant="outline" className="text-muted-foreground text-[10px] h-5 px-1.5">
+          No recording
+        </Badge>
+      );
+  }
+};
+
 const Calls = () => {
   const { teamMember } = useTeamMember();
   const { isAdmin } = useAuth();
@@ -146,13 +269,17 @@ const Calls = () => {
     { table: 'active_calls', access: 'read', usage: 'Live call state for in-progress Twilio sessions.', via: 'src/contexts/CallContext.tsx' },
     { table: 'call_events', access: 'read', usage: 'Historical call timeline/events shown in the list.', via: 'useQuery in Calls.tsx' },
     { table: 'communications', access: 'read', usage: 'Completed calls persisted as communications records.', via: 'useQuery in Calls.tsx' },
+    { table: 'communications', access: 'write', usage: 'Linking a call to a newly created lead via lead_id update.', via: 'addLeadMutation in Calls.tsx' },
     { table: 'potential', access: 'read', usage: 'Linked lead/deal context for each call row.', via: 'useQuery in Calls.tsx' },
-    { table: 'retry-call-transcription', access: 'rpc', usage: 'Edge function re-triggering Twilio transcription on failed recordings.', via: 'supabase.functions.invoke("retry-call-transcription")' },
+    { table: 'potential', access: 'write', usage: 'Creating leads from inbound calls (Add Lead dialog).', via: 'addLeadMutation in Calls.tsx' },
+    { table: 'pipeline', access: 'read', usage: 'Joined for company/deal context on call history rows.', via: 'callHistory query in Calls.tsx' },
+    { table: 'deal_responses', access: 'read', usage: 'Loan questionnaire details rendered for the matched lead.', via: 'leadResponse query in Calls.tsx' },
+    { table: 'retry-call-transcription', access: 'rpc', usage: 'Edge function re-triggering Whisper + Gemini speaker labeling on a stored recording.', via: 'supabase.functions.invoke("retry-call-transcription")' },
     { table: 'call-to-lead-automation', access: 'rpc', usage: 'Edge function auto-creating leads from unknown inbound numbers.', via: 'supabase.functions.invoke("call-to-lead-automation")' },
   ]);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { outboundCall } = useCall();
+  const { outboundCall, makeOutboundCall } = useCall();
 
   const { setPageTitle } = useAdminTopBar();
   useEffect(() => {
@@ -164,18 +291,21 @@ const Calls = () => {
   // their users row. Sourced via useTeamMember(); no extra query needed.
   const hasCallSetup = !!teamMember?.twilio_phone_number;
 
-  const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [transcriptDialogOpen, setTranscriptDialogOpen] = useState(false);
   const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
   const [retryingTranscriptId, setRetryingTranscriptId] = useState<string | null>(null);
   const [transcriptError, setTranscriptError] = useState<string | null>(null);
   const [directionFilter, setDirectionFilter] = useState<'all' | 'inbound' | 'outbound'>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedHistoryCall, setSelectedHistoryCall] = useState<CallLog | null>(null);
-  
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+
   // Get pre-filled phone from URL params (from pipeline redirect)
   const prefilledPhone = searchParams.get('phone');
   const prefilledLeadId = searchParams.get('leadId');
-  
+
   // Clear URL params after reading them (so refresh doesn't re-fill)
   useEffect(() => {
     if (prefilledPhone || prefilledLeadId) {
@@ -186,14 +316,14 @@ const Calls = () => {
       return () => clearTimeout(timer);
     }
   }, [prefilledPhone, prefilledLeadId, setSearchParams]);
-  
+
   // Add Lead Dialog state
   const [addLeadDialogOpen, setAddLeadDialogOpen] = useState(false);
   const [selectedCallForLead, setSelectedCallForLead] = useState<CallLog | null>(null);
   const [newLeadName, setNewLeadName] = useState('');
   const [newLeadEmail, setNewLeadEmail] = useState('');
   const [newLeadCompany, setNewLeadCompany] = useState('');
-  
+
   // Automation confirmation dialog state
   const [automationConfirmOpen, setAutomationConfirmOpen] = useState(false);
   const [pendingAutomationData, setPendingAutomationData] = useState<{
@@ -237,7 +367,7 @@ const Calls = () => {
   // user_id — the outbound backstop in twilio-call-status cannot determine
   // user_id server-side, and any future attribution gap should still surface
   // in history rather than vanish.
-  const { data: callHistory = [], isLoading: historyLoading } = useQuery({
+  const { data: callHistory = [], isLoading: historyLoading, refetch: refetchHistory, isRefetching: isRefetchingHistory } = useQuery({
     queryKey: ['call-history', teamMember?.id, isAdmin],
     queryFn: async () => {
       let query = supabase
@@ -251,7 +381,7 @@ const Calls = () => {
         `)
         .eq('communication_type', 'call')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(200);
       if (teamMember?.id && !isAdmin) {
         query = query.or(`user_id.eq.${teamMember.id},user_id.is.null`);
       }
@@ -274,11 +404,11 @@ const Calls = () => {
   }, [callHistory, selectedTranscriptCall?.id]);
 
   const currentCall = activeCalls[0];
-  
+
   // Determine which phone number to look up - prioritize: selected history > outbound call > prefilled > active inbound
-  const lookupPhone = selectedHistoryCall?.phone_number 
-    || outboundCall?.phoneNumber 
-    || prefilledPhone 
+  const lookupPhone = selectedHistoryCall?.phone_number
+    || outboundCall?.phoneNumber
+    || prefilledPhone
     || currentCall?.from_number;
 
   // Fetch lead matching the phone number (from active call or selected history call)
@@ -286,7 +416,7 @@ const Calls = () => {
     queryKey: ['caller-lead', lookupPhone],
     queryFn: async () => {
       if (!lookupPhone) return null;
-      
+
       // Clean the phone number for comparison
       const cleanedPhone = lookupPhone.replace(/\D/g, '');
       const phoneVariants = [
@@ -303,7 +433,7 @@ const Calls = () => {
         .or(phoneVariants.map(p => `phone.ilike.%${p.slice(-10)}%`).join(','))
         .limit(1)
         .maybeSingle();
-      
+
       if (error) throw error;
       return data as Lead | null;
     },
@@ -315,7 +445,7 @@ const Calls = () => {
     queryKey: ['lead-response', matchedLead?.id],
     queryFn: async () => {
       if (!matchedLead?.id) return null;
-      
+
       const { data, error } = await supabase
         .from('deal_responses')
         .select('*')
@@ -323,7 +453,7 @@ const Calls = () => {
         .order('submitted_at', { ascending: false })
         .limit(1)
         .single();
-      
+
       if (error && error.code !== 'PGRST116') throw error;
       return data as LeadResponse | null;
     },
@@ -333,10 +463,10 @@ const Calls = () => {
 
   // Add lead mutation with full automation workflow
   const addLeadMutation = useMutation({
-    mutationFn: async ({ name, email, phone, company, communicationId, hasTranscript, transcript, direction, callDate }: { 
-      name: string; 
-      email: string; 
-      phone: string; 
+    mutationFn: async ({ name, email, phone, company, communicationId, hasTranscript, transcript, direction, callDate }: {
+      name: string;
+      email: string;
+      phone: string;
       company: string;
       communicationId: string;
       hasTranscript: boolean;
@@ -363,14 +493,14 @@ const Calls = () => {
         })
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       return { lead: data, transcript, direction, callDate };
     },
-    onSuccess: async (result, variables) => {
-      const { lead, transcript, direction, callDate } = result;
-      
+    onSuccess: async (result, _variables) => {
+      const { lead } = result;
+
       // Update the call record to link to this lead
       if (selectedCallForLead) {
         await supabase
@@ -378,10 +508,10 @@ const Calls = () => {
           .update({ lead_id: lead.id })
           .eq('id', selectedCallForLead.id);
       }
-      
+
       const ownerPipelineLabel = teamMember?.name ? `${teamMember.name}'s pipeline` : 'your pipeline';
       toast.success(`Lead "${lead.name}" added to ${ownerPipelineLabel}`);
-      
+
       queryClient.invalidateQueries({ queryKey: ['call-history'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       setAddLeadDialogOpen(false);
@@ -412,9 +542,9 @@ const Calls = () => {
       toast.error('No phone number available for this call');
       return;
     }
-    
+
     const callDate = selectedCallForLead ? format(new Date(selectedCallForLead.created_at), 'MMM d, yyyy h:mm a') : '';
-    
+
     addLeadMutation.mutate({
       name: newLeadName.trim(),
       email: newLeadEmail.trim(),
@@ -443,14 +573,14 @@ const Calls = () => {
       } else {
         // Transcript generated successfully — check if this call has a linked lead
         await queryClient.invalidateQueries({ queryKey: ['call-history'] });
-        
+
         // Re-fetch the updated call to get fresh data
         const { data: updatedComm } = await supabase
           .from('communications')
           .select('id, lead_id, transcript, direction, created_at, phone_number, pipeline(name, email, phone)')
           .eq('id', call.id)
           .single();
-        
+
         if (updatedComm?.lead_id && updatedComm.pipeline) {
           const leadData = updatedComm.pipeline as unknown as { name: string; email: string | null; phone: string | null };
           const callDate = format(new Date(updatedComm.created_at), 'MMM d, yyyy h:mm a');
@@ -481,10 +611,10 @@ const Calls = () => {
   // Run automation workflow
   const handleRunAutomation = async () => {
     if (!pendingAutomationData) return;
-    
+
     setRunningAutomation(true);
     toast.info('Running automation workflow...', { duration: 2000 });
-    
+
     try {
       const { data: automationResult, error: automationError } = await supabase.functions.invoke('call-to-lead-automation', {
         body: {
@@ -507,16 +637,16 @@ const Calls = () => {
         console.log('Automation result:', automationResult);
         const rating = automationResult?.callRating;
         const draftCreated = automationResult?.gmailDraftCreated;
-        
+
         if (rating) {
-          const draftMessage = draftCreated 
-            ? ', Gmail draft ready' 
+          const draftMessage = draftCreated
+            ? ', Gmail draft ready'
             : (pendingAutomationData?.leadEmail ? '' : ' (no email for draft)');
           toast.success(`✅ Task created, call rated ${rating}/10${draftMessage}`);
         } else {
           toast.success('✅ Follow-up task created');
         }
-        
+
         // Refresh Gmail emails if draft was created
         if (draftCreated) {
           queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
@@ -538,6 +668,79 @@ const Calls = () => {
     setPendingAutomationData(null);
     toast.info('Automation skipped - lead created without follow-up task');
   };
+
+  const handleRedial = (phone: string | null, leadId: string | null) => {
+    if (!phone) {
+      toast.error('No phone number on this call');
+      return;
+    }
+    void makeOutboundCall(phone, leadId ?? undefined, undefined);
+  };
+
+  const handleRetryTranscriptionInline = async (call: CallLog, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!call.recording_url) {
+      toast.error('No recording to transcribe');
+      return;
+    }
+    if (call.transcript) {
+      // Force re-generation: clear existing transcript first so the helper
+      // re-runs the pipeline. Admins may use this if labeling was wrong.
+      const proceed = window.confirm('A transcript already exists. Re-generate it?');
+      if (!proceed) return;
+      const { error } = await supabase
+        .from('communications')
+        .update({ transcript: null })
+        .eq('id', call.id);
+      if (error) {
+        toast.error('Failed to clear existing transcript');
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: ['call-history'] });
+    }
+    await handleGenerateTranscript(call);
+    await queryClient.invalidateQueries({ queryKey: ['call-history'] });
+  };
+
+  const toggleRowExpanded = (id: string) => {
+    setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Apply filters: direction, status, date range, free-text search.
+  const filteredHistory = useMemo(() => {
+    const dateThreshold = getDateThreshold(dateRangeFilter);
+    const q = searchQuery.trim().toLowerCase();
+
+    return callHistory.filter((c) => {
+      if (directionFilter !== 'all' && c.direction !== directionFilter) return false;
+
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'completed' && c.status !== 'completed') return false;
+        if (statusFilter === 'missed' && !isMissedStatus(c.status)) return false;
+        if (statusFilter === 'failed' && !isFailedStatus(c.status)) return false;
+      }
+
+      if (dateThreshold) {
+        const created = new Date(c.created_at);
+        if (created < dateThreshold) return false;
+      }
+
+      if (q.length > 0) {
+        const haystack = [
+          c.transcript ?? '',
+          c.phone_number ?? '',
+          c.pipeline?.name ?? '',
+          c.pipeline?.company_name ?? '',
+          c.status ?? '',
+        ]
+          .join(' ')
+          .toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+
+      return true;
+    });
+  }, [callHistory, directionFilter, statusFilter, dateRangeFilter, searchQuery]);
 
   if (teamMember && !hasCallSetup) {
     return (
@@ -631,15 +834,15 @@ const Calls = () => {
                   <div className="flex items-center gap-2">
                     <User className="h-5 w-5 text-muted-foreground" />
                     <CardTitle className="text-lg">
-                      {selectedHistoryCall 
+                      {selectedHistoryCall
                         ? (selectedHistoryCall.direction === 'outbound' ? 'Contact Information' : 'Caller Information')
                         : 'Caller Information'}
                     </CardTitle>
                   </div>
                   {selectedHistoryCall && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-7 text-xs"
                       onClick={() => setSelectedHistoryCall(null)}
                     >
@@ -679,7 +882,7 @@ const Calls = () => {
                           </Badge>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2 text-sm">
                         {matchedLead.company_name && (
                           <div className="flex items-center gap-2">
@@ -768,7 +971,7 @@ const Calls = () => {
                     <p className="text-muted-foreground">
                       {selectedHistoryCall
                         ? 'No matching lead found for this number'
-                        : currentCall 
+                        : currentCall
                           ? 'No matching lead found for this number'
                           : 'Click on a call in the history or wait for an incoming call'}
                     </p>
@@ -790,28 +993,42 @@ const Calls = () => {
             </div>
           </div>
 
-          {/* Right Column - Call History (dominant) */}
+          {/* Right Column - Call History (dominant, full-fidelity) */}
           <div className="lg:col-span-3">
             <Card className="h-full rounded-lg">
               <CardHeader className="pb-3 pt-4 px-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <History className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <CardTitle className="text-lg">Call History</CardTitle>
                       <CardDescription>
-                        {directionFilter === 'all' 
-                          ? `${callHistory.length} calls` 
-                          : `${callHistory.filter(c => c.direction === directionFilter).length} ${directionFilter} calls`}
+                        {filteredHistory.length === callHistory.length
+                          ? `${callHistory.length} calls`
+                          : `${filteredHistory.length} of ${callHistory.length} calls`}
                       </CardDescription>
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => refetchHistory()}
+                    disabled={isRefetchingHistory}
+                    title="Refresh"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${isRefetchingHistory ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+
+                {/* Filter row */}
+                <div className="mt-3 space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
                     <Button
                       variant={directionFilter === 'all' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setDirectionFilter('all')}
-                      className="h-8 px-3"
+                      className="h-7 px-2.5 text-xs"
                     >
                       All
                     </Button>
@@ -819,138 +1036,329 @@ const Calls = () => {
                       variant={directionFilter === 'inbound' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setDirectionFilter('inbound')}
-                      className="h-8 px-3"
+                      className="h-7 px-2.5 text-xs"
                     >
-                      <PhoneIncoming className="h-3.5 w-3.5 mr-1" />
-                      In
+                      <PhoneIncoming className="h-3 w-3 mr-1" /> In
                     </Button>
                     <Button
                       variant={directionFilter === 'outbound' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setDirectionFilter('outbound')}
-                      className="h-8 px-3"
+                      className="h-7 px-2.5 text-xs"
                     >
-                      <PhoneOutgoing className="h-3.5 w-3.5 mr-1" />
-                      Out
+                      <PhoneOutgoing className="h-3 w-3 mr-1" /> Out
                     </Button>
+
+                    <span className="mx-1 self-center text-muted-foreground/40">|</span>
+
+                    <Button
+                      variant={statusFilter === 'all' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setStatusFilter('all')}
+                      className="h-7 px-2.5 text-xs"
+                    >
+                      Any status
+                    </Button>
+                    <Button
+                      variant={statusFilter === 'completed' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setStatusFilter('completed')}
+                      className="h-7 px-2.5 text-xs"
+                    >
+                      Completed
+                    </Button>
+                    <Button
+                      variant={statusFilter === 'missed' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setStatusFilter('missed')}
+                      className="h-7 px-2.5 text-xs"
+                    >
+                      <PhoneMissed className="h-3 w-3 mr-1" /> Missed
+                    </Button>
+                    <Button
+                      variant={statusFilter === 'failed' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setStatusFilter('failed')}
+                      className="h-7 px-2.5 text-xs"
+                    >
+                      Failed
+                    </Button>
+
+                    <span className="mx-1 self-center text-muted-foreground/40">|</span>
+
+                    <Button
+                      variant={dateRangeFilter === 'today' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setDateRangeFilter('today')}
+                      className="h-7 px-2.5 text-xs"
+                    >
+                      Today
+                    </Button>
+                    <Button
+                      variant={dateRangeFilter === '7d' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setDateRangeFilter('7d')}
+                      className="h-7 px-2.5 text-xs"
+                    >
+                      7d
+                    </Button>
+                    <Button
+                      variant={dateRangeFilter === '30d' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setDateRangeFilter('30d')}
+                      className="h-7 px-2.5 text-xs"
+                    >
+                      30d
+                    </Button>
+                    <Button
+                      variant={dateRangeFilter === 'all' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setDateRangeFilter('all')}
+                      className="h-7 px-2.5 text-xs"
+                    >
+                      All time
+                    </Button>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      type="search"
+                      placeholder="Search transcript, phone, deal, company…"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8 h-8 text-xs"
+                    />
                   </div>
                 </div>
               </CardHeader>
+
               <CardContent className="p-0">
-                <ScrollArea className="h-[calc(100vh-12rem)]">
+                <ScrollArea className="h-[calc(100vh-22rem)]">
                   {historyLoading ? (
-                    <div className="flex items-center justify-center py-8">
+                    <div className="flex items-center justify-center py-12">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
-                  ) : callHistory.filter(c => directionFilter === 'all' || c.direction === directionFilter).length === 0 ? (
-                    <div className="text-center py-8 px-4">
+                  ) : filteredHistory.length === 0 ? (
+                    <div className="text-center py-12 px-4">
                       <Phone className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground text-sm">
-                        {directionFilter === 'all' ? 'No call history yet' : `No ${directionFilter} calls`}
+                        {callHistory.length === 0 ? 'No call history yet' : 'No calls match these filters'}
                       </p>
+                      {callHistory.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-2 text-xs"
+                          onClick={() => {
+                            setDirectionFilter('all');
+                            setStatusFilter('all');
+                            setDateRangeFilter('all');
+                            setSearchQuery('');
+                          }}
+                        >
+                          Clear filters
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="divide-y">
-                      {callHistory
-                        .filter(c => directionFilter === 'all' || c.direction === directionFilter)
-                        .map((call) => (
-                        <div
-                          key={call.id}
-                          className={`p-4 hover:bg-muted/50 transition-colors cursor-pointer ${
-                            selectedHistoryCall?.id === call.id ? 'bg-primary/10 border-l-2 border-l-primary' : ''
-                          }`}
-                          onClick={() => setSelectedHistoryCall(selectedHistoryCall?.id === call.id ? null : call)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className={`p-2 rounded-full ${
-                              call.direction === 'inbound' 
-                                ? 'bg-green-100 text-green-600' 
-                                : 'bg-blue-100 text-blue-600'
-                            }`}>
-                              {call.direction === 'inbound' ? (
-                                <PhoneIncoming className="h-4 w-4" />
-                              ) : (
-                                <PhoneOutgoing className="h-4 w-4" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="font-medium text-sm truncate">
-                                  {call.pipeline?.name || formatPhoneNumber(call.phone_number || 'Unknown')}
-                                </p>
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                  {formatDuration(call.duration_seconds)}
-                                </span>
+                      {filteredHistory.map((call) => {
+                        const isExpanded = !!expandedRows[call.id];
+                        const isSelected = selectedHistoryCall?.id === call.id;
+                        const ts = getTranscriptStatus(call, retryingTranscriptId);
+                        const missed = isMissedStatus(call.status);
+                        const failed = isFailedStatus(call.status);
+                        const Icon = missed || failed
+                          ? PhoneMissed
+                          : call.direction === 'inbound'
+                            ? PhoneIncoming
+                            : PhoneOutgoing;
+                        const iconWrapClass = missed || failed
+                          ? 'bg-red-100 text-red-600'
+                          : call.direction === 'inbound'
+                            ? 'bg-green-100 text-green-600'
+                            : 'bg-blue-100 text-blue-600';
+
+                        return (
+                          <div
+                            key={call.id}
+                            className={`p-3 transition-colors ${
+                              isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-muted/40'
+                            }`}
+                          >
+                            <div
+                              className="flex items-start gap-3 cursor-pointer"
+                              onClick={() => setSelectedHistoryCall(isSelected ? null : call)}
+                            >
+                              <div className={`p-2 rounded-full shrink-0 ${iconWrapClass}`}>
+                                <Icon className="h-4 w-4" />
                               </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-muted-foreground">
-                                  {call.phone_number ? formatPhoneNumber(call.phone_number) : 'No number'}
-                                </span>
-                                {call.pipeline?.company_name && (
-                                  <span className="text-xs text-muted-foreground">
-                                    • {call.pipeline.company_name}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="font-medium text-sm truncate">
+                                    {call.pipeline?.name || formatPhoneNumber(call.phone_number || 'Unknown')}
+                                  </p>
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {formatDuration(call.duration_seconds)}
                                   </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                <p className="text-xs text-muted-foreground">
-                                  {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
-                                </p>
-                                <div className="flex items-center gap-1 ml-auto">
-                                  {/* Add as Lead button - always show for calls with phone numbers */}
-                                  {call.phone_number && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 text-xs text-muted-foreground hover:text-primary"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleOpenAddLeadDialog(call);
-                                      }}
-                                    >
-                                      <UserPlus className="h-3 w-3 mr-1" />
-                                      Add Lead
-                                    </Button>
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                                  <span>
+                                    {call.phone_number ? formatPhoneNumber(call.phone_number) : 'No number'}
+                                  </span>
+                                  {call.pipeline?.company_name && (
+                                    <span>• {call.pipeline.company_name}</span>
                                   )}
-                                  {call.status === 'completed' && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-7 text-xs"
-                                      disabled={retryingTranscriptId === call.id}
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        setSelectedTranscriptCall(call);
-                                        setTranscriptDialogOpen(true);
-                                        setTranscriptError(null);
-
-                                        // If we already have a transcript, just show it
-                                        if (call.transcript) return;
-
-                                        // If there is no recording, we cannot generate a transcript
-                                        if (!call.recording_url) return;
-
-                                        await handleGenerateTranscript(call);
-                                      }}
-                                    >
-                                      {retryingTranscriptId === call.id ? (
-                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                      ) : (
-                                        <FileText className="h-3 w-3 mr-1" />
-                                      )}
-                                      {call.transcript
-                                        ? 'Transcript'
-                                        : retryingTranscriptId === call.id
-                                          ? 'Generating…'
-                                          : 'Generate transcript'}
-                                    </Button>
-                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
+                                  </span>
+                                  {getCallStatusBadge(call.status)}
+                                  {getTranscriptBadge(ts)}
                                 </div>
                               </div>
                             </div>
+
+                            {/* Per-row action bar */}
+                            <div className="mt-2 flex items-center gap-1 flex-wrap pl-11">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                title="Redial"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRedial(call.phone_number, call.lead_id);
+                                }}
+                              >
+                                <Phone className="h-3 w-3 mr-1" /> Redial
+                              </Button>
+
+                              {(call.recording_url || call.transcript) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleRowExpanded(call.id);
+                                  }}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-3 w-3 mr-1" />
+                                  ) : (
+                                    <ChevronRight className="h-3 w-3 mr-1" />
+                                  )}
+                                  {isExpanded ? 'Hide' : 'Play / view'}
+                                </Button>
+                              )}
+
+                              {call.recording_url && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  disabled={retryingTranscriptId === call.id}
+                                  onClick={(e) => handleRetryTranscriptionInline(call, e)}
+                                  title={call.transcript ? 'Re-generate transcript' : 'Generate transcript'}
+                                >
+                                  {retryingTranscriptId === call.id ? (
+                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-3 w-3 mr-1" />
+                                  )}
+                                  {call.transcript ? 'Re-transcribe' : 'Transcribe'}
+                                </Button>
+                              )}
+
+                              {call.transcript && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTranscriptCall(call);
+                                    setTranscriptDialogOpen(true);
+                                    setTranscriptError(null);
+                                  }}
+                                >
+                                  <ExternalLink className="h-3 w-3 mr-1" />
+                                  Open
+                                </Button>
+                              )}
+
+                              {call.lead_id ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs ml-auto"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedHistoryCall(call);
+                                  }}
+                                >
+                                  <User className="h-3 w-3 mr-1" /> Open lead
+                                </Button>
+                              ) : call.phone_number ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs ml-auto text-muted-foreground hover:text-primary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenAddLeadDialog(call);
+                                  }}
+                                >
+                                  <UserPlus className="h-3 w-3 mr-1" /> Add lead
+                                </Button>
+                              ) : null}
+                            </div>
+
+                            {/* Expanded panel: audio + inline transcript preview */}
+                            {isExpanded && (call.recording_url || call.transcript) && (
+                              <div className="mt-2 ml-11 space-y-2 rounded-md border border-border bg-muted/30 p-2.5">
+                                {call.recording_url && (
+                                  <div className="flex items-center gap-2">
+                                    <Play className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <audio
+                                      controls
+                                      preload="none"
+                                      src={call.recording_url}
+                                      className="h-8 w-full"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </div>
+                                )}
+                                {call.transcript ? (
+                                  <div>
+                                    <div className="flex items-center gap-1 mb-1">
+                                      <FileText className="h-3 w-3 text-muted-foreground" />
+                                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                        Transcript
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-foreground whitespace-pre-wrap leading-relaxed max-h-48 overflow-auto">
+                                      {call.transcript}
+                                    </p>
+                                  </div>
+                                ) : ts === 'pending' ? (
+                                  <p className="text-[11px] text-muted-foreground italic">
+                                    Recording saved — transcript will appear automatically once Whisper finishes (usually under a minute).
+                                  </p>
+                                ) : ts === 'generating' ? (
+                                  <p className="text-[11px] text-muted-foreground italic flex items-center gap-1">
+                                    <Loader2 className="h-3 w-3 animate-spin" /> Generating transcript…
+                                  </p>
+                                ) : null}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </ScrollArea>
@@ -998,9 +1406,9 @@ const Calls = () => {
                 <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-3" />
                 <p className="text-destructive font-medium">Transcription Failed</p>
                 <p className="text-xs text-muted-foreground mt-1">{transcriptError}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="mt-4"
                   onClick={() => selectedTranscriptCall && handleGenerateTranscript(selectedTranscriptCall)}
                 >
@@ -1012,9 +1420,9 @@ const Calls = () => {
                 <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground">No transcript available for this call</p>
                 {selectedTranscriptCall?.recording_url ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="mt-4"
                     onClick={() => selectedTranscriptCall && handleGenerateTranscript(selectedTranscriptCall)}
                   >
