@@ -373,7 +373,8 @@ const Calls = () => {
           .eq('id', selectedCallForLead.id);
       }
       
-      toast.success(`Lead "${lead.name}" added to Evan's pipeline`);
+      const ownerPipelineLabel = teamMember?.name ? `${teamMember.name}'s pipeline` : 'your pipeline';
+      toast.success(`Lead "${lead.name}" added to ${ownerPipelineLabel}`);
       
       queryClient.invalidateQueries({ queryKey: ['call-history'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });

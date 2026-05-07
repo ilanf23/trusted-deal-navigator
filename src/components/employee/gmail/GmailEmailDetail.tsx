@@ -14,6 +14,7 @@ import { GmailContactSidebar } from './GmailContactSidebar';
 import type { GmailLogic } from '@/hooks/useGmailLogic';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
@@ -120,6 +121,7 @@ interface GmailEmailDetailProps {
 }
 
 export function GmailEmailDetail({ logic }: GmailEmailDetailProps) {
+  const { teamMember } = useTeamMember();
   const {
     selectedEmail,
     selectedLead,
@@ -144,6 +146,13 @@ export function GmailEmailDetail({ logic }: GmailEmailDetailProps) {
 
   if (!selectedEmail) return null;
 
+  const currentSenderEmail = teamMember?.email || '';
+  const currentSenderName = teamMember?.name || 'Team Member';
+  const currentSenderFirstName = currentSenderName.split(' ')[0].toLowerCase();
+  const isCurrentSenderAddress = (value: string) => {
+    const email = extractEmailAddress(value).toLowerCase();
+    return !!currentSenderEmail && email === currentSenderEmail.toLowerCase();
+  };
   const crm = getCRMContext(selectedEmail);
 
   const handleReplyAll = () => {
@@ -173,7 +182,7 @@ export function GmailEmailDetail({ logic }: GmailEmailDetailProps) {
 From: ${selectedEmail.from}<br>
 Date: ${messageDate}<br>
 Subject: ${selectedEmail.subject}<br>
-To: ${selectedEmail.to || 'evan@commerciallendingx.com'}<br>
+To: ${selectedEmail.to || currentSenderEmail || 'info@commerciallendingx.com'}<br>
 <br>
 ${bodyToForward.replace(/\n/g, '<br>')}`;
     setReplyThreadId(null);
@@ -201,16 +210,16 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
   const showContactButton = crm.type === 'lead' || crm.type === 'person';
 
   const renderThreadMessage = (msg: ThreadMessage, index: number) => {
-    const isFromEvan = msg.from.toLowerCase().includes('evan');
+    const isFromCurrentSender = isCurrentSenderAddress(msg.from) || msg.from.toLowerCase().includes(currentSenderFirstName);
     return (
       <div key={msg.id} className={cn("py-6", index === 0 && "pt-0")}>
-        <div className={cn("p-4 rounded-lg", isFromEvan && "border-l-2 border-emerald-400")}>
+        <div className={cn("p-4 rounded-lg", isFromCurrentSender && "border-l-2 border-emerald-400")}>
           <div className="flex items-start gap-3 mb-4">
             <Avatar className="w-10 h-10 flex-shrink-0">
               {msg.senderPhoto ? <AvatarImage src={msg.senderPhoto} /> : null}
               <AvatarFallback className={cn(
                 "font-semibold",
-                isFromEvan ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary"
+                isFromCurrentSender ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary"
               )}>
                 {extractSenderName(msg.from).charAt(0).toUpperCase()}
               </AvatarFallback>
@@ -362,7 +371,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                           </div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                          To: {selectedEmail.to || 'evan@commerciallendingx.com'}
+                          To: {selectedEmail.to || currentSenderEmail || 'info@commerciallendingx.com'}
                         </p>
                       </div>
                     </div>
@@ -439,7 +448,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                       const ccAddresses = selectedEmail.cc?.split(',').map(e => e.trim()) || [];
                       const fromAddress = extractEmailAddress(selectedEmail.from);
                       const allRecipients = [fromAddress, ...toAddresses, ...ccAddresses]
-                        .filter(e => e && !e.toLowerCase().includes('evan'))
+                        .filter(e => e && !isCurrentSenderAddress(e))
                         .join(', ');
                       const replySubject = selectedEmail.subject.toLowerCase().startsWith('re:')
                         ? selectedEmail.subject
@@ -471,7 +480,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
 From: ${selectedEmail.from}<br>
 Date: ${messageDate}<br>
 Subject: ${selectedEmail.subject}<br>
-To: ${selectedEmail.to || 'evan@commerciallendingx.com'}<br>
+To: ${selectedEmail.to || currentSenderEmail || 'info@commerciallendingx.com'}<br>
 <br>
 ${bodyToForward.replace(/\n/g, '<br>')}`;
                     setReplyThreadId(null);

@@ -60,7 +60,7 @@ const STAGE_COLORS: Record<string, string> = {
 
 const TeamPerformance = () => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('evan');
+  const [selectedEmployee, setSelectedEmployee] = useState<string>('');
 
   const { setPageTitle } = useAdminTopBar();
   useEffect(() => {
@@ -84,8 +84,14 @@ const TeamPerformance = () => {
     },
   });
 
+  useEffect(() => {
+    if (!selectedEmployee && allTeamMembers?.[0]) {
+      setSelectedEmployee(allTeamMembers[0].id);
+    }
+  }, [allTeamMembers, selectedEmployee]);
+
   // Fetch selected employee's team member data
-  const selectedTeamMember = allTeamMembers?.find(tm => tm.name.toLowerCase() === selectedEmployee);
+  const selectedTeamMember = allTeamMembers?.find(tm => tm.id === selectedEmployee);
 
   // Fetch leads data for metrics
   const { data: leadsData, isLoading: leadsLoading } = useQuery({
@@ -162,7 +168,7 @@ const TeamPerformance = () => {
     refetchOnMount: 'always',
   });
 
-  // Fetch Evan's tasks
+  // Fetch tasks
   const { data: tasksData } = useQuery({
     queryKey: ['tasks-summary'],
     queryFn: async () => {
@@ -174,7 +180,7 @@ const TeamPerformance = () => {
     },
   });
 
-  // Fetch Evan's communications
+  // Fetch communications
   const { data: communicationsData } = useQuery({
     queryKey: ['communications-summary', timePeriod],
     queryFn: async () => {
@@ -217,8 +223,8 @@ const TeamPerformance = () => {
     },
   });
 
-  // Calculate Evan's metrics
-  const evanMetrics = useMemo(() => {
+  // Calculate selected employee metrics
+  const employeeMetrics = useMemo(() => {
     if (!leadsData && !pipelineData && !fundedLeads) {
       return {
         totalRevenue: 0,
@@ -357,11 +363,11 @@ const TeamPerformance = () => {
   // Activity breakdown data
   const activityData = useMemo(() => {
     return [
-      { name: 'Calls', value: evanMetrics.callsCount, color: '#0066FF' },
-      { name: 'Emails', value: evanMetrics.emailsCount, color: '#FF8000' },
-      { name: 'Tasks Done', value: evanMetrics.tasksCompleted, color: '#10b981' },
+      { name: 'Calls', value: employeeMetrics.callsCount, color: '#0066FF' },
+      { name: 'Emails', value: employeeMetrics.emailsCount, color: '#FF8000' },
+      { name: 'Tasks Done', value: employeeMetrics.tasksCompleted, color: '#10b981' },
     ];
-  }, [evanMetrics]);
+  }, [employeeMetrics]);
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -404,7 +410,7 @@ const TeamPerformance = () => {
         {/* Employee Selector Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {(allTeamMembers || []).map((tm) => {
-            const emp = { id: tm.name.toLowerCase(), name: tm.name, position: tm.position || 'Team Member', active: true };
+            const emp = { id: tm.id, name: tm.name, position: tm.position || 'Team Member', active: true };
             const teamMemberData = tm;
             return (
               <Card
@@ -442,8 +448,8 @@ const TeamPerformance = () => {
           })}
         </div>
 
-        {/* Evan's Dashboard */}
-        {selectedEmployee === 'evan' && (
+        {/* Selected Employee Dashboard */}
+        {selectedTeamMember && (
           <>
             {/* Goal Progress */}
             <Card className="bg-gradient-to-r from-primary/5 via-background to-orange-500/5 border-primary/20">
@@ -454,7 +460,7 @@ const TeamPerformance = () => {
                       {selectedTeamMember?.avatar_url && (
                         <AvatarImage src={selectedTeamMember.avatar_url} alt={selectedTeamMember.name} />
                       )}
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">{selectedEmployee[0]?.toUpperCase() || 'T'}</AvatarFallback>
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">{selectedTeamMember.name[0]?.toUpperCase() || 'T'}</AvatarFallback>
                     </Avatar>
                     <div>
                       <h2 className="text-xl font-bold">{selectedTeamMember?.name || 'Team'}'s Performance</h2>
@@ -489,10 +495,10 @@ const TeamPerformance = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Revenue</p>
-                      <p className="text-2xl font-bold">{formatCurrency(evanMetrics.totalRevenue)}</p>
+                      <p className="text-2xl font-bold">{formatCurrency(employeeMetrics.totalRevenue)}</p>
                       <div className="flex items-center gap-1 mt-1">
                         <ArrowUpRight className="h-3 w-3 text-green-600" />
-                        <span className="text-xs text-green-600">{evanMetrics.totalDeals} deals closed</span>
+                        <span className="text-xs text-green-600">{employeeMetrics.totalDeals} deals closed</span>
                       </div>
                     </div>
                     <div className="p-3 rounded-full bg-primary/10">
@@ -507,10 +513,10 @@ const TeamPerformance = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Pipeline Value</p>
-                      <p className="text-2xl font-bold">{formatCurrency(evanMetrics.pipelineValue)}</p>
+                      <p className="text-2xl font-bold">{formatCurrency(employeeMetrics.pipelineValue)}</p>
                       <div className="flex items-center gap-1 mt-1">
                         <Briefcase className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{evanMetrics.pipelineDeals} active deals</span>
+                        <span className="text-xs text-muted-foreground">{employeeMetrics.pipelineDeals} active deals</span>
                       </div>
                     </div>
                     <div className="p-3 rounded-full bg-orange-500/10">
@@ -525,7 +531,7 @@ const TeamPerformance = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Win Rate</p>
-                      <p className="text-2xl font-bold">{evanMetrics.winRate}%</p>
+                      <p className="text-2xl font-bold">{employeeMetrics.winRate}%</p>
                       <div className="flex items-center gap-1 mt-1">
                         <TrendingUp className="h-3 w-3 text-green-600" />
                         <span className="text-xs text-muted-foreground">Conversion rate</span>
@@ -538,21 +544,21 @@ const TeamPerformance = () => {
                 </CardContent>
               </Card>
 
-              <Card className={`border-l-4 ${evanMetrics.staleDeals > 0 ? 'border-l-red-500' : 'border-l-slate-300'}`}>
+              <Card className={`border-l-4 ${employeeMetrics.staleDeals > 0 ? 'border-l-red-500' : 'border-l-slate-300'}`}>
                 <CardContent className="pt-5">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Stale Deals</p>
-                      <p className={`text-2xl font-bold ${evanMetrics.staleDeals > 0 ? 'text-red-600' : ''}`}>
-                        {evanMetrics.staleDeals}
+                      <p className={`text-2xl font-bold ${employeeMetrics.staleDeals > 0 ? 'text-red-600' : ''}`}>
+                        {employeeMetrics.staleDeals}
                       </p>
                       <div className="flex items-center gap-1 mt-1">
                         <Clock className="h-3 w-3 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">7+ days inactive</span>
                       </div>
                     </div>
-                    <div className={`p-3 rounded-full ${evanMetrics.staleDeals > 0 ? 'bg-red-500/10' : 'bg-muted'}`}>
-                      <AlertTriangle className={`h-6 w-6 ${evanMetrics.staleDeals > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+                    <div className={`p-3 rounded-full ${employeeMetrics.staleDeals > 0 ? 'bg-red-500/10' : 'bg-muted'}`}>
+                      <AlertTriangle className={`h-6 w-6 ${employeeMetrics.staleDeals > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
                     </div>
                   </div>
                 </CardContent>
@@ -667,12 +673,12 @@ const TeamPerformance = () => {
                       <Phone className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-2xl font-bold">{evanMetrics.callsCount}</p>
+                      <p className="text-2xl font-bold">{employeeMetrics.callsCount}</p>
                       <p className="text-sm text-muted-foreground">Calls Made</p>
                     </div>
-                    {evanMetrics.avgCallDuration > 0 && (
+                    {employeeMetrics.avgCallDuration > 0 && (
                       <Badge variant="secondary" className="text-xs">
-                        ~{evanMetrics.avgCallDuration} min avg
+                        ~{employeeMetrics.avgCallDuration} min avg
                       </Badge>
                     )}
                   </div>
@@ -687,13 +693,13 @@ const TeamPerformance = () => {
                     </div>
                     <div className="flex-1">
                       <p className="text-2xl font-bold">
-                        {evanMetrics.avgCallRating > 0 ? evanMetrics.avgCallRating.toFixed(1) : 'N/A'}
+                        {employeeMetrics.avgCallRating > 0 ? employeeMetrics.avgCallRating.toFixed(1) : 'N/A'}
                         <span className="text-sm font-normal text-muted-foreground">/10</span>
                       </p>
                       <p className="text-sm text-muted-foreground">Avg Call Rating</p>
                     </div>
                     <Badge variant="secondary" className="text-xs">
-                      {evanMetrics.ratedCallsCount} rated
+                      {employeeMetrics.ratedCallsCount} rated
                     </Badge>
                   </div>
                 </CardContent>
@@ -706,7 +712,7 @@ const TeamPerformance = () => {
                       <Mail className="h-5 w-5 text-orange-500" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-2xl font-bold">{evanMetrics.emailsCount}</p>
+                      <p className="text-2xl font-bold">{employeeMetrics.emailsCount}</p>
                       <p className="text-sm text-muted-foreground">Emails Sent</p>
                     </div>
                   </div>
@@ -720,12 +726,12 @@ const TeamPerformance = () => {
                       <CheckCircle2 className="h-5 w-5 text-green-500" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-2xl font-bold">{evanMetrics.tasksCompleted}</p>
+                      <p className="text-2xl font-bold">{employeeMetrics.tasksCompleted}</p>
                       <p className="text-sm text-muted-foreground">Tasks Completed</p>
                     </div>
-                    {evanMetrics.tasksPending > 0 && (
+                    {employeeMetrics.tasksPending > 0 && (
                       <Badge variant="outline" className="text-xs">
-                        {evanMetrics.tasksPending} pending
+                        {employeeMetrics.tasksPending} pending
                       </Badge>
                     )}
                   </div>

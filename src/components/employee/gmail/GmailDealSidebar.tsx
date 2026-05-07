@@ -13,6 +13,7 @@ import {
 import { Mail, Phone, Users, Building, User, Plus, Maximize2, FileText, Loader2 } from 'lucide-react';
 import { GmailEmail } from '@/components/gmail/gmailHelpers';
 import type { GmailLogic } from '@/hooks/useGmailLogic';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 interface GmailDealSidebarProps {
   selectedLead: any;
@@ -21,6 +22,7 @@ interface GmailDealSidebarProps {
 }
 
 export function GmailDealSidebar({ selectedLead, selectedEmail, logic }: GmailDealSidebarProps) {
+  const { teamMember } = useTeamMember();
   const {
     updateLeadMutation,
     updateStageMutation,
@@ -30,6 +32,8 @@ export function GmailDealSidebar({ selectedLead, selectedEmail, logic }: GmailDe
     generatingDraftForId,
     handleMoveForward,
   } = logic;
+  const assigneeName = teamMember?.name || 'Team Member';
+  const assigneeInitial = assigneeName.charAt(0).toUpperCase();
 
   return (
     <div className="w-80 border-l border-border bg-background dark:bg-slate-900 overflow-y-auto">
@@ -75,9 +79,9 @@ export function GmailDealSidebar({ selectedLead, selectedEmail, logic }: GmailDe
             <p className="text-xs text-muted-foreground mb-1">Assigned To</p>
             <div className="flex items-center gap-2">
               <Avatar className="w-6 h-6 bg-emerald-600">
-                <AvatarFallback className="text-xs text-white bg-emerald-600">E</AvatarFallback>
+                <AvatarFallback className="text-xs text-white bg-emerald-600">{assigneeInitial}</AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium text-foreground">Evan</span>
+              <span className="text-sm font-medium text-foreground">{assigneeName}</span>
             </div>
           </div>
         </div>

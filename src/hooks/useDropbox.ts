@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { dropboxActionToFunction } from '@/lib/dropboxRouter';
 import { toast } from 'sonner';
 
 export interface DropboxEntry {
@@ -25,7 +26,8 @@ interface ListResult {
 }
 
 export async function invokeDropboxApi(action: string, body?: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke('dropbox-api', {
+  const fnName = dropboxActionToFunction(action);
+  const { data, error } = await supabase.functions.invoke(fnName, {
     body: { action, ...body },
   });
   if (error) throw new Error(error.message || 'Dropbox API error');

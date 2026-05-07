@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Trash2, ChevronDown, ChevronRight, Building2, Calendar, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,7 @@ export const CompletedTasksSection = ({
   onDeleteTask,
   onOpenDetail,
 }: CompletedTasksSectionProps) => {
+  const { teamMember } = useTeamMember();
   const [isExpanded, setIsExpanded] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -215,10 +217,10 @@ export const CompletedTasksSection = ({
                     <div className="flex items-center gap-2">
                       <Avatar className="h-5 w-5 md:h-6 md:w-6 ring-2 ring-background">
                         <AvatarFallback className="text-[9px] md:text-[10px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
-                          {'EV'}
+                          {(teamMember?.name || 'Team Member').substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-xs md:text-sm text-muted-foreground">Evan</span>
+                      <span className="text-xs md:text-sm text-muted-foreground">{teamMember?.name || 'Team Member'}</span>
                     </div>
                   </TableCell>
 

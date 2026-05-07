@@ -12,7 +12,7 @@ import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { useState } from 'react';
 import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import { useGmail } from '@/hooks/useGmail';
-import { appendSignature } from '@/lib/email-signature';
+import { appendSignature, getSignatureHtml } from '@/lib/email-signature';
 import { useTeamMember } from '@/hooks/useTeamMember';
 
 interface Lead {
@@ -145,6 +145,11 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
     try {
       // Generate the email content
       const firstName = lead.name.split(' ')[0];
+      const senderName = teamMember?.name || 'Team Member';
+      const senderFirstName = senderName.split(' ')[0];
+      const senderSignature = teamMember
+        ? getSignatureHtml(senderName, teamMember.email || 'info@commerciallendingx.com', teamMember.position || 'Associate')
+        : undefined;
       const subject = `Following up - ${lead.company_name || lead.name}`;
       const body = `Hi ${firstName},
 
@@ -153,12 +158,12 @@ I wanted to follow up and see if you had any questions about the financing optio
 Please let me know if there's anything I can help with.
 
 Best regards,
-Evan`;
+${senderFirstName}`;
 
       // Set compose dialog state
       setComposeTo(lead.email || '');
       setComposeSubject(subject);
-      setComposeBody(appendSignature(body));
+      setComposeBody(appendSignature(body, senderSignature));
       setCurrentLeadId(lead.id);
       setComposeOpen(true);
       

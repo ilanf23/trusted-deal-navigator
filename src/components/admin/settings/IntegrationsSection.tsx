@@ -1,8 +1,44 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Mail, Calendar, HardDrive, Phone, Slack, Zap, FileSignature, Calculator, Webhook, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
+import {
+  Mail,
+  Calendar,
+  HardDrive,
+  Phone,
+  Slack,
+  Zap,
+  FileSignature,
+  Calculator,
+  Webhook,
+  ChevronRight,
+  KeyRound,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { LucideIcon } from 'lucide-react';
@@ -16,6 +52,21 @@ interface IntegrationCard {
   status: 'connected' | 'available' | 'coming-soon' | 'managed';
   connectAction?: () => void;
 }
+
+interface UserIntegrationMetadata {
+  id: string;
+  provider: string;
+  label: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
+const PROVIDER_OPTIONS = [
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'twilio', label: 'Twilio' },
+  { value: 'custom', label: 'Custom provider' },
+] as const;
 
 const useConnectionStatuses = () => {
   const { user } = useAuth();
@@ -35,6 +86,21 @@ const useConnectionStatuses = () => {
     enabled: !!user,
   });
 };
+
+const useApiKeys = () =>
+  useQuery({
+    queryKey: ['user-integrations'],
+    queryFn: async (): Promise<UserIntegrationMetadata[]> => {
+      const { data, error } = await supabase
+        .from('user_integrations')
+        .select('id, provider, label, created_at, last_used_at, revoked_at')
+        .is('revoked_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
 const Card = ({ card }: { card: IntegrationCard }) => {
   const { icon: Icon, status } = card;
@@ -92,6 +158,88 @@ const Card = ({ card }: { card: IntegrationCard }) => {
 const IntegrationsSection = () => {
   const navigate = useNavigate();
   const { data: status } = useConnectionStatuses();
+  const { user } = useAuth();
+  const {
+    data: apiKeys,
+    isLoading: isApiKeysLoading,
+    refetch: refetchApiKeys,
+  } = useApiKeys();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string>('openai');
+  const [customProvider, setCustomProvider] = useState('');
+  const [label, setLabel] = useState('');
+  const [plaintext, setPlaintext] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  const canSubmit =
+    !!user &&
+    !!label.trim() &&
+    !!plaintext.trim() &&
+    (selectedProvider !== 'custom' || !!customProvider.trim());
+
+  const clearDialog = () => {
+    setSelectedProvider('openai');
+    setCustomProvider('');
+    setLabel('');
+    setPlaintext('');
+  };
+
+  const handleAddApiKey = async () => {
+    if (!canSubmit) return;
+    setIsSubmitting(true);
+    try {
+      const provider =
+        selectedProvider === 'custom' ? customProvider.trim().toLowerCase() : selectedProvider;
+
+      const { error } = await supabase.functions.invoke('add-user-integration', {
+        body: {
+          provider,
+          label: label.trim(),
+          plaintext: plaintext.trim(),
+        },
+      });
+
+      if (error) {
+        toast.error(error.message || 'Failed to save API key');
+        return;
+      }
+
+      toast.success('API key saved');
+      setIsDialogOpen(false);
+      clearDialog();
+      await refetchApiKeys();
+    } catch {
+      toast.error('Failed to save API key');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRevokeApiKey = async (integrationId: string) => {
+    const confirmed = window.confirm(
+      'Revoke this API key? This cannot be undone. You can paste a new key afterward.',
+    );
+    if (!confirmed) return;
+
+    setRevokingId(integrationId);
+    try {
+      const { error } = await supabase.functions.invoke('revoke-user-integration', {
+        body: { integration_id: integrationId },
+      });
+      if (error) {
+        toast.error(error.message || 'Failed to revoke API key');
+        return;
+      }
+
+      toast.success('API key revoked');
+      await refetchApiKeys();
+    } catch {
+      toast.error('Failed to revoke API key');
+    } finally {
+      setRevokingId(null);
+    }
+  };
 
   const cards: IntegrationCard[] = [
     {
@@ -192,6 +340,137 @@ const IntegrationsSection = () => {
         {cards.map((c) => (
           <Card key={c.id} card={c} />
         ))}
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <KeyRound className="h-4 w-4" />
+              API Keys
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Paste once and store securely. Keys are never shown again in the UI.
+            </p>
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="bg-[#3b2778] hover:bg-[#2d1d5e] text-white">
+                <Plus className="h-4 w-4 mr-1.5" />
+                Add API key
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add API key</DialogTitle>
+                <DialogDescription>
+                  This key is encrypted at rest and only used server-side for outbound API calls.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Provider</Label>
+                  <Select value={selectedProvider} onValueChange={setSelectedProvider}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROVIDER_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedProvider === 'custom' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-provider">Custom provider slug</Label>
+                    <Input
+                      id="custom-provider"
+                      placeholder="e.g. anthropic"
+                      value={customProvider}
+                      onChange={(event) => setCustomProvider(event.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="integration-label">Label</Label>
+                  <Input
+                    id="integration-label"
+                    placeholder="e.g. Production key"
+                    value={label}
+                    onChange={(event) => setLabel(event.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="integration-secret">API key / token</Label>
+                  <Textarea
+                    id="integration-secret"
+                    className="min-h-[120px]"
+                    placeholder="Paste key here"
+                    value={plaintext}
+                    onChange={(event) => setPlaintext(event.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAddApiKey}
+                  disabled={!canSubmit || isSubmitting}
+                  className="bg-[#3b2778] hover:bg-[#2d1d5e] text-white"
+                >
+                  {isSubmitting ? 'Saving...' : 'Save key'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {isApiKeysLoading ? (
+          <p className="text-sm text-muted-foreground">Loading API keys...</p>
+        ) : !apiKeys?.length ? (
+          <p className="text-sm text-muted-foreground">
+            No API keys saved yet. Add one to enable per-user third-party API access.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {apiKeys.map((integration) => (
+              <div
+                key={integration.id}
+                className="border border-border rounded-md px-3 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {integration.provider} · {integration.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Added{' '}
+                    {formatDistanceToNow(new Date(integration.created_at), { addSuffix: true })}
+                    {integration.last_used_at
+                      ? ` · Last used ${formatDistanceToNow(new Date(integration.last_used_at), { addSuffix: true })}`
+                      : ' · Never used'}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleRevokeApiKey(integration.id)}
+                  disabled={revokingId === integration.id}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  {revokingId === integration.id ? 'Revoking...' : 'Revoke'}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

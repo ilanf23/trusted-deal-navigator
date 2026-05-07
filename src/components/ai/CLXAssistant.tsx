@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import { aiAssistantUrl } from '@/lib/aiAssistantRouter';
 import { toast } from 'sonner';
 import { useAIAssistant } from '@/contexts/AIAssistantContext';
 import { useActionParser } from '@/hooks/useActionParser';
@@ -280,21 +281,22 @@ const CLXAssistant = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
+      const requestBody = {
+        messages: newMessages,
+        teamMemberId: teamMember?.id,
+        file,
+        mode: 'chat',
+        currentPage: location.pathname,
+      };
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
+        aiAssistantUrl(requestBody),
         {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            messages: newMessages,
-            teamMemberId: teamMember?.id,
-            file,
-            mode: 'chat',
-            currentPage: location.pathname,
-          }),
+          body: JSON.stringify(requestBody),
           signal: abortController.signal,
         }
       );
@@ -378,21 +380,22 @@ const CLXAssistant = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
+      const requestBody = {
+        messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+        teamMemberId: teamMember?.id,
+        file,
+        mode: 'assist',
+        currentPage: location.pathname,
+      };
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
+        aiAssistantUrl(requestBody),
         {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            messages: newMessages.map(m => ({ role: m.role, content: m.content })),
-            teamMemberId: teamMember?.id,
-            file,
-            mode: 'assist',
-            currentPage: location.pathname,
-          }),
+          body: JSON.stringify(requestBody),
           signal: abortController.signal,
         }
       );
@@ -489,21 +492,22 @@ const CLXAssistant = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
+      const requestBody = {
+        action: 'agent',
+        prompt: userMsg.content,
+        conversationId: convId,
+        teamMemberId: teamMember?.id,
+        currentPage: location.pathname,
+      };
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
+        aiAssistantUrl(requestBody),
         {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            action: 'agent',
-            prompt: userMsg.content,
-            conversationId: convId,
-            teamMemberId: teamMember?.id,
-            currentPage: location.pathname,
-          }),
+          body: JSON.stringify(requestBody),
           signal: abortController.signal,
         }
       );
