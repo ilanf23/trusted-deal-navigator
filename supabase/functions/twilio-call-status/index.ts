@@ -1,6 +1,9 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { verifyTwilioSignature } from '../_shared/twilioSignature.ts';
+import { transcribeCommunication } from '../_shared/transcription.ts';
+
+declare const EdgeRuntime: { waitUntil: (p: Promise<unknown>) => void } | undefined;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,88 +17,44 @@ function okTwiML(): string {
 }
 
 /**
- * Prefix each line of a transcript with speaker labels based on call direction.
- * For outbound calls our agent speaks first; for inbound the caller speaks first.
+ * Schedule a fire-and-forget background transcription. Uses Deno Edge Runtime's
+ * waitUntil when available so the worker isn't torn down before the pipeline
+ * resolves. Falls back to a detached promise in environments without it
+ * (local supabase functions serve, certain test runners) so callers don't
+ * need to branch.
  */
-function addSpeakerLabels(text: string, direction: string, agentName: string): string {
-  if (!text) return text;
-  const lines = text.split('\n').filter((l) => l.trim().length > 0);
-  const isOutbound = direction === 'outbound';
-  return lines
-    .map((line, i) => {
-      const speaker = (i % 2 === 0) === isOutbound ? agentName : 'Caller';
-      return `${speaker}: ${line.trim()}`;
-    })
-    .join('\n');
-}
-
-/**
- * Resolve the human-readable agent name for a call by joining
- * communications.user_id → users.name. Falls back to 'Agent' when the
- * row isn't yet present (race) or has no associated user.
- */
-async function resolveAgentName(
+function scheduleBackgroundTranscription(
   supabase: ReturnType<typeof createClient>,
-  callSid: string,
-): Promise<string> {
-  if (!callSid) return 'Agent';
-  const { data } = await supabase
-    .from('communications')
-    .select('users:user_id ( name )')
-    .eq('call_sid', callSid)
-    .maybeSingle();
-  // @ts-expect-error joined relation
-  const name = data?.users?.name;
-  return typeof name === 'string' && name.trim().length > 0 ? name : 'Agent';
-}
-
-/**
- * Download an MP3 recording from Twilio and transcribe it via OpenAI Whisper.
- * Returns the labelled transcript string or null on any failure.
- */
-async function transcribeAudio(
-  mp3Url: string,
-  direction: string,
-  agentName: string,
-): Promise<string | null> {
-  const openaiKey = Deno.env.get('OPENAI_API_KEY');
-  if (!openaiKey) {
-    console.error('OPENAI_API_KEY not set – skipping transcription');
-    return null;
-  }
-
-  try {
-    // Download the recording
-    const audioResp = await fetch(mp3Url);
-    if (!audioResp.ok) {
-      console.error(`Failed to download recording: ${audioResp.status}`);
-      return null;
-    }
-    const audioBlob = await audioResp.blob();
-
-    // Send to Whisper
-    const formData = new FormData();
-    formData.append('file', audioBlob, 'recording.mp3');
-    formData.append('model', 'whisper-1');
-    formData.append('response_format', 'text');
-
-    const whisperResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${openaiKey}` },
-      body: formData,
+  communicationId: string,
+): void {
+  const work = transcribeCommunication(supabase, communicationId, { skipIfPresent: true })
+    .then((res) => {
+      if (!res.ok) {
+        console.error(
+          '[twilio-call-status] background transcription failed:',
+          res.error,
+          { communicationId },
+        );
+      } else if (res.alreadyPresent) {
+        console.log(
+          '[twilio-call-status] background transcription skipped (already present)',
+          { communicationId },
+        );
+      } else {
+        console.log(
+          '[twilio-call-status] background transcription complete',
+          { communicationId },
+        );
+      }
+    })
+    .catch((err) => {
+      console.error('[twilio-call-status] background transcription error:', err, { communicationId });
     });
 
-    if (!whisperResp.ok) {
-      console.error(`Whisper API error: ${whisperResp.status}`);
-      return null;
-    }
-
-    const rawText = await whisperResp.text();
-    return addSpeakerLabels(rawText.trim(), direction, agentName);
-  } catch (err) {
-    console.error('Transcription failed:', err);
-    return null;
+  if (typeof EdgeRuntime !== 'undefined' && typeof EdgeRuntime.waitUntil === 'function') {
+    EdgeRuntime.waitUntil(work);
   }
+  // else: promise runs detached — acceptable fallback for local dev.
 }
 
 // This endpoint handles call status updates AND recording status callbacks from Twilio
@@ -154,7 +113,9 @@ Deno.serve(async (req) => {
       return new Response(okTwiML(), { status: 200, headers: corsHeaders });
     }
 
-    // Handle recording completed callback - save recording URL (no automatic transcription)
+    // Handle recording completed callback - save recording URL and schedule
+    // background transcription. We no longer require an admin to manually
+    // click Retry to get a transcript on every recording.
     if (recordingStatus === 'completed' && recordingUrl) {
       console.log(`Recording completed for CallSid=${callSid}, saving recording info...`);
 
@@ -197,6 +158,12 @@ Deno.serve(async (req) => {
       }
 
       console.log(`[twilio-call-status] recording saved for communication ${comm.id}`);
+
+      // Fire-and-forget transcription. Skip if a transcript is somehow already
+      // present (e.g. admin clicked Retry while the recording-completed
+      // callback was retrying). Errors are logged inside the helper.
+      scheduleBackgroundTranscription(supabase, comm.id);
+
       return new Response(okTwiML(), { status: 200, headers: corsHeaders });
     }
 
