@@ -1209,7 +1209,7 @@
 | Column Name           | Data Type                | Primary Key | Nullable | Foreign Key To |
 | --------------------- | ------------------------ | ----------- | -------- | -------------- |
 | id                    | uuid                     | Yes         | No       | -              |
-| lead_id               | uuid                     | No          | No       | -              |
+| lead_id               | uuid                     | No          | No       | potential      |
 | current_rate          | numeric                  | No          | No       | -              |
 | target_rate           | numeric                  | No          | No       | -              |
 | loan_type             | text                     | No          | Yes      | -              |
@@ -1290,17 +1290,18 @@
 
 ## Table: `sheets_connections`
 
-| Column Name   | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ------------- | ------------------------ | ----------- | -------- | -------------- |
-| id            | uuid                     | Yes         | No       | -              |
-| user_id       | uuid                     | No          | No       | -              |
-| user_name     | text                     | No          | Yes      | -              |
-| email         | character varying        | No          | No       | -              |
-| access_token  | text                     | No          | No       | -              |
-| refresh_token | text                     | No          | No       | -              |
-| token_expiry  | timestamp with time zone | No          | No       | -              |
-| created_at    | timestamp with time zone | No          | No       | -              |
-| updated_at    | timestamp with time zone | No          | No       | -              |
+| Column Name               | Data Type                | Primary Key | Nullable | Foreign Key To |
+| ------------------------- | ------------------------ | ----------- | -------- | -------------- |
+| id                        | uuid                     | Yes         | No       | -              |
+| user_id                   | uuid                     | No          | No       | -              |
+| user_name                 | text                     | No          | Yes      | -              |
+| email                     | character varying        | No          | No       | -              |
+| access_token              | text                     | No          | No       | -              |
+| refresh_token             | text                     | No          | No       | -              |
+| token_expiry              | timestamp with time zone | No          | No       | -              |
+| created_at                | timestamp with time zone | No          | No       | -              |
+| updated_at                | timestamp with time zone | No          | No       | -              |
+| drive_watch_channel_token | text                     | No          | Yes      | -              |
 
 ## Table: `task_activities`
 
@@ -1316,6 +1317,20 @@
 | mentioned_users | ARRAY                    | No          | Yes      | -              |
 | created_at      | timestamp with time zone | No          | No       | -              |
 | user_id         | uuid                     | No          | Yes      | users          |
+
+## Table: `task_saved_filters`
+
+| Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
+| ----------- | ------------------------ | ----------- | -------- | -------------- |
+| id          | uuid                     | Yes         | No       | -              |
+| name        | text                     | No          | No       | -              |
+| description | text                     | No          | Yes      | -              |
+| visibility  | text                     | No          | No       | -              |
+| criteria    | jsonb                    | No          | No       | -              |
+| created_by  | uuid                     | No          | Yes      | users          |
+| position    | integer                  | No          | No       | -              |
+| created_at  | timestamp with time zone | No          | Yes      | -              |
+| updated_at  | timestamp with time zone | No          | Yes      | -              |
 
 ## Table: `tasks`
 
@@ -1467,27 +1482,28 @@
 
 ## Table: `users`
 
-| Column Name    | Data Type                | Primary Key | Nullable | Foreign Key To |
-| -------------- | ------------------------ | ----------- | -------- | -------------- |
-| id             | uuid                     | Yes         | No       | -              |
-| name           | text                     | No          | No       | -              |
-| email          | text                     | No          | Yes      | -              |
-| phone          | text                     | No          | Yes      | -              |
-| position       | text                     | No          | Yes      | -              |
-| avatar_url     | text                     | No          | Yes      | -              |
-| is_active      | boolean                  | No          | No       | -              |
-| created_at     | timestamp with time zone | No          | No       | -              |
-| updated_at     | timestamp with time zone | No          | No       | -              |
-| user_id        | uuid                     | No          | Yes      | -              |
-| is_owner       | boolean                  | No          | Yes      | -              |
-| app_role       | USER-DEFINED             | No          | Yes      | -              |
-| company_name   | text                     | No          | Yes      | -              |
-| contact_person | text                     | No          | Yes      | -              |
-| address        | text                     | No          | Yes      | -              |
-| city           | text                     | No          | Yes      | -              |
-| state          | text                     | No          | Yes      | -              |
-| zip_code       | text                     | No          | Yes      | -              |
-| is_assignable  | boolean                  | No          | No       | -              |
+| Column Name         | Data Type                | Primary Key | Nullable | Foreign Key To |
+| ------------------- | ------------------------ | ----------- | -------- | -------------- |
+| id                  | uuid                     | Yes         | No       | -              |
+| name                | text                     | No          | No       | -              |
+| email               | text                     | No          | Yes      | -              |
+| phone               | text                     | No          | Yes      | -              |
+| position            | text                     | No          | Yes      | -              |
+| avatar_url          | text                     | No          | Yes      | -              |
+| is_active           | boolean                  | No          | No       | -              |
+| created_at          | timestamp with time zone | No          | No       | -              |
+| updated_at          | timestamp with time zone | No          | No       | -              |
+| user_id             | uuid                     | No          | Yes      | -              |
+| is_owner            | boolean                  | No          | Yes      | -              |
+| app_role            | USER-DEFINED             | No          | Yes      | -              |
+| company_name        | text                     | No          | Yes      | -              |
+| contact_person      | text                     | No          | Yes      | -              |
+| address             | text                     | No          | Yes      | -              |
+| city                | text                     | No          | Yes      | -              |
+| state               | text                     | No          | Yes      | -              |
+| zip_code            | text                     | No          | Yes      | -              |
+| is_assignable       | boolean                  | No          | No       | -              |
+| twilio_phone_number | text                     | No          | Yes      | -              |
 
 ## Table: `volume_log_sync_config`
 
