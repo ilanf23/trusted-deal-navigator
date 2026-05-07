@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OutboundCallCard } from '@/components/employee/OutboundCallCard';
 import { useCall } from '@/contexts/CallContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Phone, 
   User, 
@@ -140,6 +141,7 @@ const formatDuration = (seconds: number | null) => {
 
 const Calls = () => {
   const { teamMember } = useTeamMember();
+  const { isAdmin } = useAuth();
   usePageDatabases([
     { table: 'active_calls', access: 'read', usage: 'Live call state for in-progress Twilio sessions.', via: 'src/contexts/CallContext.tsx' },
     { table: 'call_events', access: 'read', usage: 'Historical call timeline/events shown in the list.', via: 'useQuery in Calls.tsx' },
@@ -206,9 +208,11 @@ const Calls = () => {
   } | null>(null);
   const [runningAutomation, setRunningAutomation] = useState(false);
 
-  // Fetch active/recent calls
+  // Fetch active/recent calls. Admins and super_admins see every active call
+  // in the system; employees see their own + rows with a null user_id (the
+  // outbound backstop where server-side attribution wasn't possible).
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
-    queryKey: ['active-calls', teamMember?.id],
+    queryKey: ['active-calls', teamMember?.id, isAdmin],
     queryFn: async () => {
       let query = supabase
         .from('active_calls')
@@ -216,7 +220,7 @@ const Calls = () => {
         .in('status', ['ringing', 'in-progress'])
         .eq('direction', 'inbound')
         .order('created_at', { ascending: false });
-      if (teamMember?.id) {
+      if (teamMember?.id && !isAdmin) {
         query = query.or(`user_id.eq.${teamMember.id},user_id.is.null`);
       }
       const { data, error } = await query;
@@ -227,12 +231,14 @@ const Calls = () => {
     enabled: !!teamMember?.id,
   });
 
-  // Fetch call history from communications. Mirror the active-calls query
-  // above by accepting rows with a null user_id as well — the outbound backstop
-  // in twilio-call-status cannot determine user_id server-side, and any future
-  // attribution gap should still surface in history rather than vanish.
+  // Fetch call history from communications. Admins and super_admins see all
+  // calls (RLS in 20260406100000_fix_call_rls_admin_super_admin.sql grants
+  // them full read access). Employees see their own + rows with a null
+  // user_id — the outbound backstop in twilio-call-status cannot determine
+  // user_id server-side, and any future attribution gap should still surface
+  // in history rather than vanish.
   const { data: callHistory = [], isLoading: historyLoading } = useQuery({
-    queryKey: ['call-history', teamMember?.id],
+    queryKey: ['call-history', teamMember?.id, isAdmin],
     queryFn: async () => {
       let query = supabase
         .from('communications')
@@ -246,7 +252,7 @@ const Calls = () => {
         .eq('communication_type', 'call')
         .order('created_at', { ascending: false })
         .limit(100);
-      if (teamMember?.id) {
+      if (teamMember?.id && !isAdmin) {
         query = query.or(`user_id.eq.${teamMember.id},user_id.is.null`);
       }
       const { data, error } = await query;
