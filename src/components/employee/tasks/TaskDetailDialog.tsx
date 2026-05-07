@@ -710,10 +710,10 @@ export const TaskDetailDialog = ({
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9 ring-2 ring-background">
                   <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-medium">
-                    {'EV'}
+                    {(teamMember?.name || 'Team Member').substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium">Evan</span>
+                <span className="text-sm font-medium">{teamMember?.name || 'Team Member'}</span>
               </div>
             </div>
 

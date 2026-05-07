@@ -287,7 +287,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   // Initialize Twilio Device - EAGER initialization
   const initializeTwilioDevice = useCallback(async () => {
     if (!isEvan) {
-      console.log('[CallContext] Not Evan, skipping Twilio initialization');
+      console.log('[CallContext] Calls disabled for this user, skipping Twilio initialization');
       return null;
     }
     
@@ -478,10 +478,10 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   // to prevent device re-initialization when call state changes
   }, [isEvan, startCallTimer, handleCallEnd, acknowledgeCall, logCallEvent]);
 
-  // EAGER initialization - initialize as soon as Evan is detected
+  // EAGER initialization - initialize as soon as calls are enabled
   useEffect(() => {
     if (isEvan) {
-      console.log('[CallContext] Evan detected, eagerly initializing Twilio Device');
+      console.log('[CallContext] Calls enabled, eagerly initializing Twilio Device');
       initializeTwilioDevice();
     }
     

@@ -271,7 +271,7 @@ export const useFeedData = () => {
           subType: commType || undefined,
           actorName: commActorName,
           actorInitial: commActorName.charAt(0).toUpperCase(),
-          actorAvatarUrl: comm.direction === 'outbound' ? (teamNameMap.get('evan') || null) : null,
+          actorAvatarUrl: comm.direction === 'outbound' && comm.user_id ? (teamMap.get(comm.user_id)?.avatarUrl || null) : null,
           leadName: leadInfo?.name || 'Unknown Contact',
           leadCompany: leadInfo?.company || null,
           leadId: comm.lead_id,

@@ -4477,6 +4477,65 @@ export type Database = {
           },
         ]
       }
+      user_integrations: {
+        Row: {
+          auth_tag: string
+          ciphertext: string
+          created_at: string
+          dek_auth_tag: string
+          dek_iv: string
+          encrypted_dek: string
+          id: string
+          iv: string
+          key_version: number
+          label: string
+          last_used_at: string | null
+          provider: string
+          revoked_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_tag: string
+          ciphertext: string
+          created_at?: string
+          dek_auth_tag: string
+          dek_iv: string
+          encrypted_dek: string
+          id?: string
+          iv: string
+          key_version?: number
+          label: string
+          last_used_at?: string | null
+          provider: string
+          revoked_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_tag?: string
+          ciphertext?: string
+          created_at?: string
+          dek_auth_tag?: string
+          dek_iv?: string
+          encrypted_dek?: string
+          id?: string
+          iv?: string
+          key_version?: number
+          label?: string
+          last_used_at?: string | null
+          provider?: string
+          revoked_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_integrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           address: string | null

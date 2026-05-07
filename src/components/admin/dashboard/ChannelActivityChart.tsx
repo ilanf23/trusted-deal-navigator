@@ -42,11 +42,11 @@ export interface ChannelActivityChartProps {
 }
 
 const GRADIENT_PALETTE = [
-  { solid: '#80FFA5', stops: ['rgb(128, 255, 165)', 'rgb(1, 191, 236)'] },
-  { solid: '#00DDFF', stops: ['rgb(0, 221, 255)', 'rgb(77, 119, 255)'] },
-  { solid: '#37A2FF', stops: ['rgb(55, 162, 255)', 'rgb(116, 21, 219)'] },
-  { solid: '#FF0087', stops: ['rgb(255, 0, 135)', 'rgb(135, 0, 157)'] },
-  { solid: '#FFBF00', stops: ['rgb(255, 191, 0)', 'rgb(224, 62, 76)'] },
+  { solid: '#34d399', stops: ['rgb(74, 222, 168)', 'rgb(16, 185, 129)'] },
+  { solid: '#38bdf8', stops: ['rgb(56, 189, 248)', 'rgb(14, 165, 233)'] },
+  { solid: '#a78bfa', stops: ['rgb(167, 139, 250)', 'rgb(139, 92, 246)'] },
+  { solid: '#f472b6', stops: ['rgb(244, 114, 182)', 'rgb(236, 72, 153)'] },
+  { solid: '#fbbf24', stops: ['rgb(251, 191, 36)', 'rgb(245, 158, 11)'] },
 ];
 
 function getChannelDisplayName(channel: string): string {

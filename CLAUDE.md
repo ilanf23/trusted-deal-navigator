@@ -53,7 +53,7 @@ src/
   utils/          # Pipeline stage color configuration
   styles/         # CSS overrides (Filerobot image editor dark theme)
 supabase/
-  functions/      # 33 Deno edge functions + _shared/ utilities
+  functions/      # Deno edge functions + _shared/ utilities
 email-templates/  # HTML email templates (confirm-signup)
 ```
 

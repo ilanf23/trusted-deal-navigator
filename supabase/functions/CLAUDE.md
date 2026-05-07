@@ -1,6 +1,6 @@
 # Supabase Edge Functions
 
-33 Deno TypeScript edge functions + shared utilities. All deployed as Supabase Edge Functions.
+Deno TypeScript edge functions + shared utilities. All deployed as Supabase Edge Functions.
 
 ## Shared Patterns (_shared/)
 
@@ -27,7 +27,10 @@
 - `manage-user-role` — manage roles: admin, super_admin, client, partner (3/60s)
 
 ### AI Assistants
-- `ai-assistant` — merged assistant + agent executor. Uses OpenAI. Resolves the calling team member from the JWT.
+- `ai-assistant-chat` — streaming chat + assist modes (no `body.action`). OpenAI. Issue #84 split.
+- `ai-assistant-agent` — autonomous tool-calling loop (`action: "agent"`). OpenAI SSE. Issue #84 split.
+- `ai-assistant-actions` — execute / undo / redo / undo_batch for AI agent changes. Issue #84 split.
+- Shared helpers: `_shared/aiAgent/context.ts`, `tools.ts`, `executor.ts`.
 - `lead-ai-assistant` — lead-specific assistant with activity context (10/60s)
 - `ai-email-chat` — AI email chat for leads. Builds lead context from questionnaire/rate_watch data (10/60s)
 - `lender-program-assistant` — match leads to lender programs via OpenAI (10/60s)
@@ -58,9 +61,11 @@
 - `newsletter-track` — tracking pixel + link redirect. Bot detection for accurate metrics (300/60s)
 - `newsletter-webhook` — Resend webhook events (delivered, opened, clicked, bounced, complained, unsubscribed). Svix HMAC-SHA256 signature verified via `_shared/svixSignature.ts` against `RESEND_WEBHOOK_SECRET`; 5-min replay window (300/60s)
 
-### Dropbox (4 functions)
+### Dropbox
 - `dropbox-auth` — OAuth flow, token storage in `dropbox_connections` (60/60s)
-- `dropbox-api` — generic API wrapper with proactive token refresh (5-min buffer)
+- `dropbox-files` — read paths: list, list-recursive, list-shared, download, get-temporary-link (60/60s). Issue #84 split. Shared: `_shared/dropbox/api.ts`.
+- `dropbox-mutations` — write paths: upload, upload-to-lead-folder, move, rename, delete, create-folder (60/60s). Issue #84 split.
+- `dropbox-search` — DB-only: link-to-lead, search-content (60/60s). Issue #84 split.
 - `dropbox-sync` — incremental cursor-based sync with text extraction (50K char limit)
 - `dropbox-webhook` — HMAC-SHA256 verified webhook, triggers sync
 

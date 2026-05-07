@@ -341,7 +341,7 @@ const EmployeePipeline = () => {
     getGridTemplate,
   } = usePipelineColumns();
 
-  const canEdit = isOwner || teamMember?.name?.toLowerCase() === 'evan';
+  const canEdit = isOwner || !!teamMember?.id;
 
   // Fetch all available pipelines
   const { data: pipelines = [] } = useQuery({
@@ -492,7 +492,7 @@ const EmployeePipeline = () => {
     onError: (error) => { console.error('Save stages mutation failed:', error); toast.error('Failed to update stages'); },
   });
 
-  // Use current team member from auth context instead of hardcoded Evan lookup
+  // Use current team member from auth context instead of a hardcoded owner lookup.
   const currentMemberId = teamMember?.id ?? null;
 
   // Fetch team members for the owner filter — only assignable users

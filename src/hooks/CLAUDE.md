@@ -30,7 +30,7 @@
 - `useEvansGmailLogic` — comprehensive Gmail logic for Evan (~900 lines). CRM config, thread selection, lead matching, draft composition.
 
 ## Dropbox
-- `useDropbox` — file operations via `dropbox-api` edge function: list, upload, delete, move, search, sync, linkToLead.
+- `useDropbox` — file operations via `dropbox-files` / `dropbox-mutations` / `dropbox-search` (routed by `src/lib/dropboxRouter.ts`): list, upload, delete, move, search, sync, linkToLead.
 - `useDropboxConnection` — OAuth popup flow, connection status, connect/disconnect.
 - `useDropboxAutoUpload` — auto-upload files to lead-specific Dropbox folders.
 
@@ -44,7 +44,7 @@
 
 ## AI & Automation
 - `useActionParser` — parses `<action>` XML tags from AI responses. Returns `cleanText` + `actions[]`.
-- `useActionExecutor` — executes AI-proposed actions via `ai-assistant` edge function. Supports undo batches.
+- `useActionExecutor` — executes AI-proposed actions via `ai-assistant-actions` / `ai-assistant-agent` (URL from `src/lib/aiAssistantRouter.ts`). Supports undo batches.
 - `useAIChanges` — AI change history with undo/redo. Queries `ai_agent_changes`/`ai_agent_batches`. Filters by date, user, mode, status, table.
 
 ## System

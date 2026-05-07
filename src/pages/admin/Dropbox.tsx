@@ -12,7 +12,7 @@ const Dropbox = () => {
   usePageDatabases([
     { table: 'dropbox_connections', access: 'read', usage: 'Checks whether the current user has linked a personal Dropbox account.', via: 'useQuery in Dropbox.tsx' },
     { table: 'dropbox_files', access: 'readwrite', usage: 'File metadata cache — used by DropboxBrowser to list/search/move/delete.', via: 'src/hooks/useDropbox.ts via DropboxBrowser' },
-    { table: 'dropbox-api', access: 'rpc', usage: 'Edge function proxy to Dropbox API: list, upload, delete, move, search, sync.', via: 'src/hooks/useDropbox.ts' },
+    { table: 'dropbox-files / dropbox-mutations / dropbox-search', access: 'rpc', usage: 'Edge functions proxy to Dropbox API and DB search (routed by src/lib/dropboxRouter.ts).', via: 'src/hooks/useDropbox.ts' },
     { table: 'dropbox-auth', access: 'rpc', usage: 'Edge function handling Dropbox OAuth connect flow.', via: 'src/hooks/useDropboxConnection.ts' },
   ]);
 

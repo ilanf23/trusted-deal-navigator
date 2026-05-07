@@ -11,7 +11,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// === Handlers (copied verbatim from supabase/functions/dropbox-api/index.ts) ===
+// === Read-side Dropbox handlers (shared token refresh: _shared/dropbox/api.ts) ===
 
 async function handleList(accessToken: string, body: any) {
   const path = body.path ?? '';
