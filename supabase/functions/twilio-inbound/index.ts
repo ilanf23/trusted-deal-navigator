@@ -169,6 +169,7 @@ Deno.serve(async (req) => {
   // If the lookup fails or no row matches, dial no client — fallback number / voicemail
   // still cover the call.
   let resolvedClients: string[] = [];
+  let resolvedOwnerId: string | null = null;
   if (supabaseUrl && supabaseServiceKey && toNumber) {
     try {
       const sbLookup = createClient(supabaseUrl, supabaseServiceKey);
@@ -185,6 +186,7 @@ Deno.serve(async (req) => {
         );
         if (owner) {
           resolvedClients = [`clx-admin-${owner.id}`];
+          resolvedOwnerId = owner.id;
         } else {
           console.warn('[twilio-inbound] no user owns dialed number:', toNumber);
         }
@@ -299,6 +301,7 @@ Deno.serve(async (req) => {
             phone_number: fromNumber,
             status: 'ringing',
             lead_id: resolvedLeadId,
+            user_id: resolvedOwnerId,
             content: 'Incoming call - ringing',
           },
           { onConflict: 'call_sid', ignoreDuplicates: true },
@@ -329,6 +332,7 @@ Deno.serve(async (req) => {
             direction: 'inbound',
             status: 'ringing',
             lead_id: resolvedLeadId,
+            user_id: resolvedOwnerId,
             call_flow_id: callFlowId,
             webhook_timestamp: webhookTimestamp,
           });

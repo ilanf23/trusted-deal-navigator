@@ -742,26 +742,6 @@ const Calls = () => {
     });
   }, [callHistory, directionFilter, statusFilter, dateRangeFilter, searchQuery]);
 
-  if (teamMember && !hasCallSetup) {
-    return (
-      <EmployeeLayout>
-        <div className="flex items-center justify-center py-20">
-          <Card className="max-w-md text-center">
-            <CardHeader>
-              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
-                <AlertCircle className="h-6 w-6 text-amber-600" />
-              </div>
-              <CardTitle className="text-lg">Manual Setup Required</CardTitle>
-              <CardDescription>
-                The calling feature requires individual Twilio phone number configuration for your account. Please contact the dev builder to get your phone line set up.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </EmployeeLayout>
-    );
-  }
-
   if (callsLoading) {
     return (
       <EmployeeLayout>
@@ -779,16 +759,41 @@ const Calls = () => {
         <div className="flex justify-end">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border text-sm text-muted-foreground">
             <Phone className="h-3.5 w-3.5" />
-            <span className="font-medium">{formatPhoneNumber(import.meta.env.VITE_TWILIO_PHONE_NUMBER || '(904) 587-0026')}</span>
+            <span className="font-medium">
+              {teamMember?.twilio_phone_number
+                ? formatPhoneNumber(teamMember.twilio_phone_number)
+                : formatPhoneNumber(import.meta.env.VITE_TWILIO_PHONE_NUMBER || '(904) 587-0026')}
+            </span>
+            {!hasCallSetup && (
+              <Badge variant="outline" className="text-[10px] h-5 px-1.5 ml-1">
+                Read-only
+              </Badge>
+            )}
           </div>
         </div>
+
+        {!hasCallSetup && teamMember && (
+          <div className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 flex items-start gap-2">
+            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>
+              Calling isn't configured for your account yet, so the dialer and live-call panel are disabled. You can still review the full call history below. Ask the dev builder to assign a Twilio number to enable outbound dialing.
+            </span>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Left Column - Command Panel: Active Call, Dialer, Lead Info */}
           <div className="lg:col-span-2 space-y-3">
             {/* Section: Call Status */}
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-1">Status</p>
-            {currentCall ? (
+            {!hasCallSetup ? (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-muted-foreground/20 bg-muted/20">
+                <Phone className="h-3.5 w-3.5 text-muted-foreground/50" />
+                <span className="text-xs text-muted-foreground/60">
+                  Live calls disabled — no Twilio number assigned
+                </span>
+              </div>
+            ) : currentCall ? (
               <Card className="border-2 border-green-500/50 bg-green-50/30 rounded-lg">
                 <CardHeader className="pb-3 pt-4 px-4">
                   <div className="flex items-center gap-2">
@@ -822,7 +827,15 @@ const Calls = () => {
             {/* Section: Dialer */}
             <div className="pt-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-1 mb-3">Dialer</p>
-              <OutboundCallCard initialPhone={prefilledPhone || undefined} initialLeadId={prefilledLeadId || undefined} />
+              {hasCallSetup ? (
+                <OutboundCallCard initialPhone={prefilledPhone || undefined} initialLeadId={prefilledLeadId || undefined} />
+              ) : (
+                <Card className="rounded-lg border-dashed">
+                  <CardContent className="px-4 py-6 text-center text-xs text-muted-foreground">
+                    Outbound dialing is disabled until a Twilio number is assigned to your account.
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Section: Contact Info */}

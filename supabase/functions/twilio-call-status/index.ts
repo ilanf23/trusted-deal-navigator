@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
       updateData.answered_at = new Date().toISOString();
     }
 
-    if (['completed', 'busy', 'failed', 'no-answer', 'canceled', 'cancelled'].includes(effectiveStatus)) {
+    if (['completed', 'busy', 'failed', 'no-answer', 'canceled', 'cancelled', 'declined'].includes(effectiveStatus)) {
       updateData.ended_at = new Date().toISOString();
 
       // Look up the active_calls row (only inbound calls create one) and any
@@ -279,13 +279,27 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { error } = await supabase
-      .from('active_calls')
-      .update(updateData)
-      .eq('call_sid', callSid);
-
-    if (error) {
-      console.error('Error updating call status:', error);
+    // For terminal statuses we drop the active_calls row entirely — history
+    // lives in `communications`. Keeping completed rows in active_calls
+    // pollutes the live-state table and breaks the UI's "active call" panel
+    // semantics. For non-terminal transitions (ringing → in-progress) we
+    // still update in place so realtime listeners pick up the new status.
+    if (['completed', 'busy', 'failed', 'no-answer', 'canceled', 'cancelled', 'declined'].includes(effectiveStatus)) {
+      const { error: delError } = await supabase
+        .from('active_calls')
+        .delete()
+        .eq('call_sid', callSid);
+      if (delError) {
+        console.error('[twilio-call-status] active_calls delete failed:', delError);
+      }
+    } else {
+      const { error: updError } = await supabase
+        .from('active_calls')
+        .update(updateData)
+        .eq('call_sid', callSid);
+      if (updError) {
+        console.error('Error updating call status:', updError);
+      }
     }
 
     return new Response(okTwiML(), { status: 200, headers: corsHeaders });
