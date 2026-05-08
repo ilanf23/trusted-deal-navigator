@@ -12,6 +12,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { OutboundCallCard } from '@/components/employee/OutboundCallCard';
 import { useCall } from '@/contexts/CallContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -274,6 +282,7 @@ const Calls = () => {
     { table: 'potential', access: 'write', usage: 'Creating leads from inbound calls (Add Lead dialog).', via: 'addLeadMutation in Calls.tsx' },
     { table: 'pipeline', access: 'read', usage: 'Joined for company/deal context on call history rows.', via: 'callHistory query in Calls.tsx' },
     { table: 'deal_responses', access: 'read', usage: 'Loan questionnaire details rendered for the matched lead.', via: 'leadResponse query in Calls.tsx' },
+    { table: 'twilio-call-history', access: 'rpc', usage: 'Edge function fetching call history from Twilio API and enriching with communications rows by call_sid.', via: 'supabase.functions.invoke("twilio-call-history")' },
     { table: 'retry-call-transcription', access: 'rpc', usage: 'Edge function re-triggering Whisper + Gemini speaker labeling on a stored recording.', via: 'supabase.functions.invoke("retry-call-transcription")' },
     { table: 'call-to-lead-automation', access: 'rpc', usage: 'Edge function auto-creating leads from unknown inbound numbers.', via: 'supabase.functions.invoke("call-to-lead-automation")' },
   ]);
@@ -361,36 +370,25 @@ const Calls = () => {
     enabled: !!teamMember?.id,
   });
 
-  // Fetch call history from communications. Admins and super_admins see all
-  // calls (RLS in 20260406100000_fix_call_rls_admin_super_admin.sql grants
-  // them full read access). Employees see their own + rows with a null
-  // user_id — the outbound backstop in twilio-call-status cannot determine
-  // user_id server-side, and any future attribution gap should still surface
-  // in history rather than vanish.
+  // Fetch call history from Twilio (source of truth) via the
+  // `twilio-call-history` edge function, enriched with `communications` rows
+  // by call_sid for transcript / recording / lead linkage. Twilio is the
+  // authoritative list — webhook drops or attribution gaps no longer cause
+  // calls to disappear from this view.
   const { data: callHistory = [], isLoading: historyLoading, refetch: refetchHistory, isRefetching: isRefetchingHistory } = useQuery({
     queryKey: ['call-history', teamMember?.id, isAdmin],
     queryFn: async () => {
-      let query = supabase
-        .from('communications')
-        .select(`
-          *,
-          pipeline (
-            name,
-            company_name
-          )
-        `)
-        .eq('communication_type', 'call')
-        .order('created_at', { ascending: false })
-        .limit(200);
-      if (teamMember?.id && !isAdmin) {
-        query = query.or(`user_id.eq.${teamMember.id},user_id.is.null`);
-      }
-      const { data, error } = await query;
+      const { data, error } = await supabase.functions.invoke('twilio-call-history', {
+        body: { pageSize: 200 },
+      });
       if (error) throw error;
-      return data as CallLog[];
+      return ((data?.calls ?? []) as CallLog[]);
     },
     enabled: !!teamMember?.id,
-    refetchInterval: 30000,
+    // Twilio's REST API is rate-limited; refresh less aggressively than the
+    // old direct DB query and rely on the manual refresh button for live updates.
+    refetchInterval: 60000,
+    staleTime: 30000,
   });
 
   // If the transcript arrives after the dialog is opened, refresh the dialog content
@@ -1035,115 +1033,129 @@ const Calls = () => {
                 </div>
 
                 {/* Filter row */}
-                <div className="mt-3 space-y-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    <Button
-                      variant={directionFilter === 'all' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setDirectionFilter('all')}
-                      className="h-7 px-2.5 text-xs"
-                    >
-                      All
-                    </Button>
-                    <Button
-                      variant={directionFilter === 'inbound' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setDirectionFilter('inbound')}
-                      className="h-7 px-2.5 text-xs"
-                    >
-                      <PhoneIncoming className="h-3 w-3 mr-1" /> In
-                    </Button>
-                    <Button
-                      variant={directionFilter === 'outbound' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setDirectionFilter('outbound')}
-                      className="h-7 px-2.5 text-xs"
-                    >
-                      <PhoneOutgoing className="h-3 w-3 mr-1" /> Out
-                    </Button>
+                {(() => {
+                  const hasActiveFilter =
+                    directionFilter !== 'all' ||
+                    statusFilter !== 'all' ||
+                    dateRangeFilter !== 'all';
 
-                    <span className="mx-1 self-center text-muted-foreground/40">|</span>
+                  const segmentBase =
+                    'h-7 px-2.5 text-xs font-medium rounded-[5px] transition-colors inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1';
+                  const segmentActive = 'bg-background text-foreground shadow-sm';
+                  const segmentIdle =
+                    'text-muted-foreground hover:text-foreground';
 
-                    <Button
-                      variant={statusFilter === 'all' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setStatusFilter('all')}
-                      className="h-7 px-2.5 text-xs"
-                    >
-                      Any status
-                    </Button>
-                    <Button
-                      variant={statusFilter === 'completed' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setStatusFilter('completed')}
-                      className="h-7 px-2.5 text-xs"
-                    >
-                      Completed
-                    </Button>
-                    <Button
-                      variant={statusFilter === 'missed' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setStatusFilter('missed')}
-                      className="h-7 px-2.5 text-xs"
-                    >
-                      <PhoneMissed className="h-3 w-3 mr-1" /> Missed
-                    </Button>
-                    <Button
-                      variant={statusFilter === 'failed' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setStatusFilter('failed')}
-                      className="h-7 px-2.5 text-xs"
-                    >
-                      Failed
-                    </Button>
+                  const directionOptions = [
+                    { value: 'all' as const, label: 'All', icon: null },
+                    { value: 'inbound' as const, label: 'In', icon: PhoneIncoming },
+                    { value: 'outbound' as const, label: 'Out', icon: PhoneOutgoing },
+                  ];
+                  const dateOptions: { value: DateRangeFilter; label: string }[] = [
+                    { value: 'today', label: 'Today' },
+                    { value: '7d', label: '7d' },
+                    { value: '30d', label: '30d' },
+                    { value: 'all', label: 'All time' },
+                  ];
 
-                    <span className="mx-1 self-center text-muted-foreground/40">|</span>
+                  return (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div
+                          role="radiogroup"
+                          aria-label="Direction"
+                          className="inline-flex items-center gap-0.5 rounded-md border bg-muted/50 p-0.5"
+                        >
+                          {directionOptions.map(({ value, label, icon: Icon }) => {
+                            const active = directionFilter === value;
+                            return (
+                              <button
+                                key={value}
+                                type="button"
+                                role="radio"
+                                aria-checked={active}
+                                onClick={() => setDirectionFilter(value)}
+                                className={cn(segmentBase, active ? segmentActive : segmentIdle)}
+                              >
+                                {Icon ? <Icon className="h-3 w-3" /> : null}
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
 
-                    <Button
-                      variant={dateRangeFilter === 'today' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setDateRangeFilter('today')}
-                      className="h-7 px-2.5 text-xs"
-                    >
-                      Today
-                    </Button>
-                    <Button
-                      variant={dateRangeFilter === '7d' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setDateRangeFilter('7d')}
-                      className="h-7 px-2.5 text-xs"
-                    >
-                      7d
-                    </Button>
-                    <Button
-                      variant={dateRangeFilter === '30d' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setDateRangeFilter('30d')}
-                      className="h-7 px-2.5 text-xs"
-                    >
-                      30d
-                    </Button>
-                    <Button
-                      variant={dateRangeFilter === 'all' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setDateRangeFilter('all')}
-                      className="h-7 px-2.5 text-xs"
-                    >
-                      All time
-                    </Button>
-                  </div>
+                        <div
+                          role="radiogroup"
+                          aria-label="Date range"
+                          className="inline-flex items-center gap-0.5 rounded-md border bg-muted/50 p-0.5"
+                        >
+                          {dateOptions.map(({ value, label }) => {
+                            const active = dateRangeFilter === value;
+                            return (
+                              <button
+                                key={value}
+                                type="button"
+                                role="radio"
+                                aria-checked={active}
+                                onClick={() => setDateRangeFilter(value)}
+                                className={cn(segmentBase, active ? segmentActive : segmentIdle)}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
 
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder="Search transcript, phone, deal, company…"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-8 h-8 text-xs"
-                    />
-                  </div>
-                </div>
+                        <Select
+                          value={statusFilter}
+                          onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+                        >
+                          <SelectTrigger
+                            aria-label="Status"
+                            className="h-8 w-[140px] text-xs"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Any status</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="missed">
+                              <span className="inline-flex items-center gap-1.5">
+                                <PhoneMissed className="h-3 w-3 text-red-500" /> Missed
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="failed">Failed</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {hasActiveFilter && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setDirectionFilter('all');
+                              setStatusFilter('all');
+                              setDateRangeFilter('all');
+                            }}
+                            className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            Clear
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          type="search"
+                          placeholder="Search transcript, phone, deal, company…"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-8 h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
               </CardHeader>
 
               <CardContent className="p-0">
