@@ -23,6 +23,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { toast } from 'sonner';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 import type { LeadProject } from './ProjectDetailDialog';
 
@@ -830,21 +831,13 @@ export default function ProjectDetailPanel({
             {/* Files */}
             <div>
               <label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 mb-2">
-                <FileText className="h-4 w-4" /> Files ({files.length})
+                <FileText className="h-4 w-4" /> Files
               </label>
-              {files.length > 0 ? (
-                <div className="space-y-1">
-                  {files.slice(0, 5).map((f: { id: string; file_name: string; file_type: string | null; file_size: number | null }) => (
-                    <div key={f.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 -mx-2 hover:bg-muted/40 transition-colors">
-                      <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-sm text-foreground truncate">{f.file_name}</span>
-                    </div>
-                  ))}
-                  {files.length > 5 && <p className="text-xs text-muted-foreground pt-1">+{files.length - 5} more</p>}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">No files attached</p>
-              )}
+              <EntityFilesSection
+                entityId={project.entity_id}
+                entityType="potential"
+                entityName={project.name}
+              />
             </div>
 
             {/* People */}

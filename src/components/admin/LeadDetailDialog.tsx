@@ -32,7 +32,7 @@ import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { FormattedPhoneInput } from '@/components/admin/FormattedPhoneInput';
-import { LeadFilesSection } from '@/components/admin/LeadFilesSection';
+import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
 import { LeadDealSheetTab } from '@/components/admin/LeadDealSheetTab';
 import { useSavedTaskFilters, findFilterById } from '@/hooks/useSavedTaskFilters';
 import { applyTaskFilter } from '@/components/employee/tasks/savedFilters/applyTaskFilter';
@@ -1875,7 +1875,12 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
                   {/* Files Tab */}
                   <TabsContent value="files" className="m-0 p-4">
-                    <LeadFilesSection leadId={lead.id} leadName={lead.name} companyName={lead.company_name} />
+                    <EntityFilesSection
+                      entityId={lead.id}
+                      entityType="potential"
+                      entityName={lead.name}
+                      companyName={lead.company_name}
+                    />
                   </TabsContent>
 
                   {/* Comments Tab */}

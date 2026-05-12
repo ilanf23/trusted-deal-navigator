@@ -27,6 +27,7 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
@@ -417,7 +418,7 @@ function EditableField({
           </div>
         </div>
       )}
-      <span className={`text-sm font-medium block ${value ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+      <span className={`text-sm font-medium block break-words ${value ? 'text-foreground' : 'text-muted-foreground/50'}`}>
         {displayValue || placeholder || '\u2014'}
       </span>
     </div>
@@ -1949,8 +1950,10 @@ export default function PeopleExpandedView() {
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
-        {/* LEFT: Details */}
-        <ScrollArea className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
+        {/* LEFT: Details — structured to match ExpandedLeftColumn (Pipeline). Plain div w/
+            native overflow so long unbroken values don't push the column wider; Radix
+            ScrollArea's table-display viewport doesn't constrain inner width. */}
+        <div className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-y-auto overflow-x-hidden">
           <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
             {/* ── Close (X) ── */}
@@ -1974,10 +1977,10 @@ export default function PeopleExpandedView() {
                 tableImageColumn="image_url"
                 queryKeysToInvalidate={[['person-expanded', person.id]]}
               />
-              <div className="min-w-0 pt-0.5">
-                <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{person.name}</h2>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <h2 className="text-xl font-semibold text-foreground break-words leading-tight">{person.name}</h2>
                 {(person.title || person.company_name) && (
-                  <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                  <p className="text-sm text-muted-foreground mt-0.5 break-words">
                     {[person.title, person.company_name].filter(Boolean).join(' at ')}
                   </p>
                 )}
@@ -2397,7 +2400,7 @@ export default function PeopleExpandedView() {
               )}
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         {/* CENTER: Activity */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
@@ -2852,8 +2855,10 @@ export default function PeopleExpandedView() {
           </ScrollArea>
         </div>
 
-        {/* RIGHT: Related */}
-        <ScrollArea className="w-full md:w-[280px] lg:w-[310px] xl:w-[374px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-hidden">
+        {/* RIGHT: Related — same overflow pattern as the left column. Plain div w/ native
+            overflow keeps the "+ Add file" button and other content inside the column;
+            Radix ScrollArea's table-display viewport doesn't constrain inner width. */}
+        <div className="w-full md:w-[280px] lg:w-[310px] xl:w-[374px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-y-auto overflow-x-hidden">
           <div>
             {/* Financial Summary */}
             <div className="px-4 md:px-5 xl:px-6 py-5 space-y-3">
@@ -3113,36 +3118,16 @@ export default function PeopleExpandedView() {
                 <CollapsibleTrigger className="flex items-center w-full px-3 md:px-3.5 xl:px-5 py-3 hover:bg-muted/30 transition-colors">
                   <span className="text-sm font-medium text-foreground">Files ({personFiles.length})</span>
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1.5" />
-                  <button className="ml-2" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
-                    <Plus className="h-4 w-4 text-muted-foreground" />
-                  </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
-                  <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
-                  <div className="space-y-1.5">
-                    {personFiles.map((f) => (
-                      <div key={f.id} className="flex items-center gap-2 text-sm p-2 rounded-lg hover:bg-muted/30 transition-colors group -mx-2">
-                        <span className="text-base shrink-0">{getFileIcon(f.file_type)}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate">{f.file_name}</p>
-                          <p className="text-xs text-muted-foreground">{formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}</p>
-                        </div>
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                          <button onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }} className="p-1 rounded hover:bg-muted" title="Download">
-                            <Download className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                          </button>
-                          <button onClick={() => handleDeleteFile(f)} className="p-1 rounded hover:bg-muted" title="Delete">
-                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {uploadingFile && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Uploading...
-                      </div>
-                    )}
-                  </div>
+                  {personId && (
+                    <EntityFilesSection
+                      entityId={personId}
+                      entityType="people"
+                      entityName={person?.name}
+                      companyName={person?.company_name ?? undefined}
+                    />
+                  )}
                 </CollapsibleContent>
               </div>
             </Collapsible>
@@ -3295,7 +3280,7 @@ export default function PeopleExpandedView() {
             </RelatedSection>
             </div>
           </div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
 

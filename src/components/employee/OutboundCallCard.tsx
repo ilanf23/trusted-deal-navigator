@@ -1,22 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Phone, 
-  PhoneOutgoing, 
-  Loader2, 
-  User,
-  Building2
+import {
+  Phone,
+  PhoneOutgoing,
+  Loader2,
+  Building2,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCall } from '@/contexts/CallContext';
 
-interface Lead {
+interface Contact {
   id: string;
   name: string;
   phone: string | null;
@@ -41,7 +40,6 @@ const formatPhoneNumber = (phone: string) => {
 
 const formatPhoneAsYouType = (value: string) => {
   let digits = value.replace(/\D/g, '');
-  // Strip leading country code "1" if present (11 digits starting with 1)
   if (digits.length === 11 && digits.startsWith('1')) {
     digits = digits.slice(1);
   }
@@ -51,51 +49,165 @@ const formatPhoneAsYouType = (value: string) => {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
 };
 
+// Treat the query as a "name search" if it contains any letter character.
+// Pure digit / formatting characters are interpreted as a phone number to dial.
+const looksLikeNameQuery = (q: string) => /[a-z]/i.test(q);
+
 export const OutboundCallCard = ({ initialPhone, initialLeadId }: OutboundCallCardProps) => {
-  const [phoneNumber, setPhoneNumber] = useState(() => initialPhone ? formatPhoneAsYouType(initialPhone) : '');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'dial' | 'contacts'>('dial');
-  
   const { makeOutboundCall, outboundCall, isConnected, healthStatus } = useCall();
   const isCallInProgress = outboundCall !== null || isConnected;
 
-  // Fetch leads with phone numbers for contact list
-  const { data: leads = [], isLoading: leadsLoading } = useQuery({
-    queryKey: ['leads-with-phones', searchQuery],
+  // The text the user has typed. Either a partial name search or a phone number.
+  const [query, setQuery] = useState<string>(() =>
+    initialPhone ? formatPhoneAsYouType(initialPhone) : '',
+  );
+
+  // When the user picks a contact from the dropdown we lock onto it: the input
+  // displays the contact's name, and the call uses the contact's phone + id so
+  // the call attribution works downstream.
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+
+  const [showResults, setShowResults] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Seed selection if the parent passed an initialLeadId (deep link from a
+  // pipeline row "Call" button). We still let the user clear it.
+  useEffect(() => {
+    if (!initialLeadId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('potential')
+        .select('id, name, phone, company_name')
+        .eq('id', initialLeadId)
+        .maybeSingle();
+      if (!cancelled && data) {
+        setSelectedContact(data as Contact);
+        setQuery((data as Contact).name);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [initialLeadId]);
+
+  // Close results when the user clicks outside the card body.
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(e.target as Node)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  const isNameSearch = looksLikeNameQuery(query);
+
+  // Pull contacts matching the query. The query is debounced via React Query's
+  // queryKey — we re-fetch on every keystroke but the staleTime keeps it cheap.
+  const { data: contacts = [], isFetching } = useQuery({
+    queryKey: ['outbound-contact-search', query.trim().toLowerCase()],
     queryFn: async () => {
-      let query = supabase
+      const trimmed = query.trim();
+      let q = supabase
         .from('potential')
         .select('id, name, phone, company_name')
         .not('phone', 'is', null)
         .order('name', { ascending: true })
-        .limit(50);
-
-      if (searchQuery.trim()) {
-        query = query.or(`name.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`);
+        .limit(25);
+      if (trimmed.length > 0) {
+        q = q.or(`name.ilike.%${trimmed}%,company_name.ilike.%${trimmed}%`);
       }
-
-      const { data, error } = await query;
+      const { data, error } = await q;
       if (error) throw error;
-      return data as Lead[];
+      return (data ?? []) as Contact[];
     },
+    enabled: isNameSearch || query.length === 0,
+    staleTime: 30_000,
   });
 
-  const handleDialpadCall = () => {
-    if (!phoneNumber) {
-      toast.error('Please enter a phone number');
-      return;
+  const visibleContacts = useMemo(() => contacts, [contacts]);
+
+  // Reset highlight whenever the result set changes so arrow-key nav starts at the top.
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [visibleContacts.length, showResults]);
+
+  const handleQueryChange = (raw: string) => {
+    setShowResults(true);
+    if (looksLikeNameQuery(raw)) {
+      // Name search — keep the raw text, drop any contact lock once the user
+      // starts typing a different name.
+      setQuery(raw);
+      if (selectedContact && raw !== selectedContact.name) {
+        setSelectedContact(null);
+      }
+    } else {
+      // Phone number — apply as-you-type formatting and clear any selection.
+      setQuery(formatPhoneAsYouType(raw));
+      setSelectedContact(null);
     }
-    makeOutboundCall(phoneNumber);
-    setPhoneNumber('');
   };
 
-  const handleContactCall = (lead: Lead) => {
-    if (!lead.phone) {
-      toast.error('This contact has no phone number');
+  const handlePickContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setQuery(contact.name);
+    setShowResults(false);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedContact(null);
+    setQuery('');
+    setShowResults(false);
+  };
+
+  const handleCall = () => {
+    if (selectedContact?.phone) {
+      makeOutboundCall(selectedContact.phone, selectedContact.id, selectedContact.name);
       return;
     }
-    makeOutboundCall(lead.phone, lead.id, lead.name);
+    // No contact picked — fall back to whatever phone string the user typed.
+    if (!query || isNameSearch) {
+      toast.error('Pick a contact or enter a phone number');
+      return;
+    }
+    makeOutboundCall(query);
+    setQuery('');
   };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showResults && visibleContacts.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setHighlightedIndex((i) => Math.min(i + 1, visibleContacts.length - 1));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setHighlightedIndex((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const pick = visibleContacts[highlightedIndex];
+        if (pick) handlePickContact(pick);
+        return;
+      }
+      if (e.key === 'Escape') {
+        setShowResults(false);
+        return;
+      }
+    }
+    if (e.key === 'Enter' && !isCallInProgress) {
+      handleCall();
+    }
+  };
+
+  const callDisabled =
+    isCallInProgress ||
+    !healthStatus.deviceReady ||
+    (selectedContact ? !selectedContact.phone : !query || isNameSearch);
 
   return (
     <Card className="border-2 border-admin-blue/20">
@@ -107,131 +219,155 @@ export const OutboundCallCard = ({ initialPhone, initialLeadId }: OutboundCallCa
           <div>
             <CardTitle className="text-lg">Make a Call</CardTitle>
             <CardDescription>
-              {healthStatus.deviceReady 
-                ? 'Dial a number or select a contact' 
+              {healthStatus.deviceReady
+                ? 'Search a name or enter a number'
                 : 'Connecting phone system...'}
             </CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Tab Buttons */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button
-            variant={activeTab === 'dial' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveTab('dial')}
-            className="flex-1 min-w-0"
-          >
-            <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span className="truncate">Dial</span>
-          </Button>
-          <Button
-            variant={activeTab === 'contacts' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveTab('contacts')}
-            className="flex-1 min-w-0"
-          >
-            <User className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span className="truncate">Contacts</span>
-          </Button>
+      <CardContent className="space-y-3">
+        <div className="space-y-2" ref={containerRef}>
+          <Label htmlFor="phone-input">Name or Phone Number</Label>
+          <div className="relative">
+            <Input
+              id="phone-input"
+              type="text"
+              autoComplete="off"
+              placeholder="Search by name or type a number"
+              value={query}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              onFocus={() => setShowResults(true)}
+              onKeyDown={handleInputKeyDown}
+              disabled={isCallInProgress}
+              className="pr-8"
+            />
+            {query.length > 0 && !isCallInProgress && (
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+
+            {/* Suggestions dropdown — only opens when the user is searching by
+                name (or hasn't typed anything yet). For a typed phone number,
+                hide the dropdown so the user can dial without distraction.
+                Visual language: flat design, slate neutrals, no gradients, no
+                heavy shadows. Each row reads as a 3-zone grid: identity (avatar
+                + name + company stacked) on the left, phone right-aligned with
+                tabular numerals so 10-digit numbers never truncate. Active row
+                uses a subtle slate tint instead of a saturated highlight. */}
+            {showResults && (isNameSearch || query.length === 0) && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-md border border-border bg-popover text-popover-foreground shadow-sm max-h-80 overflow-auto">
+                {isFetching ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : visibleContacts.length === 0 ? (
+                  <div className="text-center py-6 px-4 text-xs text-muted-foreground">
+                    {query.trim().length > 0
+                      ? 'No contacts match'
+                      : 'Type a name to search'}
+                  </div>
+                ) : (
+                  <ul role="listbox" aria-label="Matching contacts" className="py-1">
+                    {visibleContacts.map((c, i) => {
+                      const isActive = i === highlightedIndex;
+                      const initial = c.name.charAt(0).toUpperCase();
+                      return (
+                        <li key={c.id} role="option" aria-selected={isActive}>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => {
+                              // mouseDown so the input doesn't lose focus and
+                              // close the dropdown before the click registers.
+                              e.preventDefault();
+                              handlePickContact(c);
+                            }}
+                            onMouseEnter={() => setHighlightedIndex(i)}
+                            className={`group w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors duration-150 ${
+                              isActive ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                            }`}
+                          >
+                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center flex-shrink-0">
+                              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                                {initial}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate leading-tight">
+                                {c.name}
+                              </p>
+                              {c.company_name && (
+                                <p className="mt-0.5 text-[11px] text-muted-foreground truncate flex items-center gap-1 leading-tight">
+                                  <Building2 className="h-3 w-3 flex-shrink-0" />
+                                  <span className="truncate">{c.company_name}</span>
+                                </p>
+                              )}
+                            </div>
+                            {c.phone && (
+                              <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap flex-shrink-0">
+                                {formatPhoneNumber(c.phone)}
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Selected contact pill — confirms which person you're about to call. */}
+          {selectedContact && (
+            <div className="flex items-center justify-between rounded-md border border-admin-blue/30 bg-admin-blue/5 px-3 py-2 text-xs">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{selectedContact.name}</p>
+                <p className="text-muted-foreground truncate">
+                  {selectedContact.phone ? formatPhoneNumber(selectedContact.phone) : 'No phone'}
+                  {selectedContact.company_name ? ` · ${selectedContact.company_name}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Clear contact"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
-        {activeTab === 'dial' ? (
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="phone-input">Phone Number</Label>
-              <Input
-                id="phone-input"
-                type="tel"
-                placeholder="(555) 123-4567"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(formatPhoneAsYouType(e.target.value))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && phoneNumber && !isCallInProgress) {
-                    handleDialpadCall();
-                  }
-                }}
-                disabled={isCallInProgress}
-              />
-            </div>
-            <Button
-              onClick={handleDialpadCall}
-              disabled={!phoneNumber || isCallInProgress || !healthStatus.deviceReady}
-              className="w-full"
-            >
-              {!healthStatus.deviceReady ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Connecting...
-                </>
-              ) : isCallInProgress ? (
-                <>
-                  <Phone className="h-4 w-4 mr-2 animate-pulse" />
-                  Call in Progress
-                </>
-              ) : (
-                <>
-                  <Phone className="h-4 w-4 mr-2" />
-                  Call Now
-                </>
-              )}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <Input
-              placeholder="Search contacts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <ScrollArea className="h-[200px]">
-              {leadsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : leads.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  {searchQuery ? 'No contacts found' : 'No contacts with phone numbers'}
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {leads.map((lead) => (
-                    <button
-                      key={lead.id}
-                      onClick={() => handleContactCall(lead)}
-                      disabled={isCallInProgress || !healthStatus.deviceReady}
-                      className="w-full p-3 rounded-lg hover:bg-muted/50 transition-colors text-left flex items-center gap-3 disabled:opacity-50"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-admin-blue to-admin-blue-dark flex items-center justify-center flex-shrink-0">
-                        <span className="text-white font-semibold">
-                          {lead.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{lead.name}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          {lead.company_name && (
-                            <span className="flex items-center gap-1 truncate">
-                              <Building2 className="h-3 w-3" />
-                              {lead.company_name}
-                            </span>
-                          )}
-                        </div>
-                        {lead.phone && (
-                          <p className="text-xs text-muted-foreground">
-                            {formatPhoneNumber(lead.phone)}
-                          </p>
-                        )}
-                      </div>
-                      <PhoneOutgoing className="h-4 w-4 text-admin-blue flex-shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </div>
-        )}
+        <Button
+          onClick={handleCall}
+          disabled={callDisabled}
+          className="w-full"
+        >
+          {!healthStatus.deviceReady ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Connecting...
+            </>
+          ) : isCallInProgress ? (
+            <>
+              <Phone className="h-4 w-4 mr-2 animate-pulse" />
+              Call in Progress
+            </>
+          ) : (
+            <>
+              <Phone className="h-4 w-4 mr-2" />
+              {selectedContact ? `Call ${selectedContact.name}` : 'Call Now'}
+            </>
+          )}
+        </Button>
       </CardContent>
     </Card>
   );

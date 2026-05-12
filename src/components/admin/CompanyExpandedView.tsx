@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
+import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -869,8 +870,10 @@ export default function CompanyExpandedView() {
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
-        {/* LEFT: Company Details */}
-        <ScrollArea className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
+        {/* LEFT: Company Details — structured to match ExpandedLeftColumn (Pipeline). Plain div w/
+            native overflow so long unbroken values don't push the column wider; Radix
+            ScrollArea's table-display viewport doesn't constrain inner width. */}
+        <div className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-y-auto overflow-x-hidden">
           <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
             {/* ── Close (X) ── */}
@@ -1102,7 +1105,7 @@ export default function CompanyExpandedView() {
             </div>
 
           </div>
-        </ScrollArea>
+        </div>
 
         {/* MIDDLE: Activity */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
@@ -1349,8 +1352,10 @@ export default function CompanyExpandedView() {
           </ScrollArea>
         </div>
 
-        {/* RIGHT: Related */}
-        <ScrollArea className="w-full md:w-[260px] lg:w-[310px] xl:w-[340px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-hidden">
+        {/* RIGHT: Related — same overflow pattern as the left column. Plain div w/ native
+            overflow keeps the "+ Add file" button and other content inside the column;
+            Radix ScrollArea's table-display viewport doesn't constrain inner width. */}
+        <div className="w-full md:w-[260px] lg:w-[310px] xl:w-[340px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-y-auto overflow-x-hidden">
           <div className="py-4 px-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>
 
@@ -1482,12 +1487,17 @@ export default function CompanyExpandedView() {
               <p className="text-xs text-muted-foreground py-1">No events</p>
             </RelatedSection>
 
-            {/* Files placeholder */}
+            {/* Files */}
             <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={0}>
-              <p className="text-xs text-muted-foreground py-1">No files</p>
+              <EntityFilesSection
+                entityId={company.id}
+                entityType="companies"
+                entityName={company.company_name}
+                companyName={company.company_name}
+              />
             </RelatedSection>
           </div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );

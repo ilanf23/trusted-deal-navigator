@@ -16,6 +16,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { formatPhoneNumber } from './InlineEditableFields';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { PipelineRecordsSection, type PipelineRecord } from './shared/PipelineRecordsSection';
+import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -644,6 +645,24 @@ function RelatedTabContent({ company, contactTypeConfig }: { company: Company; c
               );
             })()}
           </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Files */}
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 hover:bg-muted/50 px-1 rounded-lg transition-colors">
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <span className="text-orange-500"><FileText className="h-3.5 w-3.5" /></span> Files
+          </span>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pl-6 pb-2">
+          <EntityFilesSection
+            entityId={company.id}
+            entityType="companies"
+            entityName={company.company_name}
+            companyName={company.company_name}
+          />
         </CollapsibleContent>
       </Collapsible>
     </div>

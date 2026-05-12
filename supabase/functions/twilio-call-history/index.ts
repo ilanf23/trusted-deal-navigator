@@ -183,9 +183,34 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Sort newest-first by Twilio's date_created (RFC 2822 string).
     twilioCalls.sort((a, b) => new Date(b.date_created).getTime() - new Date(a.date_created).getTime());
     const limited = twilioCalls.slice(0, pageSize);
+
+    // Build a `users.id → users.name` map so we can swap out raw Twilio Client
+    // identities like `client:clx-admin-<userId>` for the human-readable rep
+    // name (e.g. "Evan") wherever they would otherwise leak into the UI.
+    const { data: clientUsers } = await supabase
+      .from('users')
+      .select('id, name');
+    const userIdToName = new Map<string, string>(
+      ((clientUsers ?? []) as { id: string; name: string | null }[])
+        .filter((u) => !!u.name)
+        .map((u) => [u.id, u.name as string]),
+    );
+
+    // Replace `client:clx-admin[-<userId>]` with the matching admin's name.
+    // Real phone numbers and any other identity shape pass through untouched.
+    const friendlyIdentity = (raw: string | null | undefined): string => {
+      if (!raw) return '';
+      if (!raw.startsWith('client:')) return raw;
+      const m = raw.match(/^client:clx-admin(?:-(.+))?$/);
+      if (!m) return raw;
+      const userId = m[1];
+      if (userId) {
+        return userIdToName.get(userId) ?? 'Admin';
+      }
+      return 'Admin';
+    };
 
     // Enrichment: pull every communications row matching the returned call_sids
     // in a single query. This is where transcript / recording_url / lead_id /
@@ -237,7 +262,7 @@ Deno.serve(async (req) => {
         id: enrichment?.id ?? call.sid,
         communication_type: 'call',
         direction: normalizeDirection(call.direction),
-        phone_number: otherPartyNumber(call, ownerNumber),
+        phone_number: friendlyIdentity(otherPartyNumber(call, ownerNumber)),
         status: call.status,
         duration_seconds: parseDuration(call.duration),
         created_at: call.start_time ?? call.date_created,

@@ -20,6 +20,7 @@ import { useInlineSave as useSharedInlineSave } from './shared/useInlineSave';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
 import { PipelineRecordsSection, type PipelineRecord } from './shared/PipelineRecordsSection';
+import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -1249,71 +1250,13 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
       </RelatedSection>
 
       {/* ── Files ── */}
-      <RelatedSection label="Files" count={personFiles.length} onAdd={() => fileInputRef.current?.click()}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          onChange={handleFileUpload}
+      <RelatedSection label="Files" count={personFiles.length}>
+        <EntityFilesSection
+          entityId={person.id}
+          entityType="people"
+          entityName={person.name}
+          companyName={person.company_name ?? undefined}
         />
-        <div
-          className={`space-y-1.5 rounded-lg transition-colors ${isDragging ? 'bg-[#eee6f6] dark:bg-purple-950/30 border-2 border-dashed border-[#3b2778] p-2' : ''}`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {isDragging ? (
-            <div className="flex flex-col items-center justify-center py-4 gap-1.5">
-              <Upload className="h-5 w-5 text-[#3b2778]" />
-              <span className="text-[13px] font-medium text-[#3b2778]">Drop file here</span>
-            </div>
-          ) : (
-            <>
-              {personFiles.map((f) => (
-                <div key={f.id} className="flex items-center gap-2 text-[13px] p-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-                  <span className="text-sm shrink-0">{getFileIcon(f.file_type)}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">{f.file_name}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {formatFileSize(f.file_size)} · {formatDate(f.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }}
-                      className="p-1 rounded hover:bg-muted"
-                      title="Download"
-                    >
-                      <Download className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteFile(f)}
-                      className="p-1 rounded hover:bg-muted"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {uploadingFile && (
-                <div className="flex items-center gap-2 text-[13px] text-muted-foreground py-1">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3b2778]" />
-                  Uploading...
-                </div>
-              )}
-              {personFiles.length === 0 && !uploadingFile && (
-                <p className="text-[13px] text-muted-foreground/50 py-1">No files</p>
-              )}
-            </>
-          )}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="text-[13px] text-[#3b2778] dark:text-purple-400 font-medium hover:text-[#2a1d5c] dark:hover:text-purple-300 transition-colors py-1"
-          >
-            + Upload file...
-          </button>
-        </div>
       </RelatedSection>
 
       {/* ── Calendar Events ── */}

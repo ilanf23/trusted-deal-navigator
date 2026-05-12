@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { usePageDatabases } from '@/hooks/usePageDatabases';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { OutboundCallCard } from '@/components/employee/OutboundCallCard';
+import { AddOpportunityDialog } from '@/components/admin/AddOpportunityDialog';
+import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useCall } from '@/contexts/CallContext';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -30,7 +32,6 @@ import {
   Mail,
   Calendar,
   DollarSign,
-  Clock,
   Loader2,
   AlertCircle,
   FileText,
@@ -43,9 +44,7 @@ import {
   Play,
   ChevronDown,
   ChevronRight,
-  Search,
   RefreshCw,
-  ExternalLink,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -204,69 +203,50 @@ const getTranscriptStatus = (
   return 'no-recording';
 };
 
-const getCallStatusBadge = (status: string | null) => {
+// Inline status indicator: a dot + label, instead of a filled pill. Reads as
+// metadata in the row's secondary line rather than a CTA-shaped badge.
+const StatusIndicator = ({ status }: { status: string | null }) => {
   if (!status) return null;
-  if (status === 'completed') {
-    return (
-      <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] h-5 px-1.5">
-        Completed
-      </Badge>
-    );
+  let color = 'text-muted-foreground';
+  let label = status;
+  if (status === 'completed') { color = 'text-emerald-600'; label = 'Completed'; }
+  else if (isMissedStatus(status)) {
+    color = 'text-amber-600';
+    label = status === 'no-answer' ? 'No answer' : status.charAt(0).toUpperCase() + status.slice(1);
   }
-  if (isMissedStatus(status)) {
-    return (
-      <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] h-5 px-1.5">
-        {status === 'no-answer' ? 'No answer' : status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
-  }
-  if (isFailedStatus(status)) {
-    return (
-      <Badge variant="secondary" className="bg-red-100 text-red-700 border-red-200 text-[10px] h-5 px-1.5">
-        Failed
-      </Badge>
-    );
-  }
-  if (status === 'in-progress' || status === 'ringing') {
-    return (
-      <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] h-5 px-1.5">
-        {status === 'ringing' ? 'Ringing' : 'In progress'}
-      </Badge>
-    );
+  else if (isFailedStatus(status)) { color = 'text-rose-600'; label = 'Failed'; }
+  else if (status === 'in-progress' || status === 'ringing') {
+    color = 'text-sky-600';
+    label = status === 'ringing' ? 'Ringing' : 'In progress';
   }
   return (
-    <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-      {status}
-    </Badge>
+    <span className={`inline-flex items-center gap-1 ${color}`}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+      <span>{label}</span>
+    </span>
   );
 };
 
-const getTranscriptBadge = (ts: TranscriptStatus) => {
+// Compact transcript hint shown in the secondary line. Returns null for the
+// no-recording case so we don't add metadata clutter to most rows.
+const TranscriptHint = ({ ts }: { ts: TranscriptStatus }) => {
   switch (ts) {
     case 'available':
       return (
-        <Badge variant="secondary" className="bg-violet-100 text-violet-700 border-violet-200 text-[10px] h-5 px-1.5">
-          <FileText className="h-2.5 w-2.5 mr-1" /> Transcript
-        </Badge>
+        <span className="inline-flex items-center gap-1 text-violet-600">
+          <FileText className="h-3 w-3" /> Transcript
+        </span>
       );
     case 'generating':
       return (
-        <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] h-5 px-1.5">
-          <Loader2 className="h-2.5 w-2.5 mr-1 animate-spin" /> Generating…
-        </Badge>
+        <span className="inline-flex items-center gap-1 text-sky-600">
+          <Loader2 className="h-3 w-3 animate-spin" /> Generating
+        </span>
       );
     case 'pending':
-      return (
-        <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] h-5 px-1.5">
-          Pending
-        </Badge>
-      );
+      return <span className="text-amber-600">Pending</span>;
     case 'no-recording':
-      return (
-        <Badge variant="outline" className="text-muted-foreground text-[10px] h-5 px-1.5">
-          No recording
-        </Badge>
-      );
+      return null;
   }
 };
 
@@ -277,9 +257,9 @@ const Calls = () => {
     { table: 'active_calls', access: 'read', usage: 'Live call state for in-progress Twilio sessions.', via: 'src/contexts/CallContext.tsx' },
     { table: 'call_events', access: 'read', usage: 'Historical call timeline/events shown in the list.', via: 'useQuery in Calls.tsx' },
     { table: 'communications', access: 'read', usage: 'Completed calls persisted as communications records.', via: 'useQuery in Calls.tsx' },
-    { table: 'communications', access: 'write', usage: 'Linking a call to a newly created lead via lead_id update.', via: 'addLeadMutation in Calls.tsx' },
+    { table: 'communications', access: 'write', usage: 'Linking a call to a newly created lead via lead_id update.', via: 'handleLeadCreatedFromCall in Calls.tsx' },
     { table: 'potential', access: 'read', usage: 'Linked lead/deal context for each call row.', via: 'useQuery in Calls.tsx' },
-    { table: 'potential', access: 'write', usage: 'Creating leads from inbound calls (Add Lead dialog).', via: 'addLeadMutation in Calls.tsx' },
+    { table: 'potential', access: 'write', usage: 'Creating leads from inbound calls (Add Lead dialog).', via: 'AddOpportunityDialog → useCrmMutations in Calls.tsx' },
     { table: 'pipeline', access: 'read', usage: 'Joined for company/deal context on call history rows.', via: 'callHistory query in Calls.tsx' },
     { table: 'deal_responses', access: 'read', usage: 'Loan questionnaire details rendered for the matched lead.', via: 'leadResponse query in Calls.tsx' },
     { table: 'twilio-call-history', access: 'rpc', usage: 'Edge function fetching call history from Twilio API and enriching with communications rows by call_sid.', via: 'supabase.functions.invoke("twilio-call-history")' },
@@ -326,12 +306,16 @@ const Calls = () => {
     }
   }, [prefilledPhone, prefilledLeadId, setSearchParams]);
 
-  // Add Lead Dialog state
+  // Add Lead Dialog state. The full form is delegated to <AddOpportunityDialog>;
+  // we only track which call kicked the dialog open so we can link the new
+  // lead back to the call's communications row in onCreated.
   const [addLeadDialogOpen, setAddLeadDialogOpen] = useState(false);
   const [selectedCallForLead, setSelectedCallForLead] = useState<CallLog | null>(null);
-  const [newLeadName, setNewLeadName] = useState('');
-  const [newLeadEmail, setNewLeadEmail] = useState('');
-  const [newLeadCompany, setNewLeadCompany] = useState('');
+  const { data: assignableUsers = [] } = useAssignableUsers();
+  const ownerOptions = useMemo(
+    () => assignableUsers.map((u) => ({ value: u.id, label: u.name })),
+    [assignableUsers],
+  );
 
   // Automation confirmation dialog state
   const [automationConfirmOpen, setAutomationConfirmOpen] = useState(false);
@@ -459,101 +443,27 @@ const Calls = () => {
   });
 
 
-  // Add lead mutation with full automation workflow
-  const addLeadMutation = useMutation({
-    mutationFn: async ({ name, email, phone, company, communicationId, hasTranscript, transcript, direction, callDate }: {
-      name: string;
-      email: string;
-      phone: string;
-      company: string;
-      communicationId: string;
-      hasTranscript: boolean;
-      transcript: string | null;
-      direction: string;
-      callDate: string;
-    }) => {
-      // Assign new lead to the rep who took the call (current user).
-      const transcriptNote = hasTranscript
-        ? `📞 Initial call: ${callDate}\n📝 Transcript available (Communication ID: ${communicationId})`
-        : `📞 Initial call: ${callDate}\n⏳ No transcript available yet`;
-
-      const { data, error } = await supabase
-        .from('potential')
-        .insert({
-          name,
-          email: email || null,
-          phone,
-          company_name: company || null,
-          source: 'phone_call',
-          status: 'discovery',
-          assigned_to: teamMember?.id || null,
-          notes: transcriptNote,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return { lead: data, transcript, direction, callDate };
-    },
-    onSuccess: async (result, _variables) => {
-      const { lead } = result;
-
-      // Update the call record to link to this lead
-      if (selectedCallForLead) {
-        await supabase
-          .from('communications')
-          .update({ lead_id: lead.id })
-          .eq('id', selectedCallForLead.id);
-      }
-
-      const ownerPipelineLabel = teamMember?.name ? `${teamMember.name}'s pipeline` : 'your pipeline';
-      toast.success(`Lead "${lead.name}" added to ${ownerPipelineLabel}`);
-
-      queryClient.invalidateQueries({ queryKey: ['call-history'] });
-      queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
-      setAddLeadDialogOpen(false);
-      setSelectedCallForLead(null);
-      setNewLeadName('');
-      setNewLeadEmail('');
-      setNewLeadCompany('');
-    },
-    onError: (error: Error) => {
-      toast.error('Failed to create lead: ' + error.message);
-    },
-  });
-
   const handleOpenAddLeadDialog = (call: CallLog) => {
     setSelectedCallForLead(call);
-    setNewLeadName('');
-    setNewLeadEmail('');
-    setNewLeadCompany('');
     setAddLeadDialogOpen(true);
   };
 
-  const handleAddLead = () => {
-    if (!newLeadName.trim()) {
-      toast.error('Please enter a name for the lead');
-      return;
+  // After AddOpportunityDialog creates the deal, link it back to the call's
+  // communications row so the call shows up in the deal's history and the
+  // call-history list renders the deal name + company in the row chrome.
+  const handleLeadCreatedFromCall = async (created: { id: string; name: string }) => {
+    const call = selectedCallForLead;
+    if (!call) return;
+    const { error } = await supabase
+      .from('communications')
+      .update({ lead_id: created.id })
+      .eq('id', call.id);
+    if (error) {
+      console.error('[calls] failed to link communications.lead_id:', error);
+      toast.error('Lead created, but linking the call failed');
     }
-    if (!selectedCallForLead?.phone_number) {
-      toast.error('No phone number available for this call');
-      return;
-    }
-
-    const callDate = selectedCallForLead ? format(new Date(selectedCallForLead.created_at), 'MMM d, yyyy h:mm a') : '';
-
-    addLeadMutation.mutate({
-      name: newLeadName.trim(),
-      email: newLeadEmail.trim(),
-      phone: selectedCallForLead.phone_number,
-      company: newLeadCompany.trim(),
-      communicationId: selectedCallForLead.id,
-      hasTranscript: !!selectedCallForLead.transcript,
-      transcript: selectedCallForLead.transcript || null,
-      direction: selectedCallForLead.direction,
-      callDate: callDate,
-    });
+    await queryClient.invalidateQueries({ queryKey: ['call-history'] });
+    setSelectedCallForLead(null);
   };
 
   const handleGenerateTranscript = async (call: CallLog) => {
@@ -1143,16 +1053,13 @@ const Calls = () => {
                         )}
                       </div>
 
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input
-                          type="search"
-                          placeholder="Search transcript, phone, deal, company…"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-8 h-8 text-xs"
-                        />
-                      </div>
+                      <Input
+                        type="search"
+                        placeholder="Search transcript, phone, deal, company…"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="h-8 text-xs"
+                      />
                     </div>
                   );
                 })()}
@@ -1187,7 +1094,7 @@ const Calls = () => {
                       )}
                     </div>
                   ) : (
-                    <div className="divide-y">
+                    <div className="divide-y divide-border">
                       {filteredHistory.map((call) => {
                         const isExpanded = !!expandedRows[call.id];
                         const isSelected = selectedHistoryCall?.id === call.id;
@@ -1199,148 +1106,194 @@ const Calls = () => {
                           : call.direction === 'inbound'
                             ? PhoneIncoming
                             : PhoneOutgoing;
+                        // Subtle directional accent: light tint + saturated icon.
+                        // Failed/missed → rose, inbound → emerald, outbound → sky.
+                        // Resists the saturated red/green bubbles of the prior design.
                         const iconWrapClass = missed || failed
-                          ? 'bg-red-100 text-red-600'
+                          ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-100'
                           : call.direction === 'inbound'
-                            ? 'bg-green-100 text-green-600'
-                            : 'bg-blue-100 text-blue-600';
+                            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+                            : 'bg-sky-50 text-sky-700 ring-1 ring-sky-100';
+
+                        // Filter out empty / stub identifiers (Twilio test calls
+                        // with `from` of just "+" should read as Unknown caller,
+                        // not as a phone number).
+                        const rawPhone = call.phone_number?.trim() ?? '';
+                        const hasPhone = rawPhone.length > 1 && rawPhone !== '+';
+                        const primaryLabel = call.pipeline?.name
+                          || (hasPhone ? formatPhoneNumber(rawPhone) : 'Unknown caller');
+
+                        // Secondary line shows the phone *only* if it adds info
+                        // beyond the primary label (i.e. the primary label is a
+                        // pipeline name, not the phone itself).
+                        const showPhoneInMeta = !!call.pipeline?.name && hasPhone;
+
+                        const transcriptHint = <TranscriptHint ts={ts} />;
 
                         return (
                           <div
                             key={call.id}
-                            className={`p-3 transition-colors ${
-                              isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-muted/40'
+                            className={`group relative px-3 py-2.5 transition-colors ${
+                              isSelected
+                                ? 'bg-slate-50 dark:bg-slate-900/40'
+                                : 'hover:bg-slate-50/60 dark:hover:bg-slate-900/20'
                             }`}
                           >
+                            {isSelected && (
+                              <span className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary" aria-hidden />
+                            )}
                             <div
-                              className="flex items-start gap-3 cursor-pointer"
+                              className="flex items-center gap-3 cursor-pointer"
                               onClick={() => setSelectedHistoryCall(isSelected ? null : call)}
                             >
-                              <div className={`p-2 rounded-full shrink-0 ${iconWrapClass}`}>
-                                <Icon className="h-4 w-4" />
+                              {/* Direction icon — small, ringed, low-saturation */}
+                              <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${iconWrapClass}`}>
+                                <Icon className="h-3.5 w-3.5" />
                               </div>
+
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="font-medium text-sm truncate">
-                                    {call.pipeline?.name || formatPhoneNumber(call.phone_number || 'Unknown')}
+                                {/* Primary line: identity + duration */}
+                                <div className="flex items-baseline gap-2">
+                                  <p className="font-medium text-sm text-foreground truncate flex-1 leading-tight">
+                                    {primaryLabel}
                                   </p>
-                                  <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
+                                  <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap shrink-0">
                                     {formatDuration(call.duration_seconds)}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                                  <span>
-                                    {call.phone_number ? formatPhoneNumber(call.phone_number) : 'No number'}
+
+                                {/* Secondary line: timestamp · phone · company · status · transcript */}
+                                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap leading-tight">
+                                  <span className="whitespace-nowrap">
+                                    {format(new Date(call.created_at), 'MMM d · h:mm a')}
                                   </span>
-                                  {call.pipeline?.company_name && (
-                                    <span>• {call.pipeline.company_name}</span>
+                                  {showPhoneInMeta && (
+                                    <>
+                                      <span className="text-border" aria-hidden>·</span>
+                                      <span className="tabular-nums whitespace-nowrap">
+                                        {formatPhoneNumber(rawPhone)}
+                                      </span>
+                                    </>
                                   )}
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                                  <span className="text-[11px] text-muted-foreground">
-                                    {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
-                                  </span>
-                                  {getCallStatusBadge(call.status)}
-                                  {getTranscriptBadge(ts)}
+                                  {call.pipeline?.company_name && (
+                                    <>
+                                      <span className="text-border" aria-hidden>·</span>
+                                      <span className="truncate">{call.pipeline.company_name}</span>
+                                    </>
+                                  )}
+                                  {call.status && (
+                                    <>
+                                      <span className="text-border" aria-hidden>·</span>
+                                      <StatusIndicator status={call.status} />
+                                    </>
+                                  )}
+                                  {transcriptHint && (
+                                    <>
+                                      <span className="text-border" aria-hidden>·</span>
+                                      {transcriptHint}
+                                    </>
+                                  )}
                                 </div>
                               </div>
-                            </div>
 
-                            {/* Per-row action bar */}
-                            <div className="mt-2 flex items-center gap-1 flex-wrap pl-11">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-xs"
-                                title="Redial"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRedial(call.phone_number, call.lead_id);
-                                }}
-                              >
-                                <Phone className="h-3 w-3 mr-1" /> Redial
-                              </Button>
+                              {/* Action bar — icon-only, hidden until row hover/focus */}
+                              <div className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                                {hasPhone && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                    title="Redial"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRedial(call.phone_number, call.lead_id);
+                                    }}
+                                  >
+                                    <Phone className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
 
-                              {(call.recording_url || call.transcript) && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleRowExpanded(call.id);
-                                  }}
-                                >
-                                  {isExpanded ? (
-                                    <ChevronDown className="h-3 w-3 mr-1" />
-                                  ) : (
-                                    <ChevronRight className="h-3 w-3 mr-1" />
-                                  )}
-                                  {isExpanded ? 'Hide' : 'Play / view'}
-                                </Button>
-                              )}
+                                {(call.recording_url || call.transcript) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                    title={isExpanded ? 'Hide' : 'Play / view'}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleRowExpanded(call.id);
+                                    }}
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-3.5 w-3.5" />
+                                    ) : (
+                                      <ChevronRight className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                )}
 
-                              {call.recording_url && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs"
-                                  disabled={retryingTranscriptId === call.id}
-                                  onClick={(e) => handleRetryTranscriptionInline(call, e)}
-                                  title={call.transcript ? 'Re-generate transcript' : 'Generate transcript'}
-                                >
-                                  {retryingTranscriptId === call.id ? (
-                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                  ) : (
-                                    <RefreshCw className="h-3 w-3 mr-1" />
-                                  )}
-                                  {call.transcript ? 'Re-transcribe' : 'Transcribe'}
-                                </Button>
-                              )}
+                                {call.recording_url && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                    title={call.transcript ? 'Re-transcribe' : 'Transcribe'}
+                                    disabled={retryingTranscriptId === call.id}
+                                    onClick={(e) => handleRetryTranscriptionInline(call, e)}
+                                  >
+                                    {retryingTranscriptId === call.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <RefreshCw className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                )}
 
-                              {call.transcript && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedTranscriptCall(call);
-                                    setTranscriptDialogOpen(true);
-                                    setTranscriptError(null);
-                                  }}
-                                >
-                                  <ExternalLink className="h-3 w-3 mr-1" />
-                                  Open
-                                </Button>
-                              )}
+                                {call.transcript && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                    title="Open transcript"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedTranscriptCall(call);
+                                      setTranscriptDialogOpen(true);
+                                      setTranscriptError(null);
+                                    }}
+                                  >
+                                    <FileText className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
 
-                              {call.lead_id ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs ml-auto"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedHistoryCall(call);
-                                  }}
-                                >
-                                  <User className="h-3 w-3 mr-1" /> Open lead
-                                </Button>
-                              ) : call.phone_number ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs ml-auto text-muted-foreground hover:text-primary"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenAddLeadDialog(call);
-                                  }}
-                                >
-                                  <UserPlus className="h-3 w-3 mr-1" /> Add lead
-                                </Button>
-                              ) : null}
+                                {call.lead_id ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                    title="Open lead"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedHistoryCall(call);
+                                    }}
+                                  >
+                                    <User className="h-3.5 w-3.5" />
+                                  </Button>
+                                ) : hasPhone ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+                                    title="Add lead"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenAddLeadDialog(call);
+                                    }}
+                                  >
+                                    <UserPlus className="h-3.5 w-3.5" />
+                                  </Button>
+                                ) : null}
+                              </div>
                             </div>
 
                             {/* Expanded panel: audio + inline transcript preview */}
@@ -1465,79 +1418,28 @@ const Calls = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add Lead Dialog */}
-      <Dialog open={addLeadDialogOpen} onOpenChange={setAddLeadDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              Add as Lead
-            </DialogTitle>
-            <DialogDescription>
-              Create a new lead from this call
-              {selectedCallForLead?.phone_number && (
-                <span className="block mt-1 font-medium text-foreground">
-                  {formatPhoneNumber(selectedCallForLead.phone_number)}
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="lead-name">Name *</Label>
-              <Input
-                id="lead-name"
-                placeholder="Enter lead name"
-                value={newLeadName}
-                onChange={(e) => setNewLeadName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lead-email">Email</Label>
-              <Input
-                id="lead-email"
-                type="email"
-                placeholder="Enter email address"
-                value={newLeadEmail}
-                onChange={(e) => setNewLeadEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lead-company">Company</Label>
-              <Input
-                id="lead-company"
-                placeholder="Enter company name"
-                value={newLeadCompany}
-                onChange={(e) => setNewLeadCompany(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAddLeadDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddLead}
-              disabled={addLeadMutation.isPending || !newLeadName.trim()}
-            >
-              {addLeadMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Create Lead
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Add Lead Dialog — full opportunity form with phone pre-filled from
+          the selected call. Uses the same component the pipeline pages use,
+          so every field on those forms is available here. */}
+      <AddOpportunityDialog
+        open={addLeadDialogOpen}
+        onOpenChange={(open) => {
+          setAddLeadDialogOpen(open);
+          if (!open) setSelectedCallForLead(null);
+        }}
+        tableName="potential"
+        ownerOptions={ownerOptions}
+        allowPipelineSwitch
+        prefill={{
+          phone: selectedCallForLead?.phone_number ?? '',
+          source: 'phone_call',
+          assigned_to: teamMember?.id ?? '',
+          description: selectedCallForLead
+            ? `📞 Initial call: ${format(new Date(selectedCallForLead.created_at), 'MMM d, yyyy h:mm a')}${selectedCallForLead.transcript ? ' — transcript available' : ''}`
+            : '',
+        }}
+        onCreated={handleLeadCreatedFromCall}
+      />
 
       {/* Automation Confirmation Dialog */}
       <Dialog open={automationConfirmOpen} onOpenChange={(open) => {

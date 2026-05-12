@@ -7,7 +7,7 @@ import {
   FolderOpen, AtSign, MapPin, Trash2,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
-import { LeadFilesSection } from '@/components/admin/LeadFilesSection';
+import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
 import { HtmlContent } from '@/components/ui/html-content';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -886,7 +886,12 @@ function RelatedTabContent({
 
       {/* Files */}
       <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={files.length} iconColor="text-orange-500">
-        <LeadFilesSection leadId={lead.id} leadName={lead.name} companyName={lead.company_name} />
+        <EntityFilesSection
+          entityId={lead.id}
+          entityType="potential"
+          entityName={lead.name}
+          companyName={lead.company_name}
+        />
       </RelatedSection>
 
       {/* Pipeline */}

@@ -98,6 +98,49 @@ The sales rep admin portal uses a single shared component set for drag-to-reorde
 - `EmployeePipeline.tsx` — uses a different column-management system (`usePipelineColumns`) with runtime-added columns; needs a custom integration.
 - `Projects.tsx` — minimal table (5 cols, no visibility state); can be added with a slightly trimmed recipe.
 
+### ExpandedView side-column layout — overflow / wrapping rules
+
+The `*ExpandedView` pages (People, Company, Project, Pipeline, Underwriting, Lender, etc.) all use a 3-column layout: **LEFT details column → CENTER activity column → RIGHT related column**. The reference implementation for the LEFT column is the shared `ExpandedLeftColumn.tsx` (used by `PipelineExpandedView`, `UnderwritingExpandedView`, `LenderManagementExpandedView`). People / Company / Project inline their own headers but **must follow the same overflow contract** so long unbroken values don't push content past the column edge.
+
+**Three non-negotiable rules** for both the LEFT details column and the RIGHT related column:
+
+1. **Wrap the column in a plain `<div>`, not Radix `<ScrollArea>`.** Use native overflow:
+   ```tsx
+   <div className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 ... overflow-y-auto overflow-x-hidden">
+     <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
+       {/* column content */}
+     </div>
+   </div>
+   ```
+   **Why:** Radix `ScrollArea`'s viewport renders as `display: table`, which sizes to its intrinsic content rather than honoring `width: 100%` from the parent. Even with `overflow-hidden` on the outer wrapper, children inside the ScrollArea calculate layout against an unconstrained width, so a long unbroken word (or a `flex justify-between` row like the `+ Add file` button) ends up positioned past the visible column. Plain native overflow respects the column's actual width.
+
+2. **Header text container next to the avatar must be `min-w-0 flex-1`** (not just `min-w-0`):
+   ```tsx
+   <div className="flex items-start gap-4">
+     <Avatar ... />
+     <div className="min-w-0 flex-1 pt-0.5">          {/* ← flex-1 is required */}
+       <h2 className="text-xl font-semibold break-words leading-tight">{name}</h2>
+       <p className="text-sm text-muted-foreground mt-0.5 break-words">{subtitle}</p>
+     </div>
+   </div>
+   ```
+   **Why:** Without `flex-1`, the inner div is sized by intrinsic content. With a long unbroken word, `break-words` has no width constraint to break against, so the avatar gets pushed out of view. With `flex-1`, the div fills the row and `min-w-0` lets it shrink so `break-words` can wrap.
+
+3. **All user-content text nodes use `break-words`, not `truncate`.** This applies to header `<h2>`/`<p>`, field-value display spans (the `EditableField`/`FieldRow` value `<span>`/`<p>`), and similar. `truncate` is fine on tightly-bounded inner elements (e.g. file names inside a `flex-1` row that already has icon/action siblings constraining width), but **never** on the primary value display of a stacked field — long unbroken values otherwise expand the row past the visible width and clip the labels on the left.
+
+**Status of each ExpandedView (left + right column):**
+
+| View | Left column | Right column |
+|---|---|---|
+| `PipelineExpandedView` (Potential) | ✅ uses shared `ExpandedLeftColumn` | n/a — different layout |
+| `UnderwritingExpandedView` | ✅ uses shared `ExpandedLeftColumn` | n/a |
+| `LenderManagementExpandedView` | ✅ uses shared `ExpandedLeftColumn` | n/a |
+| `PeopleExpandedView` | ✅ inline header, follows rules | ✅ |
+| `CompanyExpandedView` | ✅ inline header, follows rules | ✅ |
+| `ProjectExpandedView` | ✅ inline header, follows rules | ✅ |
+
+**When adding a new ExpandedView:** prefer reusing `ExpandedLeftColumn` if your record has lead/deal-shaped fields. If you need a custom inline header, copy the structure from `PeopleExpandedView` — including the wrapper, the `min-w-0 flex-1` text container, and `break-words` on every user-content text node. Do **not** wrap the column in `<ScrollArea>`.
+
 **Floating UI:**
 - `FloatingBugReport`, `FloatingInbox` — persistent overlay tools
 

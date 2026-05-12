@@ -23,6 +23,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { sanitizeFileName } from '@/lib/utils';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
@@ -1047,10 +1048,11 @@ export default function ProjectExpandedView() {
       {activeTab === 'overview' && (
         <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
-          {/* LEFT: Details */}
-          <div className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
-            <ScrollArea className="md:h-full">
-              <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
+          {/* LEFT: Details — structured to match ExpandedLeftColumn (Pipeline). Plain div w/
+              native overflow so long unbroken values don't push the column wider; Radix
+              ScrollArea's table-display viewport doesn't constrain inner width. */}
+          <div className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-y-auto overflow-x-hidden">
+            <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
                 {/* ── Close (X) ── */}
                 <button
@@ -1069,9 +1071,9 @@ export default function ProjectExpandedView() {
                     </span>
                   </div>
                   <div className="min-w-0 pt-0.5 flex-1">
-                    <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{project.name}</h2>
+                    <h2 className="text-xl font-semibold text-foreground break-words leading-tight">{project.name}</h2>
                     {lead && (
-                      <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                      <p className="text-sm text-muted-foreground mt-0.5 break-words">
                         {[lead.company_name, lead.name].filter(Boolean).join(' · ')}
                       </p>
                     )}
@@ -1185,8 +1187,7 @@ export default function ProjectExpandedView() {
                   {/* Bank Relationships */}
                   <FieldRow label="Bank Relationships" value={project.bank_relationships ?? ''} onSave={(v) => saveField('bank_relationships', v || null)} placeholder="Add Bank Relationships" />
                 </div>
-              </div>
-            </ScrollArea>
+            </div>
           </div>
 
           {/* CENTER: Activity */}
@@ -1288,58 +1289,21 @@ export default function ProjectExpandedView() {
             </ScrollArea>
           </div>
 
-          {/* RIGHT: Related */}
-          <div className="w-full md:w-[240px] lg:w-[310px] xl:w-[374px] md:shrink-0 md:min-w-[220px] min-w-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
-            <ScrollArea className="md:flex-1">
-              <div className="py-4 px-3 overflow-hidden">
+          {/* RIGHT: Related — same overflow pattern as the left column. Plain div w/ native
+              overflow keeps the "+ Add file" button and other content inside the column;
+              Radix ScrollArea's table-display viewport doesn't constrain inner width. */}
+          <div className="w-full md:w-[240px] lg:w-[310px] xl:w-[374px] md:shrink-0 md:min-w-[220px] min-w-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-y-auto overflow-x-hidden flex flex-col">
+            <div className="py-4 px-3 md:flex-1 overflow-hidden">
                 {/* Files */}
-                <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={leadFiles.length} onAdd={() => fileInputRef.current?.click()}>
-                  <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
-                  <div
-                    className={`space-y-1.5 py-1 rounded-lg transition-colors ${draggingFile ? 'bg-blue-50 dark:bg-blue-950/30 ring-2 ring-blue-400 ring-dashed' : ''}`}
-                    onDragOver={(e) => { e.preventDefault(); setDraggingFile(true); }}
-                    onDragEnter={(e) => { e.preventDefault(); setDraggingFile(true); }}
-                    onDragLeave={(e) => { e.preventDefault(); if (!e.currentTarget.contains(e.relatedTarget as Node)) setDraggingFile(false); }}
-                    onDrop={handleFileDrop}
-                  >
-                    {draggingFile && (
-                      <div className="flex items-center justify-center py-4 text-xs text-blue-600 dark:text-blue-400 font-medium">
-                        Drop file here to upload
-                      </div>
-                    )}
-                    {!draggingFile && (
-                      <>
-                        {leadFiles.map((f) => (
-                          <div key={f.id} className="flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-                            <span className="text-sm shrink-0">{getFileIcon(f.file_type)}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-foreground truncate">{f.file_name}</p>
-                              <p className="text-[10px] text-muted-foreground">{formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}</p>
-                            </div>
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                              <button onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }} className="p-1 rounded hover:bg-muted" title="Download">
-                                <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                              </button>
-                              <button onClick={() => handleDeleteFile(f)} className="p-1 rounded hover:bg-muted" title="Delete">
-                                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                        {uploadingFile && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                            <Loader2 className="h-3 w-3 animate-spin text-orange-500" /> Uploading...
-                          </div>
-                        )}
-                        {leadFiles.length === 0 && !uploadingFile && (
-                          <p className="text-xs text-muted-foreground">No files attached — drag & drop or click to upload</p>
-                        )}
-                        <button onClick={() => fileInputRef.current?.click()} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1">
-                          + Upload file...
-                        </button>
-                      </>
-                    )}
-                  </div>
+                <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={leadFiles.length}>
+                  {project?.entity_id && (
+                    <EntityFilesSection
+                      entityId={project.entity_id}
+                      entityType="potential"
+                      entityName={project?.name ?? lead?.name}
+                      companyName={lead?.company_name ?? undefined}
+                    />
+                  )}
                 </RelatedSection>
 
                 {/* People */}
@@ -1598,8 +1562,7 @@ export default function ProjectExpandedView() {
                     )}
                   </div>
                 </RelatedSection>
-              </div>
-            </ScrollArea>
+            </div>
           </div>
         </div>
       )}
@@ -1643,7 +1606,7 @@ function FieldRow({ label, value, onSave, multiline, placeholder }: {
   return (
     <div className="cursor-pointer hover:bg-muted/40 rounded-md -mx-2 px-2 py-1 transition-colors min-w-0" onClick={() => { setDraft(value); setEditing(true); }}>
       <label className="text-xs text-muted-foreground block mb-0.5">{label}</label>
-      <p className={`text-sm text-foreground ${multiline ? 'whitespace-pre-wrap' : 'truncate'}`}>{value || <span className="text-muted-foreground italic">{placeholder || '—'}</span>}</p>
+      <p className={`text-sm text-foreground ${multiline ? 'whitespace-pre-wrap' : 'break-words'}`}>{value || <span className="text-muted-foreground italic">{placeholder || '—'}</span>}</p>
     </div>
   );
 }
