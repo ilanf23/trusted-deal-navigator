@@ -1,6 +1,6 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
-import { getUserFromRequest } from '../_shared/auth.ts';
+import { requireAdmin } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,22 +37,9 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    let auth;
-    try {
-      auth = await getUserFromRequest(req, supabase);
-    } catch {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
-    if (!auth.teamMember?.id) {
-      return new Response(JSON.stringify({ error: 'No workspace user found' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const adminCheck = await requireAdmin(req, supabase, { corsHeaders });
+    if (!adminCheck.ok) return adminCheck.response;
 
     const body = (await req.json()) as RevokeIntegrationBody;
     if (!body.integration_id) {
@@ -64,20 +51,13 @@ Deno.serve(async (req) => {
 
     const { data: integration, error: getError } = await supabase
       .from('user_integrations')
-      .select('id, user_id')
+      .select('id')
       .eq('id', body.integration_id)
       .maybeSingle();
 
     if (getError || !integration) {
       return new Response(JSON.stringify({ error: 'Integration not found' }), {
         status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (integration.user_id !== auth.teamMember.id) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
-import { sanitizeFileName } from '@/lib/utils';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
@@ -71,16 +70,6 @@ const statusOptions = [
 const stageOptions = Object.entries(stageLabels).map(([value, label]) => ({ value, label }));
 const priorityOptions = [{ value: 'none', label: '—' }, ...Object.entries(priorityLabels).map(([value, label]) => ({ value, label }))];
 
-interface LeadFile {
-  id: string;
-  entity_id: string;
-  file_name: string;
-  file_url: string;
-  file_type: string | null;
-  file_size: number | null;
-  uploaded_by: string | null;
-  created_at: string;
-}
 
 function formatFileSize(bytes: number | null): string {
   if (!bytes) return '';
@@ -170,9 +159,6 @@ export default function ProjectExpandedView() {
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [savingCompany, setSavingCompany] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const [draggingFile, setDraggingFile] = useState(false);
 
   // ── Queries ──
 
@@ -361,20 +347,22 @@ export default function ProjectExpandedView() {
     enabled: addingCompany && companySearchQuery.trim().length > 0,
   });
 
-  // Files for this lead
+  // Files for this lead (shares cache with EntityFilesSection)
   const { data: leadFiles = [] } = useQuery({
-    queryKey: ['project-lead-files', project?.entity_id],
+    queryKey: ['entity-files', 'potential', project?.entity_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('entity_files')
-        .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
+        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
         .eq('entity_id', project!.entity_id)
+        .eq('entity_type', 'potential')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as LeadFile[];
+      return data ?? [];
     },
     enabled: !!project?.entity_id,
   });
+  const [addFilesOpen, setAddFilesOpen] = useState(false);
 
   // Pipeline info for this lead
   const { data: pipelineInfo } = useQuery({
@@ -661,83 +649,6 @@ export default function ProjectExpandedView() {
     toast.success('Company removed');
     queryClient.invalidateQueries({ queryKey: ['project-lead', project.entity_id] });
   }, [project?.entity_id, queryClient]);
-
-  // ── File upload ──
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !project?.entity_id) return;
-    e.target.value = '';
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) { toast.error('You must be logged in to upload files.'); return; }
-
-    setUploadingFile(true);
-    const filePath = `${project.entity_id}/${Date.now()}_${sanitizeFileName(file.name)}`;
-    const { error: uploadError } = await supabase.storage
-      .from('lead-files')
-      .upload(filePath, file, { contentType: file.type || 'application/octet-stream', upsert: true });
-
-    if (uploadError) {
-      setUploadingFile(false);
-      toast.error(`Upload failed: ${uploadError.message || 'Storage error'}`);
-      return;
-    }
-
-    const { error: dbError } = await supabase.from('entity_files').insert({
-      entity_id: project.entity_id,
-      entity_type: 'potential',
-      file_name: file.name,
-      file_url: filePath,
-      file_type: file.type || null,
-      file_size: file.size,
-    });
-    setUploadingFile(false);
-    if (dbError) {
-      await supabase.storage.from('lead-files').remove([filePath]);
-      toast.error('Failed to save file record');
-      return;
-    }
-    toast.success('File uploaded');
-    queryClient.invalidateQueries({ queryKey: ['project-lead-files', project.entity_id] });
-  }, [project?.entity_id, queryClient]);
-
-  // ── File drop handler ──
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDraggingFile(false);
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    // Reuse the upload handler by creating a synthetic event
-    const dt = new DataTransfer();
-    dt.items.add(file);
-    if (fileInputRef.current) {
-      fileInputRef.current.files = dt.files;
-      fileInputRef.current.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  }, []);
-
-  // ── File delete ──
-  const handleDeleteFile = useCallback(async (file: LeadFile) => {
-    await supabase.storage.from('lead-files').remove([file.file_url]);
-    const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
-    if (error) { toast.error('Failed to delete file'); return; }
-    toast.success('File deleted');
-    queryClient.invalidateQueries({ queryKey: ['project-lead-files', project?.entity_id] });
-    // No undo for file deletes — storage object is already removed and cannot be restored
-  }, [project?.entity_id, queryClient]);
-
-  // ── File download (signed URL) ──
-  const handleDownloadFile = useCallback(async (file: LeadFile) => {
-    const { data, error } = await supabase.storage.from('lead-files').createSignedUrl(file.file_url, 60);
-    if (error || !data?.signedUrl) { toast.error('Failed to generate download link'); return; }
-    const a = document.createElement('a');
-    a.href = data.signedUrl;
-    a.download = file.file_name;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, []);
 
   if (isLoading || !project) {
     return (
@@ -1295,13 +1206,21 @@ export default function ProjectExpandedView() {
           <div className="w-full md:w-[240px] lg:w-[310px] xl:w-[374px] md:shrink-0 md:min-w-[220px] min-w-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-y-auto overflow-x-hidden flex flex-col">
             <div className="py-4 px-3 md:flex-1 overflow-hidden">
                 {/* Files */}
-                <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={leadFiles.length}>
+                <RelatedSection
+                  icon={<FileText className="h-3.5 w-3.5" />}
+                  label="Files"
+                  count={leadFiles.length}
+                  onAdd={() => setAddFilesOpen(true)}
+                >
                   {project?.entity_id && (
                     <EntityFilesSection
                       entityId={project.entity_id}
                       entityType="potential"
                       entityName={project?.name ?? lead?.name}
                       companyName={lead?.company_name ?? undefined}
+                      hideHeader
+                      addOpen={addFilesOpen}
+                      onAddOpenChange={setAddFilesOpen}
                     />
                   )}
                 </RelatedSection>

@@ -10,6 +10,7 @@
 
 import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { getProviderKey } from "../_shared/userIntegrations.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -490,9 +491,14 @@ Deno.serve(async (req) => {
       },
     ];
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const OPENAI_API_KEY = await getProviderKey(
+      supabase,
+      teamMemberId,
+      "openai",
+      "OPENAI_API_KEY",
+    );
     if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+      throw new Error("No OpenAI API key available (user integration or OPENAI_API_KEY)");
     }
 
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {

@@ -15,65 +15,68 @@ interface ChatMessagesProps {
   userName?: string;
 }
 
+const AssistantAvatar = () => (
+  <Avatar className="h-7 w-7 shrink-0 ring-1 ring-primary/15">
+    <AvatarFallback className="bg-gradient-to-br from-primary/15 to-primary/5 text-primary">
+      <Bot className="h-3.5 w-3.5" />
+    </AvatarFallback>
+  </Avatar>
+);
+
+const UserAvatar = ({ url, name }: { url?: string | null; name?: string }) => (
+  <Avatar className="h-7 w-7 shrink-0">
+    {url ? (
+      <img src={url} alt={name || 'You'} className="h-full w-full object-cover" />
+    ) : (
+      <AvatarFallback className="bg-muted text-foreground/70">
+        <User className="h-3.5 w-3.5" />
+      </AvatarFallback>
+    )}
+  </Avatar>
+);
+
+const TypingDots = () => (
+  <div className="flex items-center gap-1 py-2">
+    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60" />
+    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:120ms]" />
+    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:240ms]" />
+  </div>
+);
+
 const ChatMessages = ({ messages, isLoading, userAvatarUrl, userName }: ChatMessagesProps) => {
   return (
-    <div className="space-y-3">
-      {messages.map((msg, i) => (
-        <div
-          key={i}
-          className={cn(
-            "flex gap-2",
-            msg.role === 'user' ? 'justify-end' : 'justify-start'
-          )}
-        >
-          {msg.role === 'assistant' && (
-            <Avatar className="h-6 w-6 shrink-0">
-              <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                <Bot className="h-3 w-3" />
-              </AvatarFallback>
-            </Avatar>
-          )}
+    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-6">
+      {messages.map((msg, i) => {
+        const isUser = msg.role === 'user';
+        return (
           <div
+            key={i}
             className={cn(
-              "max-w-[85%] rounded-xl px-3 py-2 text-sm",
-              msg.role === 'user'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted'
+              'flex gap-3',
+              isUser ? 'flex-row-reverse' : 'flex-row',
             )}
           >
-            <div className="text-xs leading-relaxed prose prose-sm dark:prose-invert max-w-none">
-              <ReactMarkdown>{msg.content}</ReactMarkdown>
-            </div>
-          </div>
-          {msg.role === 'user' && (
-            <Avatar className="h-6 w-6 shrink-0">
-              {userAvatarUrl ? (
-                <img src={userAvatarUrl} alt={userName || 'User'} className="h-full w-full object-cover" />
+            {isUser ? <UserAvatar url={userAvatarUrl} name={userName} /> : <AssistantAvatar />}
+            <div className={cn('min-w-0 flex-1', isUser && 'flex justify-end')}>
+              {isUser ? (
+                <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground shadow-sm">
+                  <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                </div>
               ) : (
-                <AvatarFallback className="bg-muted text-xs">
-                  <User className="h-3 w-3" />
-                </AvatarFallback>
+                <div className="pt-0.5">
+                  {msg.content === '' && isLoading && i === messages.length - 1 ? (
+                    <TypingDots />
+                  ) : (
+                    <div className="prose prose-sm max-w-none break-words text-foreground dark:prose-invert prose-p:my-2 prose-p:leading-relaxed prose-pre:my-3 prose-pre:rounded-lg prose-pre:bg-muted prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:text-[0.85em] prose-code:before:content-none prose-code:after:content-none prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:mt-4 prose-headings:mb-2">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  )}
+                </div>
               )}
-            </Avatar>
-          )}
-        </div>
-      ))}
-      {isLoading && messages[messages.length - 1]?.content === '' && (
-        <div className="flex gap-2">
-          <Avatar className="h-6 w-6 shrink-0">
-            <AvatarFallback className="bg-primary/10 text-primary text-xs">
-              <Bot className="h-3 w-3" />
-            </AvatarFallback>
-          </Avatar>
-          <div className="bg-muted rounded-xl px-3 py-2.5">
-            <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" />
-              <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:0.1s]" />
-              <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:0.2s]" />
             </div>
           </div>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 };

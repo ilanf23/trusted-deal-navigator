@@ -724,17 +724,20 @@ function RelatedTabContent({
     },
   });
 
+  // Shares cache with EntityFilesSection — same query key, same select shape.
   const { data: files = [] } = useQuery({
-    queryKey: ['pipeline-files-count', lead.id],
+    queryKey: ['entity-files', 'potential', lead.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('entity_files')
-        .select('id')
+        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
         .eq('entity_id', lead.id)
-        .eq('entity_type', 'potential');
+        .eq('entity_type', 'potential')
+        .order('created_at', { ascending: false });
       return data || [];
     },
   });
+  const [addFilesOpen, setAddFilesOpen] = useState(false);
 
   const isLoading = loadingContacts || loadingTasks || loadingMilestones || loadingWaiting;
 
@@ -885,12 +888,21 @@ function RelatedTabContent({
       </RelatedSection>
 
       {/* Files */}
-      <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={files.length} iconColor="text-orange-500">
+      <RelatedSection
+        icon={<FileText className="h-3.5 w-3.5" />}
+        label="Files"
+        count={files.length}
+        iconColor="text-orange-500"
+        onAdd={() => setAddFilesOpen(true)}
+      >
         <EntityFilesSection
           entityId={lead.id}
           entityType="potential"
           entityName={lead.name}
           companyName={lead.company_name}
+          hideHeader
+          addOpen={addFilesOpen}
+          onAddOpenChange={setAddFilesOpen}
         />
       </RelatedSection>
 

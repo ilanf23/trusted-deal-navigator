@@ -4,7 +4,7 @@
 **Portal:** Sales Rep
 **Route:** `/admin/dropbox` · callback: `/admin/dropbox/callback`
 **Source file:** `src/pages/admin/Dropbox.tsx` (wraps `DropboxBrowser`)
-**Last reviewed:** 2026-05-11
+**Last reviewed:** 2026-05-15
 
 ---
 
@@ -33,6 +33,7 @@ Sales rep collecting and organizing deal documents. Secondary: founders auditing
 ## Key business rules
 
 - Connection is **per-user** (not shared) — each rep needs to OAuth individually
+- **Per-user token scoping** (post 2026-05-15): the shared `getValidAccessToken(supabase, userId)` helper in `_shared/dropbox/api.ts` now filters `dropbox_connections` by the caller's `user_id`. Prior to this fix, all edge function calls grabbed an arbitrary row, meaning Evan's Dropbox picker showed *Ilan's* files (and vice versa) whenever multiple reps were connected. See [expanded-view-files.md](./expanded-view-files.md) for the unified Files picker that exposed this bug.
 - If no connection exists, the page shows a *Manual Setup Required* card asking to contact the dev
 - File metadata is cached locally in `dropbox_files` for fast search; mutations flow through edge functions and update the cache
 - The router (`src/lib/dropboxRouter.ts`) decides which edge function to call based on operation type

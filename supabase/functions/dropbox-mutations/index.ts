@@ -300,7 +300,7 @@ Deno.serve(async (req) => {
 
     let accessToken: string;
     try {
-      accessToken = await getValidAccessToken(supabaseAdmin);
+      accessToken = await getValidAccessToken(supabaseAdmin, authResult.auth.authUserId);
     } catch {
       return new Response(JSON.stringify({ error: 'Dropbox not connected', needsAuth: true }), {
         status: 400,

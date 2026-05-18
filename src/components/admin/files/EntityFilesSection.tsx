@@ -30,6 +30,11 @@ interface EntityFilesSectionProps {
   entityType: EntityType;
   entityName?: string;
   companyName?: string;
+  /** Hide the internal "X files" + "Add file" header row (parent provides one). */
+  hideHeader?: boolean;
+  /** Controlled state for the AddFileDialog (lets parent's + button open it). */
+  addOpen?: boolean;
+  onAddOpenChange?: (open: boolean) => void;
 }
 
 const EXT_ICON: Record<string, typeof FileText> = {
@@ -71,9 +76,14 @@ export function EntityFilesSection({
   entityType,
   entityName,
   companyName,
+  hideHeader = false,
+  addOpen: addOpenProp,
+  onAddOpenChange,
 }: EntityFilesSectionProps) {
   const queryClient = useQueryClient();
-  const [addOpen, setAddOpen] = useState(false);
+  const [addOpenInternal, setAddOpenInternal] = useState(false);
+  const addOpen = addOpenProp ?? addOpenInternal;
+  const setAddOpen = onAddOpenChange ?? setAddOpenInternal;
   const [previewFile, setPreviewFile] = useState<EntityFile | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EntityFile | null>(null);
@@ -156,22 +166,24 @@ export function EntityFilesSection({
   return (
     <>
       <div className="space-y-2 pt-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] text-muted-foreground">
-            {files.length === 0
-              ? 'No files yet'
-              : `${files.length} file${files.length === 1 ? '' : 's'}`}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 gap-1.5 text-xs"
-            onClick={() => setAddOpen(true)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add file
-          </Button>
-        </div>
+        {!hideHeader && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] text-muted-foreground">
+              {files.length === 0
+                ? 'No files yet'
+                : `${files.length} file${files.length === 1 ? '' : 's'}`}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1.5 text-xs"
+              onClick={() => setAddOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add file
+            </Button>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-2">

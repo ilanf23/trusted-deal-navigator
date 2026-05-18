@@ -52,12 +52,19 @@ export function parseDropboxApiError(operation: string, errorText: string): stri
   return `Failed to ${operation}`;
 }
 
-export async function getValidAccessToken(supabase: SupabaseClient): Promise<string> {
+export async function getValidAccessToken(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<string> {
+  // dropbox_connections is per-user (one row per user_id, written by dropbox-auth).
+  // Filtering by the caller's userId is required — otherwise we'd return whichever
+  // connection PostgREST happens to surface first, which is almost always the
+  // wrong account.
   const { data: connection, error } = await supabase
     .from('dropbox_connections')
     .select('*')
-    .limit(1)
-    .single();
+    .eq('user_id', userId)
+    .maybeSingle();
 
   if (error || !connection) {
     throw new Error('Dropbox not connected');

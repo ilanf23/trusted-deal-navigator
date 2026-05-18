@@ -12,8 +12,9 @@ This runbook rotates the key-encryption-key (KEK) used for `user_integrations`.
 ## Preconditions
 
 - Migration `create_user_integrations` is applied.
-- `read-user-integration` and `add-user-integration` edge functions are deployed.
+- `add-user-integration`, `revoke-user-integration`, and `rewrap-user-integrations` edge functions are deployed.
 - You have maintenance access to Supabase edge secrets and Vercel environment variables.
+- You are signed in as an admin or super_admin (the re-wrap function is admin-gated).
 
 ## 1) Generate New KEK
 
@@ -43,16 +44,44 @@ New writes should start using `key_version = 2`.
 
 ## 4) Re-wrap Existing DEKs
 
-Run a batch migration script from a trusted server process:
+Invoke the `rewrap-user-integrations` edge function (admin-only, rate-limited
+5/60s). It scans rows on the old `key_version`, unwraps each DEK with the old
+KEK, re-wraps with the new KEK, and updates `encrypted_dek`, `dek_iv`,
+`dek_auth_tag`, `key_version`. The `ciphertext` is **never** touched.
 
-1. Read row in `user_integrations`
-2. Unwrap DEK with old KEK (v1)
-3. Re-wrap the same DEK with new KEK (v2)
-4. Update `encrypted_dek`, `dek_iv`, `dek_auth_tag`, `key_version = 2`
+Dry-run first to verify counts and confirm both KEKs decrypt cleanly:
 
-Do not re-encrypt `ciphertext`; only re-wrap DEKs.
+```bash
+curl -X POST "$SUPABASE_URL/functions/v1/rewrap-user-integrations" \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"from_version":1,"to_version":2,"batch_size":200,"dry_run":true}'
+```
 
-Process in batches and log row counts only (never plaintext, never key material).
+Then run for real, looping until `remaining_on_from_version` is `0`:
+
+```bash
+curl -X POST "$SUPABASE_URL/functions/v1/rewrap-user-integrations" \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"from_version":1,"to_version":2,"batch_size":200}'
+```
+
+Response shape:
+
+```json
+{
+  "scanned": 200,
+  "rewrapped": 200,
+  "failed": 0,
+  "dry_run": false,
+  "remaining_on_from_version": 0
+}
+```
+
+The function logs counts only — never plaintext, never key material. Each
+update is guarded by `key_version = from_version`, so concurrent invocations
+cannot double-wrap a row.
 
 ## 5) Verify
 

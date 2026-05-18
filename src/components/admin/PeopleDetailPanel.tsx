@@ -26,39 +26,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
-import { sanitizeFileName } from '@/lib/utils';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
-
-// ── File type ──
-interface PersonFile {
-  id: string;
-  entity_id: string;
-  file_name: string;
-  file_url: string;
-  file_type: string | null;
-  file_size: number | null;
-  uploaded_by: string | null;
-  created_at: string;
-}
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-function formatFileSize(bytes: number | null): string {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getFileIcon(fileType: string | null): string {
-  if (!fileType) return '\u{1F4C4}';
-  if (fileType.startsWith('image/')) return '\u{1F5BC}\uFE0F';
-  if (fileType === 'application/pdf') return '\u{1F4D5}';
-  if (fileType.includes('spreadsheet') || fileType.includes('excel') || fileType.includes('csv')) return '\u{1F4CA}';
-  if (fileType.includes('word') || fileType.includes('document')) return '\u{1F4DD}';
-  if (fileType.includes('zip') || fileType.includes('compressed')) return '\u{1F4E6}';
-  return '\u{1F4C4}';
-}
 
 function getPipelineLeadRoute(pipelineName: string, leadId: string): string {
   switch (pipelineName) {
@@ -970,11 +938,6 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
   const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
-  // ── File state ──
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-
   const { data: tasks = [], isLoading: loadingTasks } = useQuery({
     queryKey: ['person-tasks', person.id],
     queryFn: async () => {
@@ -992,20 +955,21 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
   // ── Pipeline records — people are standalone entities, no longer in pipelines directly ──
   const pipelineRecords: PipelineRecord[] = [];
 
-  // ── Person files query ──
+  // ── Person files query (shares cache with EntityFilesSection) ──
   const { data: personFiles = [] } = useQuery({
-    queryKey: ['person-files', person.id],
+    queryKey: ['entity-files', 'people', person.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('entity_files')
-        .select('id, entity_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
+        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
         .eq('entity_id', person.id)
         .eq('entity_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as PersonFile[];
+      return data ?? [];
     },
   });
+  const [addFilesOpen, setAddFilesOpen] = useState(false);
 
   // ── Related people (same company) ──
   const { data: relatedPeople = [] } = useQuery({
@@ -1023,107 +987,6 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
     },
     enabled: !!person.company_name,
   });
-
-  // ── Core file upload logic ──
-  const uploadFile = useCallback(async (file: File) => {
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error('File too large (max 10MB)');
-      return;
-    }
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      toast.error('You must be logged in to upload files.');
-      return;
-    }
-
-    setUploadingFile(true);
-    const filePath = `${person.id}/${Date.now()}_${sanitizeFileName(file.name)}`;
-    const { error: uploadError } = await supabase.storage
-      .from('lead-files')
-      .upload(filePath, file, { contentType: file.type || 'application/octet-stream', upsert: true });
-    if (uploadError) {
-      setUploadingFile(false);
-      toast.error(`Upload failed: ${uploadError.message || 'Storage error'}`);
-      return;
-    }
-
-    const { error: dbError } = await supabase.from('entity_files').insert({
-      entity_id: person.id,
-      entity_type: 'people',
-      file_name: file.name,
-      file_url: filePath,
-      file_type: file.type || null,
-      file_size: file.size,
-    });
-    setUploadingFile(false);
-    if (dbError) {
-      toast.error(`Failed to save file: ${dbError.message || 'Database error'}`);
-      await supabase.storage.from('lead-files').remove([filePath]);
-      return;
-    }
-    toast.success('File uploaded');
-    queryClient.invalidateQueries({ queryKey: ['person-files', person.id] });
-  }, [person.id, queryClient]);
-
-  // ── File upload from input ──
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = '';
-    uploadFile(file);
-  }, [uploadFile]);
-
-  // ── Drag-and-drop handlers ──
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) uploadFile(file);
-  }, [uploadFile]);
-
-  // ── File delete ──
-  const handleDeleteFile = useCallback(async (file: PersonFile) => {
-    await supabase.storage.from('lead-files').remove([file.file_url]);
-    const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
-    if (error) {
-      toast.error('Failed to delete file');
-      return;
-    }
-    toast.success('File deleted');
-    queryClient.invalidateQueries({ queryKey: ['person-files', person.id] });
-  }, [person.id, queryClient]);
-
-  // ── File download (signed URL) ──
-  const handleDownloadFile = useCallback(async (file: PersonFile) => {
-    const { data, error } = await supabase.storage
-      .from('lead-files')
-      .createSignedUrl(file.file_url, 60);
-    if (error || !data?.signedUrl) {
-      toast.error('Failed to generate download link');
-      return;
-    }
-    const a = document.createElement('a');
-    a.href = data.signedUrl;
-    a.download = file.file_name;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, []);
 
   const toggleTaskCompletion = useCallback(async (task: LeadTask) => {
     const isCompleting = !task.completed_at;
@@ -1250,12 +1113,15 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
       </RelatedSection>
 
       {/* ── Files ── */}
-      <RelatedSection label="Files" count={personFiles.length}>
+      <RelatedSection label="Files" count={personFiles.length} onAdd={() => setAddFilesOpen(true)}>
         <EntityFilesSection
           entityId={person.id}
           entityType="people"
           entityName={person.name}
           companyName={person.company_name ?? undefined}
+          hideHeader
+          addOpen={addFilesOpen}
+          onAddOpenChange={setAddFilesOpen}
         />
       </RelatedSection>
 

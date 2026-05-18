@@ -1,6 +1,6 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
-import { getUserFromRequest } from '../_shared/auth.ts';
+import { requireAdmin } from '../_shared/auth.ts';
 import { encryptSecret, getKekForVersion } from '../_shared/crypto.ts';
 
 const corsHeaders = {
@@ -9,6 +9,7 @@ const corsHeaders = {
 };
 
 interface AddIntegrationBody {
+  target_user_id: string;
   provider: string;
   label: string;
   plaintext: string;
@@ -44,31 +45,31 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    let auth;
-    try {
-      auth = await getUserFromRequest(req, supabase);
-    } catch {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
-    if (!auth.teamMember?.id) {
-      return new Response(JSON.stringify({ error: 'No workspace user found' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const adminCheck = await requireAdmin(req, supabase, { corsHeaders });
+    if (!adminCheck.ok) return adminCheck.response;
 
     const body = (await req.json()) as AddIntegrationBody;
+    const targetUserId = (body.target_user_id ?? '').trim();
     const provider = normalizeProvider(body.provider ?? '');
     const label = (body.label ?? '').trim();
     const plaintext = (body.plaintext ?? '').trim();
 
-    if (!provider || !label || !plaintext) {
-      return new Response(JSON.stringify({ error: 'provider, label, and plaintext are required' }), {
+    if (!targetUserId || !provider || !label || !plaintext) {
+      return new Response(JSON.stringify({ error: 'target_user_id, provider, label, and plaintext are required' }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: targetUser, error: targetErr } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', targetUserId)
+      .maybeSingle();
+    if (targetErr || !targetUser) {
+      return new Response(JSON.stringify({ error: 'Target user not found' }), {
+        status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -79,18 +80,18 @@ Deno.serve(async (req) => {
     const { data, error } = await supabase
       .from('user_integrations')
       .insert({
-        user_id: auth.teamMember.id,
+        user_id: targetUserId,
         provider,
         label,
         ...encrypted,
       })
-      .select('id, provider, label, created_at, last_used_at, revoked_at')
+      .select('id, user_id, provider, label, created_at, last_used_at, revoked_at')
       .single();
 
     if (error) {
       const conflict = error.code === '23505';
       return new Response(JSON.stringify({
-        error: conflict ? 'An integration with this provider and label already exists' : 'Failed to add integration',
+        error: conflict ? 'An integration with this provider and label already exists for that user' : 'Failed to add integration',
       }), {
         status: conflict ? 409 : 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

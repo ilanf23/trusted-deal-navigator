@@ -1,8 +1,8 @@
-import { useRef } from 'react';
-import { Send, Paperclip, FileText, X, Square } from 'lucide-react';
+import { useRef, useEffect } from 'react';
+import { ArrowUp, Paperclip, FileText, X, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import type { AIMode } from './CLXAssistantHeader';
 
 interface UploadedFile {
@@ -21,13 +21,19 @@ interface CLXAssistantInputProps {
   uploadedFile: UploadedFile | null;
   onFileUpload: (file: UploadedFile) => void;
   onRemoveFile: () => void;
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLTextAreaElement>;
 }
 
 const placeholders: Record<AIMode, string> = {
-  chat: 'Ask anything...',
-  assist: 'What do you need help with?',
-  agent: 'Describe what you want me to do...',
+  chat: 'Ask anything — I can see your leads, tasks, and pipeline',
+  assist: 'Describe what you need help with, and I\'ll propose actions',
+  agent: 'Tell me what to do, and I\'ll handle it autonomously',
+};
+
+const modeAccent: Record<AIMode, string> = {
+  chat: 'focus-within:ring-primary/30 focus-within:border-primary/40',
+  assist: 'focus-within:ring-amber-400/30 focus-within:border-amber-400/50',
+  agent: 'focus-within:ring-violet-400/30 focus-within:border-violet-400/50',
 };
 
 const CLXAssistantInput = ({
@@ -44,6 +50,15 @@ const CLXAssistantInput = ({
 }: CLXAssistantInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-resize textarea to its content, capped so it never dominates the screen.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = '0px';
+    const next = Math.min(el.scrollHeight, 200);
+    el.style.height = `${next}px`;
+  }, [input, inputRef]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -52,7 +67,6 @@ const CLXAssistantInput = ({
       toast.error('Only PDF files are supported');
       return;
     }
-
     if (file.size > 10 * 1024 * 1024) {
       toast.error('File size must be less than 10MB');
       return;
@@ -70,67 +84,109 @@ const CLXAssistantInput = ({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!isLoading && (input.trim() || uploadedFile)) onSubmit();
+    }
+  };
+
+  const canSubmit = (input.trim().length > 0 || !!uploadedFile) && !isLoading;
+
   return (
-    <div className="p-3 border-t bg-muted/30">
-      {uploadedFile && (
-        <div className="flex items-center gap-2 mb-2 p-2 bg-muted rounded-md">
-          <FileText className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-xs truncate flex-1">{uploadedFile.name}</span>
-          <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={onRemoveFile}>
-            <X className="h-3 w-3" />
-          </Button>
-        </div>
-      )}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit();
-        }}
-        className="flex gap-2"
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/pdf"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-9 w-9 p-0 shrink-0"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isLoading}
-          title="Attach PDF"
+    <div className="px-4 pb-4 pt-2 md:px-6 md:pb-6">
+      <div className="mx-auto max-w-3xl">
+        {uploadedFile && (
+          <div className="mb-2 inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-xs shadow-sm">
+            <FileText className="h-3.5 w-3.5 text-primary" />
+            <span className="max-w-[240px] truncate font-medium">{uploadedFile.name}</span>
+            <button
+              type="button"
+              onClick={onRemoveFile}
+              className="ml-1 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Remove attachment"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canSubmit) onSubmit();
+          }}
+          className={cn(
+            'group relative flex items-end gap-2 rounded-2xl border bg-card p-2 shadow-sm transition-all duration-200',
+            'ring-1 ring-transparent focus-within:shadow-md focus-within:ring-2',
+            modeAccent[mode],
+          )}
         >
-          <Paperclip className="h-4 w-4" />
-        </Button>
-        <Input
-          ref={inputRef}
-          value={input}
-          onChange={(e) => onInputChange(e.target.value)}
-          placeholder={placeholders[mode]}
-          disabled={isLoading}
-          className="flex-1 h-9 text-sm"
-        />
-        {isLoading ? (
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            onChange={handleFileChange}
+            className="hidden"
+          />
           <Button
             type="button"
-            size="sm"
-            variant="destructive"
-            className="h-9 w-9 p-0"
-            onClick={onStop}
-            title="Stop generating"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+            title="Attach PDF"
           >
-            <Square className="h-3 w-3 fill-current" />
+            <Paperclip className="h-4 w-4" />
           </Button>
-        ) : (
-          <Button type="submit" size="sm" disabled={!input.trim() && !uploadedFile} className="h-9 w-9 p-0">
-            <Send className="h-4 w-4" />
-          </Button>
-        )}
-      </form>
+
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => onInputChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholders[mode]}
+            disabled={isLoading}
+            rows={1}
+            className={cn(
+              'flex-1 resize-none border-0 bg-transparent px-1 py-2 text-sm leading-6 outline-none',
+              'placeholder:text-muted-foreground/70 disabled:opacity-60',
+              'max-h-[200px]',
+            )}
+          />
+
+          {isLoading ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-9 w-9 shrink-0 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/15"
+              onClick={onStop}
+              title="Stop generating"
+            >
+              <Square className="h-3.5 w-3.5 fill-current" />
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!canSubmit}
+              className={cn(
+                'h-9 w-9 shrink-0 rounded-xl transition-all',
+                canSubmit
+                  ? 'bg-primary text-primary-foreground shadow-sm hover:scale-[1.03]'
+                  : 'bg-muted text-muted-foreground',
+              )}
+              title="Send"
+            >
+              <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
+            </Button>
+          )}
+        </form>
+        <p className="mt-2 text-center text-[11px] text-muted-foreground/70">
+          Enter to send · Shift + Enter for newline
+        </p>
+      </div>
     </div>
   );
 };

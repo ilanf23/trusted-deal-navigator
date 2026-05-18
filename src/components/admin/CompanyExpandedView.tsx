@@ -560,6 +560,7 @@ export default function CompanyExpandedView() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [savingTask, setSavingTask] = useState(false);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [addFilesOpen, setAddFilesOpen] = useState(false);
 
   const { teamMember } = useTeamMember();
 
@@ -785,6 +786,22 @@ export default function CompanyExpandedView() {
       return data ?? [];
     },
     enabled: !!company?.company_name,
+  });
+
+  // File count — shares cache with EntityFilesSection.
+  const { data: companyFiles = [] } = useQuery({
+    queryKey: ['entity-files', 'companies', companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('entity_files')
+        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('entity_id', companyId!)
+        .eq('entity_type', 'companies')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!companyId,
   });
 
   // Company activities
@@ -1488,12 +1505,20 @@ export default function CompanyExpandedView() {
             </RelatedSection>
 
             {/* Files */}
-            <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={0}>
+            <RelatedSection
+              icon={<FileText className="h-3.5 w-3.5" />}
+              label="Files"
+              count={companyFiles.length}
+              onAdd={() => setAddFilesOpen(true)}
+            >
               <EntityFilesSection
                 entityId={company.id}
                 entityType="companies"
                 entityName={company.company_name}
                 companyName={company.company_name}
+                hideHeader
+                addOpen={addFilesOpen}
+                onAddOpenChange={setAddFilesOpen}
               />
             </RelatedSection>
           </div>

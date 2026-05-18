@@ -1,8 +1,7 @@
-import { Bot, History, Loader2, Trash2 } from 'lucide-react';
+import { History, Loader2, Trash2, Plus, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 
 interface Conversation {
@@ -18,7 +17,45 @@ interface CLXAssistantHistoryProps {
   currentConversationId: string | null;
   onLoad: (id: string) => void;
   onDelete: (e: React.MouseEvent, id: string) => void;
+  onNewChat?: () => void;
 }
+
+type Bucket = { label: string; items: Conversation[] };
+
+const startOfDay = (d: Date) => {
+  const c = new Date(d);
+  c.setHours(0, 0, 0, 0);
+  return c;
+};
+
+const groupByDate = (convs: Conversation[]): Bucket[] => {
+  const now = new Date();
+  const today = startOfDay(now).getTime();
+  const yesterday = today - 86_400_000;
+  const last7 = today - 7 * 86_400_000;
+  const last30 = today - 30 * 86_400_000;
+
+  const buckets: Record<string, Conversation[]> = {
+    Today: [],
+    Yesterday: [],
+    'Last 7 days': [],
+    'Last 30 days': [],
+    Older: [],
+  };
+
+  for (const c of convs) {
+    const t = new Date(c.updated_at).getTime();
+    if (t >= today) buckets.Today.push(c);
+    else if (t >= yesterday) buckets.Yesterday.push(c);
+    else if (t >= last7) buckets['Last 7 days'].push(c);
+    else if (t >= last30) buckets['Last 30 days'].push(c);
+    else buckets.Older.push(c);
+  }
+
+  return Object.entries(buckets)
+    .filter(([, items]) => items.length > 0)
+    .map(([label, items]) => ({ label, items }));
+};
 
 const CLXAssistantHistory = ({
   conversations,
@@ -26,68 +63,104 @@ const CLXAssistantHistory = ({
   currentConversationId,
   onLoad,
   onDelete,
+  onNewChat,
 }: CLXAssistantHistoryProps) => {
+  const buckets = groupByDate(conversations);
+
   return (
-    <motion.div
+    <motion.aside
       initial={{ width: 0, opacity: 0 }}
-      animate={{ width: 200, opacity: 1 }}
+      animate={{ width: 264, opacity: 1 }}
       exit={{ width: 0, opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="border-r bg-muted/30 overflow-hidden flex-shrink-0"
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className="flex-shrink-0 overflow-hidden border-r bg-muted/30"
     >
-      <ScrollArea className="h-full">
-        <div className="p-2">
-          <div className="flex items-center gap-2 px-2 py-1 mb-2">
-            <div className="p-1 rounded bg-primary/10">
-              <Bot className="h-3 w-3 text-primary" />
-            </div>
-            <p className="text-xs font-medium text-muted-foreground">
-              History ({conversations.length})
-            </p>
+      <div className="flex h-full w-[264px] flex-col">
+        <div className="px-3 pt-3">
+          {onNewChat && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 w-full justify-start gap-2 rounded-xl bg-card text-sm font-medium shadow-sm"
+              onClick={onNewChat}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New chat
+            </Button>
+          )}
+          <div className="mt-4 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+            History
           </div>
+        </div>
+
+        <ScrollArea className="flex-1 px-2 pb-3 pt-1">
           {isLoading ? (
-            <div className="flex items-center justify-center h-20">
+            <div className="flex h-24 items-center justify-center">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : conversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-20 text-center">
-              <History className="h-5 w-5 text-muted-foreground mb-1" />
-              <p className="text-xs text-muted-foreground">No history</p>
+            <div className="flex h-32 flex-col items-center justify-center px-4 text-center">
+              <History className="mb-2 h-5 w-5 text-muted-foreground/60" />
+              <p className="text-xs text-muted-foreground">No conversations yet</p>
+              <p className="mt-1 text-[11px] text-muted-foreground/70">
+                Your chats will appear here
+              </p>
             </div>
           ) : (
-            <div className="space-y-1">
-              {conversations.map((conv) => (
-                <div
-                  key={conv.id}
-                  onClick={() => onLoad(conv.id)}
-                  className={cn(
-                    "p-2 rounded-md cursor-pointer hover:bg-muted transition-colors group text-left",
-                    currentConversationId === conv.id && "bg-primary/10 border border-primary/20"
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-1">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">{conv.title || 'Untitled'}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {format(new Date(conv.updated_at), 'MMM d')}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                      onClick={(e) => onDelete(e, conv.id)}
-                    >
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
+            <div className="space-y-4">
+              {buckets.map((bucket) => (
+                <div key={bucket.label}>
+                  <div className="mb-1 px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                    {bucket.label}
+                  </div>
+                  <div className="space-y-0.5">
+                    {bucket.items.map((conv) => {
+                      const active = currentConversationId === conv.id;
+                      return (
+                        <div
+                          key={conv.id}
+                          onClick={() => onLoad(conv.id)}
+                          className={cn(
+                            'group relative flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors',
+                            active
+                              ? 'bg-card shadow-sm ring-1 ring-border'
+                              : 'hover:bg-card/60',
+                          )}
+                        >
+                          <MessageSquare
+                            className={cn(
+                              'h-3.5 w-3.5 shrink-0',
+                              active ? 'text-primary' : 'text-muted-foreground/70',
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              'flex-1 truncate text-xs',
+                              active ? 'font-medium text-foreground' : 'text-foreground/80',
+                            )}
+                          >
+                            {conv.title || 'Untitled'}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                            onClick={(e) => onDelete(e, conv.id)}
+                            aria-label="Delete conversation"
+                          >
+                            <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
-      </ScrollArea>
-    </motion.div>
+        </ScrollArea>
+      </div>
+    </motion.aside>
   );
 };
 

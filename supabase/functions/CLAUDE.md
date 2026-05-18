@@ -26,6 +26,12 @@ Deno TypeScript edge functions + shared utilities. All deployed as Supabase Edge
 - `admin-update-user` — admin-only email/password update (3/60s)
 - `manage-user-role` — manage roles: admin, super_admin, client, partner (3/60s)
 
+### Per-User Integrations (envelope-encrypted API keys)
+- `add-user-integration` — admin assigns a third-party key to a user; AES-GCM envelope encryption, KEK from `SECRETS_KEK_V*` (20/60s)
+- `revoke-user-integration` — admin stamps `revoked_at`; never deletes ciphertext (30/60s)
+- `rewrap-user-integrations` — KEK rotation batch: unwrap DEKs with old KEK, re-wrap with new KEK, bump `key_version`. Supports `dry_run`. See `docs/secrets-rotation.md`. (5/60s)
+- Shared crypto: `_shared/crypto.ts`, resolver: `_shared/userIntegrations.ts` (`getProviderKey` with env fallback).
+
 ### AI Assistants
 - `ai-assistant-chat` — streaming chat + assist modes (no `body.action`). OpenAI. Issue #84 split.
 - `ai-assistant-agent` — autonomous tool-calling loop (`action: "agent"`). OpenAI SSE. Issue #84 split.

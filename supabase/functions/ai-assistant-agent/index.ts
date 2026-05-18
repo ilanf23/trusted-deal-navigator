@@ -1,6 +1,7 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
+import { getProviderKey } from '../_shared/userIntegrations.ts';
 import { executeAction } from '../_shared/aiAgent/executor.ts';
 import { agentTools } from '../_shared/aiAgent/tools.ts';
 
@@ -26,8 +27,15 @@ Deno.serve(async (req) => {
     const { authUserId, teamMember, isOwner } = await getUserFromRequest(req, supabase);
 
     const { prompt, conversationId, teamMemberId: tmId } = body;
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+    const OPENAI_API_KEY = await getProviderKey(
+      supabase,
+      teamMember?.id ?? null,
+      "openai",
+      "OPENAI_API_KEY",
+    );
+    if (!OPENAI_API_KEY) {
+      throw new Error("No OpenAI API key available (user integration or OPENAI_API_KEY)");
+    }
 
     // Fetch context data (leads, tasks). Owners can target other team members
     // via the `teamMemberId` body param; non-owners are scoped to themselves

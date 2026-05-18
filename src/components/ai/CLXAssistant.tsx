@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { aiAssistantUrl } from '@/lib/aiAssistantRouter';
@@ -39,38 +39,8 @@ interface UploadedFile {
   content: string;
 }
 
-const DEFAULT_WIDTH = 400;
-const DEFAULT_HEIGHT = 520;
-const MIN_WIDTH = 320;
-const MIN_HEIGHT = 400;
-const MAX_WIDTH = 800;
-const MAX_HEIGHT = 900;
-const STORAGE_KEY = 'ai-assistant-size';
-
-const getSavedSize = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return {
-        width: Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, parsed.width || DEFAULT_WIDTH)),
-        height: Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, parsed.height || DEFAULT_HEIGHT)),
-      };
-    }
-  } catch {}
-  return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
-};
-
-const saveSize = (width: number, height: number) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ width, height }));
-  } catch {}
-};
-
 const CLXAssistant = () => {
   const {
-    isOpen,
-    setIsOpen,
     messages,
     setMessages,
     currentConversationId,
@@ -101,15 +71,9 @@ const CLXAssistant = () => {
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null!);
+  const inputRef = useRef<HTMLTextAreaElement>(null!);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Resizable state
-  const [size, setSize] = useState(getSavedSize);
-  const [isResizing, setIsResizing] = useState(false);
-  const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number; corner: string } | null>(null);
-
-  // Fetch team member info
   const { data: teamMember } = useQuery({
     queryKey: ['current-team-member-ai'],
     queryFn: async () => {
@@ -123,10 +87,8 @@ const CLXAssistant = () => {
       if (error) return null;
       return data;
     },
-    enabled: isOpen,
   });
 
-  // Fetch suggested tasks
   const { data: suggestedTasks = [] } = useQuery({
     queryKey: ['ai-suggested-tasks'],
     queryFn: async () => {
@@ -140,27 +102,18 @@ const CLXAssistant = () => {
       if (error) throw error;
       return data;
     },
-    enabled: isOpen,
   });
 
-  // Auto-scroll and focus
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [isOpen]);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
 
-  // Consume a pending seed prompt from the context when the panel opens.
-  // Parent surfaces (e.g. expanded views) can call `openWithPrompt(...)` to
-  // pre-fill the input with deal-specific context, then the caret focuses
-  // so the user can send or edit immediately.
   useEffect(() => {
-    if (isOpen && pendingPrompt) {
+    if (pendingPrompt) {
       setInput(pendingPrompt);
       setPendingPrompt(null);
       setTimeout(() => {
         inputRef.current?.focus();
-        // Move caret to end so the user can keep typing.
         const el = inputRef.current;
         if (el) {
           const len = el.value.length;
@@ -168,7 +121,7 @@ const CLXAssistant = () => {
         }
       }, 150);
     }
-  }, [isOpen, pendingPrompt, setPendingPrompt]);
+  }, [pendingPrompt, setPendingPrompt]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -176,59 +129,10 @@ const CLXAssistant = () => {
     }
   }, [messages, assistMessages, agentMessages]);
 
-  // Resize handlers
-  const handleResizeStart = useCallback((e: React.MouseEvent, corner: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizing(true);
-    resizeRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      startWidth: size.width,
-      startHeight: size.height,
-      corner,
-    };
-  }, [size]);
-
-  useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!resizeRef.current) return;
-      const { startX, startY, startWidth, startHeight, corner } = resizeRef.current;
-      let newWidth = startWidth;
-      let newHeight = startHeight;
-
-      if (corner.includes('e')) newWidth = startWidth + (e.clientX - startX);
-      if (corner.includes('w')) newWidth = startWidth - (e.clientX - startX);
-      if (corner.includes('s')) newHeight = startHeight + (e.clientY - startY);
-      if (corner.includes('n')) newHeight = startHeight - (e.clientY - startY);
-
-      newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, newWidth));
-      newHeight = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, newHeight));
-      setSize({ width: newWidth, height: newHeight });
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      if (resizeRef.current) saveSize(size.width, size.height);
-      resizeRef.current = null;
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, size]);
-
-  // Mode switching
   const handleModeChange = (mode: AIMode) => {
     if (mode === activeMode) return;
     const currentMessages = activeMode === 'chat' ? messages : activeMode === 'assist' ? assistMessages : agentMessages;
     if (currentMessages.length > 0) {
-      // Just switch — don't require confirmation for simplicity
       startNewConversation();
     }
     setActiveMode(mode);
@@ -237,7 +141,6 @@ const CLXAssistant = () => {
     setPendingActions([]);
   };
 
-  // Submit handler
   const handleSubmit = async (messageText?: string) => {
     const text = messageText || input.trim();
     if ((!text && !uploadedFile) || isLoading) return;
@@ -272,7 +175,6 @@ const CLXAssistant = () => {
     }
   };
 
-  // Chat mode submit (same as original)
   const handleChatSubmit = async (userMsg: Message, convId: string, file: UploadedFile | null, abortController: AbortController) => {
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
@@ -371,7 +273,6 @@ const CLXAssistant = () => {
     }
   };
 
-  // Assist mode submit
   const handleAssistSubmit = async (userMsg: Message, convId: string, file: UploadedFile | null, abortController: AbortController) => {
     const newMessages: AssistMessage[] = [...assistMessages, { ...userMsg }];
     setAssistMessages(newMessages);
@@ -450,7 +351,6 @@ const CLXAssistant = () => {
         }
       }
 
-      // Parse actions from the final content
       const { cleanText, actions } = parseActions(fullContent);
       const finalMsg: AssistMessage = { role: 'assistant', content: cleanText, actions };
 
@@ -461,7 +361,6 @@ const CLXAssistant = () => {
       });
       setPendingActions(prev => [...prev, ...actions]);
 
-      // Save to DB as regular messages
       const dbMessages = [...newMessages.map(m => ({ role: m.role, content: m.content })), { role: 'assistant' as const, content: cleanText }];
       if (convId) await saveMessages(convId, dbMessages);
     } catch (error: any) {
@@ -481,10 +380,8 @@ const CLXAssistant = () => {
     }
   };
 
-  // Agent mode submit
   const handleAgentSubmit = async (userMsg: Message, convId: string, file: UploadedFile | null, abortController: AbortController) => {
     const newMessages: AgentMessage[] = [...agentMessages, { ...userMsg }];
-    // Add placeholder assistant message immediately so loading dots show
     const placeholderMsg: AgentMessage = { role: 'assistant', content: '', agentLog: [{ type: 'text', content: 'Processing your request...' }] };
     setAgentMessages([...newMessages, placeholderMsg]);
 
@@ -516,19 +413,16 @@ const CLXAssistant = () => {
         if (response.status === 429) {
           throw new Error('Rate limit exceeded. Please try again later.');
         }
-        // Handle non-JSON error responses (e.g. 404 HTML pages)
         let errorMsg = `Agent request failed (${response.status})`;
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
         } catch {
-          // Response wasn't JSON, use status text
           errorMsg = `Agent request failed: ${response.status} ${response.statusText}`;
         }
         throw new Error(errorMsg);
       }
 
-      // Stream SSE for agent mode
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response stream');
 
@@ -577,7 +471,6 @@ const CLXAssistant = () => {
         }
       }
 
-      // Finalize — if no log entries came through, add a fallback text
       if (agentLog.length === 0) {
         agentLog.push({ type: 'text', content: 'No actions were taken.' });
       }
@@ -598,7 +491,6 @@ const CLXAssistant = () => {
       console.error('Agent error:', error);
       const errorMessage = error.message || 'Agent execution failed';
       toast.error(errorMessage);
-      // Show error in the agent log instead of silently removing the message
       setAgentMessages(prev => {
         const updated = [...prev];
         updated[updated.length - 1] = {
@@ -615,7 +507,6 @@ const CLXAssistant = () => {
     }
   };
 
-  // Action handlers for Assist mode
   const handleConfirmAction = useCallback(async (actionId: string) => {
     setAssistMessages(prev =>
       prev.map(msg => ({
@@ -671,131 +562,115 @@ const CLXAssistant = () => {
 
   const handleViewChanges = useCallback((batchId: string) => {
     navigate(`/superadmin/ai-changes?batch=${batchId}`);
-    setIsOpen(false);
-  }, [navigate, setIsOpen]);
+  }, [navigate]);
 
-  // Determine which messages to show
   const currentMessages = activeMode === 'chat' ? messages : activeMode === 'assist' ? assistMessages : agentMessages;
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          drag={!isResizing}
-          dragMomentum={false}
-          dragElastic={0}
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          transition={{ duration: 0.2 }}
-          style={{ width: size.width, height: size.height }}
-          className="fixed bottom-4 left-4 z-50 flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden"
-        >
-          {/* Resize handles */}
-          <div className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize z-10 hover:bg-primary/10 rounded-bl transition-colors" onMouseDown={(e) => handleResizeStart(e, 'ne')} />
-          <div className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-10 hover:bg-primary/10 rounded-tl transition-colors" onMouseDown={(e) => handleResizeStart(e, 'se')} />
-          <div className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize z-10 hover:bg-primary/10 rounded-tr transition-colors" onMouseDown={(e) => handleResizeStart(e, 'sw')} />
-          <div className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-10 hover:bg-primary/10 rounded-br transition-colors" onMouseDown={(e) => handleResizeStart(e, 'nw')} />
-          <div className="absolute top-0 left-4 right-4 h-1 cursor-n-resize z-10 hover:bg-primary/20 transition-colors" onMouseDown={(e) => handleResizeStart(e, 'n')} />
-          <div className="absolute bottom-0 left-4 right-4 h-1 cursor-s-resize z-10 hover:bg-primary/20 transition-colors" onMouseDown={(e) => handleResizeStart(e, 's')} />
-          <div className="absolute left-0 top-4 bottom-4 w-1 cursor-w-resize z-10 hover:bg-primary/20 transition-colors" onMouseDown={(e) => handleResizeStart(e, 'w')} />
-          <div className="absolute right-0 top-4 bottom-4 w-1 cursor-e-resize z-10 hover:bg-primary/20 transition-colors" onMouseDown={(e) => handleResizeStart(e, 'e')} />
+  const resetMode = () => {
+    startNewConversation();
+    setAssistMessages([]);
+    setAgentMessages([]);
+    setPendingActions([]);
+  };
 
-          {/* Header with mode switcher */}
-          <CLXAssistantHeader
-            activeMode={activeMode}
-            onModeChange={handleModeChange}
-            showHistorySidebar={showHistorySidebar}
-            onToggleHistory={() => setShowHistorySidebar(prev => !prev)}
-            onNewChat={() => {
-              startNewConversation();
+  return (
+    <div className="relative flex h-full w-full overflow-hidden">
+      {/* Ambient backdrop — subtle radial glows that hint at "AI surface" without shouting */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+      >
+        <div className="absolute -left-32 -top-32 h-72 w-72 rounded-full bg-primary/[0.06] blur-3xl" />
+        <div className="absolute -right-24 top-1/3 h-80 w-80 rounded-full bg-violet-500/[0.05] blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-64 w-[36rem] rounded-full bg-amber-400/[0.04] blur-3xl" />
+      </div>
+
+      <AnimatePresence initial={false}>
+        {showHistorySidebar && (
+          <CLXAssistantHistory
+            conversations={conversations}
+            isLoading={isLoadingConversations}
+            currentConversationId={currentConversationId}
+            onLoad={async (id) => {
+              await loadConversation(id);
               setAssistMessages([]);
               setAgentMessages([]);
               setPendingActions([]);
+              setActiveMode('chat');
             }}
-            onClose={() => setIsOpen(false)}
+            onDelete={async (e, id) => {
+              e.stopPropagation();
+              await deleteConversation(id);
+            }}
+            onNewChat={resetMode}
           />
+        )}
+      </AnimatePresence>
 
-          {/* Main content area */}
-          <div className="flex-1 flex overflow-hidden">
-            {/* History Sidebar */}
-            <AnimatePresence>
-              {showHistorySidebar && (
-                <CLXAssistantHistory
-                  conversations={conversations}
-                  isLoading={isLoadingConversations}
-                  currentConversationId={currentConversationId}
-                  onLoad={async (id) => {
-                    await loadConversation(id);
-                    // Reset mode-specific state when loading history
-                    setAssistMessages([]);
-                    setAgentMessages([]);
-                    setPendingActions([]);
-                    setActiveMode('chat');
-                  }}
-                  onDelete={async (e, id) => {
-                    e.stopPropagation();
-                    await deleteConversation(id);
-                  }}
-                />
-              )}
-            </AnimatePresence>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <CLXAssistantHeader
+          activeMode={activeMode}
+          onModeChange={handleModeChange}
+          showHistorySidebar={showHistorySidebar}
+          onToggleHistory={() => setShowHistorySidebar((prev) => !prev)}
+          onNewChat={resetMode}
+        />
 
-            {/* Chat Area */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <ScrollArea className="flex-1 p-3" ref={scrollRef}>
-                {currentMessages.length === 0 ? (
-                  <CLXAssistantEmptyState
-                    mode={activeMode}
-                    currentPage={location.pathname}
-                    suggestedTasks={suggestedTasks}
-                    onSubmit={handleSubmit}
-                  />
-                ) : activeMode === 'chat' ? (
-                  <ChatMessages
-                    messages={messages}
-                    isLoading={isLoading}
-                    userAvatarUrl={teamMember?.avatar_url}
-                    userName={teamMember?.name}
-                  />
-                ) : activeMode === 'assist' ? (
-                  <AssistMessages
-                    messages={assistMessages}
-                    isLoading={isLoading}
-                    userAvatarUrl={teamMember?.avatar_url}
-                    userName={teamMember?.name}
-                    onConfirmAction={handleConfirmAction}
-                    onDismissAction={handleDismissAction}
-                  />
-                ) : (
-                  <AgentMessages
-                    messages={agentMessages}
-                    isLoading={isLoading}
-                    userAvatarUrl={teamMember?.avatar_url}
-                    userName={teamMember?.name}
-                    onUndoBatch={handleUndoBatch}
-                    onViewChanges={handleViewChanges}
-                  />
-                )}
-              </ScrollArea>
-
-              <CLXAssistantInput
-                mode={activeMode}
-                input={input}
-                onInputChange={setInput}
-                onSubmit={() => handleSubmit()}
-                onStop={handleStopGeneration}
+        <ScrollArea className="flex-1" ref={scrollRef}>
+          {currentMessages.length === 0 ? (
+            <CLXAssistantEmptyState
+              mode={activeMode}
+              currentPage={location.pathname}
+              suggestedTasks={suggestedTasks}
+              onSubmit={handleSubmit}
+              greetingName={teamMember?.name}
+            />
+          ) : activeMode === 'chat' ? (
+            <ChatMessages
+              messages={messages}
+              isLoading={isLoading}
+              userAvatarUrl={teamMember?.avatar_url}
+              userName={teamMember?.name}
+            />
+          ) : activeMode === 'assist' ? (
+            <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6">
+              <AssistMessages
+                messages={assistMessages}
                 isLoading={isLoading}
-                uploadedFile={uploadedFile}
-                onFileUpload={setUploadedFile}
-                onRemoveFile={() => setUploadedFile(null)}
-                inputRef={inputRef}
+                userAvatarUrl={teamMember?.avatar_url}
+                userName={teamMember?.name}
+                onConfirmAction={handleConfirmAction}
+                onDismissAction={handleDismissAction}
               />
             </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          ) : (
+            <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6">
+              <AgentMessages
+                messages={agentMessages}
+                isLoading={isLoading}
+                userAvatarUrl={teamMember?.avatar_url}
+                userName={teamMember?.name}
+                onUndoBatch={handleUndoBatch}
+                onViewChanges={handleViewChanges}
+              />
+            </div>
+          )}
+        </ScrollArea>
+
+        <CLXAssistantInput
+          mode={activeMode}
+          input={input}
+          onInputChange={setInput}
+          onSubmit={() => handleSubmit()}
+          onStop={handleStopGeneration}
+          isLoading={isLoading}
+          uploadedFile={uploadedFile}
+          onFileUpload={setUploadedFile}
+          onRemoveFile={() => setUploadedFile(null)}
+          inputRef={inputRef}
+        />
+      </div>
+    </div>
   );
 };
 

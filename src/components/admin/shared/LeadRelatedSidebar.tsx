@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +14,7 @@ import { Calendar } from '@/components/ui/calendar';
 import {
   Users, CheckSquare, Layers, Building2, FileText,
   CalendarDays, FolderOpen, ChevronDown, ChevronRight,
-  Plus, Maximize2, Bookmark, Trash2, Download, Eye, Phone,
+  Plus, Maximize2, Bookmark, Trash2, Eye, Phone,
   Loader2, X,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { PeopleTaskDetailDialog, type LeadTask } from '@/components/admin/PeopleTaskDetailDialog';
 import ProjectDetailDialog, { type LeadProject } from '@/components/admin/ProjectDetailDialog';
 import { LeadCallHistorySection } from '@/components/admin/shared/LeadCallHistorySection';
+import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -47,16 +48,6 @@ export interface LeadRelatedSidebarStageCfg {
 interface LeadEmailLite {
   id: string;
   email: string;
-}
-
-interface LeadFile {
-  id: string;
-  file_name: string;
-  file_url: string;
-  file_type: string | null;
-  file_size: number | null;
-  uploaded_by: string | null;
-  created_at: string;
 }
 
 interface LeadContact {
@@ -119,30 +110,9 @@ const COMMON_DOMAINS = [
   'aol.com', 'icloud.com', 'mail.com', 'protonmail.com',
 ];
 
-function formatFileSize(bytes: number | null): string {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getFileIcon(fileType: string | null): string {
-  if (!fileType) return '📄';
-  if (fileType.startsWith('image/')) return '🖼️';
-  if (fileType === 'application/pdf') return '📕';
-  if (fileType.includes('spreadsheet') || fileType.includes('excel') || fileType.includes('csv')) return '📊';
-  if (fileType.includes('word') || fileType.includes('document')) return '📝';
-  if (fileType.includes('zip') || fileType.includes('compressed')) return '📦';
-  return '📄';
-}
-
 function formatShortDate(dateStr: string | null): string {
   if (!dateStr) return '—';
   try { return format(parseISO(dateStr), 'M/d/yyyy'); } catch { return '—'; }
-}
-
-function sanitizeFileName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9._-]/g, '_');
 }
 
 // ─── Polymorphic Supabase helpers ───────────────────────────────────────
@@ -405,9 +375,8 @@ export default function LeadRelatedSidebar({
   const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
   const [createProjectInitialName, setCreateProjectInitialName] = useState('');
 
-  // File upload state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingFile, setUploadingFile] = useState(false);
+  // Files
+  const [addFilesOpen, setAddFilesOpen] = useState(false);
 
   // Duplicate-opportunity dialog state
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -436,7 +405,6 @@ export default function LeadRelatedSidebar({
   const tasksKey = ['person-tasks', leadId] as const; // kept for compat with existing task consumers
   const projectsKey = ['lead-related', entityType, leadId, 'projects'] as const;
   const appointmentsKey = ['lead-related', entityType, leadId, 'appointments'] as const;
-  const filesKey = ['lead-related', entityType, leadId, 'files'] as const;
 
   // ─── Queries ───────────────────────────────────────────────────────────
 
@@ -509,16 +477,19 @@ export default function LeadRelatedSidebar({
     enabled: !!leadId,
   });
 
-  const { data: leadFiles = [] } = useQuery<LeadFile[]>({
-    queryKey: filesKey,
+  // File count — shares the React Query cache with EntityFilesSection (same key
+  // + select shape), so mounting EntityFilesSection below does not double-fetch.
+  const { data: leadFiles = [] } = useQuery({
+    queryKey: ['entity-files', entityType, leadId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('entity_files')
-        .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('entity_id', leadId).eq('entity_type', entityType)
+        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('entity_id', leadId)
+        .eq('entity_type', entityType)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as LeadFile[];
+      return data ?? [];
     },
     enabled: !!leadId,
   });
@@ -960,85 +931,6 @@ export default function LeadRelatedSidebar({
     toast.success('Project deleted');
     queryClient.invalidateQueries({ queryKey: projectsKey });
   }, [queryClient, projectsKey]);
-
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !leadId) return;
-    e.target.value = '';
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      toast.error('You must be logged in to upload files. Please refresh and sign in again.');
-      return;
-    }
-
-    setUploadingFile(true);
-    const filePath = `${leadId}/${Date.now()}_${sanitizeFileName(file.name)}`;
-    const { error: uploadError } = await supabase.storage
-      .from('lead-files')
-      .upload(filePath, file, {
-        contentType: file.type || 'application/octet-stream',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      setUploadingFile(false);
-      const reason = uploadError.message?.includes('security')
-        ? 'Permission denied — check your login session'
-        : uploadError.message || 'Storage error';
-      toast.error(`Upload failed for ${file.name}: ${reason}`);
-      return;
-    }
-
-    const { error: dbError } = await supabase.from('entity_files').insert({
-      entity_id: leadId,
-      entity_type: entityType,
-      file_name: file.name,
-      file_url: filePath,
-      file_type: file.type || null,
-      file_size: file.size,
-    });
-
-    setUploadingFile(false);
-    if (dbError) {
-      const reason = dbError.message?.includes('row-level security')
-        ? 'Permission denied — admin role required'
-        : dbError.message || 'Database error';
-      toast.error(`Failed to save ${file.name}: ${reason}`);
-      await supabase.storage.from('lead-files').remove([filePath]);
-      return;
-    }
-    toast.success('File uploaded');
-    queryClient.invalidateQueries({ queryKey: filesKey });
-  }, [leadId, entityType, queryClient, filesKey]);
-
-  const handleDeleteFile = useCallback(async (file: LeadFile) => {
-    await supabase.storage.from('lead-files').remove([file.file_url]);
-    const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
-    if (error) {
-      toast.error('Failed to delete file');
-      return;
-    }
-    toast.success('File deleted');
-    queryClient.invalidateQueries({ queryKey: filesKey });
-  }, [queryClient, filesKey]);
-
-  const handleDownloadFile = useCallback(async (file: LeadFile) => {
-    const { data, error } = await supabase.storage
-      .from('lead-files')
-      .createSignedUrl(file.file_url, 60);
-    if (error || !data?.signedUrl) {
-      toast.error('Failed to generate download link');
-      return;
-    }
-    const a = document.createElement('a');
-    a.href = data.signedUrl;
-    a.download = file.file_name;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, []);
 
   // ─── Derived data ──────────────────────────────────────────────────────
   const pendingTasks = tasks.filter((t: LeadTask) => !t.completed_at);
@@ -1590,119 +1482,23 @@ export default function LeadRelatedSidebar({
               </div>
             </RelatedSection>
 
-            {/* Files */}
+            {/* Files — header lives on RelatedSection; body delegates to the shared
+                EntityFilesSection which opens AddFileDialog (Computer/Dropbox/Sheets). */}
             <RelatedSection
               icon={<FileText className="h-3.5 w-3.5" />}
               label="Files"
               count={leadFiles.length}
-              onAdd={() => fileInputRef.current?.click()}
+              onAdd={() => setAddFilesOpen(true)}
             >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
+              <EntityFilesSection
+                entityId={leadId}
+                entityType={entityType}
+                entityName={lead.opportunity_name ?? lead.name ?? undefined}
+                companyName={lead.company_name ?? undefined}
+                hideHeader
+                addOpen={addFilesOpen}
+                onAddOpenChange={setAddFilesOpen}
               />
-              <div className="space-y-1.5 py-1">
-                {leadFiles.map((f) => {
-                  const isImage = f.file_type?.startsWith('image/') ?? false;
-                  // File types the browser can render directly in a new tab.
-                  const isPreviewable =
-                    isImage ||
-                    f.file_type === 'application/pdf' ||
-                    f.file_type === 'text/plain' ||
-                    f.file_type === 'text/html' ||
-                    f.file_type === 'text/csv';
-                  return (
-                    <div
-                      key={f.id}
-                      className="flex items-start gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors group min-w-0"
-                    >
-                      {isImage ? (
-                        // Inline thumbnail for image types — clicking opens the
-                        // full image in a new tab (opt-in noreferrer for safety).
-                        <a
-                          href={f.file_url}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="h-9 w-9 shrink-0 rounded-md overflow-hidden border border-border bg-muted/40 flex items-center justify-center"
-                          title={`Preview ${f.file_name}`}
-                        >
-                          <img
-                            src={f.file_url}
-                            alt={f.file_name}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                          />
-                        </a>
-                      ) : (
-                        <span className="text-base shrink-0 mt-0.5 leading-none">{getFileIcon(f.file_type)}</span>
-                      )}
-                      <div className="flex-1 min-w-0 max-w-full">
-                        {isPreviewable ? (
-                          <a
-                            href={f.file_url}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="font-medium text-foreground truncate block hover:text-violet-700 hover:underline"
-                            title={`Preview ${f.file_name}`}
-                          >
-                            {f.file_name}
-                          </a>
-                        ) : (
-                          <p className="font-medium text-foreground truncate" title={f.file_name}>{f.file_name}</p>
-                        )}
-                        <p className="text-[10px] text-muted-foreground truncate">
-                          {formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-0.5 shrink-0">
-                        {isPreviewable && (
-                          <a
-                            href={f.file_url}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="p-1 rounded hover:bg-muted"
-                            title="Preview in new tab"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Eye className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                          </a>
-                        )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }}
-                          className="p-1 rounded hover:bg-muted"
-                          title="Download"
-                        >
-                          <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteFile(f)}
-                          className="p-1 rounded hover:bg-muted"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-                {uploadingFile && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                    <Loader2 className="h-3 w-3 animate-spin text-orange-500" />
-                    Uploading...
-                  </div>
-                )}
-                {leadFiles.length === 0 && !uploadingFile && (
-                  <p className="text-xs text-muted-foreground">No files</p>
-                )}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                >
-                  + Upload file...
-                </button>
-              </div>
             </RelatedSection>
 
             {/* Call History */}

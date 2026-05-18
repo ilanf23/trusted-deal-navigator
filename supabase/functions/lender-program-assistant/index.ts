@@ -1,5 +1,7 @@
 import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { getUserFromRequest } from "../_shared/auth.ts";
+import { getProviderKey } from "../_shared/userIntegrations.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,9 +17,27 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    let teamMemberId: string | null = null;
+    try {
+      const auth = await getUserFromRequest(req, supabaseAdmin);
+      teamMemberId = auth.teamMember?.id ?? null;
+    } catch {
+      teamMemberId = null;
+    }
+
+    const OPENAI_API_KEY = await getProviderKey(
+      supabaseAdmin,
+      teamMemberId,
+      "openai",
+      "OPENAI_API_KEY",
+    );
     if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+      throw new Error("No OpenAI API key available (user integration or OPENAI_API_KEY)");
     }
 
     const { message, leadContext } = await req.json();
@@ -29,12 +49,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch all lender programs from the database
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-
     const { data: programs, error: programsError } = await supabaseAdmin
       .from("lender_programs")
       .select("*")
@@ -44,14 +58,12 @@ Deno.serve(async (req) => {
       throw programsError;
     }
 
-    // Format programs for the AI context
-    const programsContext = programs.map((p) => 
+    const programsContext = programs.map((p) =>
       `- ${p.lender_name} | ${p.program_name} (${p.program_type}): ${p.description || 'No description'}. ` +
       `Loan range: $${p.min_loan?.toLocaleString() || 'N/A'} - $${p.max_loan?.toLocaleString() || 'N/A'}. ` +
       `Interest: ${p.interest_range || 'N/A'}. Term: ${p.term || 'N/A'}.`
     ).join("\n");
 
-    // Build lead context if available
     let leadInfo = "";
     if (leadContext) {
       leadInfo = `\n\nCurrent Lead/Caller Context:\n` +
@@ -96,8 +108,7 @@ Instructions:
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenAI API error:", response.status, errorText);
+      console.error("OpenAI API error:", response.status);
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
@@ -109,7 +120,7 @@ Instructions:
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("Lender program assistant error:", error);
+    console.error("Lender program assistant error:", error instanceof Error ? error.message : "unknown");
     const message = error instanceof Error ? error.message : "An error occurred";
     return new Response(
       JSON.stringify({ error: message }),

@@ -25,6 +25,7 @@ import {
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
+import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useCall } from '@/contexts/CallContext';
@@ -152,6 +153,23 @@ export default function LenderExpandedView() {
 
   // ── Delete confirmation ──
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // ── Files ──
+  const [addFilesOpen, setAddFilesOpen] = useState(false);
+  const { data: lenderFiles = [] } = useQuery({
+    queryKey: ['entity-files', 'lender_programs', lenderId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('entity_files')
+        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('entity_id', lenderId!)
+        .eq('entity_type', 'lender_programs')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!lenderId,
+  });
 
   // ── Lender query ──
   const { data: lender, isLoading } = useQuery({
@@ -1136,12 +1154,22 @@ export default function LenderExpandedView() {
               </RelatedSection>
 
               <RelatedSection
-                icon={<Building2 className="h-3.5 w-3.5" />}
-                label="Related Files"
-                count={0}
-                iconColor="text-amber-500"
+                icon={<FileText className="h-3.5 w-3.5" />}
+                label="Files"
+                count={lenderFiles.length}
+                iconColor="text-orange-500"
+                onAdd={() => setAddFilesOpen(true)}
               >
-                <p className="text-[11px] text-muted-foreground italic px-2 py-1">No files</p>
+                {lenderId && (
+                  <EntityFilesSection
+                    entityId={lenderId}
+                    entityType="lender_programs"
+                    entityName={lender?.lender_name ?? undefined}
+                    hideHeader
+                    addOpen={addFilesOpen}
+                    onAddOpenChange={setAddFilesOpen}
+                  />
+                )}
               </RelatedSection>
 
               <RelatedSection

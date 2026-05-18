@@ -6,8 +6,8 @@ import AIEmailAssistant from './AIEmailAssistant';
 import { Menu, Undo2, Loader2, Columns2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UndoProvider, useUndo } from '@/contexts/UndoContext';
-import { useAIAssistant } from '@/contexts/AIAssistantContext';
 import { SplitViewProvider, useSplitView } from '@/contexts/SplitViewContext';
+import { useLocation, useNavigate } from 'react-router-dom';
 import SplitViewContainer from './splitview/SplitViewContainer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, createContext, useContext } from 'react';
@@ -74,7 +74,9 @@ const SplitViewContent = ({ children }: AdminLayoutProps) => {
 const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
   const [inboxOpen, setInboxOpen] = useState(false);
   const { lastAction, isUndoing, executeUndo } = useUndo();
-  const { isOpen: aiChatOpen, setIsOpen: setAiChatOpen } = useAIAssistant();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const aiChatOpen = location.pathname === '/admin/assistant';
   const { pageTitle, searchComponent, actionsComponent } = useAdminTopBar();
 
   return (
@@ -83,7 +85,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
         <AdminSidebar
           onInboxToggle={() => setInboxOpen(!inboxOpen)}
           inboxOpen={inboxOpen}
-          onAIToggle={() => setAiChatOpen(!aiChatOpen)}
+          onAIToggle={() => navigate('/admin/assistant')}
           aiChatOpen={aiChatOpen}
         />
 

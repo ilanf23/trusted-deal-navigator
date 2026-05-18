@@ -1,5 +1,6 @@
--- Per-user third-party integration credentials with envelope encryption fields
--- Option 2: app-level encryption (AES-GCM + wrapped per-row DEK)
+-- Per-user third-party integration credentials with envelope encryption fields.
+-- Admin-assigned model: only admins/super_admins write or revoke; users see their own.
+-- Encryption: AES-GCM + wrapped per-row DEK (see supabase/functions/_shared/crypto.ts).
 
 CREATE TABLE public.user_integrations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -21,23 +22,22 @@ CREATE TABLE public.user_integrations (
 
 ALTER TABLE public.user_integrations ENABLE ROW LEVEL SECURITY;
 
--- Metadata-only access for the current user; secret columns are still protected
--- by frontend select lists and server-side handling.
+-- A user can see metadata for keys assigned to them (read-only).
 CREATE POLICY "Users can view own integration metadata"
   ON public.user_integrations FOR SELECT
   USING (user_id = current_team_member_id());
 
-CREATE POLICY "Users can revoke own integrations"
-  ON public.user_integrations FOR UPDATE
-  USING (user_id = current_team_member_id())
-  WITH CHECK (user_id = current_team_member_id());
+-- Admins and super_admins can see all integrations (for the admin assignment UI).
+CREATE POLICY "Admins can view all integration metadata"
+  ON public.user_integrations FOR SELECT
+  USING (
+    has_role(auth.uid(), 'admin'::app_role) OR
+    has_role(auth.uid(), 'super_admin'::app_role)
+  );
 
-CREATE POLICY "Users can delete own integrations"
-  ON public.user_integrations FOR DELETE
-  USING (user_id = current_team_member_id());
-
--- No direct INSERT for authenticated users; writes happen via edge functions
--- using the service-role key to guarantee encrypted payloads.
+-- Writes (insert/update/delete) are not allowed directly. They go through
+-- service-role edge functions (add-user-integration, revoke-user-integration)
+-- which enforce admin role + handle encryption.
 
 CREATE INDEX idx_user_integrations_user_provider_revoked
   ON public.user_integrations (user_id, provider, revoked_at);

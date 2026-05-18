@@ -8,7 +8,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
-import { sanitizeFileName } from '@/lib/utils';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -41,19 +40,6 @@ import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog'
 import ProjectDetailDialog, { type LeadProject } from './ProjectDetailDialog';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { formatPhoneNumber } from './InlineEditableFields';
-
-interface PersonFile {
-  id: string;
-  entity_id: string;
-  file_name: string;
-  file_url: string;
-  file_type: string | null;
-  file_size: number | null;
-  uploaded_by: string | null;
-  created_at: string;
-}
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 function formatFileSize(bytes: number | null): string {
   if (!bytes) return '';
@@ -1225,10 +1211,6 @@ export default function PeopleExpandedView() {
   const [newAddressZip, setNewAddressZip] = useState('');
   const [newAddressType, setNewAddressType] = useState('business');
 
-  // File upload state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingFile, setUploadingFile] = useState(false);
-
   // Extra fields state
   const [extraFields, setExtraFields] = useState<string[]>(() => {
     try {
@@ -1535,109 +1517,18 @@ export default function PeopleExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['person-activity-comments', personId] });
   }, [personId, commentTexts, teamMember, queryClient]);
 
-  // ── File upload ──
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !personId) return;
-    e.target.value = '';
-
-    console.log('[FileUpload] Lead: starting upload', { name: file.name, size: file.size, type: file.type });
-
-    // Auth check
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      console.error('[FileUpload] Lead: no active session', sessionError);
-      toast.error('You must be logged in to upload files. Please refresh and sign in again.');
-      return;
-    }
-
-    setUploadingFile(true);
-    const filePath = `${personId}/${Date.now()}_${sanitizeFileName(file.name)}`;
-    const { error: uploadError } = await supabase.storage
-      .from('lead-files')
-      .upload(filePath, file, {
-        contentType: file.type || 'application/octet-stream',
-        upsert: true,
-      });
-    if (uploadError) {
-      console.error('[FileUpload] Lead: storage upload error', uploadError);
-      setUploadingFile(false);
-      const reason = uploadError.message?.includes('security')
-        ? 'Permission denied — check your login session'
-        : uploadError.message || 'Storage error';
-      toast.error(`Upload failed for ${file.name}: ${reason}`);
-      return;
-    }
-
-    // Store relative path, NOT public URL
-    const { error: dbError } = await supabase.from('entity_files').insert({
-      entity_id: personId,
-      entity_type: 'people',
-      file_name: file.name,
-      file_url: filePath,
-      file_type: file.type || null,
-      file_size: file.size,
-    });
-    setUploadingFile(false);
-    if (dbError) {
-      console.error('[FileUpload] Lead: DB insert error', dbError);
-      const reason = dbError.message?.includes('row-level security')
-        ? 'Permission denied — admin role required'
-        : dbError.message || 'Database error';
-      toast.error(`Failed to save ${file.name}: ${reason}`);
-      // Clean up orphaned storage file
-      await supabase.storage.from('lead-files').remove([filePath]);
-      return;
-    }
-    console.log('[FileUpload] Lead: upload success', { filePath });
-    toast.success('File uploaded');
-    queryClient.invalidateQueries({ queryKey: ['person-files', personId] });
-  }, [personId, queryClient]);
-
-  // ── File delete ──
-  const handleDeleteFile = useCallback(async (file: PersonFile) => {
-    // file_url stores relative path directly
-    await supabase.storage.from('lead-files').remove([file.file_url]);
-
-    const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
-    if (error) {
-      toast.error('Failed to delete file');
-      return;
-    }
-    toast.success('File deleted');
-    queryClient.invalidateQueries({ queryKey: ['person-files', personId] });
-  }, [personId, queryClient]);
-
-  // ── File download (signed URL) ──
-  const handleDownloadFile = useCallback(async (file: PersonFile) => {
-    const { data, error } = await supabase.storage
-      .from('lead-files')
-      .createSignedUrl(file.file_url, 60);
-    if (error || !data?.signedUrl) {
-      toast.error('Failed to generate download link');
-      return;
-    }
-    const a = document.createElement('a');
-    a.href = data.signedUrl;
-    a.download = file.file_name;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, []);
-
-  // ── Person files query ──
+  // ── Person files query (shares cache with EntityFilesSection) ──
   const { data: personFiles = [] } = useQuery({
-    queryKey: ['person-files', personId],
+    queryKey: ['entity-files', 'people', personId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('entity_files')
-        .select('id, entity_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
+        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
         .eq('entity_id', personId!)
         .eq('entity_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as PersonFile[];
+      return data ?? [];
     },
     enabled: !!personId,
   });
@@ -3132,153 +3023,6 @@ export default function PeopleExpandedView() {
               </div>
             </Collapsible>
 
-            {/* Legacy sections hidden */}
-            <div className="hidden">
-            <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Company" count={person.company_name ? 1 : 0} iconColor="text-indigo-500">
-              <div className="space-y-2 py-1">
-                {person.company_name ? (
-                  <div className="text-xs text-foreground flex items-center gap-2">
-                    <CrmAvatar name={person.company_name} size="xs" />
-                    <span className="font-medium">{person.company_name}</span>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground italic">No company set</p>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Tasks */}
-            <RelatedSection
-              icon={<CheckSquare className="h-3.5 w-3.5" />}
-              label="Tasks"
-              count={pendingTasks.length}
-              iconColor="text-emerald-500"
-              onAdd={() => { setEditingTask(null); setNewTaskTitle(''); setTaskDialogOpen(true); }}
-            >
-              <div className="space-y-1 py-1">
-                {pendingTasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded-md px-1 py-1 -mx-1 transition-colors group"
-                    onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
-                  >
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
-                      className="shrink-0"
-                    >
-                      <div className="h-3.5 w-3.5 rounded-sm border border-muted-foreground/40 group-hover:border-emerald-400 transition-colors" />
-                    </button>
-                    <span className="flex-1 truncate text-foreground font-medium">{t.title}</span>
-                    {t.due_date && (
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        {formatShortDate(t.due_date)}
-                      </span>
-                    )}
-                  </div>
-                ))}
-                <button
-                  onClick={() => { setEditingTask(null); setNewTaskTitle(''); setTaskDialogOpen(true); }}
-                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                >
-                  + Add task...
-                </button>
-                {/* Show completed tasks toggle */}
-                {completedTasks.length > 0 && (
-                  <>
-                    <button
-                      onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 w-full"
-                    >
-                      {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                      Show completed tasks ({completedTasks.length})
-                    </button>
-                    {showCompletedTasks && completedTasks.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded-md px-1 py-1 -mx-1 transition-colors"
-                        onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
-                      >
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
-                          className="shrink-0"
-                        >
-                          <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />
-                        </button>
-                        <span className="flex-1 truncate line-through text-muted-foreground">{t.title}</span>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Files */}
-            <RelatedSection
-              icon={<FileText className="h-3.5 w-3.5" />}
-              label="Files"
-              count={personFiles.length}
-              iconColor="text-orange-500"
-              onAdd={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <div className="space-y-1.5 py-1">
-                {personFiles.map((f) => (
-                  <div key={f.id} className="flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
-                    <span className="text-sm shrink-0">{getFileIcon(f.file_type)}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">{f.file_name}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }}
-                        className="p-1 rounded hover:bg-muted"
-                        title="Download"
-                      >
-                        <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteFile(f)}
-                        className="p-1 rounded hover:bg-muted"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {uploadingFile && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                    <Loader2 className="h-3 w-3 animate-spin text-orange-500" />
-                    Uploading...
-                  </div>
-                )}
-                {personFiles.length === 0 && !uploadingFile && (
-                  <p className="text-xs text-muted-foreground">No files</p>
-                )}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                >
-                  + Upload file...
-                </button>
-              </div>
-            </RelatedSection>
-
-            {/* Pipeline Records removed — people are no longer connected to pipelines */}
-
-            {/* Calendar Events */}
-            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0} iconColor="text-amber-500">
-              <p className="text-xs text-muted-foreground py-1">No events</p>
-            </RelatedSection>
-            </div>
           </div>
         </div>
       </div>

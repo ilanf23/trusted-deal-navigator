@@ -1,6 +1,7 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
+import { getProviderKey } from '../_shared/userIntegrations.ts';
 import { buildChatContext } from '../_shared/aiAgent/context.ts';
 
 const corsHeaders = {
@@ -20,13 +21,18 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not configured');
-    }
-
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { teamMember, isOwner } = await getUserFromRequest(req, supabase);
+
+    const OPENAI_API_KEY = await getProviderKey(
+      supabase,
+      teamMember?.id ?? null,
+      'openai',
+      'OPENAI_API_KEY',
+    );
+    if (!OPENAI_API_KEY) {
+      throw new Error('No OpenAI API key available (user integration or OPENAI_API_KEY)');
+    }
 
     const body = await req.json();
     const { messages, teamMemberId: requestedMemberId, mode = 'chat', currentPage = '' } = body;

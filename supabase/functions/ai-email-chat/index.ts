@@ -1,6 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { getUserFromRequest } from "../_shared/auth.ts";
+import { getProviderKey } from "../_shared/userIntegrations.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,15 +32,28 @@ Deno.serve(async (req) => {
       });
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
-    }
-
     // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    let teamMemberId: string | null = null;
+    try {
+      const auth = await getUserFromRequest(req, supabase);
+      teamMemberId = auth.teamMember?.id ?? null;
+    } catch {
+      teamMemberId = null;
+    }
+
+    const OPENAI_API_KEY = await getProviderKey(
+      supabase,
+      teamMemberId,
+      "openai",
+      "OPENAI_API_KEY",
+    );
+    if (!OPENAI_API_KEY) {
+      throw new Error("No OpenAI API key available (user integration or OPENAI_API_KEY)");
+    }
 
     // Fetch lead data
     const { data: lead, error: leadError } = await supabase

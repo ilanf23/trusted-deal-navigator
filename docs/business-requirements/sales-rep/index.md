@@ -74,6 +74,12 @@ Legend: 🟢 live · 🟡 in-progress · ⚪ planned · ⚫ deprecated · — no
 | Dev Notes | `/admin/dev-notes` | 🟢 | — |
 | Bug Reporting | `/admin/bug-reporting` | 🟢 | — |
 
+## Shared patterns (cross-page)
+
+| Pattern | Source | Status | Doc |
+|---------|--------|--------|-----|
+| Files section (Computer / Dropbox / Google Sheets) | `EntityFilesSection` | 🟢 | [expanded-view-files.md](./expanded-view-files.md) |
+
 ---
 
 **Total:** 26 pages · **Documented:** 20

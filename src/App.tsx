@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "next-themes";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
-import CLXAssistant from "@/components/ai/CLXAssistant";
 import { CallProvider } from "@/contexts/CallContext";
 import { IncomingCallPopup } from "@/components/employee/IncomingCallPopup";
 import { useEdgeFunctionWarmup } from "@/hooks/useEdgeFunctionWarmup";
@@ -90,6 +89,7 @@ const SheetsCallback = lazy(() => import("./pages/admin/SheetsCallback"));
 const DropboxPage = lazy(() => import("./pages/admin/Dropbox"));
 const DropboxCallback = lazy(() => import("./pages/admin/DropboxCallback"));
 const AIChanges = lazy(() => import("./pages/admin/AIChanges"));
+const AIAssistantPage = lazy(() => import("./pages/admin/AIAssistant"));
 const LoanVolumeLog = lazy(() => import("./pages/admin/LoanVolumeLog"));
 const VolumeLogExpandedView = lazy(() => import("./components/admin/VolumeLogExpandedView"));
 const AdminTracking = lazy(() => import("./pages/admin/Tracking"));
@@ -126,7 +126,6 @@ const App = () => (
           <Sonner />
           <AIAssistantProvider>
             <BrowserRouter>
-              <CLXAssistant />
               <CallProvider>
               <Suspense fallback={<PageSkeleton />}>
               <Routes>
@@ -231,6 +230,7 @@ const App = () => (
                 <Route path="/admin/settings" element={<Navigate to="/admin/settings/profile" replace />} />
                 <Route path="/admin/settings/:section" element={<AdminRoute><AdminSettings /></AdminRoute>} />
                 <Route path="/admin/refer" element={<AdminRoute><ReferAFriend /></AdminRoute>} />
+                <Route path="/admin/assistant" element={<AdminRoute><AIAssistantPage /></AdminRoute>} />
                 {/* Legacy redirects */}
                 <Route path="/admin/evan" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/admin/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
