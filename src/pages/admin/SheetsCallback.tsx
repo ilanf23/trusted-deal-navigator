@@ -16,6 +16,7 @@ const SheetsCallback = () => {
       if (error) {
         setStatus('error');
         setMessage('Authorization was cancelled or denied.');
+        window.opener?.postMessage({ type: 'sheets-auth', status: 'error' }, window.location.origin);
         setTimeout(() => window.close(), 2000);
         return;
       }
@@ -23,6 +24,7 @@ const SheetsCallback = () => {
       if (!code) {
         setStatus('error');
         setMessage('No authorization code received.');
+        window.opener?.postMessage({ type: 'sheets-auth', status: 'error' }, window.location.origin);
         setTimeout(() => window.close(), 2000);
         return;
       }
@@ -51,11 +53,13 @@ const SheetsCallback = () => {
 
         setStatus('success');
         setMessage(`Connected as ${response.data.email}`);
+        window.opener?.postMessage({ type: 'sheets-auth', status: 'success', email: response.data.email }, window.location.origin);
         setTimeout(() => window.close(), 1500);
       } catch (err) {
         console.error('Error exchanging code:', err);
         setStatus('error');
         setMessage('Failed to complete connection. Please try again.');
+        window.opener?.postMessage({ type: 'sheets-auth', status: 'error' }, window.location.origin);
         setTimeout(() => window.close(), 2000);
       }
     };

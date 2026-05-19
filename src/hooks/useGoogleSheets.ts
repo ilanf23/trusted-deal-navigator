@@ -75,17 +75,17 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
 
       popup.location.href = response.data.authUrl;
 
-      // Poll for completion
-      const pollInterval = setInterval(async () => {
-        try {
-          if (popup.closed) {
-            clearInterval(pollInterval);
-            await checkConnection();
-          }
-        } catch {
-          // Cross-origin errors are expected
+      // Listen for postMessage from the callback page.
+      // COOP blocks polling popup.closed once the popup navigates to accounts.google.com.
+      const messageHandler = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        if (event.data?.type !== 'sheets-auth') return;
+        window.removeEventListener('message', messageHandler);
+        if (event.data.status === 'success') {
+          checkConnection();
         }
-      }, 500);
+      };
+      window.addEventListener('message', messageHandler);
 
     } catch (error) {
       console.error('Error connecting to Google Sheets:', error);

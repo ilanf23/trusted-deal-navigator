@@ -10,6 +10,9 @@ import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 
 /**
  * Shared call-history section for the three pipeline expanded views.
@@ -76,7 +79,7 @@ export function LeadCallHistorySection({
   fallbackPhone,
 }: LeadCallHistorySectionProps) {
   const { makeOutboundCall } = useCall();
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [activeCall, setActiveCall] = useState<CommunicationRow | null>(null);
   const [open, setOpen] = useState(true);
 
   const { data: calls = [], isLoading } = useQuery({
@@ -103,14 +106,15 @@ export function LeadCallHistorySection({
     return map;
   }, [teamMembers]);
 
-  const toggle = (id: string) =>
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
-
   const handleRedial = (phone: string | null) => {
     const target = phone ?? fallbackPhone ?? '';
     if (!target) return;
     void makeOutboundCall(target, leadId, undefined);
   };
+
+  const activeCallMember = activeCall?.user_id
+    ? teamMemberMap[activeCall.user_id] ?? '—'
+    : '—';
 
   const count = calls.length;
 
@@ -141,14 +145,17 @@ export function LeadCallHistorySection({
             <p className="text-xs text-muted-foreground">No calls logged</p>
           )}
           {calls.map((c) => {
-            const rowExpanded = !!expanded[c.id];
             const member = c.user_id
               ? teamMemberMap[c.user_id] ?? '—'
               : '—';
+            const hasDetail = !!(c.recording_url || c.transcript);
             return (
-              <div
+              <button
                 key={c.id}
-                className="rounded-lg border border-border bg-card/60 px-2 py-1.5 text-xs"
+                type="button"
+                onClick={() => setActiveCall(c)}
+                className="w-full text-left rounded-lg border border-border bg-card/60 hover:bg-muted/60 px-2 py-1.5 text-xs transition-colors cursor-pointer"
+                title={hasDetail ? 'View transcript & recording' : 'View call details'}
               >
                 <div className="flex items-center gap-2">
                   {directionIcon(c.direction, c.status)}
@@ -169,65 +176,117 @@ export function LeadCallHistorySection({
                   </div>
                   <div className="flex items-center gap-0.5 shrink-0">
                     <Button
-                      type="button"
+                      asChild
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6"
                       title="Redial"
-                      onClick={() => handleRedial(c.phone_number)}
                     >
-                      <Phone className="h-3 w-3" />
-                    </Button>
-                    {(c.recording_url || c.transcript) && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        title={rowExpanded ? 'Hide' : 'Show recording / transcript'}
-                        onClick={() => toggle(c.id)}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRedial(c.phone_number);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleRedial(c.phone_number);
+                          }
+                        }}
                       >
-                        {rowExpanded ? (
-                          <ChevronDown className="h-3 w-3" />
-                        ) : (
-                          <ChevronRight className="h-3 w-3" />
-                        )}
-                      </Button>
-                    )}
+                        <Phone className="h-3 w-3" />
+                      </span>
+                    </Button>
                   </div>
                 </div>
-                {rowExpanded && (
-                  <div className="mt-2 space-y-2 border-t border-border pt-2">
-                    {c.recording_url && (
-                      <div className="flex items-center gap-2">
-                        <Play className="h-3 w-3 text-muted-foreground" />
-                        <audio
-                          controls
-                          src={c.recording_url}
-                          className="h-7 w-full"
-                        />
-                      </div>
-                    )}
-                    {c.transcript && (
-                      <div>
-                        <div className="flex items-center gap-1 mb-1">
-                          <FileText className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                            Transcript
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-foreground whitespace-pre-wrap leading-relaxed">
-                          {c.transcript}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              </button>
             );
           })}
         </div>
       </CollapsibleContent>
+
+      <Dialog
+        open={!!activeCall}
+        onOpenChange={(o) => !o && setActiveCall(null)}
+      >
+        <DialogContent className="max-w-lg">
+          {activeCall && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-base">
+                  {directionIcon(activeCall.direction, activeCall.status)}
+                  {activeCall.phone_number ?? 'Unknown number'}
+                  {activeCall.status === 'missed' && (
+                    <span className="text-[10px] text-red-500 font-semibold">
+                      MISSED
+                    </span>
+                  )}
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  {format(parseISO(activeCall.created_at), 'MMM d, yyyy · h:mm a')} ·{' '}
+                  <Clock className="inline h-3 w-3 -mt-0.5" />{' '}
+                  {formatDuration(activeCall.duration_seconds)} · {activeCallMember}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                {activeCall.recording_url ? (
+                  <div className="flex items-center gap-2">
+                    <Play className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <audio
+                      controls
+                      src={activeCall.recording_url}
+                      className="h-8 w-full"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">
+                    No recording available for this call.
+                  </p>
+                )}
+
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      Transcript
+                    </span>
+                  </div>
+                  {activeCall.transcript ? (
+                    <div className="max-h-[50vh] overflow-y-auto rounded-md border border-border bg-muted/30 p-3">
+                      <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+                        {activeCall.transcript}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">
+                      No transcript available for this call.
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      handleRedial(activeCall.phone_number);
+                      setActiveCall(null);
+                    }}
+                  >
+                    <Phone className="h-3.5 w-3.5 mr-1.5" />
+                    Redial
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </Collapsible>
   );
 }

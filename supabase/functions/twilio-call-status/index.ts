@@ -94,6 +94,15 @@ Deno.serve(async (req) => {
     const dialCallSid = params.get('DialCallSid') ?? '';
     const dialCallDuration = params.get('DialCallDuration') ?? '';
 
+    // For outbound calls, the per-<Number> statusCallback arrives with
+    // CallSid = the dialed (child) leg and ParentCallSid = the browser
+    // (parent) leg. Our communications row is created with the parent SID
+    // (see twilio-call/index.ts + CallContext.tsx). Always look up by the
+    // parent SID when present so both recording + status webhooks resolve
+    // to the same row.
+    const parentCallSid = params.get('ParentCallSid') ?? '';
+    const lookupSid = parentCallSid || callSid;
+
     // From/To are present on per-Number statusCallbacks (used as the outbound
     // backstop when no active_calls row exists for this call_sid).
     const fromNumber = params.get('From') ?? '';
@@ -127,7 +136,7 @@ Deno.serve(async (req) => {
       const { data: comm, error: findError } = await supabase
         .from('communications')
         .select('id')
-        .eq('call_sid', callSid)
+        .eq('call_sid', lookupSid)
         .maybeSingle();
 
       if (findError) {
@@ -143,13 +152,21 @@ Deno.serve(async (req) => {
         return new Response('Comm row not found', { status: 503, headers: corsHeaders });
       }
 
+      // Only overwrite duration_seconds when RecordingDuration is a positive
+      // integer — otherwise a late/empty recording event could blank out a
+      // duration already written by the per-Number status callback.
+      const parsedRecordingDuration = parseInt(recordingDuration);
+      const recordingUpdate: Record<string, unknown> = {
+        recording_url: mp3Url,
+        recording_sid: recordingSid,
+      };
+      if (Number.isFinite(parsedRecordingDuration) && parsedRecordingDuration > 0) {
+        recordingUpdate.duration_seconds = parsedRecordingDuration;
+      }
+
       const { error: updateError } = await supabase
         .from('communications')
-        .update({
-          recording_url: mp3Url,
-          recording_sid: recordingSid,
-          duration_seconds: parseInt(recordingDuration) || null,
-        })
+        .update(recordingUpdate)
         .eq('id', comm.id);
 
       if (updateError) {
@@ -184,17 +201,19 @@ Deno.serve(async (req) => {
 
       // Look up the active_calls row (only inbound calls create one) and any
       // existing communications row keyed by call_sid (outbound calls insert
-      // this client-side at initiation).
+      // this client-side at initiation). Both lookups use lookupSid so the
+      // per-<Number> outbound status callback (child CallSid + ParentCallSid)
+      // resolves to the same row created with the parent SID.
       const { data: activeCall } = await supabase
         .from('active_calls')
         .select('*')
-        .eq('call_sid', callSid)
+        .eq('call_sid', lookupSid)
         .maybeSingle();
 
       const { data: existingComm } = await supabase
         .from('communications')
         .select('id')
-        .eq('call_sid', callSid)
+        .eq('call_sid', lookupSid)
         .maybeSingle();
 
       const finalDuration = parseInt(callDuration) || parseInt(dialCallDuration) || null;
