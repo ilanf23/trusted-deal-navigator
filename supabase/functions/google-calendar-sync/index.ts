@@ -1,63 +1,12 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { getValidGoogleAccessToken } from '../_shared/googleToken.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Content-Type': 'application/json',
 };
-
-const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID') || '';
-const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') || '';
-
-async function getValidAccessToken(
-  connection: { access_token: string; refresh_token: string; token_expiry: string; user_id: string; id: string },
-  supabase: any
-): Promise<string | null> {
-  const expiry = new Date(connection.token_expiry);
-  const now = new Date();
-
-  // If token is still valid (with 5 min buffer), return it
-  if (expiry.getTime() - now.getTime() > 5 * 60 * 1000) {
-    return connection.access_token;
-  }
-
-  // Refresh the token
-  try {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        refresh_token: connection.refresh_token,
-        grant_type: 'refresh_token',
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('Token refresh failed:', await response.text());
-      return null;
-    }
-
-    const data = await response.json();
-    const newExpiry = new Date(Date.now() + data.expires_in * 1000).toISOString();
-
-    await supabase
-      .from('calendar_connections')
-      .update({
-        access_token: data.access_token,
-        token_expiry: newExpiry,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', connection.id);
-
-    return data.access_token;
-  } catch (err) {
-    console.error('Error refreshing token:', err);
-    return null;
-  }
-}
 
 async function syncToGoogle(
   accessToken: string,
@@ -187,7 +136,7 @@ Deno.serve(async (req) => {
       console.log('Running scheduled sync for all connected calendars...');
       
       const { data: connections, error: connErr } = await supabase
-        .from('calendar_connections')
+        .from('google_connections')
         .select('*');
 
       if (connErr || !connections?.length) {
@@ -214,7 +163,8 @@ Deno.serve(async (req) => {
 
       for (const connection of connections) {
         try {
-          const accessToken = await getValidAccessToken(connection, supabase);
+          const tokenResult = await getValidGoogleAccessToken(supabase, connection.user_id);
+          const accessToken = tokenResult?.accessToken ?? null;
           if (!accessToken) {
             console.error(`Failed to get token for user ${connection.user_id}`);
             continue;
@@ -261,7 +211,7 @@ Deno.serve(async (req) => {
                   synced_at: new Date().toISOString(),
                   sync_status: 'synced',
                   appointment_type: 'imported',
-                  user_name: connection.user_name || null,
+                  user_name: null,
                   user_id: userIdToTeamMemberId[connection.user_id] || null,
                 });
               totalImported++;
@@ -313,7 +263,7 @@ Deno.serve(async (req) => {
     const teamMemberId = teamMemberRow?.id || null;
 
     const { data: connection, error: connError } = await supabase
-      .from('calendar_connections')
+      .from('google_connections')
       .select('*')
       .eq('user_id', userId)
       .single();
@@ -325,7 +275,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const accessToken = await getValidAccessToken(connection, supabase);
+    const tokenResult = await getValidGoogleAccessToken(supabase, userId);
+    const accessToken = tokenResult?.accessToken ?? null;
     if (!accessToken) {
       return new Response(
         JSON.stringify({ error: 'Failed to get access token' }),
@@ -462,7 +413,7 @@ Deno.serve(async (req) => {
               synced_at: new Date().toISOString(),
               sync_status: 'synced',
               appointment_type: 'imported',
-              user_name: connection.user_name || null,
+              user_name: null,
               user_id: teamMemberId,
             });
           imported++;

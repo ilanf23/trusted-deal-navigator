@@ -3,7 +3,7 @@
 
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
-import { getValidSheetsAccessToken } from '../_shared/googleTokenRefresh.ts';
+import { getValidGoogleAccessToken } from '../_shared/googleToken.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,19 +39,22 @@ Deno.serve(async (req) => {
     }
     const userId = claims.user.id;
 
-    const { teamMemberName } = await req.json().catch(() => ({}));
+    await req.json().catch(() => ({}));
 
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-    let q = admin.from('sheets_connections').select('*').eq('user_id', userId);
-    if (teamMemberName) q = q.eq('user_name', teamMemberName);
-    const { data: connection } = await q.maybeSingle();
+    const { data: connection } = await admin
+      .from('google_connections')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
 
     if (!connection || !connection.drive_watch_channel_id || !connection.drive_watch_resource_id) {
       return new Response(JSON.stringify({ stopped: false, reason: 'no active watch' }), { status: 200, headers: corsHeaders });
     }
 
-    const accessToken = await getValidSheetsAccessToken(connection, admin);
+    const tokenResult = await getValidGoogleAccessToken(admin, userId);
+    const accessToken = tokenResult?.accessToken ?? null;
     if (accessToken) {
       const res = await fetch('https://www.googleapis.com/drive/v3/channels/stop', {
         method: 'POST',
@@ -71,7 +74,7 @@ Deno.serve(async (req) => {
     }
 
     await admin
-      .from('sheets_connections')
+      .from('google_connections')
       .update({
         drive_watch_channel_id: null,
         drive_watch_channel_token: null,

@@ -1,61 +1,12 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { getValidGoogleAccessToken } from '../_shared/googleToken.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Content-Type': 'application/json',
 };
-
-const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID') || '';
-const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') || '';
-
-async function getValidAccessToken(
-  connection: { access_token: string; refresh_token: string; token_expiry: string; id: string },
-  supabase: any
-): Promise<string | null> {
-  const expiry = new Date(connection.token_expiry);
-  const now = new Date();
-
-  if (expiry.getTime() - now.getTime() > 5 * 60 * 1000) {
-    return connection.access_token;
-  }
-
-  try {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        refresh_token: connection.refresh_token,
-        grant_type: 'refresh_token',
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('Sheets token refresh failed:', await response.text());
-      return null;
-    }
-
-    const data = await response.json();
-    const newExpiry = new Date(Date.now() + data.expires_in * 1000).toISOString();
-
-    await supabase
-      .from('sheets_connections')
-      .update({
-        access_token: data.access_token,
-        token_expiry: newExpiry,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', connection.id);
-
-    return data.access_token;
-  } catch (err) {
-    console.error('Error refreshing sheets token:', err);
-    return null;
-  }
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -92,25 +43,19 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.user.id;
     const body = await req.json();
-    const { action, spreadsheetId, sheetName, teamMemberName, range, values, rowValues } = body;
+    const { action, spreadsheetId, sheetName, range, values, rowValues } = body;
 
     const supabaseAdmin = createClient(
       supabaseUrl,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Get the sheets connection
-    let query = supabaseAdmin
-      .from('sheets_connections')
-      .select('*');
-
-    if (teamMemberName) {
-      query = query.eq('user_name', teamMemberName);
-    } else {
-      query = query.eq('user_id', userId);
-    }
-
-    const { data: connection, error: connError } = await query.single();
+    // Get the Google connection
+    const { data: connection, error: connError } = await supabaseAdmin
+      .from('google_connections')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
 
     if (connError || !connection) {
       return new Response(
@@ -119,7 +64,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const accessToken = await getValidAccessToken(connection, supabaseAdmin);
+    const tokenResult = await getValidGoogleAccessToken(supabaseAdmin, userId);
+    const accessToken = tokenResult?.accessToken ?? null;
     if (!accessToken) {
       return new Response(
         JSON.stringify({ error: 'Failed to get valid access token. Please reconnect to Google Sheets.' }),

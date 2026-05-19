@@ -3,7 +3,7 @@
 // `getValidAccessToken(supabase, userId)` below to obtain one.
 
 import type { SupabaseClient } from '../supabase.ts';
-import { getGmailAccessTokenForUser } from '../gmailToken.ts';
+import { getValidGoogleAccessToken } from '../googleToken.ts';
 
 export interface GmailAttachment {
   id: string;
@@ -49,15 +49,15 @@ export interface SendResult {
 /**
  * Resolve a Gmail access token, throwing on missing connection so the caller
  * can map to a 400 `{ needsAuth: true }` response. Uses the shared
- * `getGmailAccessTokenForUser` helper which already refreshes proactively.
+ * `getValidGoogleAccessToken` helper which already refreshes proactively.
  */
 export async function getValidAccessToken(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<string> {
-  const token = await getGmailAccessTokenForUser(supabase, userId);
-  if (!token) throw new Error('Gmail not connected');
-  return token.accessToken;
+  const result = await getValidGoogleAccessToken(supabase, userId);
+  if (!result) throw new Error('Gmail not connected');
+  return result.accessToken;
 }
 
 export function encodeBase64Url(str: string): string {

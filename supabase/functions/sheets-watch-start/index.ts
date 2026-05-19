@@ -1,9 +1,9 @@
 // Registers a Google Drive file-change watch for a spreadsheet.
-// Called when the SheetEditor mounts. Stores channel metadata in sheets_connections.
+// Called when the SheetEditor mounts. Stores channel metadata in google_connections.
 
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
-import { getValidSheetsAccessToken } from '../_shared/googleTokenRefresh.ts';
+import { getValidGoogleAccessToken } from '../_shared/googleToken.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,22 +39,25 @@ Deno.serve(async (req) => {
     }
     const userId = claims.user.id;
 
-    const { spreadsheetId, teamMemberName } = await req.json();
+    const { spreadsheetId } = await req.json();
     if (!spreadsheetId) {
       return new Response(JSON.stringify({ error: 'spreadsheetId required' }), { status: 400, headers: corsHeaders });
     }
 
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-    let q = admin.from('sheets_connections').select('*').eq('user_id', userId);
-    if (teamMemberName) q = q.eq('user_name', teamMemberName);
-    const { data: connection, error: connErr } = await q.maybeSingle();
+    const { data: connection, error: connErr } = await admin
+      .from('google_connections')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
 
     if (connErr || !connection) {
       return new Response(JSON.stringify({ error: 'No Sheets connection for user' }), { status: 404, headers: corsHeaders });
     }
 
-    const accessToken = await getValidSheetsAccessToken(connection, admin);
+    const tokenResult = await getValidGoogleAccessToken(admin, userId);
+    const accessToken = tokenResult?.accessToken ?? null;
     if (!accessToken) {
       return new Response(JSON.stringify({ error: 'Could not refresh Google token' }), { status: 401, headers: corsHeaders });
     }
@@ -96,7 +99,7 @@ Deno.serve(async (req) => {
     const expiration = watch.expiration ? new Date(Number(watch.expiration)).toISOString() : new Date(expirationMs).toISOString();
 
     await admin
-      .from('sheets_connections')
+      .from('google_connections')
       .update({
         drive_watch_channel_id: channelId,
         drive_watch_channel_token: channelToken,

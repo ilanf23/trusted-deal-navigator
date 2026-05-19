@@ -1,5 +1,5 @@
 // Public webhook. Receives Google Drive push notifications.
-// Validates the channel by looking it up in sheets_connections, then inserts
+// Validates the channel by looking it up in google_connections, then inserts
 // a row into sheets_change_events (broadcast via Supabase Realtime to the client).
 
 import { createClient } from '../_shared/supabase.ts';
@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     );
 
     const { data: connection } = await admin
-      .from('sheets_connections')
+      .from('google_connections')
       .select('id, drive_watch_channel_id, drive_watch_channel_token, drive_watch_resource_id, drive_watch_spreadsheet_id')
       .eq('drive_watch_channel_id', channelId)
       .maybeSingle();
