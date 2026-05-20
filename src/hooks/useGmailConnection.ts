@@ -201,7 +201,7 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
       if (!data?.authUrl) throw new Error('Missing auth URL');
 
       if (returnPath) {
-        localStorage.setItem('gmail_return_path', returnPath);
+        localStorage.setItem('google_return_path', returnPath);
       }
       window.location.href = data.authUrl;
     } catch (err: any) {
