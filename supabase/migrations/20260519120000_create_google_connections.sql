@@ -2,7 +2,10 @@
 -- Replaces calendar_connections, gmail_connections, sheets_connections.
 -- Old tables will be dropped in a later migration.
 
-CREATE TABLE IF NOT EXISTS public.google_connections (
+-- Clean up partial state from a prior failed run.
+DROP TABLE IF EXISTS public.google_connections CASCADE;
+
+CREATE TABLE public.google_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE,
   email CHARACTER VARYING NOT NULL,
@@ -20,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.google_connections (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_google_connections_drive_watch_channel_id
+CREATE INDEX idx_google_connections_drive_watch_channel_id
   ON public.google_connections (drive_watch_channel_id)
   WHERE drive_watch_channel_id IS NOT NULL;
 
@@ -35,15 +38,15 @@ CREATE POLICY "Service role has full access to google_connections"
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
--- Backfill from the three legacy tables.
--- For each user_id we take:
---   access_token, refresh_token, token_expiry, email  -> from the row with the latest updated_at across all 3 tables
---   calendar_id                                       -> from calendar_connections (latest row per user)
---   drive_watch_*                                     -> from sheets_connections   (latest row per user)
---   created_at                                        -> MIN across all 3 tables
---   updated_at                                        -> MAX across all 3 tables
---   scopes                                            -> full combined scope string
+-- Ensure drive_watch columns exist on sheets_connections before backfill.
+ALTER TABLE public.sheets_connections
+  ADD COLUMN IF NOT EXISTS drive_watch_channel_id TEXT,
+  ADD COLUMN IF NOT EXISTS drive_watch_channel_token TEXT,
+  ADD COLUMN IF NOT EXISTS drive_watch_resource_id TEXT,
+  ADD COLUMN IF NOT EXISTS drive_watch_expiry TIMESTAMP WITH TIME ZONE,
+  ADD COLUMN IF NOT EXISTS drive_watch_spreadsheet_id TEXT;
 
+-- Backfill from the three legacy tables.
 WITH unioned AS (
   SELECT user_id, email, access_token, refresh_token, token_expiry, created_at, updated_at
     FROM public.calendar_connections
