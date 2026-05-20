@@ -1,4 +1,4 @@
-// Gmail API helpers shared by gmail-auth, gmail-mailbox, gmail-write edge functions.
+// Gmail API helpers shared by gmail-mailbox, gmail-write edge functions.
 // All helpers expect a refreshed Gmail OAuth access token; use
 // `getValidAccessToken(supabase, userId)` below to obtain one.
 
