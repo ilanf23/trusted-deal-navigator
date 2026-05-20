@@ -67,7 +67,10 @@ export function useGmail() {
 
   const checkStatus = useCallback(async () => {
     try {
-      const data = await callGmailApi('status');
+      const { data, error } = await supabase.functions.invoke('google-auth', {
+        body: { action: 'getStatus' },
+      });
+      if (error) throw error;
       setStatus({
         connected: data.connected,
         email: data.email,
@@ -78,15 +81,17 @@ export function useGmail() {
       console.error('Error checking Gmail status:', error);
       return false;
     }
-  }, [callGmailApi]);
+  }, []);
 
   const connect = useCallback(async () => {
     try {
-      const redirectUri = `${window.location.origin}/superadmin/inbox/callback`;
-      const data = await callGmailApi('get-oauth-url', undefined, { redirect_uri: redirectUri });
-      
-      // Full page redirect instead of popup
-      window.location.href = data.url;
+      const redirectUri = `${window.location.origin}/superadmin/google-callback`;
+      const { data, error } = await supabase.functions.invoke('google-auth', {
+        body: { action: 'getAuthUrl', redirectUri },
+      });
+      if (error) throw error;
+
+      window.location.href = data.authUrl;
       return true;
     } catch (error: any) {
       console.error('Error connecting Gmail:', error);
@@ -97,11 +102,14 @@ export function useGmail() {
       });
       return false;
     }
-  }, [callGmailApi, toast]);
+  }, [toast]);
 
   const disconnect = useCallback(async () => {
     try {
-      await callGmailApi('disconnect', undefined, {});
+      const { error } = await supabase.functions.invoke('google-auth', {
+        body: { action: 'disconnect' },
+      });
+      if (error) throw error;
       setStatus({ connected: false, email: null, connectedAt: null });
       setMessages([]);
       toast({
@@ -115,7 +123,7 @@ export function useGmail() {
         variant: 'destructive',
       });
     }
-  }, [callGmailApi, toast]);
+  }, [toast]);
 
   const fetchMessages = useCallback(async (query?: string, loadMore = false) => {
     setLoading(true);

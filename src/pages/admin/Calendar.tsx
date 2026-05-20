@@ -8,9 +8,9 @@ const Calendar = () => {
   const { setPageTitle } = useAdminTopBar();
   usePageDatabases([
     { table: 'appointments', access: 'readwrite', usage: 'Calendar events — list, create, update, delete.', via: 'src/hooks/useCalendarData.ts via CalendarView' },
-    { table: 'calendar_connections', access: 'read', usage: 'Connected Google Calendar accounts used for sync.', via: 'src/hooks/useCalendarData.ts' },
+    { table: 'google_connections', access: 'read', usage: 'Connected Google Calendar accounts used for sync.', via: 'src/hooks/useCalendarData.ts' },
     { table: 'google-calendar-sync', access: 'rpc', usage: 'Edge function pulling latest events from Google Calendar.', via: 'supabase.functions.invoke("google-calendar-sync")' },
-    { table: 'google-calendar-auth', access: 'rpc', usage: 'Edge function handling OAuth for the calendar connection.', via: 'supabase.functions.invoke("google-calendar-auth")' },
+    { table: 'google-auth', access: 'rpc', usage: 'Edge function handling OAuth for the calendar connection.', via: 'supabase.functions.invoke("google-auth")' },
   ]);
   useEffect(() => {
     setPageTitle('Calendar');

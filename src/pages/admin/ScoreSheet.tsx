@@ -17,7 +17,7 @@ const ScoreSheet = () => {
   const { teamMember } = useTeamMember();
   usePageDatabases([
     { table: 'google-sheets-api', access: 'rpc', usage: 'Edge function for listing spreadsheets, reading rows, updating cells, appending rows.', via: 'src/hooks/useGoogleSheets.ts via SheetEditor' },
-    { table: 'google-sheets-auth', access: 'rpc', usage: 'Edge function handling Google OAuth connect/disconnect.', via: 'src/hooks/useGoogleSheets.ts' },
+    { table: 'google-auth', access: 'rpc', usage: 'Edge function handling Google OAuth connect/disconnect.', via: 'src/hooks/useGoogleSheets.ts' },
     { table: 'sheets-watch-start', access: 'rpc', usage: 'Edge function registering a watch on the opened sheet.', via: 'SheetEditor' },
     { table: 'sheets-watch-stop', access: 'rpc', usage: 'Edge function un-registering the watch when leaving a sheet.', via: 'SheetEditor' },
   ]);

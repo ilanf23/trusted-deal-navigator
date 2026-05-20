@@ -1,13 +1,7 @@
 // Maps a Gmail API action name to the edge function that handles it.
-// gmail-api was split into gmail-auth / gmail-mailbox / gmail-write per issue #84.
+// Auth actions (oauth, status, disconnect) are handled by google-auth directly, not through this router.
 
-const GMAIL_ACTION_TO_FUNCTION: Record<string, 'gmail-auth' | 'gmail-mailbox' | 'gmail-write'> = {
-  // gmail-auth
-  'oauth-callback': 'gmail-auth',
-  'get-oauth-url': 'gmail-auth',
-  'status': 'gmail-auth',
-  'disconnect': 'gmail-auth',
-
+const GMAIL_ACTION_TO_FUNCTION: Record<string, 'gmail-mailbox' | 'gmail-write'> = {
   // gmail-mailbox (read)
   'list': 'gmail-mailbox',
   'get': 'gmail-mailbox',
