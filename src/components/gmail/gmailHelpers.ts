@@ -90,5 +90,5 @@ export const toRenderableHtml = (value: string) => {
 
 // Dynamic callback URL helper
 export const getGmailCallbackUrl = (pathPrefix: 'admin' | 'superadmin' = 'admin') => {
-  return `${window.location.origin}/${pathPrefix}/inbox/callback`;
+  return `${window.location.origin}/${pathPrefix}/google-callback`;
 };

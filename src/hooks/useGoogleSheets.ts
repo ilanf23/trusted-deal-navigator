@@ -29,8 +29,8 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
         return;
       }
 
-      const response = await supabase.functions.invoke('google-sheets-auth', {
-        body: { action: 'getStatus', teamMemberName }
+      const response = await supabase.functions.invoke('google-auth', {
+        body: { action: 'getStatus' }
       });
 
       if (response.data?.connected) {
@@ -62,10 +62,10 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
 
       popup.document.write('<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui"><p>Connecting to Google Sheets...</p></body></html>');
 
-      const redirectUri = `${window.location.origin}${redirectPath || '/superadmin/sheets-callback'}`;
+      const redirectUri = `${window.location.origin}${redirectPath || '/superadmin/google-callback'}`;
 
-      const response = await supabase.functions.invoke('google-sheets-auth', {
-        body: { action: 'getAuthUrl', redirectUri, teamMemberName }
+      const response = await supabase.functions.invoke('google-auth', {
+        body: { action: 'getAuthUrl', redirectUri }
       });
 
       if (response.error) {
@@ -79,11 +79,9 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
       // COOP blocks polling popup.closed once the popup navigates to accounts.google.com.
       const messageHandler = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
-        if (event.data?.type !== 'sheets-auth') return;
+        if (event.data?.type !== 'GOOGLE_CONNECTED') return;
         window.removeEventListener('message', messageHandler);
-        if (event.data.status === 'success') {
-          checkConnection();
-        }
+        checkConnection();
       };
       window.addEventListener('message', messageHandler);
 
@@ -95,8 +93,8 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
 
   const disconnect = async () => {
     try {
-      const response = await supabase.functions.invoke('google-sheets-auth', {
-        body: { action: 'disconnect', teamMemberName }
+      const response = await supabase.functions.invoke('google-auth', {
+        body: { action: 'disconnect' }
       });
 
       if (response.error) throw response.error;

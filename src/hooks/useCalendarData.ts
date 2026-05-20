@@ -43,9 +43,9 @@ export interface CalendarFilter {
   enabled: boolean;
 }
 
-const getCalendarCallbackUrl = () => {
+const getGoogleCallbackUrl = () => {
   const prefix = window.location.pathname.startsWith('/superadmin') ? '/superadmin' : '/admin';
-  return `${window.location.origin}${prefix}/calendar-callback`;
+  return `${window.location.origin}${prefix}/google-callback`;
 };
 
 export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
@@ -91,7 +91,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
+      const { data, error } = await supabase.functions.invoke('google-auth', {
         body: { action: 'getStatus' },
       });
 
@@ -105,32 +105,32 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'GOOGLE_CALENDAR_CONNECTED') {
+      if (event.data?.type === 'GOOGLE_CONNECTED') {
         setCalendarStatus({ connected: true, email: event.data.email });
         setIsConnecting(false);
         toast.success(`Google Calendar connected: ${event.data.email}`);
         queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      } else if (event.data?.type === 'GOOGLE_CALENDAR_ERROR') {
+      } else if (event.data?.type === 'GOOGLE_AUTH_ERROR') {
         setIsConnecting(false);
         toast.error('Failed to connect Google Calendar');
       }
     };
 
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'google-calendar-auth-result' && event.newValue) {
+      if (event.key === 'google-auth-result' && event.newValue) {
         try {
           const result = JSON.parse(event.newValue);
           if (result.timestamp && Date.now() - result.timestamp < 30000) {
-            if (result.type === 'GOOGLE_CALENDAR_CONNECTED') {
+            if (result.type === 'GOOGLE_CONNECTED') {
               setCalendarStatus({ connected: true, email: result.email });
               setIsConnecting(false);
               toast.success(`Google Calendar connected: ${result.email}`);
               queryClient.invalidateQueries({ queryKey: ['appointments'] });
-            } else if (result.type === 'GOOGLE_CALENDAR_ERROR') {
+            } else if (result.type === 'GOOGLE_AUTH_ERROR') {
               setIsConnecting(false);
               toast.error('Failed to connect Google Calendar');
             }
-            localStorage.removeItem('google-calendar-auth-result');
+            localStorage.removeItem('google-auth-result');
           }
         } catch {
           // Ignore parse errors
@@ -139,18 +139,18 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
     };
 
     const checkExistingResult = () => {
-      const stored = localStorage.getItem('google-calendar-auth-result');
+      const stored = localStorage.getItem('google-auth-result');
       if (stored) {
         try {
           const result = JSON.parse(stored);
           if (result.timestamp && Date.now() - result.timestamp < 30000) {
-            if (result.type === 'GOOGLE_CALENDAR_CONNECTED') {
+            if (result.type === 'GOOGLE_CONNECTED') {
               setCalendarStatus({ connected: true, email: result.email });
               setIsConnecting(false);
               toast.success(`Google Calendar connected: ${result.email}`);
               queryClient.invalidateQueries({ queryKey: ['appointments'] });
             }
-            localStorage.removeItem('google-calendar-auth-result');
+            localStorage.removeItem('google-auth-result');
           }
         } catch {
           // Ignore
@@ -317,7 +317,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
 
     const popup = window.open(
       '',
-      'google-calendar-auth',
+      'google-auth',
       `width=${width},height=${height},left=${left},top=${top},popup=1`
     );
 
@@ -364,10 +364,9 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
     `);
 
     try {
-      const callbackUrl = getCalendarCallbackUrl();
-      localStorage.setItem('calendarCallbackUrl', callbackUrl);
+      const callbackUrl = getGoogleCallbackUrl();
 
-      const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
+      const { data, error } = await supabase.functions.invoke('google-auth', {
         body: {
           action: 'getAuthUrl',
           redirectUri: callbackUrl,
@@ -399,7 +398,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
 
   const disconnectCalendar = async () => {
     try {
-      const { error } = await supabase.functions.invoke('google-calendar-auth', {
+      const { error } = await supabase.functions.invoke('google-auth', {
         body: { action: 'disconnect' },
       });
 

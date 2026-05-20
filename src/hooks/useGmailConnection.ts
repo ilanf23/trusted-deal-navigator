@@ -109,7 +109,7 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
     queryKey: [`${userKey}-gmail-connection`],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('gmail_connections')
+        .from('google_connections')
         .select('*')
         .eq('user_id', user?.id)
         .maybeSingle();
@@ -194,23 +194,16 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
       }
 
       const callbackUrl = getGmailCallbackUrl(callbackPrefix);
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/gmail-auth?action=get-oauth-url`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ redirect_uri: callbackUrl }),
+      const { data, error: invokeError } = await supabase.functions.invoke('google-auth', {
+        body: { action: 'getAuthUrl', redirectUri: callbackUrl },
       });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to get auth URL');
-      if (!data?.url) throw new Error('Missing auth URL');
+      if (invokeError) throw invokeError;
+      if (!data?.authUrl) throw new Error('Missing auth URL');
 
       if (returnPath) {
         localStorage.setItem('gmail_return_path', returnPath);
       }
-      window.location.href = data.url;
+      window.location.href = data.authUrl;
     } catch (err: any) {
       console.error('Failed to get auth URL:', err);
       toast.error('Failed to connect Gmail');
@@ -223,7 +216,7 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
   const disconnectGmail = useCallback(async () => {
     try {
       const { error } = await supabase
-        .from('gmail_connections')
+        .from('google_connections')
         .delete()
         .eq('user_id', user?.id);
       if (error) throw error;
