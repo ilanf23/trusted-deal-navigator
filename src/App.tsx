@@ -44,7 +44,7 @@ const AdminMarketing = lazy(() => import("./pages/admin/Marketing"));
 const AdminNewsletter = lazy(() => import("./pages/admin/Newsletter"));
 const CRMBoard = lazy(() => import("./pages/admin/CRMBoard"));
 const AdminRateWatch = lazy(() => import("./pages/admin/RateWatch"));
-const AdminInboxCallback = lazy(() => import("./pages/admin/InboxCallback"));
+const GoogleCallback = lazy(() => import("./pages/admin/GoogleCallback"));
 const LenderPrograms = lazy(() => import("./pages/admin/LenderPrograms"));
 const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
 const EmployeePipeline = lazy(() => import("./pages/admin/EmployeePipeline"));
@@ -84,8 +84,6 @@ const IlanTeamEvanBugs = lazy(() => import("./pages/admin/IlanTeamEvanBugs"));
 const IlanTeamEvanDevNotes = lazy(() => import("./pages/admin/IlanTeamEvanDevNotes"));
 const IlanTeamEvanNotes = lazy(() => import("./pages/admin/IlanTeamEvanNotes"));
 const UsersAndRoles = lazy(() => import("./pages/admin/UsersAndRoles"));
-const CalendarCallback = lazy(() => import("./pages/admin/CalendarCallback"));
-const SheetsCallback = lazy(() => import("./pages/admin/SheetsCallback"));
 const DropboxPage = lazy(() => import("./pages/admin/Dropbox"));
 const DropboxCallback = lazy(() => import("./pages/admin/DropboxCallback"));
 const AIChanges = lazy(() => import("./pages/admin/AIChanges"));
@@ -167,9 +165,7 @@ const App = () => (
                 <Route path="/superadmin/refer" element={<ReferAFriend />} />
                 <Route path="/superadmin/dropbox" element={<DropboxPage />} />
                 <Route path="/superadmin/dropbox/callback" element={<DropboxCallback />} />
-                <Route path="/superadmin/inbox/callback" element={<AdminInboxCallback />} />
-                <Route path="/superadmin/calendar-callback" element={<CalendarCallback />} />
-                <Route path="/superadmin/sheets-callback" element={<SheetsCallback />} />
+                <Route path="/superadmin/google-callback" element={<GoogleCallback />} />
 
                 {/* Founder/Super Admin Personal Routes */}
                 <Route path="/superadmin/brad" element={<EmployeeRoute employeeName="Brad"><BradsPage /></EmployeeRoute>} />
@@ -210,15 +206,13 @@ const App = () => (
                 <Route path="/admin/calendar" element={<AdminRoute><Calendar /></AdminRoute>} />
                 <Route path="/admin/scorecard" element={<AdminRoute><Scorecard /></AdminRoute>} />
                 <Route path="/admin/scorecard/score-sheet" element={<AdminRoute><ScoreSheet /></AdminRoute>} />
-                <Route path="/admin/sheets-callback" element={<SheetsCallback />} />
+                <Route path="/admin/google-callback" element={<GoogleCallback />} />
                 <Route path="/admin/dev-notes" element={<AdminRoute><DevNotes /></AdminRoute>} />
                 <Route path="/admin/bug-reporting" element={<AdminRoute><BugReporting /></AdminRoute>} />
                 <Route path="/admin/messages" element={<AdminRoute><AdminMessages /></AdminRoute>} />
                 <Route path="/admin/rate-watch" element={<AdminRoute><AdminRateWatch /></AdminRoute>} />
                 <Route path="/admin/dropbox" element={<AdminRoute><DropboxPage /></AdminRoute>} />
                 <Route path="/admin/dropbox/callback" element={<DropboxCallback />} />
-                <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
-                <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
                 <Route path="/admin/pipeline-test" element={<AdminRoute><EmployeePipeline /></AdminRoute>} />
                 <Route path="/admin/crm" element={<AdminRoute><EmployeePipeline /></AdminRoute>} />
                 <Route path="/admin/clients" element={<AdminRoute><AdminClients /></AdminRoute>} />
