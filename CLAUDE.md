@@ -11,7 +11,12 @@ npm run build:dev        # Development build
 npm run lint             # ESLint
 npm run preview          # Preview production build
 npm run generate-schema  # Generate schema.md from Supabase DB (requires DB_PASSWORD in .env)
+npm run db:push          # Push pending migrations to remote Supabase
+npm run functions:deploy # Deploy all edge functions to Supabase
+npm run deploy           # Run both: migrations + edge functions
 ```
+
+After creating or modifying any migration or edge function, always run `npm run deploy` to push migrations and deploy functions to remote.
 
 There are no automated tests. Playwright is installed but not actively used.
 
