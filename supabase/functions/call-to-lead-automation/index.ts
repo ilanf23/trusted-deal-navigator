@@ -97,15 +97,17 @@ Deno.serve(async (req) => {
     }
 
     let repName = 'Our team';
+    let repAuthUserId: string | null = null;
     if (repTeamMemberId) {
       const { data: rep } = await supabase
         .from('users')
-        .select('name')
+        .select('name, user_id')
         .eq('id', repTeamMemberId)
         .maybeSingle();
       if (rep?.name && (rep.name as string).trim().length > 0) {
         repName = rep.name as string;
       }
+      repAuthUserId = (rep?.user_id as string | undefined) ?? null;
     }
 
     let callRating = 5;
@@ -233,12 +235,12 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
     let gmailDraftCreated = false;
 
     if (followUpEmailContent && leadEmail) {
-      if (!repTeamMemberId) {
-        console.log("No rep team member id resolved for this call — skipping Gmail draft");
+      if (!repAuthUserId) {
+        console.log("No rep auth user id resolved for this call — skipping Gmail draft");
       } else {
         console.log(`Creating Gmail draft for ${repName}...`);
 
-        const gmailCreds = await getValidGoogleAccessToken(supabase, repTeamMemberId);
+        const gmailCreds = await getValidGoogleAccessToken(supabase, repAuthUserId);
 
         if (gmailCreds) {
           try {
