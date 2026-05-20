@@ -85,7 +85,7 @@ const useConnectionStatuses = () => {
     queryFn: async () => {
       if (!user) return { gmail: false, dropbox: false };
       const [gm, dx] = await Promise.all([
-        supabase.from('gmail_connections').select('id').eq('user_id', user.id).maybeSingle(),
+        supabase.from('google_connections').select('id').eq('user_id', user.id).maybeSingle(),
         supabase.from('dropbox_connections').select('id').eq('user_id', user.id).maybeSingle(),
       ]);
       return {

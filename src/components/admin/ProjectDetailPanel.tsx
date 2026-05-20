@@ -130,7 +130,7 @@ export default function ProjectDetailPanel({
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return null;
-      const { data } = await supabase.from('gmail_connections').select('*').eq('user_id', session.user.id).maybeSingle();
+      const { data } = await supabase.from('google_connections').select('*').eq('user_id', session.user.id).maybeSingle();
       return data;
     },
     enabled: !!project.entity_id,

@@ -519,7 +519,7 @@ export default function LenderManagementExpandedView() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return null;
       const { data } = await supabase
-        .from('gmail_connections')
+        .from('google_connections')
         .select('*')
         .eq('user_id', session.user.id)
         .maybeSingle();
