@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
           token_expiry: tokenExpiry,
           scopes: SCOPES,
           calendar_id: 'primary',
+          needs_reauth: false,
         }, { onConflict: 'user_id' });
 
       if (upsertError) {
@@ -116,7 +117,7 @@ Deno.serve(async (req) => {
     if (action === 'getStatus') {
       const { data } = await supabaseAdmin
         .from('google_connections')
-        .select('email, calendar_id')
+        .select('email, calendar_id, needs_reauth')
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -128,7 +129,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ connected: true, email: data.email, calendarId: data.calendar_id }),
+        JSON.stringify({ connected: true, email: data.email, calendarId: data.calendar_id, needsReauth: data.needs_reauth }),
         { headers: jsonHeaders },
       );
     }
