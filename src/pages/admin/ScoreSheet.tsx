@@ -22,7 +22,7 @@ const ScoreSheet = () => {
     { table: 'sheets-watch-stop', access: 'rpc', usage: 'Edge function un-registering the watch when leaving a sheet.', via: 'SheetEditor' },
   ]);
   const name = teamMember?.name;
-  const googleSheets = useGoogleSheets(name, '/admin/sheets-callback');
+  const googleSheets = useGoogleSheets(name, '/admin/google-callback');
 
   const [view, setView] = useState<View>('browser');
   const [activeFile, setActiveFile] = useState<{ id: string; name: string } | null>(null);

@@ -23,7 +23,7 @@
 - `useWendysDashboard` — Wendy's follow-ups, daily targets, communication log.
 
 ## Gmail & Email
-- `useGmail` — low-level Gmail API access. Routes through `gmail-auth` / `gmail-mailbox` / `gmail-write` edge functions via `src/lib/gmailRouter.ts`. Operations: fetchMessages, send, archive, trash, markAsRead.
+- `useGmail` — low-level Gmail API access. Auth via `google-auth`, read/write via `gmail-mailbox` / `gmail-write` edge functions (routed by `src/lib/gmailRouter.ts`). Operations: fetchMessages, send, archive, trash, markAsRead.
 - `useGmailConnection` — higher-level Gmail connection. OAuth flow, folder queries, send, disconnect.
 - `useGmailPeopleSync` — auto-creates leads from unknown Gmail senders. Backfills `pipeline_leads`.
 - `useHiddenThreads` — hide/unhide email threads. Queries `hidden_email_threads`.
@@ -35,7 +35,7 @@
 - `useDropboxAutoUpload` — auto-upload files to lead-specific Dropbox folders.
 
 ## Google Sheets
-- `useGoogleSheets` — connection + operations via `google-sheets-auth`/`google-sheets-api` edge functions: list, getData, updateCell, appendRow.
+- `useGoogleSheets` — connection + operations via `google-auth`/`google-sheets-api` edge functions: list, getData, updateCell, appendRow.
 
 ## Data & Tasks
 - `useFeedData` — activity stream from 7 sources: lead_activities, notes, communications, tasks, outbound_emails, people activities/notes.

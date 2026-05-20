@@ -85,7 +85,8 @@ export function useGmail() {
 
   const connect = useCallback(async () => {
     try {
-      const redirectUri = `${window.location.origin}/superadmin/google-callback`;
+      const prefix = window.location.pathname.startsWith('/superadmin') ? '/superadmin' : '/admin';
+      const redirectUri = `${window.location.origin}${prefix}/google-callback`;
       const { data, error } = await supabase.functions.invoke('google-auth', {
         body: { action: 'getAuthUrl', redirectUri },
       });

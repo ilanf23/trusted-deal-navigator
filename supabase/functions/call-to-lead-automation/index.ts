@@ -1,7 +1,7 @@
 import { createClient } from "../_shared/supabase.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
-import { getGmailAccessTokenForUser } from "../_shared/gmailToken.ts";
+import { getValidGoogleAccessToken } from "../_shared/googleToken.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -238,7 +238,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
       } else {
         console.log(`Creating Gmail draft for ${repName}...`);
 
-        const gmailCreds = await getGmailAccessTokenForUser(supabase, repTeamMemberId);
+        const gmailCreds = await getValidGoogleAccessToken(supabase, repTeamMemberId);
 
         if (gmailCreds) {
           try {

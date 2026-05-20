@@ -54,7 +54,6 @@ Deno TypeScript edge functions + shared utilities. All deployed as Supabase Edge
 - `retry-call-transcription` — retry failed transcriptions via Whisper
 
 ### Gmail & Email
-- `gmail-auth` — OAuth callback, get-oauth-url, status, disconnect (30/60s). Issues #84 split.
 - `gmail-mailbox` — Read ops: list, get, get-attachment, list-drafts-count, labels (120/60s). Issue #84 split.
 - `gmail-write` — Mutations: send, archive, trash, mark-read, create-draft (60/60s). Issue #84 split.
 - Shared helpers in `_shared/gmail/api.ts` (token validation, MIME builders, message ops).
@@ -76,10 +75,9 @@ Deno TypeScript edge functions + shared utilities. All deployed as Supabase Edge
 - `dropbox-webhook` — HMAC-SHA256 verified webhook, triggers sync
 
 ### Google Workspace (4 functions)
-- `google-sheets-auth` — OAuth flow for Sheets (60/60s)
+- `google-auth` — Unified OAuth flow for all Google integrations: getAuthUrl, exchangeCode, getStatus, disconnect (60/60s)
 - `google-sheets-api` — Sheets API wrapper with 23-field column mapping (60/60s)
 - `google-sheets-sync` — bidirectional lead data sync
-- `google-calendar-auth` — OAuth flow for Calendar (60/60s)
 - `google-calendar-sync` — sync appointments to Calendar (America/New_York timezone)
 
 ## External API Integrations

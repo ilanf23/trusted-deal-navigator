@@ -96,10 +96,8 @@ export function AddFileDialog({
   });
 
   // ── Google Sheets ────────────────────────────────────────────────────────
-  // Must land on a route that actually handles the OAuth `?code=` param.
-  // SheetsCallback is mounted at /admin/sheets-callback (App.tsx) — Settings is not.
   const { isConnected: sheetsConnected, listSpreadsheets, connect: connectSheets } =
-    useGoogleSheets(teamMember?.name, '/admin/sheets-callback');
+    useGoogleSheets(teamMember?.name, '/admin/google-callback');
   const [sheets, setSheets] = useState<SheetEntry[]>([]);
   const [sheetsLoading, setSheetsLoading] = useState(false);
 

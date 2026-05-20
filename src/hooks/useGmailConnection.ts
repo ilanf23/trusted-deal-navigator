@@ -215,17 +215,16 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
   // ── Disconnect Gmail ─────────────────────────────────────────────
   const disconnectGmail = useCallback(async () => {
     try {
-      const { error } = await supabase
-        .from('google_connections')
-        .delete()
-        .eq('user_id', user?.id);
+      const { error } = await supabase.functions.invoke('google-auth', {
+        body: { action: 'disconnect' },
+      });
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: [`${userKey}-gmail-connection`] });
       toast.success('Gmail disconnected');
     } catch {
       toast.error('Failed to disconnect Gmail');
     }
-  }, [user?.id, queryClient, userKey]);
+  }, [queryClient, userKey]);
 
   // ── Invalidate all email queries ─────────────────────────────────
   const invalidateAll = useCallback(() => {

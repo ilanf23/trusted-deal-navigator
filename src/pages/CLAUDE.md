@@ -31,7 +31,7 @@
 
 **Communication:**
 - `Gmail.tsx`, `IlansGmail.tsx` — Gmail integration
-- `Calendar.tsx`, `CalendarCallback.tsx` — Google Calendar
+- `Calendar.tsx` — Google Calendar
 - `Messages.tsx` — Internal messaging
 - `Calls.tsx` — Call logging
 - `Tasks.tsx` — TaskWorkspace container
@@ -45,7 +45,7 @@
 
 **Integrations:**
 - `Dropbox.tsx`, `DropboxCallback.tsx` — Dropbox OAuth + file manager
-- `InboxCallback.tsx`, `SheetsCallback.tsx` — OAuth callbacks
+- `GoogleCallback.tsx` — Unified Google OAuth callback (Calendar, Gmail, Sheets)
 
 **Business Ops:**
 - `LenderPrograms.tsx`, `Newsletter.tsx`, `Marketing.tsx`
