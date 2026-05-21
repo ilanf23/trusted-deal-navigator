@@ -166,21 +166,6 @@
 | portal              | text                     | No          | Yes      | -              |
 | is_built            | boolean                  | No          | No       | -              |
 
-## Table: `calendar_connections`
-
-| Column Name   | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ------------- | ------------------------ | ----------- | -------- | -------------- |
-| id            | uuid                     | Yes         | No       | -              |
-| user_id       | uuid                     | No          | No       | -              |
-| email         | character varying        | No          | No       | -              |
-| access_token  | text                     | No          | No       | -              |
-| refresh_token | text                     | No          | No       | -              |
-| token_expiry  | timestamp with time zone | No          | No       | -              |
-| calendar_id   | text                     | No          | Yes      | -              |
-| created_at    | timestamp with time zone | No          | No       | -              |
-| updated_at    | timestamp with time zone | No          | No       | -              |
-| user_name     | text                     | No          | Yes      | -              |
-
 ## Table: `call_events`
 
 | Column Name              | Data Type                | Primary Key | Nullable | Foreign Key To |
@@ -540,32 +525,6 @@
 | created_at     | timestamp with time zone | No          | No       | -              |
 | entity_type    | USER-DEFINED             | No          | Yes      | -              |
 
-## Table: `entity_checklist_items`
-
-| Column Name  | Data Type                | Primary Key | Nullable | Foreign Key To    |
-| ------------ | ------------------------ | ----------- | -------- | ----------------- |
-| id           | uuid                     | Yes         | No       | -                 |
-| checklist_id | uuid                     | No          | No       | entity_checklists |
-| label        | text                     | No          | No       | -                 |
-| is_completed | boolean                  | No          | No       | -                 |
-| completed_at | timestamp with time zone | No          | Yes      | -                 |
-| completed_by | uuid                     | No          | Yes      | users             |
-| sort_order   | integer                  | No          | No       | -                 |
-| created_at   | timestamp with time zone | No          | No       | -                 |
-
-## Table: `entity_checklists`
-
-| Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ----------- | ------------------------ | ----------- | -------- | -------------- |
-| id          | uuid                     | Yes         | No       | -              |
-| entity_id   | uuid                     | No          | No       | -              |
-| entity_type | USER-DEFINED             | No          | No       | -              |
-| title       | text                     | No          | No       | -              |
-| description | text                     | No          | Yes      | -              |
-| created_by  | uuid                     | No          | Yes      | users          |
-| created_at  | timestamp with time zone | No          | No       | -              |
-| updated_at  | timestamp with time zone | No          | No       | -              |
-
 ## Table: `entity_contacts`
 
 | Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
@@ -667,18 +626,26 @@
 | user_name   | text                     | No          | Yes      | -              |
 | created_at  | timestamp with time zone | No          | No       | -              |
 
-## Table: `gmail_connections`
+## Table: `google_connections`
 
-| Column Name   | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ------------- | ------------------------ | ----------- | -------- | -------------- |
-| id            | uuid                     | Yes         | No       | -              |
-| user_id       | uuid                     | No          | No       | -              |
-| email         | character varying        | No          | No       | -              |
-| access_token  | text                     | No          | No       | -              |
-| refresh_token | text                     | No          | No       | -              |
-| token_expiry  | timestamp with time zone | No          | No       | -              |
-| created_at    | timestamp with time zone | No          | No       | -              |
-| updated_at    | timestamp with time zone | No          | No       | -              |
+| Column Name                | Data Type                | Primary Key | Nullable | Foreign Key To |
+| -------------------------- | ------------------------ | ----------- | -------- | -------------- |
+| id                         | uuid                     | Yes         | No       | -              |
+| user_id                    | uuid                     | No          | No       | -              |
+| email                      | character varying        | No          | No       | -              |
+| access_token               | text                     | No          | No       | -              |
+| refresh_token              | text                     | No          | No       | -              |
+| token_expiry               | timestamp with time zone | No          | No       | -              |
+| scopes                     | text                     | No          | Yes      | -              |
+| calendar_id                | text                     | No          | Yes      | -              |
+| drive_watch_channel_id     | text                     | No          | Yes      | -              |
+| drive_watch_channel_token  | text                     | No          | Yes      | -              |
+| drive_watch_resource_id    | text                     | No          | Yes      | -              |
+| drive_watch_expiry         | timestamp with time zone | No          | Yes      | -              |
+| drive_watch_spreadsheet_id | text                     | No          | Yes      | -              |
+| created_at                 | timestamp with time zone | No          | No       | -              |
+| updated_at                 | timestamp with time zone | No          | No       | -              |
+| needs_reauth               | boolean                  | No          | No       | -              |
 
 ## Table: `hidden_email_threads`
 
@@ -1287,21 +1254,6 @@
 | pace_vs_plan        | integer                  | No          | No       | -              |
 | created_at          | timestamp with time zone | No          | No       | -              |
 | updated_at          | timestamp with time zone | No          | No       | -              |
-
-## Table: `sheets_connections`
-
-| Column Name               | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ------------------------- | ------------------------ | ----------- | -------- | -------------- |
-| id                        | uuid                     | Yes         | No       | -              |
-| user_id                   | uuid                     | No          | No       | -              |
-| user_name                 | text                     | No          | Yes      | -              |
-| email                     | character varying        | No          | No       | -              |
-| access_token              | text                     | No          | No       | -              |
-| refresh_token             | text                     | No          | No       | -              |
-| token_expiry              | timestamp with time zone | No          | No       | -              |
-| created_at                | timestamp with time zone | No          | No       | -              |
-| updated_at                | timestamp with time zone | No          | No       | -              |
-| drive_watch_channel_token | text                     | No          | Yes      | -              |
 
 ## Table: `task_activities`
 
