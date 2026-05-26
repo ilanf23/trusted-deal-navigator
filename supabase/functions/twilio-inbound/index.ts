@@ -330,14 +330,33 @@ Deno.serve(async (req) => {
     try {
       if (fromNumber) {
         const normalized = fromNumber.replace(/\D/g, '').slice(-10);
+        // Two-pass caller lookup:
+        //   1. entity_phones — polymorphic, multi-number table. Preferred
+        //      because a contact can have several numbers (mobile/work/home).
+        //   2. people.phone — direct column fallback, for contacts created
+        //      from the People UI without an entity_phones row. people is the
+        //      source of truth for caller identity per product spec, so a
+        //      direct match still resolves to a "real" caller.
+        // First match wins; we don't need to disambiguate.
         const { data: phoneMatch } = await sb
           .from('entity_phones')
-          .select('entity_id')
+          .select('entity_id, entity_type')
           .ilike('phone_number', `%${normalized}`)
+          .eq('entity_type', 'people')
           .limit(1)
           .maybeSingle();
         if (phoneMatch) {
           resolvedLeadId = phoneMatch.entity_id;
+        } else {
+          const { data: peopleMatch } = await sb
+            .from('people')
+            .select('id')
+            .ilike('phone', `%${normalized}`)
+            .limit(1)
+            .maybeSingle();
+          if (peopleMatch) {
+            resolvedLeadId = peopleMatch.id;
+          }
         }
       }
 

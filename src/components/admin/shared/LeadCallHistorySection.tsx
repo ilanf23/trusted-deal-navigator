@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCall } from '@/contexts/CallContext';
 import {
   Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed,
-  Play, FileText, Clock, ChevronDown, ChevronRight,
+  Play, FileText, Clock, ChevronDown, ChevronRight, RefreshCw, Loader2, AlertCircle,
 } from 'lucide-react';
+import { CallRecordingPlayer } from './CallRecordingPlayer';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 /**
  * Shared call-history section for the three pipeline expanded views.
@@ -36,11 +38,37 @@ interface CommunicationRow {
   phone_number: string | null;
   duration_seconds: number | null;
   recording_url: string | null;
+  recording_status: string | null;
   transcript: string | null;
+  transcription_status: string | null;
+  transcription_error: string | null;
   created_at: string;
   user_id: string | null;
   content: string | null;
   call_sid: string | null;
+}
+
+type CallDetailState =
+  | { kind: 'transcript-ready'; transcript: string }
+  | { kind: 'transcript-processing' }
+  | { kind: 'transcript-failed'; error: string | null }
+  | { kind: 'recording-pending' }
+  | { kind: 'no-recording'; hasCallSid: boolean };
+
+function detailState(c: CommunicationRow): CallDetailState {
+  if (c.transcript && c.transcript.trim().length > 0) {
+    return { kind: 'transcript-ready', transcript: c.transcript };
+  }
+  if (c.transcription_status === 'processing' || c.transcription_status === 'pending') {
+    return { kind: 'transcript-processing' };
+  }
+  if (c.transcription_status === 'failed') {
+    return { kind: 'transcript-failed', error: c.transcription_error };
+  }
+  if (c.recording_url) {
+    return { kind: 'recording-pending' };
+  }
+  return { kind: 'no-recording', hasCallSid: !!c.call_sid };
 }
 
 export type LeadCallHistoryEntity = 'potential' | 'underwriting' | 'lender_management';
@@ -79,8 +107,10 @@ export function LeadCallHistorySection({
   fallbackPhone,
 }: LeadCallHistorySectionProps) {
   const { makeOutboundCall } = useCall();
+  const queryClient = useQueryClient();
   const [activeCall, setActiveCall] = useState<CommunicationRow | null>(null);
   const [open, setOpen] = useState(true);
+  const [busyAction, setBusyAction] = useState<null | 'recover' | 'retry'>(null);
 
   const { data: calls = [], isLoading } = useQuery({
     queryKey: ['lead-call-history', entityType, leadId],
@@ -88,7 +118,7 @@ export function LeadCallHistorySection({
       const { data, error } = await supabase
         .from('communications')
         .select(
-          'id, communication_type, direction, status, phone_number, duration_seconds, recording_url, transcript, created_at, user_id, content, call_sid',
+          'id, communication_type, direction, status, phone_number, duration_seconds, recording_url, recording_status, transcript, transcription_status, transcription_error, created_at, user_id, content, call_sid',
         )
         .eq('lead_id', leadId)
         .eq('communication_type', 'call')
@@ -98,7 +128,103 @@ export function LeadCallHistorySection({
       return (data ?? []) as CommunicationRow[];
     },
     staleTime: 30_000,
+    // Only poll when at least one call is mid-flight. Avoids hammering the
+    // DB for completed history while still catching the transition from
+    // "processing" to "completed" without the user having to refresh.
+    refetchInterval: (query) => {
+      const rows = (query.state.data ?? []) as CommunicationRow[];
+      const pending = rows.some((r) =>
+        r.transcription_status === 'processing' || r.transcription_status === 'pending',
+      );
+      return pending ? 5000 : false;
+    },
   });
+
+  // Live-subscribe to the open call's row. The history query already polls,
+  // but a per-row realtime subscription means the modal updates the instant
+  // Whisper finishes instead of waiting for the next 5s poll. Cleans up on
+  // close / unmount.
+  useEffect(() => {
+    if (!activeCall?.id) return;
+    const channel = supabase
+      .channel(`comm-${activeCall.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'communications', filter: `id=eq.${activeCall.id}` },
+        (payload) => {
+          const updated = payload.new as unknown as CommunicationRow;
+          setActiveCall((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+          void queryClient.invalidateQueries({ queryKey: ['lead-call-history', entityType, leadId] });
+          void queryClient.invalidateQueries({ queryKey: ['call-history'] });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [activeCall?.id, entityType, leadId, queryClient]);
+
+  const invalidateAll = () => {
+    void queryClient.invalidateQueries({ queryKey: ['lead-call-history', entityType, leadId] });
+    void queryClient.invalidateQueries({ queryKey: ['call-history'] });
+  };
+
+  const handleRecoverRecording = async (call: CommunicationRow) => {
+    if (!call.call_sid) {
+      toast.error('No Twilio call SID — nothing to recover');
+      return;
+    }
+    setBusyAction('recover');
+    try {
+      const { data, error } = await supabase.functions.invoke('backfill-call-recordings', {
+        body: { communicationId: call.id, dry_run: false, include_missing_transcript: true },
+      });
+      if (error) throw error;
+      const results = (data?.results ?? []) as Array<{ action?: string }>;
+      const wasUpdated = results.some(
+        (r) => r.action === 'updated' || r.action === 'updated-and-transcribed',
+      );
+      if (wasUpdated) {
+        toast.success('Recording recovered');
+      } else {
+        toast.message('No recording found in Twilio for this call');
+      }
+      invalidateAll();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Recovery failed');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleRetryTranscription = async (call: CommunicationRow) => {
+    setBusyAction('retry');
+    try {
+      // Clear existing transcript first so the helper actually re-runs the
+      // pipeline (it skips when a transcript is present).
+      if (call.transcript) {
+        await supabase
+          .from('communications')
+          .update({
+            transcript: null,
+            transcription_status: 'processing',
+            transcription_error: null,
+            transcription_updated_at: new Date().toISOString(),
+          })
+          .eq('id', call.id);
+      }
+      const { error } = await supabase.functions.invoke('retry-call-transcription', {
+        body: { communicationId: call.id },
+      });
+      if (error) throw error;
+      toast.success('Retry queued');
+      invalidateAll();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Retry failed');
+    } finally {
+      setBusyAction(null);
+    }
+  };
 
   const teamMemberMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -236,12 +362,12 @@ export function LeadCallHistorySection({
                 {activeCall.recording_url ? (
                   <div className="flex items-center gap-2">
                     <Play className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <audio
-                      controls
-                      src={activeCall.recording_url}
-                      className="h-8 w-full"
-                    />
+                    <CallRecordingPlayer communicationId={activeCall.id} />
                   </div>
+                ) : activeCall.recording_status === 'pending' ? (
+                  <p className="text-xs text-muted-foreground italic flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Recording processing…
+                  </p>
                 ) : (
                   <p className="text-xs text-muted-foreground italic">
                     No recording available for this call.
@@ -255,32 +381,110 @@ export function LeadCallHistorySection({
                       Transcript
                     </span>
                   </div>
-                  {activeCall.transcript ? (
-                    <div className="max-h-[50vh] overflow-y-auto rounded-md border border-border bg-muted/30 p-3">
-                      <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
-                        {activeCall.transcript}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic">
-                      No transcript available for this call.
-                    </p>
-                  )}
+                  {(() => {
+                    const state = detailState(activeCall);
+                    switch (state.kind) {
+                      case 'transcript-ready':
+                        return (
+                          <div className="max-h-[50vh] overflow-y-auto rounded-md border border-border bg-muted/30 p-3">
+                            <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+                              {state.transcript}
+                            </p>
+                          </div>
+                        );
+                      case 'transcript-processing':
+                        return (
+                          <p className="text-xs text-muted-foreground italic flex items-center gap-1.5">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Generating transcript… this usually takes under a minute.
+                          </p>
+                        );
+                      case 'transcript-failed':
+                        return (
+                          <div className="rounded-md border border-rose-200 bg-rose-50/50 p-2.5">
+                            <p className="text-xs text-rose-700 flex items-start gap-1.5">
+                              <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                              <span>
+                                Transcription failed.
+                                {state.error ? ` ${state.error}` : ''}
+                              </span>
+                            </p>
+                          </div>
+                        );
+                      case 'recording-pending':
+                        return (
+                          <p className="text-xs text-muted-foreground italic">
+                            Recording saved — transcript will appear once Whisper finishes.
+                          </p>
+                        );
+                      case 'no-recording':
+                        return (
+                          <p className="text-xs text-muted-foreground italic">
+                            {state.hasCallSid
+                              ? 'No recording in our database for this call.'
+                              : 'No recording available for this call.'}
+                          </p>
+                        );
+                    }
+                  })()}
                 </div>
 
-                <div className="flex justify-end pt-1">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      handleRedial(activeCall.phone_number);
-                      setActiveCall(null);
-                    }}
-                  >
-                    <Phone className="h-3.5 w-3.5 mr-1.5" />
-                    Redial
-                  </Button>
+                <div className="flex flex-wrap justify-end gap-2 pt-1">
+                  {(() => {
+                    const state = detailState(activeCall);
+                    const showRecover = state.kind === 'no-recording' && state.hasCallSid;
+                    const showRetry =
+                      state.kind === 'transcript-failed' ||
+                      (state.kind === 'recording-pending' && !!activeCall.recording_url);
+                    return (
+                      <>
+                        {showRecover && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={busyAction !== null}
+                            onClick={() => handleRecoverRecording(activeCall)}
+                          >
+                            {busyAction === 'recover' ? (
+                              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                            )}
+                            Recover recording
+                          </Button>
+                        )}
+                        {showRetry && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={busyAction !== null}
+                            onClick={() => handleRetryTranscription(activeCall)}
+                          >
+                            {busyAction === 'retry' ? (
+                              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                            )}
+                            Retry transcription
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            handleRedial(activeCall.phone_number);
+                            setActiveCall(null);
+                          }}
+                        >
+                          <Phone className="h-3.5 w-3.5 mr-1.5" />
+                          Redial
+                        </Button>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </>

@@ -126,20 +126,14 @@ export const TaskTableView = ({
   const renderPriorityIndicator = (priority: string | null) => {
     const config = priorityConfig[priority || 'medium'];
     return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3].map((level) => (
-          <div
-            key={level}
-            className={`w-1.5 rounded-full transition-all ${
-              level <= Math.ceil(config.stars / 2)
-                ? 'h-3 bg-current opacity-100'
-                : 'h-2 bg-current opacity-20'
-            }`}
-            style={{ color: config.color }}
-          />
-        ))}
-        <span className="ml-1 text-[12px] text-[#5f6368] dark:text-muted-foreground">{config.label}</span>
-      </div>
+      <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[13px] text-[#202124] dark:text-foreground whitespace-nowrap">
+        <span
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: config.color }}
+          aria-hidden
+        />
+        {config.label}
+      </span>
     );
   };
 
@@ -149,21 +143,34 @@ export const TaskTableView = ({
       <Popover>
         <PopoverTrigger asChild>
           <button
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all hover:scale-105 border whitespace-nowrap ${config.bg} ${config.text}`}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[13px] text-[#202124] dark:text-foreground hover:bg-[#e8eaed] dark:hover:bg-muted/80 transition-colors whitespace-nowrap"
           >
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: config.color }}
+              aria-hidden
+            />
             {config.label}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-40 p-2 rounded-xl border-muted-foreground/10" align="start">
-          <div className="space-y-1">
+        <PopoverContent className="w-44 p-1.5 rounded-xl border" style={{ borderColor: '#c8bdd6' }} align="start">
+          <div className="space-y-0.5">
             {statusPickerOptions.map((key) => {
               const cfg = statusConfig[key];
+              const isActive = (task.status || 'todo') === key;
               return (
                 <button
                   key={key}
                   onClick={() => onUpdateTask(task.id, { status: key, is_completed: key === 'done' })}
-                  className={`w-full px-3 py-2 rounded-lg text-xs font-medium transition-all hover:scale-[1.02] ${cfg.bg} ${cfg.text}`}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors text-[#202124] dark:text-foreground ${
+                    isActive ? 'bg-[#eee6f6] dark:bg-purple-950/40' : 'hover:bg-[#f5f0fa] dark:hover:bg-muted'
+                  }`}
                 >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: cfg.color }}
+                    aria-hidden
+                  />
                   {cfg.label}
                 </button>
               );
@@ -179,15 +186,8 @@ export const TaskTableView = ({
     const cfg = taskTypeConfig[type] || taskTypeConfig.internal;
     const Icon = type === 'call' ? Phone : type === 'email' ? Mail : User;
     return (
-      <span
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap"
-        style={{
-          backgroundColor: `${cfg.color}10`,
-          color: cfg.color,
-          borderColor: `${cfg.color}30`,
-        }}
-      >
-        <Icon className="h-3 w-3" />
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[13px] text-[#202124] dark:text-foreground whitespace-nowrap">
+        <Icon className="h-3 w-3 text-[#5f6368] dark:text-muted-foreground" />
         {cfg.label}
       </span>
     );
@@ -368,7 +368,7 @@ export const TaskTableView = ({
                             is_completed: !!checked,
                             status: checked ? 'done' : 'todo',
                           })}
-                          className="h-5 w-5 rounded-full border-2 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                          className="h-5 w-5 rounded-full border-2 border-[#c8bdd6] data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                         />
                       </div>
                       <div className="min-w-0 flex-1">

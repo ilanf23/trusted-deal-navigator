@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Phone, MessageSquare, Plus, ArrowUpRight, ArrowDownLeft, Clock, Send, Loader2, PhoneCall, UserPlus, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { CallRecordingPlayer } from '@/components/admin/shared/CallRecordingPlayer';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -609,13 +610,11 @@ export const CommunicationsWidget = () => {
                                 )}
                                 {comm.recording_url && (
                                   <div className="mt-2">
-                                    <audio 
-                                      controls 
+                                    <CallRecordingPlayer
+                                      communicationId={comm.id}
+                                      lazy
                                       className="h-8 w-full max-w-xs"
-                                      src={comm.recording_url}
-                                    >
-                                      Your browser does not support the audio element.
-                                    </audio>
+                                    />
                                   </div>
                                 )}
                                 <Button

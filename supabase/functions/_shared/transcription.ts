@@ -61,7 +61,70 @@ export async function fetchTwilioRecordingAsBlob(recordingUrl: string): Promise<
 }
 
 /**
+ * HTTP status codes worth retrying. 429 = rate limit, 5xx = upstream blip,
+ * 408 = request timeout. Everything else (400/401/403/404/413/422) reflects
+ * a client-side problem (auth, file too big, malformed input) that won't
+ * change on a retry, so we surface the error immediately.
+ */
+const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+/**
+ * Retry an async op with exponential backoff. Caller decides whether the
+ * thrown error is retryable by returning false from `isRetryable`. Backoff:
+ * 1s, 2s, 4s (with ±25% jitter). Three attempts max — keeps latency bounded
+ * for the synchronous admin-retry path while still smoothing over OpenAI's
+ * common 429s.
+ */
+async function withRetry<T>(
+  label: string,
+  op: () => Promise<T>,
+  isRetryable: (err: unknown) => boolean,
+  maxAttempts = 3,
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await op();
+    } catch (err) {
+      lastErr = err;
+      const retryable = isRetryable(err);
+      if (!retryable || attempt === maxAttempts) {
+        if (retryable) console.warn(`[transcription] ${label} exhausted retries after ${attempt} attempts`);
+        throw err;
+      }
+      const baseMs = 1000 * 2 ** (attempt - 1);
+      const jitterMs = Math.floor(baseMs * (Math.random() * 0.5 - 0.25));
+      const waitMs = baseMs + jitterMs;
+      console.warn(`[transcription] ${label} attempt ${attempt} failed (retryable) — retrying in ${waitMs}ms:`, err instanceof Error ? err.message : String(err));
+      await new Promise((r) => setTimeout(r, waitMs));
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * Tagged error so withRetry can decide whether a fetch failure is worth
+ * another attempt without re-parsing the message string.
+ */
+class HttpStatusError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = 'HttpStatusError';
+  }
+}
+
+const isRetryableHttpError = (err: unknown): boolean => {
+  if (err instanceof HttpStatusError) return RETRYABLE_STATUS.has(err.status);
+  // Network errors (DNS failure, socket reset, fetch abort) are retryable;
+  // they surface as TypeError from undici/fetch.
+  if (err instanceof TypeError) return true;
+  return false;
+};
+
+/**
  * Send audio through OpenAI Whisper (whisper-1) and return the raw transcript text.
+ * Wrapped in withRetry so transient 429/5xx from OpenAI don't permanently fail
+ * the call. Auth failures (401/403) and file-too-big (413) raise immediately.
  */
 export async function transcribeWithWhisper(audioBlob: Blob): Promise<string> {
   const openaiKey = Deno.env.get('OPENAI_API_KEY');
@@ -69,23 +132,25 @@ export async function transcribeWithWhisper(audioBlob: Blob): Promise<string> {
     throw new Error('OPENAI_API_KEY not configured');
   }
 
-  const formData = new FormData();
-  formData.append('file', audioBlob, 'recording.mp3');
-  formData.append('model', 'whisper-1');
-  formData.append('response_format', 'text');
+  return withRetry('whisper', async () => {
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'recording.mp3');
+    formData.append('model', 'whisper-1');
+    formData.append('response_format', 'text');
 
-  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${openaiKey}` },
-    body: formData,
-  });
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${openaiKey}` },
+      body: formData,
+    });
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Whisper transcription failed: ${err}`);
-  }
+    if (!response.ok) {
+      const body = await response.text();
+      throw new HttpStatusError(response.status, `Whisper transcription failed (${response.status}): ${body.slice(0, 300)}`);
+    }
 
-  return (await response.text()).trim();
+    return (await response.text()).trim();
+  }, isRetryableHttpError);
 }
 
 /**
@@ -102,36 +167,42 @@ export async function addSpeakerLabels(
     return rawTranscript;
   }
 
+  // Wrapped in withRetry like Whisper. Speaker labeling is non-blocking: if
+  // every attempt fails we still return the raw transcript so the caller can
+  // persist *something* — never let labeling outages eat the transcript.
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a transcript formatter. Add speaker labels to the following call transcript. The call direction is "${direction}". For inbound calls, the external caller speaks first. For outbound calls, our team member (${agentName}) speaks first. Label speakers as "${agentName}:" and "Caller:" on each line. Return ONLY the labeled transcript, no other text.`,
-          },
-          { role: 'user', content: rawTranscript },
-        ],
-        temperature: 0.3,
-      }),
-    });
+    return await withRetry('gemini-speaker-labels', async () => {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${lovableApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-3-flash-preview',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a transcript formatter. Add speaker labels to the following call transcript. The call direction is "${direction}". For inbound calls, the external caller speaks first. For outbound calls, our team member (${agentName}) speaks first. Label speakers as "${agentName}:" and "Caller:" on each line. Return ONLY the labeled transcript, no other text.`,
+            },
+            { role: 'user', content: rawTranscript },
+          ],
+          temperature: 0.3,
+        }),
+      });
 
-    if (!response.ok) {
-      console.error('[transcription] speaker labeling failed:', await response.text());
-      return rawTranscript;
-    }
+      if (!response.ok) {
+        const body = await response.text();
+        throw new HttpStatusError(response.status, `speaker labeling failed (${response.status}): ${body.slice(0, 300)}`);
+      }
 
-    const data = await response.json();
-    const labeled = data?.choices?.[0]?.message?.content;
-    return typeof labeled === 'string' && labeled.trim().length > 0 ? labeled : rawTranscript;
+      const data = await response.json();
+      const labeled = data?.choices?.[0]?.message?.content;
+      return typeof labeled === 'string' && labeled.trim().length > 0 ? labeled : rawTranscript;
+    }, isRetryableHttpError);
   } catch (err) {
-    console.error('[transcription] speaker labeling error:', err);
+    // Final fallback: persistent failure → return raw, never block the caller.
+    console.error('[transcription] speaker labeling permanently failed, falling back to raw transcript:', err);
     return rawTranscript;
   }
 }

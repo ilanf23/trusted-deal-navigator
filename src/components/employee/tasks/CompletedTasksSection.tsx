@@ -87,19 +87,14 @@ export const CompletedTasksSection = ({
   const renderPriorityIndicator = (priority: string | null) => {
     const config = priorityConfig[priority || 'medium'];
     return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3].map((level) => (
-          <div
-            key={level}
-            className={`w-1.5 rounded-full transition-all ${
-              level <= Math.ceil(config.stars / 2) 
-                ? 'h-3 bg-current opacity-100' 
-                : 'h-2 bg-current opacity-20'
-            }`}
-            style={{ color: config.color }}
-          />
-        ))}
-      </div>
+      <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[13px] text-[#202124] dark:text-foreground whitespace-nowrap">
+        <span
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: config.color }}
+          aria-hidden
+        />
+        {config.label}
+      </span>
     );
   };
 
@@ -114,17 +109,17 @@ export const CompletedTasksSection = ({
           onClick={() => setIsExpanded(!isExpanded)}
           className="flex items-center gap-3 group"
         >
-          <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+          <div className="p-1.5 rounded-lg bg-[#eee6f6] dark:bg-purple-950/40">
             {isExpanded ? (
-              <ChevronDown className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <ChevronDown className="h-4 w-4 text-[#3b2778] dark:text-purple-300" />
             ) : (
-              <ChevronRight className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <ChevronRight className="h-4 w-4 text-[#3b2778] dark:text-purple-300" />
             )}
           </div>
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <CheckCircle2 className="h-5 w-5 text-[#3b2778] dark:text-purple-300" />
             <h3 className="text-lg font-semibold text-foreground">Completed Tasks</h3>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-medium">
+            <span className="px-2.5 py-0.5 rounded-full bg-[#eee6f6] dark:bg-purple-950/40 text-[#3b2778] dark:text-purple-300 text-[13px] font-medium">
               {completedTasks.length}
             </span>
           </div>
@@ -166,10 +161,10 @@ export const CompletedTasksSection = ({
 
       {/* Collapsible Content */}
       {isExpanded && (
-        <div className="rounded-xl md:rounded-2xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-950/20 overflow-x-auto">
+        <div className="rounded-xl md:rounded-2xl border bg-white dark:bg-card overflow-x-auto" style={{ borderColor: '#c8bdd6' }}>
           <Table className="min-w-[600px]">
             <TableHeader>
-              <TableRow className="hover:bg-transparent border-b border-emerald-200 dark:border-emerald-800/50">
+              <TableRow className="hover:bg-transparent" style={{ backgroundColor: '#eee6f6', borderBottom: '1px solid #c8bdd6' }}>
                 <TableHead className="w-8 md:w-10">
                   <Checkbox
                     checked={allSelected}
@@ -179,75 +174,73 @@ export const CompletedTasksSection = ({
                       }
                     }}
                     onCheckedChange={toggleSelectAll}
-                    className="h-4 w-4 rounded border-muted-foreground/30"
+                    className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                   />
                 </TableHead>
-                <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Task Name</TableHead>
-                <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden md:table-cell">Assigned To</TableHead>
-                <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Related Customer</TableHead>
-                <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Completed</TableHead>
-                <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Priority</TableHead>
-                <TableHead className="w-24 md:w-32 text-right font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Actions</TableHead>
+                <TableHead className="text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">Task Name</TableHead>
+                <TableHead className="text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground hidden md:table-cell">Assigned To</TableHead>
+                <TableHead className="text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground hidden lg:table-cell">Related Customer</TableHead>
+                <TableHead className="text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">Completed</TableHead>
+                <TableHead className="text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground hidden sm:table-cell">Priority</TableHead>
+                <TableHead className="w-24 md:w-32 text-right text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {completedTasks.map((task) => (
                 <TableRow
                   key={task.id}
-                  className={`group cursor-pointer transition-all hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20 ${
-                    selectedIds.has(task.id) ? 'bg-emerald-100/70 dark:bg-emerald-900/30' : ''
+                  className={`group cursor-pointer transition-colors ${
+                    selectedIds.has(task.id)
+                      ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
+                      : 'hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                   }`}
                   onClick={() => onOpenDetail(task)}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Checkbox 
+                    <Checkbox
                       checked={selectedIds.has(task.id)}
                       onCheckedChange={() => toggleSelect(task.id)}
-                      className="h-4 w-4 rounded border-muted-foreground/30"
+                      className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                     />
                   </TableCell>
 
                   <TableCell>
-                    <span className="text-sm font-medium line-through text-muted-foreground">
+                    <span className="text-[13px] font-medium line-through text-[#5f6368] dark:text-muted-foreground">
                       {task.title}
                     </span>
                   </TableCell>
 
                   <TableCell className="hidden md:table-cell">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-5 w-5 md:h-6 md:w-6 ring-2 ring-background">
-                        <AvatarFallback className="text-[9px] md:text-[10px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
+                    <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
+                      <Avatar className="h-5 w-5 md:h-6 md:w-6">
+                        <AvatarFallback className="text-[9px] md:text-[10px] bg-[#3b2778] text-white font-medium">
                           {(teamMember?.name || 'Team Member').substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-xs md:text-sm text-muted-foreground">{teamMember?.name || 'Team Member'}</span>
-                    </div>
+                      <span className="text-[13px] text-[#202124] dark:text-foreground truncate">{teamMember?.name || 'Team Member'}</span>
+                    </span>
                   </TableCell>
 
                   <TableCell className="hidden lg:table-cell">
                     {task.lead ? (
-                      <div className="flex items-center gap-2">
-                        <div className="p-1 rounded-md bg-muted">
-                          <Building2 className="h-3 w-3 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="text-xs md:text-sm text-muted-foreground">{task.lead.name}</p>
-                        </div>
-                      </div>
+                      <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[13px] text-[#202124] dark:text-foreground truncate max-w-full">
+                        <Building2 className="h-3 w-3 text-[#5f6368] dark:text-muted-foreground" />
+                        {task.lead.name}
+                      </span>
                     ) : (
-                      <span className="text-xs md:text-sm text-muted-foreground">—</span>
+                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[13px] text-muted-foreground/40">—</span>
                     )}
                   </TableCell>
 
                   <TableCell>
                     {task.updated_at ? (
-                      <div className="flex items-center gap-1 md:gap-1.5 text-xs md:text-sm text-muted-foreground">
-                        <Calendar className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[13px] text-[#202124] dark:text-foreground tabular-nums">
+                        <Calendar className="h-3 w-3 md:h-3.5 md:w-3.5 text-[#5f6368] dark:text-muted-foreground" />
                         <span className="hidden sm:inline">{format(parseISO(task.updated_at), 'MMM d, yyyy')}</span>
                         <span className="sm:hidden">{format(parseISO(task.updated_at), 'M/d')}</span>
-                      </div>
+                      </span>
                     ) : (
-                      <span className="text-xs md:text-sm text-muted-foreground">—</span>
+                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[13px] text-muted-foreground/40">—</span>
                     )}
                   </TableCell>
 
@@ -263,7 +256,7 @@ export const CompletedTasksSection = ({
                           <TooltipTrigger asChild>
                             <button
                               onClick={(e) => handleRestore(e, task)}
-                              className="p-1.5 rounded-lg hover:bg-blue-500/10 text-muted-foreground hover:text-blue-600 transition-all"
+                              className="p-1.5 rounded-lg hover:bg-[#eee6f6] text-muted-foreground hover:text-[#3b2778] transition-all"
                             >
                               <RotateCcw className="h-4 w-4" />
                             </button>

@@ -1,5 +1,5 @@
 import { parseISO, format } from 'date-fns';
-import { Phone, Mail, DollarSign, Sparkles, Loader2, Info, X, Copy, MoreHorizontal, Trash2, UserPlus, UserCheck } from 'lucide-react';
+import { Phone, Mail, DollarSign, Sparkles, Loader2, Info, X, Copy, MoreHorizontal, Trash2, UserPlus, UserCheck, ChevronsUpDown, Check } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -322,6 +322,93 @@ export function ExpandedLeftColumn({
     }
   };
 
+  // ── Primary contact switching ──
+  // `entity_contacts` holds the secondary contacts attached to this deal. The
+  // deal table itself stores the *current* primary's data denormalized into
+  // `name` / `title` / `email` / `phone`. Swapping promotes a row out of
+  // `entity_contacts` onto the deal and demotes the previous primary into
+  // `entity_contacts` so it isn't lost.
+  const contactsKey = ['lead-related', tableName, lead.id, 'contacts'] as const;
+  const { data: otherContacts = [] } = useQuery<
+    Array<{ id: string; name: string; title: string | null; email: string | null; phone: string | null }>
+  >({
+    queryKey: contactsKey,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('entity_contacts')
+        .select('id, name, title, email, phone')
+        .eq('entity_id', lead.id)
+        .eq('entity_type', tableName);
+      return (data ?? []) as Array<{ id: string; name: string; title: string | null; email: string | null; phone: string | null }>;
+    },
+    enabled: !!lead.id,
+  });
+
+  const [switchContactOpen, setSwitchContactOpen] = useState(false);
+
+  const swapPrimaryContact = useMutation({
+    mutationFn: async (newPrimary: { id: string; name: string; title: string | null; email: string | null; phone: string | null }) => {
+      // 1. Demote current primary into entity_contacts (only if there's something to save).
+      const hasCurrentPrimary = !!(lead.name || lead.email || lead.phone);
+      if (hasCurrentPrimary) {
+        const { error: insertErr } = await supabase.from('entity_contacts').insert({
+          entity_id: lead.id,
+          entity_type: tableName,
+          name: lead.name || '(No name)',
+          title: lead.title ?? null,
+          email: lead.email ?? null,
+          phone: lead.phone ?? null,
+          is_primary: false,
+        });
+        if (insertErr) throw insertErr;
+      }
+
+      // 2. Remove the new primary from entity_contacts.
+      const { error: deleteErr } = await supabase
+        .from('entity_contacts')
+        .delete()
+        .eq('id', newPrimary.id);
+      if (deleteErr) throw deleteErr;
+
+      // 3. Update the deal's denormalized primary-contact columns.
+      const updates = {
+        name: newPrimary.name,
+        title: newPrimary.title,
+        email: newPrimary.email,
+        phone: newPrimary.phone,
+      };
+      let updateErr: unknown = null;
+      switch (tableName) {
+        case 'potential': {
+          const { error } = await supabase.from('potential').update(updates).eq('id', lead.id);
+          updateErr = error;
+          break;
+        }
+        case 'underwriting': {
+          const { error } = await supabase.from('underwriting').update(updates).eq('id', lead.id);
+          updateErr = error;
+          break;
+        }
+        case 'lender_management': {
+          const { error } = await supabase.from('lender_management').update(updates).eq('id', lead.id);
+          updateErr = error;
+          break;
+        }
+      }
+      if (updateErr) throw updateErr;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: contactsKey });
+      // Trigger the parent expanded-view's lead refetch + "Updated" toast.
+      onFieldSaved('name', lead.name);
+      setSwitchContactOpen(false);
+      toast.success('Primary contact updated');
+    },
+    onError: () => {
+      toast.error('Failed to switch primary contact');
+    },
+  });
+
   return (
     <>
     <div className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-y-auto overflow-x-hidden">
@@ -478,12 +565,62 @@ export function ExpandedLeftColumn({
         <div>
           <label className="text-sm text-muted-foreground block mb-2">Primary Contact</label>
           <div className="border-b border-border pb-3">
-            <div className="flex items-start gap-3 px-1 py-1.5">
+            <div className="flex items-start gap-3 px-1 py-1.5 group">
               <CrmAvatar name={lead.name} size="lg" />
               <div className="min-w-0 flex-1">
                 <p className="text-base text-foreground break-words">{lead.name}</p>
                 {lead.title && <p className="text-xs text-muted-foreground break-words">{lead.title}</p>}
               </div>
+              {otherContacts.length > 0 && (
+                <Popover open={switchContactOpen} onOpenChange={setSwitchContactOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 opacity-0 group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100 transition-opacity"
+                      aria-label="Switch primary contact"
+                      title="Switch primary contact"
+                      disabled={swapPrimaryContact.isPending}
+                    >
+                      {swapPrimaryContact.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ChevronsUpDown className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="bottom" align="end" className="w-72 p-1">
+                    <div className="px-2 py-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                      Switch primary contact
+                    </div>
+                    <div className="max-h-72 overflow-y-auto">
+                      {otherContacts.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => swapPrimaryContact.mutate(c)}
+                          disabled={swapPrimaryContact.isPending}
+                          className="w-full flex items-start gap-2 px-2 py-2 rounded-md text-left hover:bg-muted/60 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <CrmAvatar name={c.name} size="sm" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-foreground break-words leading-tight">{c.name}</p>
+                            {c.title && (
+                              <p className="text-xs text-muted-foreground break-words leading-tight mt-0.5">{c.title}</p>
+                            )}
+                            {c.email && (
+                              <p className="text-[11px] text-muted-foreground break-all leading-tight mt-0.5">{c.email}</p>
+                            )}
+                          </div>
+                          <Check className="h-3.5 w-3.5 text-transparent shrink-0 mt-1" />
+                        </button>
+                      ))}
+                    </div>
+                    <div className="px-2 pt-1.5 pb-1 text-[11px] text-muted-foreground border-t border-border mt-1">
+                      The current primary will be moved into Contacts.
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
             {lead.phone && (
               <button

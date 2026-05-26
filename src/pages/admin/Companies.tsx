@@ -782,7 +782,7 @@ const Companies = () => {
             {/* ── Copper-Style Content Title Bar ── */}
             <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-[#f8f9fa] dark:bg-muted/30">
 
-              <div className="flex items-center gap-3 ml-24">
+              <div className="flex items-center gap-3 ml-10">
                 <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
                   {FILTER_OPTIONS.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Companies'}
                 </h2>

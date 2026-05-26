@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Info, Loader2 } from 'lucide-react';
+import { Info, Loader2, Star, X } from 'lucide-react';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -174,10 +174,32 @@ export function AddOpportunityDialog({
   const { addLeadToPipeline } = useCrmMutations(activeTable);
   const [form, setForm] = useState<NewOpportunityForm>(BLANK);
 
+  // Locally-selected contacts to link on save. Mirrors `linkContacts` prop, but
+  // editable from the dialog itself via the Primary Contact search.
+  const [selectedContacts, setSelectedContacts] = useState<LinkContact[]>([]);
+  const [contactSearchOpen, setContactSearchOpen] = useState(false);
+  const [contactQuery, setContactQuery] = useState('');
+  const [peopleResults, setPeopleResults] = useState<Array<{
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    title: string | null;
+  }>>([]);
+  const [searchingPeople, setSearchingPeople] = useState(false);
+
   // When the picker is enabled, load stages internally for whichever pipeline is selected.
   // The query is cached forever and shared with pipeline pages, so this is a no-op on warm caches.
-  const { data: pipelineRecord } = useSystemPipelineByName(PIPELINE_LABELS[activeTable]);
-  const { data: loadedStages } = usePipelineStages(
+  const {
+    data: pipelineRecord,
+    isLoading: isPipelineLoading,
+    isError: isPipelineError,
+  } = useSystemPipelineByName(PIPELINE_LABELS[activeTable]);
+  const {
+    data: loadedStages,
+    isLoading: areStagesLoading,
+    isError: isStagesError,
+  } = usePipelineStages(
     allowPipelineSwitch ? pipelineRecord?.id : undefined,
   );
   const dynamicStages = useMemo<StageOption[]>(
@@ -196,12 +218,23 @@ export function AddOpportunityDialog({
     () => (allowPipelineSwitch ? dynamicStageConfig : stageConfig ?? {}),
     [allowPipelineSwitch, dynamicStageConfig, stageConfig],
   );
+  const isStageLoading = allowPipelineSwitch && (
+    isPipelineLoading || (!!pipelineRecord && areStagesLoading)
+  );
+  const isStageError = allowPipelineSwitch && (isPipelineError || isStagesError);
+  const stagePlaceholder = isStageLoading
+    ? 'Loading stages...'
+    : isStageError
+      ? 'Unable to load stages'
+      : 'Select stage';
 
   // Refs for once-per-open data so they don't churn the reset effect.
   const prefillRef = useRef(prefill);
   prefillRef.current = prefill;
   const linkContactsRef = useRef(linkContacts);
   linkContactsRef.current = linkContacts;
+  const ownerOptionsRef = useRef(ownerOptions);
+  ownerOptionsRef.current = ownerOptions;
 
   // On open: reset to BLANK, apply prefill, reset active pipeline to the prop default.
   useEffect(() => {
@@ -212,9 +245,77 @@ export function AddOpportunityDialog({
       ...(prefillRef.current ?? {}),
       stage_id: '',
       status: '',
-      assigned_to: prefillRef.current?.assigned_to || ownerOptions[0]?.value || '',
+      assigned_to: prefillRef.current?.assigned_to || ownerOptionsRef.current[0]?.value || '',
     });
-  }, [open, tableName, ownerOptions]);
+    setSelectedContacts(linkContactsRef.current ?? []);
+    setContactSearchOpen(false);
+    setContactQuery('');
+    setPeopleResults([]);
+  }, [open, tableName]);
+
+  // Debounced people search — only runs while the search input is open.
+  useEffect(() => {
+    if (!open || !contactSearchOpen) return;
+    const q = contactQuery.trim();
+    if (q.length === 0) {
+      setPeopleResults([]);
+      return;
+    }
+    let cancelled = false;
+    setSearchingPeople(true);
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from('people')
+        .select('id, name, email, phone, title')
+        .ilike('name', `%${q}%`)
+        .order('name', { ascending: true })
+        .limit(8);
+      if (cancelled) return;
+      setPeopleResults((data ?? []) as typeof peopleResults);
+      setSearchingPeople(false);
+    }, 200);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [open, contactSearchOpen, contactQuery]);
+
+  const addContact = (c: LinkContact) => {
+    setSelectedContacts((prev) => {
+      const dupe = prev.some(
+        (x) => x.name.toLowerCase() === c.name.toLowerCase() &&
+               (x.email ?? '').toLowerCase() === (c.email ?? '').toLowerCase(),
+      );
+      if (dupe) return prev;
+      // First contact is primary by default.
+      const next = [...prev, { ...c, is_primary: c.is_primary ?? prev.length === 0 }];
+      return next;
+    });
+    setContactQuery('');
+    setPeopleResults([]);
+    setContactSearchOpen(false);
+  };
+
+  const removeContact = (idx: number) => {
+    setSelectedContacts((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      // If we removed the primary, promote the first remaining contact.
+      if (next.length > 0 && !next.some((c) => c.is_primary)) {
+        next[0] = { ...next[0], is_primary: true };
+      }
+      return next;
+    });
+  };
+
+  const setPrimaryContact = (idx: number) => {
+    setSelectedContacts((prev) => prev.map((c, i) => ({ ...c, is_primary: i === idx })));
+  };
+
+  // Owner options can finish loading while the dialog is open. Fill an empty
+  // owner only; resetting the form here would discard text the user has typed.
+  useEffect(() => {
+    if (!open || ownerOptions.length === 0) return;
+    setForm((prev) => (
+      prev.assigned_to ? prev : { ...prev, assigned_to: ownerOptions[0].value }
+    ));
+  }, [open, ownerOptions]);
 
   // When stages are available (initial load or pipeline switch), pick a default stage
   // if the current selection isn't valid for the active pipeline.
@@ -284,8 +385,8 @@ export function AddOpportunityDialog({
 
       // Link contacts to the new deal (entity_contacts is the canonical join table —
       // entity_type matches the pipeline the deal landed in).
-      if (createdLead && linkContactsRef.current?.length) {
-        const rows = linkContactsRef.current.map((c) => ({
+      if (createdLead && selectedContacts.length) {
+        const rows = selectedContacts.map((c) => ({
           entity_id: createdLead.id,
           entity_type: activeTable,
           name: c.name,
@@ -342,7 +443,9 @@ export function AddOpportunityDialog({
               <Select
                 value={activeTable}
                 onValueChange={(v) => {
-                  if (allowPipelineSwitch) setActiveTable(v as CrmTable);
+                  if (!allowPipelineSwitch || v === activeTable) return;
+                  setActiveTable(v as CrmTable);
+                  setForm((prev) => ({ ...prev, stage_id: '', status: '' }));
                 }}
               >
                 <SelectTrigger id="opp-pipeline" disabled={!allowPipelineSwitch}>
@@ -360,18 +463,28 @@ export function AddOpportunityDialog({
 
             <FieldRow label="Stage" htmlFor="opp-stage">
               <Select
-                value={form.stage_id}
+                value={isStageLoading || isStageError ? '' : form.stage_id}
                 onValueChange={(v) => update('stage_id', v)}
               >
-                <SelectTrigger id="opp-stage">
-                  <SelectValue placeholder="Select stage" />
+                <SelectTrigger id="opp-stage" disabled={isStageLoading}>
+                  <SelectValue placeholder={stagePlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  {activeStages.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {activeStageConfig[s.id]?.title ?? s.name}
+                  {isStageError ? (
+                    <SelectItem value="__stage_error__" disabled>
+                      Unable to load stages
                     </SelectItem>
-                  ))}
+                  ) : activeStages.length === 0 ? (
+                    <SelectItem value="__stage_empty__" disabled>
+                      No stages available
+                    </SelectItem>
+                  ) : (
+                    activeStages.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {activeStageConfig[s.id]?.title ?? s.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </FieldRow>
@@ -430,13 +543,126 @@ export function AddOpportunityDialog({
 
           {/* Primary Contact (relate action) */}
           <FieldRow label="Primary Contact" required>
-            <button
-              type="button"
-              onClick={() => toast.info('Contact relation available after creation')}
-              className="text-sm text-[#3b2778] hover:underline font-medium bg-transparent border-0 p-0 text-left"
-            >
-              Relate a Contact
-            </button>
+            <div className="space-y-2">
+              {selectedContacts.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedContacts.map((c, idx) => (
+                    <div
+                      key={`${c.name}-${c.email ?? ''}-${idx}`}
+                      className={cn(
+                        'group inline-flex items-center gap-1.5 rounded-full pl-2 pr-1 py-1 text-xs border',
+                        c.is_primary
+                          ? 'bg-[#eee6f6] border-[#c8bdd6] text-[#3b2778]'
+                          : 'bg-muted border-border text-foreground',
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setPrimaryContact(idx)}
+                        title={c.is_primary ? 'Primary contact' : 'Make primary'}
+                        className="inline-flex items-center"
+                      >
+                        <Star
+                          className={cn(
+                            'h-3 w-3',
+                            c.is_primary ? 'fill-[#3b2778] text-[#3b2778]' : 'text-muted-foreground',
+                          )}
+                        />
+                      </button>
+                      <span className="font-medium">{c.name}</span>
+                      {c.title && <span className="text-muted-foreground">· {c.title}</span>}
+                      <button
+                        type="button"
+                        onClick={() => removeContact(idx)}
+                        className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-foreground/10"
+                        aria-label={`Remove ${c.name}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {contactSearchOpen ? (
+                <div className="relative">
+                  <Input
+                    autoFocus
+                    value={contactQuery}
+                    onChange={(e) => setContactQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setContactSearchOpen(false);
+                        setContactQuery('');
+                      } else if (e.key === 'Enter' && contactQuery.trim() && peopleResults.length === 0) {
+                        e.preventDefault();
+                        addContact({ name: contactQuery.trim() });
+                      }
+                    }}
+                    placeholder="Search people or type a name..."
+                  />
+                  {(contactQuery.trim().length > 0) && (
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-56 overflow-y-auto">
+                      {searchingPeople && (
+                        <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Searching…
+                        </div>
+                      )}
+                      {!searchingPeople && peopleResults
+                        .filter((p) => !selectedContacts.some(
+                          (c) => c.name.toLowerCase() === p.name.toLowerCase(),
+                        ))
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => addContact({
+                              name: p.name,
+                              email: p.email,
+                              phone: p.phone,
+                              title: p.title,
+                            })}
+                            className="w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-muted/60 transition-colors"
+                          >
+                            <div className="h-6 w-6 rounded-full bg-[#eee6f6] flex items-center justify-center text-[10px] font-bold text-[#3b2778] shrink-0">
+                              {p.name[0]?.toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-medium text-foreground truncate">
+                                {p.name}
+                                {p.title && (
+                                  <span className="text-muted-foreground font-normal"> · {p.title}</span>
+                                )}
+                              </div>
+                              {p.email && (
+                                <p className="text-[10px] text-muted-foreground truncate">{p.email}</p>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      {!searchingPeople && peopleResults.length === 0 && (
+                        <button
+                          type="button"
+                          onClick={() => addContact({ name: contactQuery.trim() })}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-muted/60"
+                        >
+                          + Add new contact "<span className="font-medium">{contactQuery.trim()}</span>"
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setContactSearchOpen(true)}
+                  className="text-sm text-[#3b2778] hover:underline font-medium bg-transparent border-0 p-0 text-left"
+                >
+                  {selectedContacts.length > 0 ? '+ Relate another Contact' : 'Relate a Contact'}
+                </button>
+              )}
+            </div>
           </FieldRow>
 
           {/* Status */}

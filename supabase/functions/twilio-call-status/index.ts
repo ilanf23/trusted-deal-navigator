@@ -145,11 +145,122 @@ Deno.serve(async (req) => {
       }
 
       if (!comm) {
-        console.warn(
-          '[twilio-call-status] no communications row for call_sid yet — returning 503 for Twilio retry',
-          { callSid },
-        );
-        return new Response('Comm row not found', { status: 503, headers: corsHeaders });
+        // Self-heal: the browser-side insert in CallContext.makeOutboundCall
+        // either never fired (tab closed) or wrote call_sid=null (the SDK
+        // hadn't assigned the Sid yet at insert time). Rather than 503'ing
+        // and hoping Twilio retries land after the frontend recovers, we
+        // create the row from scratch using the call details Twilio exposes
+        // on its REST API. Direction is derived from Twilio's own field;
+        // user_id is resolved by matching our Twilio DID against the call's
+        // From (outbound) or To (inbound). Falls through to 503 only if the
+        // Twilio API itself can't tell us about the call.
+        console.warn('[twilio-call-status] no communications row for', lookupSid, '— self-healing');
+        const accountSidEnv = Deno.env.get('TWILIO_ACCOUNT_SID');
+        const authTokenEnv = Deno.env.get('TWILIO_AUTH_TOKEN');
+        if (accountSidEnv && authTokenEnv) {
+          try {
+            const basicAuth = btoa(`${accountSidEnv}:${authTokenEnv}`);
+            const callRes = await fetch(
+              `https://api.twilio.com/2010-04-01/Accounts/${accountSidEnv}/Calls/${lookupSid}.json`,
+              { headers: { Authorization: `Basic ${basicAuth}` } },
+            );
+            if (!callRes.ok) {
+              console.error('[twilio-call-status] Twilio call lookup failed:', callRes.status, await callRes.text());
+              return new Response('Self-heal failed: Twilio call lookup', { status: 503, headers: corsHeaders });
+            }
+            const callData = (await callRes.json()) as {
+              from?: string;
+              to?: string;
+              direction?: string;
+              duration?: string | null;
+              status?: string;
+            };
+
+            // Twilio direction values: 'inbound', 'outbound-api',
+            // 'outbound-dial', 'trunking-*'. Treat anything non-inbound as
+            // outbound (matches the rest of our normalization).
+            const direction = callData.direction === 'inbound' ? 'inbound' : 'outbound';
+            const ourSide = direction === 'inbound' ? callData.to : callData.from;
+            const customerPhone = direction === 'inbound' ? callData.from : callData.to;
+            const ourSideLast10 = (ourSide ?? '').replace(/\D/g, '').slice(-10);
+
+            // Map our Twilio number → user_id so the recovered row gets the
+            // right call-history scoping. Skipping this leaves user_id null,
+            // which means the call shows up only for super_admins/owners
+            // under the per-rep scoping.
+            let ownerId: string | null = null;
+            if (ourSideLast10.length === 10) {
+              const { data: owners } = await supabase
+                .from('users')
+                .select('id, twilio_phone_number')
+                .not('twilio_phone_number', 'is', null);
+              if (owners) {
+                const owner = (owners as Array<{ id: string; twilio_phone_number: string | null }>).find(
+                  (u) => (u.twilio_phone_number ?? '').replace(/\D/g, '').slice(-10) === ourSideLast10,
+                );
+                if (owner) ownerId = owner.id;
+              }
+            }
+
+            const parsedRecordingDuration = parseInt(recordingDuration);
+            const parsedCallDuration = parseInt(callData.duration ?? '');
+            const durationSeconds = Number.isFinite(parsedRecordingDuration) && parsedRecordingDuration > 0
+              ? parsedRecordingDuration
+              : Number.isFinite(parsedCallDuration) && parsedCallDuration > 0
+                ? parsedCallDuration
+                : null;
+
+            // Upsert with onConflict + ignoreDuplicates so if a parallel
+            // Twilio retry races us, only one row wins and we silently
+            // succeed instead of throwing a unique-violation error.
+            const { error: insertErr } = await supabase
+              .from('communications')
+              .upsert(
+                {
+                  call_sid: lookupSid,
+                  communication_type: 'call',
+                  direction,
+                  phone_number: customerPhone ?? null,
+                  status: callData.status ?? 'completed',
+                  duration_seconds: durationSeconds,
+                  recording_url: mp3Url,
+                  recording_sid: recordingSid,
+                  recording_status: 'available',
+                  transcription_status: 'processing',
+                  transcription_error: null,
+                  transcription_updated_at: new Date().toISOString(),
+                  user_id: ownerId,
+                  content: `${direction === 'inbound' ? 'Incoming' : 'Outgoing'} call (recovered from recording webhook)`,
+                },
+                { onConflict: 'call_sid' },
+              );
+
+            if (insertErr) {
+              console.error('[twilio-call-status] self-heal upsert failed:', insertErr);
+              return new Response('Self-heal failed: upsert error', { status: 503, headers: corsHeaders });
+            }
+
+            // Re-lookup so we have the id for the transcription scheduler.
+            const { data: createdRow } = await supabase
+              .from('communications')
+              .select('id')
+              .eq('call_sid', lookupSid)
+              .maybeSingle();
+            if (!createdRow) {
+              console.error('[twilio-call-status] self-heal: row missing after upsert?', { lookupSid });
+              return new Response('Self-heal post-lookup failed', { status: 503, headers: corsHeaders });
+            }
+
+            console.log('[twilio-call-status] self-healed: created row', createdRow.id, 'for', lookupSid);
+            scheduleBackgroundTranscription(supabase, createdRow.id);
+            return new Response(okTwiML(), { status: 200, headers: corsHeaders });
+          } catch (err) {
+            console.error('[twilio-call-status] self-heal threw:', err);
+            return new Response('Self-heal exception', { status: 503, headers: corsHeaders });
+          }
+        }
+        // Env not configured — fall through to 503 so Twilio retries.
+        return new Response('Self-heal unavailable (Twilio creds missing)', { status: 503, headers: corsHeaders });
       }
 
       // Only overwrite duration_seconds when RecordingDuration is a positive

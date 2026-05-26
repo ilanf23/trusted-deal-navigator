@@ -49,6 +49,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { CallRecordingPlayer } from '@/components/admin/shared/CallRecordingPlayer';
 
 interface ActiveCall {
   id: string;
@@ -99,6 +100,13 @@ interface CallLog {
   call_sid?: string | null;
   user_id?: string | null;
   pipeline?: {
+    name: string;
+    company_name: string | null;
+  } | null;
+  // Matched CRM contact resolved server-side by twilio-call-history from the
+  // customer-side phone number. Null when nothing matches in public.people.
+  contact?: {
+    id: string;
     name: string;
     company_name: string | null;
   } | null;
@@ -385,6 +393,42 @@ const Calls = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when callHistory changes or the selected call ID changes, not on transcript text change
   }, [callHistory, selectedTranscriptCall?.id]);
 
+  // ── Realtime transcript updates ─────────────────────────────────────────
+  // Subscribe to UPDATEs on the `communications` table and invalidate the
+  // call-history query whenever a row's transcript or transcription_status
+  // changes. This pushes "Generating → Available" badge flips into the UI
+  // the moment the background Whisper pipeline finishes — no manual refresh
+  // and no waiting for the 60s polling tick.
+  //
+  // Filter is intentionally loose (all communications UPDATEs) because
+  // Supabase realtime doesn't support filtering on changed columns; the
+  // overhead of an extra query invalidation when other columns change is
+  // negligible compared to the UX win of instant transcript landing.
+  useEffect(() => {
+    if (!teamMember?.id) return;
+    const channel = supabase
+      .channel('communications-transcripts')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'communications' },
+        (payload) => {
+          const newRow = payload.new as { id?: string; transcript?: string | null; transcription_status?: string | null };
+          const oldRow = payload.old as { transcript?: string | null; transcription_status?: string | null };
+          // Only invalidate when the columns that affect the UI actually
+          // changed. Reduces churn on writes like duration_seconds updates.
+          const transcriptChanged = (newRow.transcript ?? null) !== (oldRow.transcript ?? null);
+          const statusChanged = (newRow.transcription_status ?? null) !== (oldRow.transcription_status ?? null);
+          if (transcriptChanged || statusChanged) {
+            queryClient.invalidateQueries({ queryKey: ['call-history'] });
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [teamMember?.id, queryClient]);
+
   const currentCall = activeCalls[0];
 
   // Determine which phone number to look up - prioritize: selected history > outbound call > prefilled > active inbound
@@ -482,15 +526,32 @@ const Calls = () => {
         // Transcript generated successfully — check if this call has a linked lead
         await queryClient.invalidateQueries({ queryKey: ['call-history'] });
 
-        // Re-fetch the updated call to get fresh data
+        // Re-fetch the updated call. The previous version tried to embed
+        // `pipeline(name, email, phone)` here, which silently returned null
+        // because there is no FK from communications.lead_id to a `pipeline`
+        // relation. Resolve the opportunity via a separate `potential` query
+        // keyed off lead_id.
         const { data: updatedComm } = await supabase
           .from('communications')
-          .select('id, lead_id, transcript, direction, created_at, phone_number, pipeline(name, email, phone)')
+          .select('id, lead_id, transcript, direction, created_at, phone_number')
           .eq('id', call.id)
           .single();
 
-        if (updatedComm?.lead_id && updatedComm.pipeline) {
-          const leadData = updatedComm.pipeline as unknown as { name: string; email: string | null; phone: string | null };
+        let leadData: { name: string; email: string | null; phone: string | null } | null = null;
+        if (updatedComm?.lead_id) {
+          const { data: opp, error: oppError } = await supabase
+            .from('potential')
+            .select('name, email, phone')
+            .eq('id', updatedComm.lead_id)
+            .maybeSingle();
+          if (oppError) {
+            console.error('[Calls] opportunity lookup failed:', oppError);
+          } else if (opp) {
+            leadData = opp;
+          }
+        }
+
+        if (updatedComm?.lead_id && leadData) {
           const callDate = format(new Date(updatedComm.created_at), 'MMM d, yyyy h:mm a');
           setPendingAutomationData({
             leadId: updatedComm.lead_id,
@@ -1120,13 +1181,25 @@ const Calls = () => {
                         // not as a phone number).
                         const rawPhone = call.phone_number?.trim() ?? '';
                         const hasPhone = rawPhone.length > 1 && rawPhone !== '+';
-                        const primaryLabel = call.pipeline?.name
+                        // Identity precedence: matched CRM contact (people)
+                        // → matched deal (potential) → formatted phone →
+                        // "Unknown caller". Contact wins because the user
+                        // explicitly designated people as the source of truth
+                        // for caller identity.
+                        const primaryLabel = call.contact?.name
+                          || call.pipeline?.name
                           || (hasPhone ? formatPhoneNumber(rawPhone) : 'Unknown caller');
 
-                        // Secondary line shows the phone *only* if it adds info
-                        // beyond the primary label (i.e. the primary label is a
-                        // pipeline name, not the phone itself).
-                        const showPhoneInMeta = !!call.pipeline?.name && hasPhone;
+                        // Secondary line shows the phone whenever the primary
+                        // label isn't itself the phone — i.e. when we resolved
+                        // a contact name or deal name, the phone gives extra
+                        // context.
+                        const showPhoneInMeta = (!!call.contact?.name || !!call.pipeline?.name) && hasPhone;
+                        // Company tag in the secondary line: prefer the
+                        // matched contact's company; fall back to the deal's
+                        // company. Avoids showing both when they're the same
+                        // string.
+                        const secondaryCompany = call.contact?.company_name || call.pipeline?.company_name || null;
 
                         const transcriptHint = <TranscriptHint ts={ts} />;
 
@@ -1144,7 +1217,22 @@ const Calls = () => {
                             )}
                             <div
                               className="flex items-center gap-3 cursor-pointer"
-                              onClick={() => setSelectedHistoryCall(isSelected ? null : call)}
+                              onClick={() => {
+                                // Open the transcript popup on row click. The
+                                // dialog handles all four states gracefully
+                                // (transcript available / generating /
+                                // failed / no recording yet), so the user
+                                // always gets immediate feedback. The little
+                                // "User" icon at the right of each row still
+                                // routes to the lead-detail side panel.
+                                setSelectedTranscriptCall(call);
+                                setTranscriptDialogOpen(true);
+                                setTranscriptError(null);
+                                // Keep the side-pane selection in sync so the
+                                // row visually highlights and the right pane
+                                // still has context when the dialog closes.
+                                setSelectedHistoryCall(call);
+                              }}
                             >
                               {/* Direction icon — small, ringed, low-saturation */}
                               <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${iconWrapClass}`}>
@@ -1175,10 +1263,10 @@ const Calls = () => {
                                       </span>
                                     </>
                                   )}
-                                  {call.pipeline?.company_name && (
+                                  {secondaryCompany && (
                                     <>
                                       <span className="text-border" aria-hidden>·</span>
-                                      <span className="truncate">{call.pipeline.company_name}</span>
+                                      <span className="truncate">{secondaryCompany}</span>
                                     </>
                                   )}
                                   {call.status && (
@@ -1302,13 +1390,7 @@ const Calls = () => {
                                 {call.recording_url && (
                                   <div className="flex items-center gap-2">
                                     <Play className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <audio
-                                      controls
-                                      preload="none"
-                                      src={call.recording_url}
-                                      className="h-8 w-full"
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
+                                    <CallRecordingPlayer communicationId={call.id} lazy />
                                   </div>
                                 )}
                                 {call.transcript ? (

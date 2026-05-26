@@ -357,20 +357,20 @@ export const TaskWorkspace = ({
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-9 md:h-10 pl-3 md:pl-4 rounded-full border-muted-foreground/20 bg-muted/50 focus:bg-background transition-colors text-sm"
+              className="w-full h-9 md:h-10 pl-3 md:pl-4 rounded-full border-[#c8bdd6] bg-[#f8f9fb] dark:bg-muted/40 focus:bg-white dark:focus:bg-background focus-visible:ring-[#3b2778] transition-colors text-sm"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-0.5 p-0.5 bg-muted/60 dark:bg-slate-800/60 rounded-full backdrop-blur-sm">
+        <div className="flex items-center gap-0.5 p-0.5 bg-[#f0ebf5] dark:bg-purple-950/40 rounded-full">
           {viewOptions.map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+              className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 viewMode === mode
-                  ? 'bg-white dark:bg-slate-700 text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-white dark:bg-card text-[#3b2778] dark:text-purple-300 shadow-sm'
+                  : 'text-[#5f6368] dark:text-muted-foreground hover:text-[#3b2778] dark:hover:text-purple-300'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -382,24 +382,24 @@ export const TaskWorkspace = ({
 
       {/* Stats Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 md:gap-6 text-xs md:text-sm">
-        <div className="flex flex-wrap items-center gap-3 md:gap-6">
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500" />
-            <span className="text-muted-foreground">{tasks.filter(t => t.status === 'done').length} Complete</span>
-          </div>
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-blue-500" />
-            <span className="text-muted-foreground">{tasks.filter(t => t.status === 'working' || t.status === 'in_progress').length} In Progress</span>
-          </div>
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-slate-400" />
-            <span className="text-muted-foreground">{tasks.filter(t => !t.status || t.status === 'todo').length} To Do</span>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 md:gap-2.5">
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[13px] text-[#202124] dark:text-foreground">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#10b981' }} aria-hidden />
+            {tasks.filter(t => t.status === 'done').length} Complete
+          </span>
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[13px] text-[#202124] dark:text-foreground">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#3b82f6' }} aria-hidden />
+            {tasks.filter(t => t.status === 'working' || t.status === 'in_progress').length} In Progress
+          </span>
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[13px] text-[#202124] dark:text-foreground">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#64748b' }} aria-hidden />
+            {tasks.filter(t => !t.status || t.status === 'todo').length} To Do
+          </span>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-full">
-          <Clock className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-          <span className="text-rose-700 dark:text-rose-300 font-medium">
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#eee6f6] dark:bg-purple-950/40 border border-[#c8bdd6] dark:border-purple-900/40">
+          <Clock className="h-4 w-4 text-[#3b2778] dark:text-purple-300" />
+          <span className="text-[13px] font-medium text-[#3b2778] dark:text-purple-300">
             {(() => {
               const incompleteTasks = tasks.filter(t => t.status !== 'done');
               const totalMinutes = incompleteTasks.reduce((sum, task) => {
@@ -412,7 +412,7 @@ export const TaskWorkspace = ({
               return `${mins}m`;
             })()}
           </span>
-          <span className="text-rose-600/70 dark:text-rose-400/70 text-xs">est.</span>
+          <span className="text-[11px] text-[#5f6368] dark:text-muted-foreground">est.</span>
         </div>
       </div>
 

@@ -501,6 +501,7 @@ const People = () => {
     function handleClickOutside(e: MouseEvent) {
       if (detailPanelRef.current && !detailPanelRef.current.contains(e.target as Node)) {
         const target = e.target as HTMLElement;
+        if (target.closest('[role="dialog"], [data-radix-popper-content-wrapper]')) return;
         if (target.closest('tr')) return; // let row click handler handle it
         setSelectedPerson(null);
       }
@@ -599,7 +600,6 @@ const People = () => {
           known_as: data.known_as || null,
           clx_file_name: data.clx_file_name || null,
           assigned_to: data.assigned_to || null,
-          status: 'initial_review',
         })
         .select()
         .single();
@@ -632,8 +632,10 @@ const People = () => {
         },
       });
     },
-    onError: () => {
-      toast.error('Failed to create contact');
+    onError: (err: unknown) => {
+      console.error('[createPersonMutation] failed:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Failed to create contact: ${msg}`);
     },
   });
 
@@ -1070,7 +1072,7 @@ const People = () => {
             {/* ── Copper-Style Content Title Bar ── */}
             <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-[#f8f9fa] dark:bg-muted/30">
 
-              <div className="flex items-center gap-3 ml-24">
+              <div className="flex items-center gap-3 ml-10">
                 <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
                   {filterOptions.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Contacts'}
                 </h2>
@@ -1268,7 +1270,7 @@ const People = () => {
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
                         <tr key={i} className="bg-white dark:bg-card">
-                          <td className="pl-4 pr-5 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.person, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                          <td className="px-4 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.person, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-4 w-4 rounded shrink-0" />
                               <Skeleton className="h-7 w-7 rounded-full shrink-0" />
@@ -1371,7 +1373,7 @@ const People = () => {
 
                             {visibleOrderedKeys.map((key) => {
                               const cellStyle: React.CSSProperties = { width: columnWidths[key], border: '1px solid #c8bdd6' };
-                              const cellClass = 'px-3 py-1.5 overflow-hidden';
+                              const cellClass = 'px-3 py-1.5 overflow-hidden whitespace-nowrap';
                               const dashPill = (
                                 <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#f1f3f4] dark:bg-muted text-[16px] text-muted-foreground/40">—</span>
                               );

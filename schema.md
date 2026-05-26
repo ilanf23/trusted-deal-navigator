@@ -208,23 +208,27 @@
 
 ## Table: `communications`
 
-| Column Name        | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ------------------ | ------------------------ | ----------- | -------- | -------------- |
-| id                 | uuid                     | Yes         | No       | -              |
-| lead_id            | uuid                     | No          | Yes      | -              |
-| communication_type | text                     | No          | No       | -              |
-| direction          | text                     | No          | No       | -              |
-| content            | text                     | No          | Yes      | -              |
-| phone_number       | text                     | No          | Yes      | -              |
-| duration_seconds   | integer                  | No          | Yes      | -              |
-| status             | text                     | No          | Yes      | -              |
-| created_at         | timestamp with time zone | No          | No       | -              |
-| transcript         | text                     | No          | Yes      | -              |
-| recording_url      | text                     | No          | Yes      | -              |
-| recording_sid      | text                     | No          | Yes      | -              |
-| call_sid           | text                     | No          | Yes      | -              |
-| user_id            | uuid                     | No          | Yes      | users          |
-| entity_type        | USER-DEFINED             | No          | Yes      | -              |
+| Column Name              | Data Type                | Primary Key | Nullable | Foreign Key To |
+| ------------------------ | ------------------------ | ----------- | -------- | -------------- |
+| id                       | uuid                     | Yes         | No       | -              |
+| lead_id                  | uuid                     | No          | Yes      | -              |
+| communication_type       | text                     | No          | No       | -              |
+| direction                | text                     | No          | No       | -              |
+| content                  | text                     | No          | Yes      | -              |
+| phone_number             | text                     | No          | Yes      | -              |
+| duration_seconds         | integer                  | No          | Yes      | -              |
+| status                   | text                     | No          | Yes      | -              |
+| created_at               | timestamp with time zone | No          | No       | -              |
+| transcript               | text                     | No          | Yes      | -              |
+| recording_url            | text                     | No          | Yes      | -              |
+| recording_sid            | text                     | No          | Yes      | -              |
+| call_sid                 | text                     | No          | Yes      | -              |
+| user_id                  | uuid                     | No          | Yes      | users          |
+| entity_type              | USER-DEFINED             | No          | Yes      | -              |
+| recording_status         | text                     | No          | Yes      | -              |
+| transcription_status     | text                     | No          | Yes      | -              |
+| transcription_error      | text                     | No          | Yes      | -              |
+| transcription_updated_at | timestamp with time zone | No          | Yes      | -              |
 
 ## Table: `companies`
 
