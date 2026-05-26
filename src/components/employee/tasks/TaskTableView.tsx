@@ -355,10 +355,12 @@ export const TaskTableView = ({
                           : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                   }`}
                 >
-                  {/* Task Name + Checkbox (sticky) */}
+                  {/* Task Name + Checkbox (sticky). Always renders a 2-line content area
+                       (title + description-or-placeholder) so every row is the same height
+                       whether or not the task has a description. */}
                   <td
                     className={`pl-4 pr-6 py-3 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`}
-                    style={{ width: columnWidths.task, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}
+                    style={{ width: columnWidths.task, height: 56, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}
                   >
                     <div className="flex items-center gap-4">
                       <div className="shrink-0" title="Complete" onClick={(e) => e.stopPropagation()}>
@@ -373,16 +375,20 @@ export const TaskTableView = ({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="relative flex items-center">
-                          <p className={`font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight flex-1 min-w-0 ${task.is_completed ? 'line-through text-[#5f6368]' : ''}`}>
+                          <p
+                            className={`font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight flex-1 min-w-0 ${task.is_completed ? 'line-through text-[#5f6368]' : ''}`}
+                            title={task.title}
+                          >
                             {task.title}
                           </p>
                           <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1" />
                         </div>
-                        {task.description && (
-                          <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground mt-0.5 line-clamp-1 max-w-[200px]">
-                            {task.description}
-                          </p>
-                        )}
+                        <p
+                          className="text-[11px] text-[#5f6368] dark:text-muted-foreground mt-0.5 truncate max-w-[200px]"
+                          title={task.description ?? undefined}
+                        >
+                          {task.description || ' '}
+                        </p>
                       </div>
                     </div>
                   </td>
@@ -392,23 +398,23 @@ export const TaskTableView = ({
                     switch (k) {
                       case 'type':
                         return (
-                          <td key={k} className="px-4 py-1.5 overflow-hidden" style={cellStyle} onClick={(e) => e.stopPropagation()}>
+                          <td key={k} className="px-4 py-1.5 overflow-hidden whitespace-nowrap" style={cellStyle} onClick={(e) => e.stopPropagation()}>
                             <TaskTypeChip task={task} />
                           </td>
                         );
                       case 'customer':
                         return (
-                          <td key={k} className="px-4 py-1.5 overflow-hidden" style={cellStyle}>
+                          <td key={k} className="px-4 py-1.5 overflow-hidden whitespace-nowrap" style={cellStyle}>
                             {task.lead ? (
                               <div className="flex items-center gap-2">
                                 <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
                                   <Building2 className="h-3 w-3 text-muted-foreground" />
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="text-[13px] text-[#202124] dark:text-foreground/80 truncate max-w-[120px] font-medium">{task.lead.name}</p>
-                                  {task.lead.company_name && (
-                                    <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground truncate max-w-[120px]">{task.lead.company_name}</p>
-                                  )}
+                                  <p className="text-[13px] text-[#202124] dark:text-foreground/80 truncate max-w-[120px] font-medium" title={task.lead.name}>{task.lead.name}</p>
+                                  <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground truncate max-w-[120px]" title={task.lead.company_name ?? undefined}>
+                                    {task.lead.company_name || ' '}
+                                  </p>
                                 </div>
                               </div>
                             ) : (
@@ -418,7 +424,7 @@ export const TaskTableView = ({
                         );
                       case 'dueDate':
                         return (
-                          <td key={k} className="px-4 py-1.5 overflow-hidden" style={cellStyle}>
+                          <td key={k} className="px-4 py-1.5 overflow-hidden whitespace-nowrap" style={cellStyle}>
                             {task.due_date ? (
                               <span className="text-[12px] text-muted-foreground tabular-nums">
                                 {format(parseISO(task.due_date), 'MMM d, yyyy')}
@@ -430,13 +436,13 @@ export const TaskTableView = ({
                         );
                       case 'status':
                         return (
-                          <td key={k} className="px-4 py-1.5 overflow-hidden" style={cellStyle} onClick={(e) => e.stopPropagation()}>
+                          <td key={k} className="px-4 py-1.5 overflow-hidden whitespace-nowrap" style={cellStyle} onClick={(e) => e.stopPropagation()}>
                             <StatusPill task={task} />
                           </td>
                         );
                       case 'priority':
                         return (
-                          <td key={k} className="px-4 py-1.5 overflow-hidden" style={cellStyle} onClick={(e) => e.stopPropagation()}>
+                          <td key={k} className="px-4 py-1.5 overflow-hidden whitespace-nowrap" style={cellStyle} onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-between">
                               {renderPriorityIndicator(task.priority)}
                               <button

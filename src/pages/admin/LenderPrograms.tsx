@@ -1357,7 +1357,7 @@ const LenderPrograms = () => {
                         >
                           {/* Sticky first column: checkbox + avatar + name pill */}
                           <td
-                            className={`pl-2 pr-1.5 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`}
+                            className={`pl-2 pr-1.5 py-1.5 overflow-hidden whitespace-nowrap sticky left-0 z-[5] transition-colors ${stickyBg}`}
                             style={{
                               width: columnWidths.lender_name,
                               border: '1px solid #c8bdd6',
@@ -1424,7 +1424,7 @@ const LenderPrograms = () => {
                             return (
                               <td
                                 key={col.key}
-                                className="px-3 py-1.5 overflow-hidden"
+                                className="px-3 py-1.5 overflow-hidden whitespace-nowrap"
                                 style={{
                                   width: columnWidths[col.key],
                                   border: '1px solid #c8bdd6',
@@ -1484,7 +1484,7 @@ const LenderPrograms = () => {
                                       {value}
                                     </span>
                                   ) : isLookingFor ? (
-                                    <span className="text-[14px] text-[#202124] dark:text-foreground whitespace-pre-wrap break-words line-clamp-3 block">
+                                    <span className="text-[14px] text-[#202124] dark:text-foreground truncate block" title={value}>
                                       {value}
                                     </span>
                                   ) : (

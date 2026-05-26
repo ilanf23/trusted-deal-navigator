@@ -10,12 +10,11 @@ import { SplitViewProvider, useSplitView } from '@/contexts/SplitViewContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SplitViewContainer from './splitview/SplitViewContainer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useState, createContext, useContext } from 'react';
+import { useState, useContext } from 'react';
 import { AdminTopBarProvider, useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { AdminLayoutMountedContext } from '@/contexts/AdminLayoutMountedContext';
 import NotificationBell from './NotificationBell';
 import PageDatabasesDot from './dev/PageDatabasesDot';
-
-export const AdminLayoutMountedContext = createContext(false);
 
 interface AdminLayoutProps {
   children: React.ReactNode;
