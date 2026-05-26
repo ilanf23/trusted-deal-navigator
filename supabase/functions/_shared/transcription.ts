@@ -143,6 +143,28 @@ export async function addSpeakerLabels(
  * (Twilio webhook EdgeRuntime.waitUntil) execution. Never throws — always
  * returns a discriminated result the caller can branch on.
  */
+/**
+ * Persist a transcription failure with a sanitized error message and a fresh
+ * updated_at. Sanitization: trim, collapse whitespace, truncate to 500 chars
+ * so a noisy upstream stack trace doesn't blow up the column or leak request
+ * IDs into the UI.
+ */
+async function recordTranscriptionFailure(
+  supabase: SupabaseClient,
+  communicationId: string,
+  error: string,
+): Promise<void> {
+  const sanitized = error.replace(/\s+/g, ' ').trim().slice(0, 500);
+  await supabase
+    .from('communications')
+    .update({
+      transcription_status: 'failed',
+      transcription_error: sanitized,
+      transcription_updated_at: new Date().toISOString(),
+    })
+    .eq('id', communicationId);
+}
+
 export async function transcribeCommunication(
   supabase: SupabaseClient,
   communicationId: string,
@@ -156,7 +178,9 @@ export async function transcribeCommunication(
       .maybeSingle();
 
     if (error) {
-      return { ok: false, error: `Communication lookup failed: ${error.message}` };
+      const msg = `Communication lookup failed: ${error.message}`;
+      await recordTranscriptionFailure(supabase, communicationId, msg);
+      return { ok: false, error: msg };
     }
     if (!data) {
       return { ok: false, error: 'Communication not found' };
@@ -169,8 +193,21 @@ export async function transcribeCommunication(
     }
 
     if (!comm.recording_url) {
-      return { ok: false, error: 'No recording available for this call' };
+      const msg = 'No recording available for this call';
+      await recordTranscriptionFailure(supabase, communicationId, msg);
+      return { ok: false, error: msg };
     }
+
+    // Mark transcription as in-flight so the UI can distinguish "queued" from
+    // "actively processing". Errors here are non-fatal — pipeline still runs.
+    await supabase
+      .from('communications')
+      .update({
+        transcription_status: 'processing',
+        transcription_error: null,
+        transcription_updated_at: new Date().toISOString(),
+      })
+      .eq('id', comm.id);
 
     // Resolve direction (fall back to active_calls if missing on communication).
     let direction = comm.direction || 'inbound';
@@ -204,16 +241,24 @@ export async function transcribeCommunication(
 
     const { error: updateErr } = await supabase
       .from('communications')
-      .update({ transcript })
+      .update({
+        transcript,
+        transcription_status: 'completed',
+        transcription_error: null,
+        transcription_updated_at: new Date().toISOString(),
+      })
       .eq('id', comm.id);
 
     if (updateErr) {
-      return { ok: false, error: `Failed to persist transcript: ${updateErr.message}` };
+      const msg = `Failed to persist transcript: ${updateErr.message}`;
+      await recordTranscriptionFailure(supabase, communicationId, msg);
+      return { ok: false, error: msg };
     }
 
     return { ok: true, transcript };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    await recordTranscriptionFailure(supabase, communicationId, message);
     return { ok: false, error: message };
   }
 }

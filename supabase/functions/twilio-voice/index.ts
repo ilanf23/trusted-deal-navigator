@@ -85,15 +85,20 @@ Deno.serve(async (req) => {
     console.log(`Initiating call to ${formattedPhone} from ${twilioPhoneNumber}`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const transcriptionCallbackUrl = `${supabaseUrl}/functions/v1/twilio-transcription`;
     const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-call-status`;
 
-    // Generate TwiML to dial the number with recording, transcription, and a
-    // per-Number statusCallback so call history is finalized server-side even
-    // if the browser tab closes before the client-side disconnect handler runs.
+    // Generate TwiML to dial the number with recording + a per-Number
+    // statusCallback so call history is finalized server-side even if the
+    // browser tab closes before the client-side disconnect handler runs.
+    //
+    // The legacy transcribe="true"/transcribeCallback attributes are not
+    // supported on <Dial> (they only apply to <Record>) — we use Whisper via
+    // the recording callback → twilio-call-status → _shared/transcription.ts
+    // pipeline instead. recordingStatusCallbackEvent="completed" is the
+    // documented Twilio event name and is required for the callback to fire.
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial callerId="${twilioPhoneNumber}" record="record-from-answer-dual" recordingStatusCallback="${statusCallbackUrl}" transcribe="true" transcribeCallback="${transcriptionCallbackUrl}">
+  <Dial callerId="${twilioPhoneNumber}" record="record-from-answer-dual" recordingStatusCallback="${statusCallbackUrl}" recordingStatusCallbackMethod="POST" recordingStatusCallbackEvent="completed">
     <Number statusCallback="${statusCallbackUrl}" statusCallbackEvent="completed" statusCallbackMethod="POST">${formattedPhone}</Number>
   </Dial>
 </Response>`;

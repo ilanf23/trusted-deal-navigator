@@ -159,6 +159,14 @@ Deno.serve(async (req) => {
       const recordingUpdate: Record<string, unknown> = {
         recording_url: mp3Url,
         recording_sid: recordingSid,
+        recording_status: 'available',
+        // Flip transcription_status to processing immediately. The shared
+        // pipeline below will also do this, but writing it here means the UI
+        // sees "Generating transcript" the moment the recording lands instead
+        // of after the background job picks up.
+        transcription_status: 'processing',
+        transcription_error: null,
+        transcription_updated_at: new Date().toISOString(),
       };
       if (Number.isFinite(parsedRecordingDuration) && parsedRecordingDuration > 0) {
         recordingUpdate.duration_seconds = parsedRecordingDuration;

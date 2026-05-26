@@ -80,6 +80,17 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Clear prior failure metadata before rerunning so the UI doesn't keep
+    // showing the stale error while the new attempt is in-flight.
+    await adminSupabase
+      .from('communications')
+      .update({
+        transcription_status: 'processing',
+        transcription_error: null,
+        transcription_updated_at: new Date().toISOString(),
+      })
+      .eq('id', communicationId);
+
     const result = await transcribeCommunication(adminSupabase, communicationId, {
       skipIfPresent: true,
     });

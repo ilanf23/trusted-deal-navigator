@@ -41,6 +41,7 @@ function generateFlowId(): string {
 interface InboundTwiMLOptions {
   dialTimeoutSeconds: number;
   statusCallbackUrl?: string;
+  recordingStatusCallbackUrl?: string;
   clientIdentities: string[];
   callerId?: string;
   fallbackNumber?: string;
@@ -57,7 +58,14 @@ interface InboundTwiMLOptions {
  * - Both <Client> and <Number> inside a single <Dial> = Twilio fork-dials them simultaneously.
  */
 function buildInboundTwiML(opts: InboundTwiMLOptions): string {
-  const { dialTimeoutSeconds, statusCallbackUrl, clientIdentities, callerId, fallbackNumber } = opts;
+  const {
+    dialTimeoutSeconds,
+    statusCallbackUrl,
+    recordingStatusCallbackUrl,
+    clientIdentities,
+    callerId,
+    fallbackNumber,
+  } = opts;
 
   const clientTags = clientIdentities
     .map((id) => `<Client>${escapeXml(id)}</Client>`)
@@ -73,22 +81,59 @@ function buildInboundTwiML(opts: InboundTwiMLOptions): string {
   // statusCallback for event tracking — do NOT use action (would replace flow with
   // whatever twilio-call-status returns, causing hangup if it returns empty TwiML).
   const statusAttr = statusCallbackUrl
-    ? ` statusCallback="${escapeXml(statusCallbackUrl)}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST" record="record-from-answer-dual"`
+    ? ` statusCallback="${escapeXml(statusCallbackUrl)}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST"`
     : '';
+
+  // recordingStatusCallback ensures the same endpoint that handles call status
+  // also receives "Recording=completed" with RecordingUrl/RecordingSid. Without
+  // this, Twilio creates the recording but never POSTs a completion event, so
+  // communications.recording_url stays NULL and transcription is never queued.
+  const recordingAttrs = recordingStatusCallbackUrl
+    ? ` record="record-from-answer-dual" recordingStatusCallback="${escapeXml(recordingStatusCallbackUrl)}" recordingStatusCallbackMethod="POST" recordingStatusCallbackEvent="completed"`
+    : ' record="record-from-answer-dual"';
 
   // callerId ensures the backup phone shows the company number, not a random Twilio number
   const callerIdAttr = callerId
     ? ` callerId="${escapeXml(callerId)}"`
     : '';
 
+  // Voicemail <Record>: also wire its completion callback to twilio-call-status
+  // so voicemail audio (and any future transcript) lands in communications via
+  // the same path. transcribeCallback would also work for the legacy Twilio
+  // transcription, but we standardize on Whisper through the call-status handler.
+  const recordCallbackAttr = recordingStatusCallbackUrl
+    ? ` recordingStatusCallback="${escapeXml(recordingStatusCallbackUrl)}" recordingStatusCallbackMethod="POST" recordingStatusCallbackEvent="completed"`
+    : '';
+
+  // Voicemail prompt — replaces a silent <Record> so callers always know what to do.
+  // Critical when <Dial> has no targets (lookup miss + no fallback): without this,
+  // Twilio plays its generic "we are unable to connect" voice and falls into a
+  // silent Record verb, which is what callers report as "nothing happens".
+  const voicemailLines = [
+    '  <Say voice="alice">Thanks for calling. Please leave a message after the beep, and we\'ll get back to you shortly.</Say>',
+    `  <Record maxLength="120" playBeep="true"${recordCallbackAttr} />`,
+  ];
+
+  // No targets — skip the empty <Dial> entirely and go straight to voicemail.
+  // An empty <Dial> triggers Twilio's default "we are unable to connect" voice
+  // before any subsequent verbs play, producing the caller-reported failure mode.
+  if (!clientTags && !numberTag) {
+    return [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<Response>',
+      ...voicemailLines,
+      '</Response>',
+    ].join('\n');
+  }
+
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<Response>',
-    `  <Dial timeout="${dialTimeoutSeconds}"${callerIdAttr}${statusAttr}>`,
+    `  <Dial timeout="${dialTimeoutSeconds}"${callerIdAttr}${statusAttr}${recordingAttrs}>`,
     `    ${clientTags}`,
     numberTag ? `    ${numberTag}` : '',
     '  </Dial>',
-    '  <Record maxLength="120" playBeep="true" />',
+    ...voicemailLines,
     '</Response>',
   ].filter(Boolean).join('\n');
 }
@@ -188,7 +233,13 @@ Deno.serve(async (req) => {
           resolvedClients = [`clx-admin-${owner.id}`];
           resolvedOwnerId = owner.id;
         } else {
-          console.warn('[twilio-inbound] no user owns dialed number:', toNumber);
+          // Loud: the dialed DID is not registered to any user. Caller will get
+          // voicemail (or the fallback number if configured). Fix by setting
+          // users.twilio_phone_number for the rep who owns this DID.
+          console.error(
+            '[twilio-inbound] CRITICAL: no user owns dialed DID — voicemail will play. Check users.twilio_phone_number.',
+            { dialed_to: toNumber, normalized: normalizedTo, owner_count: ownerRows.length },
+          );
         }
       }
     } catch (err) {
@@ -230,6 +281,7 @@ Deno.serve(async (req) => {
   const twiml = buildInboundTwiML({
     dialTimeoutSeconds,
     statusCallbackUrl,
+    recordingStatusCallbackUrl: statusCallbackUrl,
     clientIdentities: resolvedClients,
     callerId: callerId || undefined,
     fallbackNumber: safeFallback || undefined,

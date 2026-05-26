@@ -1,5 +1,6 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { requireAdmin } from '../_shared/auth.ts';
 import { transcribeCommunication } from '../_shared/transcription.ts';
 
 const corsHeaders = {
@@ -9,18 +10,22 @@ const corsHeaders = {
 };
 
 /**
- * One-off backfill for outbound calls whose webhook attribution missed
- * (pre-fix). For each affected communications row this function:
- *   1. Hits Twilio REST API for call details (status, duration).
- *   2. Hits Twilio REST API for the recording (if any) → mp3 URL + sid.
- *   3. Writes both back to the communications row.
- *   4. Kicks off background transcription if a recording was just added.
- *   5. Optionally deletes orphan backstop rows (lead_id IS NULL,
- *      content LIKE 'Outgoing call - %') that the old buggy webhook path
- *      created with the child call_sid.
+ * Recover Twilio recordings + transcripts for communications rows whose
+ * webhook attribution missed (recording callback never fired, or the
+ * recording landed but Whisper failed). Replaces the prior unverified-JWT
+ * backfill: now admin-only, supports inbound + outbound, supports targeted
+ * single-call repair by communicationId or call_sid, and never combines
+ * recording recovery with orphan deletion in the same default flow.
  *
- * Auth: require service-role key in Authorization header. Body:
- *   { days_back?: number = 30, dry_run?: boolean = true, delete_orphans?: boolean = true }
+ * Request body (all fields optional):
+ *   {
+ *     communicationId?: string,    // repair exactly this row
+ *     callSid?: string,            // repair the row matching this Twilio Sid
+ *     days_back?: number = 30,     // window for the broad scan
+ *     dry_run?: boolean = true,    // never write unless explicitly false
+ *     include_missing_transcript?: boolean = true,
+ *     delete_orphans?: boolean = false,  // opt-in destructive cleanup
+ *   }
  */
 
 interface TwilioCall {
@@ -46,6 +51,26 @@ async function twilioGet<T>(path: string, accountSid: string, authToken: string)
   return await res.json() as T;
 }
 
+type CommRow = {
+  id: string;
+  call_sid: string | null;
+  direction: string | null;
+  duration_seconds: number | null;
+  recording_url: string | null;
+  status: string | null;
+  lead_id: string | null;
+  transcript: string | null;
+};
+
+interface RepairBody {
+  communicationId?: string;
+  callSid?: string;
+  days_back?: number;
+  dry_run?: boolean;
+  include_missing_transcript?: boolean;
+  delete_orphans?: boolean;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -66,92 +91,94 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Auth: accept any Bearer token that decodes to a JWT issued for this
-  // Supabase project (the project gateway already validates project-scoped
-  // JWTs at the edge in normal mode; this function is deployed with
-  // --no-verify-jwt so we re-check minimally here). Intended for one-off
-  // invocation by an operator using the legacy service_role JWT; remove
-  // this function after running.
-  const authHeader = req.headers.get('Authorization') ?? '';
-  const presented = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : '';
-  if (!presented) {
-    return new Response(
-      JSON.stringify({ error: 'Bearer token required' }),
-      { status: 401, headers: corsHeaders },
-    );
-  }
-  // Soft check: token must look like a JWT (3 dot-separated segments) issued
-  // for this project ref. We don't verify the signature — Twilio creds are
-  // env-only and the project ref scope is enough for a one-off backfill.
-  try {
-    const segs = presented.split('.');
-    if (segs.length !== 3) throw new Error('not a JWT');
-    const payload = JSON.parse(atob(segs[1].replace(/-/g, '+').replace(/_/g, '/')));
-    const expectedRef = new URL(supabaseUrl).hostname.split('.')[0];
-    if (payload.ref !== expectedRef) throw new Error('wrong project ref');
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: 'Invalid bearer token', detail: err instanceof Error ? err.message : String(err) }),
-      { status: 401, headers: corsHeaders },
-    );
-  }
+  const supabase = createClient(supabaseUrl, serviceKey);
 
-  let body: { days_back?: number; dry_run?: boolean; delete_orphans?: boolean } = {};
+  // Admin-only. requireAdmin verifies the Authorization bearer JWT against
+  // auth.users and checks users.app_role ∈ {admin, super_admin}. Replaces the
+  // unverified-JWT shape check that previously gated this endpoint.
+  const authResult = await requireAdmin(req, supabase, { corsHeaders });
+  if (!authResult.ok) return authResult.response;
+
+  let body: RepairBody = {};
   try {
     body = await req.json();
   } catch {
-    // no body == defaults
+    // empty body == defaults
   }
   const daysBack = body.days_back ?? 30;
   const dryRun = body.dry_run ?? true;
-  const deleteOrphans = body.delete_orphans ?? true;
+  const includeMissingTranscript = body.include_missing_transcript ?? true;
+  const deleteOrphans = body.delete_orphans ?? false; // opt-in, separate from repair
 
-  const supabase = createClient(supabaseUrl, serviceKey);
+  // Build candidate set. Three modes:
+  //   1. communicationId — repair exactly one row.
+  //   2. callSid — repair the row matching that Twilio Sid.
+  //   3. broad scan — within days_back window, all calls (both directions)
+  //      that have a call_sid AND (missing recording OR optionally missing
+  //      transcript despite a recording).
+  let candidates: CommRow[] = [];
   const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
 
-  // 1. Find affected rows: outbound calls with a call_sid, missing duration OR recording.
-  const { data: rows, error: rowsError } = await supabase
-    .from('communications')
-    .select('id, call_sid, duration_seconds, recording_url, status, lead_id, direction, transcript')
-    .eq('communication_type', 'call')
-    .eq('direction', 'outbound')
-    .gte('created_at', since)
-    .not('call_sid', 'is', null)
-    .or('duration_seconds.is.null,recording_url.is.null');
-
-  if (rowsError) {
-    return new Response(
-      JSON.stringify({ error: 'Failed to fetch communications', detail: rowsError.message }),
-      { status: 500, headers: corsHeaders },
-    );
+  if (body.communicationId) {
+    const { data, error } = await supabase
+      .from('communications')
+      .select('id, call_sid, direction, duration_seconds, recording_url, status, lead_id, transcript')
+      .eq('id', body.communicationId)
+      .maybeSingle();
+    if (error) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to load communication', detail: error.message }),
+        { status: 500, headers: corsHeaders },
+      );
+    }
+    if (!data) {
+      return new Response(JSON.stringify({ error: 'communication not found' }), {
+        status: 404,
+        headers: corsHeaders,
+      });
+    }
+    candidates = [data as CommRow];
+  } else if (body.callSid) {
+    const { data, error } = await supabase
+      .from('communications')
+      .select('id, call_sid, direction, duration_seconds, recording_url, status, lead_id, transcript')
+      .eq('call_sid', body.callSid)
+      .maybeSingle();
+    if (error) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to load communication by call_sid', detail: error.message }),
+        { status: 500, headers: corsHeaders },
+      );
+    }
+    if (!data) {
+      return new Response(JSON.stringify({ error: 'no communication for that call_sid' }), {
+        status: 404,
+        headers: corsHeaders,
+      });
+    }
+    candidates = [data as CommRow];
+  } else {
+    // Broad scan. Include both directions. Include rows where recording_url
+    // is null OR (recording_url exists but transcript is null), when the
+    // caller has opted into transcript repair. Do NOT require lead_id —
+    // unlinked rows are valid repair targets.
+    const orClauses = ['recording_url.is.null'];
+    if (includeMissingTranscript) orClauses.push('transcript.is.null');
+    const { data, error } = await supabase
+      .from('communications')
+      .select('id, call_sid, direction, duration_seconds, recording_url, status, lead_id, transcript')
+      .eq('communication_type', 'call')
+      .gte('created_at', since)
+      .not('call_sid', 'is', null)
+      .or(orClauses.join(','));
+    if (error) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch communications', detail: error.message }),
+        { status: 500, headers: corsHeaders },
+      );
+    }
+    candidates = (data ?? []) as CommRow[];
   }
-
-  // Diagnostic: count the broader universe so we can tell whether the filter
-  // is too narrow or there genuinely is nothing to fix.
-  const { count: totalOutboundInWindow } = await supabase
-    .from('communications')
-    .select('id', { count: 'exact', head: true })
-    .eq('communication_type', 'call')
-    .eq('direction', 'outbound')
-    .gte('created_at', since);
-  const { count: totalAllDirectionsInWindow } = await supabase
-    .from('communications')
-    .select('id', { count: 'exact', head: true })
-    .eq('communication_type', 'call')
-    .gte('created_at', since);
-
-  // Sample outbound rows so we can see actual field values (null vs 0 vs '').
-  const { data: outboundSample } = await supabase
-    .from('communications')
-    .select('id, call_sid, duration_seconds, recording_url, recording_sid, status, lead_id, phone_number, created_at')
-    .eq('communication_type', 'call')
-    .eq('direction', 'outbound')
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
-    .limit(15);
-
-  const candidates = (rows ?? []).filter((r) => !!r.call_sid && !!r.lead_id);
-  const candidatesNoLead = (rows ?? []).filter((r) => !!r.call_sid && !r.lead_id);
 
   const results: Array<Record<string, unknown>> = [];
   let updatedCount = 0;
@@ -159,6 +186,10 @@ Deno.serve(async (req) => {
   let errorCount = 0;
 
   for (const row of candidates) {
+    if (!row.call_sid) {
+      results.push({ id: row.id, action: 'skip', reason: 'no call_sid' });
+      continue;
+    }
     try {
       const call = await twilioGet<TwilioCall>(
         `/2010-04-01/Accounts/${accountSid}/Calls/${row.call_sid}.json`,
@@ -166,7 +197,12 @@ Deno.serve(async (req) => {
         authToken,
       );
       if (!call) {
-        results.push({ id: row.id, call_sid: row.call_sid, action: 'skip', reason: 'call not found in Twilio' });
+        results.push({
+          id: row.id,
+          call_sid: row.call_sid,
+          action: 'skip',
+          reason: 'call not found in Twilio',
+        });
         continue;
       }
 
@@ -176,7 +212,9 @@ Deno.serve(async (req) => {
         authToken,
       );
       const recording = recordings?.recordings?.[0] ?? null;
-      const mp3Url = recording ? `https://api.twilio.com${recording.uri.replace('.json', '')}.mp3` : null;
+      const mp3Url = recording
+        ? `https://api.twilio.com${recording.uri.replace('.json', '')}.mp3`
+        : null;
 
       const update: Record<string, unknown> = {};
       const callDur = parseInt(call.duration ?? '');
@@ -189,39 +227,89 @@ Deno.serve(async (req) => {
       if (!row.recording_url && mp3Url) {
         update.recording_url = mp3Url;
         update.recording_sid = recording!.sid;
+        update.recording_status = 'available';
+      } else if (!mp3Url && !row.recording_url) {
+        update.recording_status = 'not_found';
       }
 
-      const willTranscribe = !row.transcript && !row.recording_url && mp3Url;
+      // Need transcription if: caller wants transcripts AND we (now) have a
+      // recording AND no transcript yet. The shared transcription helper will
+      // also write transcription_status transitions.
+      const willHaveRecording = !!mp3Url || !!row.recording_url;
+      const willTranscribe = includeMissingTranscript && !row.transcript && willHaveRecording;
 
-      if (Object.keys(update).length === 0) {
-        results.push({ id: row.id, call_sid: row.call_sid, action: 'noop', call_status: call.status });
+      if (Object.keys(update).length === 0 && !willTranscribe) {
+        results.push({
+          id: row.id,
+          call_sid: row.call_sid,
+          action: 'noop',
+          call_status: call.status,
+          has_recording: willHaveRecording,
+        });
         continue;
       }
 
       if (dryRun) {
-        results.push({ id: row.id, call_sid: row.call_sid, action: 'would-update', update, would_transcribe: willTranscribe });
+        results.push({
+          id: row.id,
+          call_sid: row.call_sid,
+          action: 'would-update',
+          update,
+          would_transcribe: willTranscribe,
+        });
         continue;
       }
 
-      const { error: updateError } = await supabase
-        .from('communications')
-        .update(update)
-        .eq('id', row.id);
+      if (Object.keys(update).length > 0) {
+        const { error: updateError } = await supabase
+          .from('communications')
+          .update(update)
+          .eq('id', row.id);
 
-      if (updateError) {
-        errorCount++;
-        results.push({ id: row.id, call_sid: row.call_sid, action: 'error', error: updateError.message });
-        continue;
+        if (updateError) {
+          errorCount++;
+          results.push({
+            id: row.id,
+            call_sid: row.call_sid,
+            action: 'error',
+            error: updateError.message,
+          });
+          continue;
+        }
+        updatedCount++;
       }
-
-      updatedCount++;
-      results.push({ id: row.id, call_sid: row.call_sid, action: 'updated', update });
 
       if (willTranscribe) {
-        const transcribeRes = await transcribeCommunication(supabase, row.id, { skipIfPresent: true });
+        const transcribeRes = await transcribeCommunication(supabase, row.id, {
+          skipIfPresent: true,
+        });
         if (transcribeRes.ok && !transcribeRes.alreadyPresent) {
           transcribedCount++;
+          results.push({
+            id: row.id,
+            call_sid: row.call_sid,
+            action: 'updated-and-transcribed',
+            update,
+          });
+        } else if (!transcribeRes.ok) {
+          errorCount++;
+          results.push({
+            id: row.id,
+            call_sid: row.call_sid,
+            action: 'updated-transcription-failed',
+            update,
+            error: transcribeRes.error,
+          });
+        } else {
+          results.push({
+            id: row.id,
+            call_sid: row.call_sid,
+            action: 'updated',
+            update,
+          });
         }
+      } else {
+        results.push({ id: row.id, call_sid: row.call_sid, action: 'updated', update });
       }
     } catch (err) {
       errorCount++;
@@ -234,10 +322,14 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 2. Orphan cleanup.
+  // Orphan cleanup. Decoupled from repair: only runs when explicitly enabled,
+  // and even then a dry_run does not delete. The selection is narrower than
+  // before — only rows with the exact "Outgoing call - <status>" content that
+  // the old buggy webhook path generated.
+  let orphansFound = 0;
   let orphansDeleted = 0;
   let orphanIds: string[] = [];
-  if (deleteOrphans) {
+  if (deleteOrphans && !body.communicationId && !body.callSid) {
     const { data: orphans } = await supabase
       .from('communications')
       .select('id, call_sid, created_at')
@@ -248,6 +340,7 @@ Deno.serve(async (req) => {
       .gte('created_at', since);
 
     orphanIds = (orphans ?? []).map((o) => o.id);
+    orphansFound = orphanIds.length;
 
     if (!dryRun && orphanIds.length > 0) {
       const { error: delError } = await supabase
@@ -255,25 +348,29 @@ Deno.serve(async (req) => {
         .delete()
         .in('id', orphanIds);
       if (!delError) orphansDeleted = orphanIds.length;
-    } else {
-      orphansDeleted = orphanIds.length;
     }
   }
 
   return new Response(
     JSON.stringify({
       dry_run: dryRun,
-      days_back: daysBack,
-      since,
-      diagnostic_total_calls_in_window: totalAllDirectionsInWindow,
-      diagnostic_total_outbound_in_window: totalOutboundInWindow,
-      diagnostic_rows_returned_by_main_query: rows?.length ?? 0,
-      diagnostic_candidates_skipped_no_lead: candidatesNoLead.length,
-      diagnostic_outbound_sample: outboundSample,
+      mode: body.communicationId
+        ? 'single-by-id'
+        : body.callSid
+          ? 'single-by-call-sid'
+          : 'window-scan',
+      days_back: body.communicationId || body.callSid ? null : daysBack,
+      since: body.communicationId || body.callSid ? null : since,
+      include_missing_transcript: includeMissingTranscript,
+      delete_orphans: deleteOrphans,
       candidates_found: candidates.length,
-      updated: dryRun ? results.filter((r) => r.action === 'would-update').length : updatedCount,
-      transcribed: dryRun ? results.filter((r) => r.would_transcribe).length : transcribedCount,
-      orphans_found: orphanIds.length,
+      updated: dryRun
+        ? results.filter((r) => r.action === 'would-update').length
+        : updatedCount,
+      transcribed: dryRun
+        ? results.filter((r) => r.would_transcribe).length
+        : transcribedCount,
+      orphans_found: orphansFound,
       orphans_deleted: orphansDeleted,
       errors: errorCount,
       results,
