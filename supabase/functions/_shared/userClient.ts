@@ -12,9 +12,12 @@ export interface RequestClients {
 }
 
 export function getRequestClients(req: Request): RequestClients {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl) throw new Error('Missing SUPABASE_URL');
+  if (!anonKey) throw new Error('Missing SUPABASE_ANON_KEY');
+  if (!serviceKey) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
 
   const authHeader = req.headers.get('Authorization') ?? '';
   if (!authHeader) throw new Error('No authorization header');
