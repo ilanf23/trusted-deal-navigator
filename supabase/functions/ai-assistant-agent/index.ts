@@ -251,6 +251,19 @@ ${contextStr}`,
     });
   } catch (error) {
     console.error('ai-assistant-agent error:', error);
+    try {
+      const { serviceClient } = getRequestClients(req);
+      await logAiAudit({
+        serviceClient,
+        // Sentinel UUID: this path may run before the JWT is resolved.
+        // Safe because logAiAudit uses serviceClient (RLS bypassed).
+        userId: '00000000-0000-0000-0000-000000000000',
+        functionName: 'ai-assistant-agent',
+        tool: 'agent_run',
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+    } catch { /* never fail the response on audit error */ }
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
