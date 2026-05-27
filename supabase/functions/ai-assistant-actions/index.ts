@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
 
     // === Redo single change ===
     if (action === 'redo') {
-      const result = await redoChange(serviceClient, body.changeId);
+      const result = await redoChange(serviceClient, body.changeId, authUserId, isOwner);
 
       await logAiAudit({
         serviceClient,

@@ -205,7 +205,12 @@ export async function undoChange(
 }
 
 // Redo a single change
-export async function redoChange(supabase: ReturnType<typeof createClient>, changeId: string) {
+export async function redoChange(
+  supabase: ReturnType<typeof createClient>,
+  changeId: string,
+  userId: string,
+  isOwner: boolean,
+) {
   const { data: change, error } = await supabase
     .from("ai_agent_changes")
     .select("*")
@@ -215,6 +220,9 @@ export async function redoChange(supabase: ReturnType<typeof createClient>, chan
   if (error || !change) throw new Error("Change not found");
   if (change.status !== "undone") {
     throw new Error(`Cannot redo change with status: ${change.status}`);
+  }
+  if (!isOwner && change.user_id !== userId) {
+    throw new Error("Forbidden: cannot redo another user's change");
   }
 
   const { target_table, target_id, operation, new_values } = change;

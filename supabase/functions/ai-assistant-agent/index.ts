@@ -144,6 +144,16 @@ ${contextStr}`,
             if (!response.ok) {
               const errText = await response.text();
               send({ type: "error", content: `OpenAI error: ${errText}` });
+              await logAiAudit({
+                serviceClient,
+                userId: authUserId,
+                conversationId,
+                functionName: 'ai-assistant-agent',
+                tool: 'openai_call',
+                mode: 'agent',
+                success: false,
+                errorMessage: `OpenAI error: ${errText}`,
+              });
               break;
             }
 
@@ -239,6 +249,18 @@ ${contextStr}`,
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         } catch (err: any) {
           send({ type: "error", content: err.message });
+          try {
+            await logAiAudit({
+              serviceClient,
+              userId: authUserId,
+              conversationId,
+              functionName: 'ai-assistant-agent',
+              tool: 'agent_stream',
+              mode: 'agent',
+              success: false,
+              errorMessage: err?.message ?? String(err),
+            });
+          } catch { /* audit must not break the stream close */ }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         } finally {
           controller.close();

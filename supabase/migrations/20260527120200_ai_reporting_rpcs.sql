@@ -29,7 +29,7 @@ AS $$
   FROM public.deals_v d
   WHERE (p_pipeline IS NULL OR d.pipeline = p_pipeline)
     AND (p_assigned_to IS NULL OR d.assigned_to = p_assigned_to)
-    AND (d.deal_outcome = 'open' OR d.deal_outcome IS NULL)
+    AND d.deal_outcome = 'open'
   GROUP BY d.pipeline;
 $$;
 
