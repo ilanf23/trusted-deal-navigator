@@ -14,11 +14,11 @@ export async function buildChatContext(
   // Fetch the scoped team member's data for context
   let contextData = "";
 
-  const { data: leads } = await supabase
-    .from("leads")
-    .select("id, name, company_name, status, email, phone, updated_at, notes, source, tags, next_action, waiting_on")
-    .eq("assigned_to", scopedMemberId)
-    .order("updated_at", { ascending: false })
+  const { data: deals } = await supabase
+    .from('deals_v')
+    .select('id, pipeline, name, company_name, status, source, assigned_to, deal_outcome, priority, deal_value, potential_revenue, fee_percent, updated_at')
+    .eq('assigned_to', scopedMemberId)
+    .order('updated_at', { ascending: false })
     .limit(50);
 
   // Fetch pending tasks
@@ -26,6 +26,7 @@ export async function buildChatContext(
     .from("tasks")
     .select("id, title, description, status, priority, due_date, is_completed, lead_id, tags, user_id")
     .eq("is_completed", false)
+    .eq("user_id", scopedMemberId)
     .order("due_date", { ascending: true })
     .limit(30);
 
@@ -65,75 +66,79 @@ export async function buildChatContext(
     .order("last_message_date", { ascending: false })
     .limit(20);
 
+  // Fetch pipeline summary via RPC
+  const { data: pipelineValue } = await supabase.rpc('get_pipeline_value', {
+    p_pipeline: null,
+    p_assigned_to: scopedMemberId,
+  });
+
+  const pipelineSection = pipelineValue?.map((row: any) =>
+    `- ${row.pipeline}: ${row.open_count} open deals, $${Number(row.total_value).toLocaleString()} value, $${Number(row.total_expected_revenue).toLocaleString()} expected revenue`
+  ).join('\n') || 'No pipeline data';
+
   // Build context string
   contextData = `
 ## ${displayName}'s CRM Data (Current as of ${new Date().toISOString()})
 
-### Leads (${leads?.length || 0} total)
-${leads?.map(l => `- **${l.name}**${l.company_name ? ` (${l.company_name})` : ''}: Status: ${l.status}, Source: ${l.source || 'unknown'}${l.next_action ? `, Next: ${l.next_action}` : ''}${l.waiting_on ? `, Waiting on: ${l.waiting_on}` : ''}${l.notes ? `, Notes: ${l.notes.substring(0, 150)}` : ''}`).join('\n') || 'No leads found'}
+### Deals (${deals?.length || 0} total)
+${deals?.map(d => `- **${d.name}**${d.company_name ? ` (${d.company_name})` : ''}: Pipeline: ${d.pipeline || 'unknown'}, Status: ${d.status}, Source: ${d.source || 'unknown'}${d.deal_outcome ? `, Outcome: ${d.deal_outcome}` : ''}${d.deal_value ? `, Value: $${Number(d.deal_value).toLocaleString()}` : ''}`).join('\n') || 'No deals found'}
 
 ### Pipeline Summary
-${(() => {
-  const statusCounts: Record<string, number> = {};
-  leads?.forEach(l => {
-    statusCounts[l.status] = (statusCounts[l.status] || 0) + 1;
-  });
-  return Object.entries(statusCounts).map(([status, count]) => `- ${status}: ${count} leads`).join('\n') || 'No data';
-})()}
+${pipelineSection}
 
 ### Pending Tasks (${tasks?.length || 0} total)
 ${tasks?.map(t => {
-  const lead = leads?.find(l => l.id === t.lead_id);
+  const deal = deals?.find(d => d.id === ((t as any).deal_id ?? t.lead_id));
   const dueStr = t.due_date ? `Due: ${new Date(t.due_date).toLocaleDateString()}` : 'No due date';
-  return `- [${t.priority?.toUpperCase() || 'MEDIUM'}] ${t.title}${lead ? ` (${lead.name})` : ''} - ${dueStr}${t.tags?.length ? ` [${t.tags.join(', ')}]` : ''}`;
+  return `- [${t.priority?.toUpperCase() || 'MEDIUM'}] ${t.title}${deal ? ` (${deal.name})` : ''} - ${dueStr}${t.tags?.length ? ` [${t.tags.join(', ')}]` : ''}`;
 }).join('\n') || 'No pending tasks'}
 
 ### Overdue Tasks
 ${tasks?.filter(t => t.due_date && new Date(t.due_date) < new Date()).map(t => {
-  const lead = leads?.find(l => l.id === t.lead_id);
-  return `- ${t.title}${lead ? ` (${lead.name})` : ''} - Was due: ${new Date(t.due_date!).toLocaleDateString()}`;
+  const deal = deals?.find(d => d.id === ((t as any).deal_id ?? t.lead_id));
+  return `- ${t.title}${deal ? ` (${deal.name})` : ''} - Was due: ${new Date(t.due_date!).toLocaleDateString()}`;
 }).join('\n') || 'No overdue tasks'}
 
 ### Upcoming Appointments
 ${appointments?.map(a => {
-  const lead = leads?.find(l => l.id === a.lead_id);
-  return `- ${new Date(a.start_time).toLocaleString()}: ${a.title}${lead ? ` with ${lead.name}` : ''}${a.appointment_type ? ` (${a.appointment_type})` : ''}`;
+  const deal = deals?.find(d => d.id === a.lead_id);
+  return `- ${new Date(a.start_time).toLocaleString()}: ${a.title}${deal ? ` with ${deal.name}` : ''}${a.appointment_type ? ` (${a.appointment_type})` : ''}`;
 }).join('\n') || 'No upcoming appointments'}
 
 ### Recent Communications (last 50)
 ${communications?.map(c => {
-  const lead = leads?.find(l => l.id === c.lead_id);
+  const deal = deals?.find(d => d.id === c.lead_id);
   const hasTranscript = c.transcript && c.transcript.length > 0;
-  return `- ${new Date(c.created_at).toLocaleDateString()}: ${c.communication_type} (${c.direction}) ${lead ? `with ${lead.name}` : c.phone_number || 'unknown'}${c.duration_seconds ? ` - ${Math.round(c.duration_seconds / 60)} min` : ''}${hasTranscript ? ' [HAS TRANSCRIPT]' : ''}`;
+  return `- ${new Date(c.created_at).toLocaleDateString()}: ${c.communication_type} (${c.direction}) ${deal ? `with ${deal.name}` : c.phone_number || 'unknown'}${c.duration_seconds ? ` - ${Math.round(c.duration_seconds / 60)} min` : ''}${hasTranscript ? ' [HAS TRANSCRIPT]' : ''}`;
 }).join('\n') || 'No recent communications'}
 
 ### Call Transcripts (Recent calls with transcripts)
 ${communications?.filter(c => c.transcript && c.transcript.length > 50).slice(0, 10).map(c => {
-  const lead = leads?.find(l => l.id === c.lead_id);
+  const deal = deals?.find(d => d.id === c.lead_id);
   return `
-#### Call with ${lead?.name || c.phone_number || 'Unknown'} on ${new Date(c.created_at).toLocaleDateString()} (${c.direction})
+#### Call with ${deal?.name || c.phone_number || 'Unknown'} on ${new Date(c.created_at).toLocaleDateString()} (${c.direction})
 ${c.transcript!.substring(0, 1000)}${c.transcript!.length > 1000 ? '...[truncated]' : ''}
 `;
 }).join('\n') || 'No transcripts available'}
 
-### Lead Questionnaire Data
+### Deal Questionnaire Data
 ${leadResponses?.map(r => {
-  const lead = leads?.find(l => l.id === r.lead_id);
-  return `- ${lead?.name || 'Unknown'}: Loan: $${r.loan_amount?.toLocaleString() || 'N/A'}, Type: ${r.loan_type || 'N/A'}, Purpose: ${r.funding_purpose || 'N/A'}, Revenue: ${r.annual_revenue || 'N/A'}, Credit: ${r.borrower_credit_score || 'N/A'}`;
+  const deal = deals?.find(d => d.id === r.lead_id);
+  return `- ${deal?.name || 'Unknown'}: Loan: $${r.loan_amount?.toLocaleString() || 'N/A'}, Type: ${r.loan_type || 'N/A'}, Purpose: ${r.funding_purpose || 'N/A'}, Revenue: ${r.annual_revenue || 'N/A'}, Credit: ${r.borrower_credit_score || 'N/A'}`;
 }).join('\n') || 'No questionnaire responses'}
 
 ### Email Threads Needing Attention
 ${emailThreads?.filter(e => e.sla_breached || e.waiting_on).map(e => {
-  const lead = leads?.find(l => l.id === e.lead_id);
-  return `- "${e.subject}" ${lead ? `(${lead.name})` : ''}: ${e.waiting_on ? `Waiting on: ${e.waiting_on}` : ''}${e.sla_breached ? ' ⚠️ SLA BREACHED' : ''}`;
+  const deal = deals?.find(d => d.id === e.lead_id);
+  return `- "${e.subject}" ${deal ? `(${deal.name})` : ''}: ${e.waiting_on ? `Waiting on: ${e.waiting_on}` : ''}${e.sla_breached ? ' ⚠️ SLA BREACHED' : ''}`;
 }).join('\n') || 'All email threads up to date'}
 
-### Leads Needing Follow-up (no activity in 7+ days)
+### Deals Needing Follow-up (no activity in 7+ days)
 ${(() => {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const staleLeads = leads?.filter(l => new Date(l.updated_at) < sevenDaysAgo && l.status !== 'funded');
-  return staleLeads?.map(l => `- ${l.name}${l.company_name ? ` (${l.company_name})` : ''}: Last activity ${Math.floor((Date.now() - new Date(l.updated_at).getTime()) / (1000 * 60 * 60 * 24))} days ago`).join('\n') || 'All leads are up to date';
+  const staleDeals = deals?.filter(d => new Date(d.updated_at) < sevenDaysAgo && d.status !== 'funded');
+  return staleDeals?.map(d => `- ${d.name}${d.company_name ? ` (${d.company_name})` : ''}: Last activity ${Math.floor((Date.now() - new Date(d.updated_at).getTime()) / (1000 * 60 * 60 * 24))} days ago`).join('\n') || 'All deals are up to date';
 })()}
 
 ### Pinned Notes
