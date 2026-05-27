@@ -1,3 +1,8 @@
+// supabase/functions/_shared/userClient.ts
+// Returns one user-scoped client (RLS enforced) and one service-role client
+// (RLS bypassed). Edge functions should use the user client for ALL business
+// data and the service client only for narrow privileged needs
+// (key decryption, audit writes).
 import { createClient, type SupabaseClient } from './supabase.ts';
 
 export interface RequestClients {
