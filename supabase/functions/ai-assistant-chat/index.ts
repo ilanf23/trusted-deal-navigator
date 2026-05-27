@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
       functionName: 'ai-assistant-chat',
       tool: 'read_context',
       scope: { scopedMemberId, mode, currentPage },
-      mode,
+      mode: mode as 'chat' | 'assist' | 'agent',
       success: true,
     });
 
@@ -151,6 +151,11 @@ Include these tags inline in your response text. Each action will be rendered as
       const { serviceClient } = getRequestClients(req);
       await logAiAudit({
         serviceClient,
+        // Sentinel UUID: the failure path may run before the JWT has been
+        // resolved, so we don't always have a real auth.uid(). This insert
+        // is OK because logAiAudit uses serviceClient (RLS bypassed); if the
+        // path ever switches to userClient, the WITH CHECK auth.uid() = user_id
+        // policy on ai_audit_log would reject this sentinel.
         userId: '00000000-0000-0000-0000-000000000000',
         functionName: 'ai-assistant-chat',
         tool: 'read_context',
