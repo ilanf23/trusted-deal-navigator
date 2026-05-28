@@ -20,6 +20,7 @@ import {
   CalendarPlus, LayoutDashboard,
 } from 'lucide-react';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
@@ -264,6 +265,9 @@ export default function ProjectExpandedView() {
   // All leads for people picker
   const [showPeoplePicker, setShowPeoplePicker] = useState(false);
   const [peopleSearch, setPeopleSearch] = useState('');
+  const peopleSectionRef = useRef<HTMLDivElement>(null);
+  const peoplePickerRef = useRef<HTMLDivElement>(null);
+  const [peoplePickerPos, setPeoplePickerPos] = useState({ top: 0, left: 0, width: 0 });
   const { data: allLeadsForPicker = [] } = useQuery({
     queryKey: ['all-leads-picker-expanded'],
     queryFn: async () => {
@@ -282,6 +286,42 @@ export default function ProjectExpandedView() {
     }
     return list.slice(0, 10);
   }, [allLeadsForPicker, ppLeadIds, peopleSearch]);
+
+  // Position the People picker dropdown directly below its anchor section.
+  // Recomputes on open, on window resize, and on scroll so the dropdown
+  // follows the anchor when the right column scrolls.
+  useEffect(() => {
+    if (!showPeoplePicker || !peopleSectionRef.current) return;
+    const updatePos = () => {
+      const el = peopleSectionRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setPeoplePickerPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    };
+    updatePos();
+    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', updatePos, true);
+    return () => {
+      window.removeEventListener('resize', updatePos);
+      window.removeEventListener('scroll', updatePos, true);
+    };
+  }, [showPeoplePicker]);
+
+  // Close the People picker when clicking outside both the anchor and the portal dropdown.
+  useEffect(() => {
+    if (!showPeoplePicker) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const inAnchor = peopleSectionRef.current?.contains(target);
+      const inDropdown = peoplePickerRef.current?.contains(target);
+      if (!inAnchor && !inDropdown) {
+        setShowPeoplePicker(false);
+        setPeopleSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showPeoplePicker]);
 
   // Company search-to-link — queries master `companies` + distinct company_names from `potential` and `people`
   const { data: companiesSearchResults = [] } = useQuery<Array<{
