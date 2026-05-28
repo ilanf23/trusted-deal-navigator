@@ -37,8 +37,9 @@ export const usePipelineDeals = () => {
     queryKey: ['potential-deals'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('*, stage:pipeline_stages(*)')
+        .eq('pipeline', 'potential')
         .order('updated_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -60,8 +61,9 @@ export const useUnderwritingDeals = () => {
     queryKey: ['underwriting-deals'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('underwriting')
+        .from('deals')
         .select('*, stage:pipeline_stages(*)')
+        .eq('pipeline', 'underwriting')
         .order('updated_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -83,8 +85,9 @@ export const useLenderManagementDeals = () => {
     queryKey: ['lender-management-deals'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lender_management')
+        .from('deals')
         .select('*, stage:pipeline_stages(*)')
+        .eq('pipeline', 'lender_management')
         .order('updated_at', { ascending: false });
       if (error) throw error;
       return data;

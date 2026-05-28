@@ -103,8 +103,9 @@ export const TaskDetailDialog = ({
     queryKey: ['leads-for-tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, name, company_name')
+        .eq('pipeline', 'potential')
         .order('name');
       if (error) throw error;
       return data;

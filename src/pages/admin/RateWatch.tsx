@@ -198,8 +198,9 @@ const RateWatch = () => {
       const watchedIds = watchedLeads?.map(w => w.lead_id) || [];
 
       let query = supabase
-        .from('potential')
-        .select('id, name, email, phone, company_name');
+        .from('deals')
+        .select('id, name, email, phone, company_name')
+        .eq('pipeline', 'potential');
 
       if (watchedIds.length > 0) {
         query = query.not('id', 'in', `(${watchedIds.join(',')})`);
@@ -446,11 +447,11 @@ const RateWatch = () => {
 
           let existingLead = null;
           if (email) {
-            const { data } = await supabase.from('potential').select('id').eq('email', email).single();
+            const { data } = await supabase.from('deals').select('id').eq('pipeline', 'potential').eq('email', email).single();
             existingLead = data;
           }
           if (!existingLead) {
-            const { data } = await supabase.from('potential').select('id').ilike('name', name).single();
+            const { data } = await supabase.from('deals').select('id').eq('pipeline', 'potential').ilike('name', name).single();
             existingLead = data;
           }
 
@@ -458,13 +459,14 @@ const RateWatch = () => {
             leadId = existingLead.id;
           } else {
             const { data: newLead, error: leadError } = await supabase
-              .from('potential')
+              .from('deals')
               .insert({
                 name,
                 email,
                 phone: mappedRow.phone ? String(mappedRow.phone).trim() : null,
                 company_name: mappedRow.company_name ? String(mappedRow.company_name).trim() : null,
                 source: 'Rate Watch Import',
+                pipeline: 'potential',
               })
               .select('id')
               .single();

@@ -183,7 +183,7 @@ export default function ProjectExpandedView() {
   const { data: lead } = useQuery({
     queryKey: ['project-lead', project?.entity_id],
     queryFn: async () => {
-      const { data } = await supabase.from('potential').select('*').eq('id', project!.entity_id).single();
+      const { data } = await supabase.from('deals').select('*').eq('pipeline', 'potential').eq('id', project!.entity_id).single();
       return data;
     },
     enabled: !!project?.entity_id,
@@ -232,7 +232,7 @@ export default function ProjectExpandedView() {
         .from('entity_contacts')
         .select('*')
         .eq('entity_id', project!.entity_id)
-        .eq('entity_type', 'potential');
+        .eq('entity_type', 'deal');
       return data ?? [];
     },
     enabled: !!project?.entity_id,
@@ -257,7 +257,7 @@ export default function ProjectExpandedView() {
     queryKey: ['pp-lead-names', ppLeadIds],
     queryFn: async () => {
       if (ppLeadIds.length === 0) return {};
-      const { data } = await supabase.from('potential').select('id, name, company_name, email, phone').in('id', ppLeadIds);
+      const { data } = await supabase.from('deals').select('id, name, company_name, email, phone').eq('pipeline', 'potential').in('id', ppLeadIds);
       const m: Record<string, { name: string; company_name: string | null; email: string | null; phone: string | null }> = {};
       for (const l of data ?? []) m[l.id] = l;
       return m;
@@ -274,7 +274,7 @@ export default function ProjectExpandedView() {
   const { data: allLeadsForPicker = [] } = useQuery({
     queryKey: ['all-leads-picker-expanded'],
     queryFn: async () => {
-      const { data } = await supabase.from('potential').select('id, name, company_name').order('name').limit(200);
+      const { data } = await supabase.from('deals').select('id, name, company_name').eq('pipeline', 'potential').order('name').limit(200);
       return (data ?? []) as { id: string; name: string; company_name: string | null }[];
     },
     enabled: showPeoplePicker,
@@ -379,8 +379,9 @@ export default function ProjectExpandedView() {
           .order('company_name', { ascending: true })
           .limit(20),
         supabase
-          .from('potential')
+          .from('deals')
           .select('id, company_name')
+          .eq('pipeline', 'potential')
           .ilike('company_name', `%${q}%`)
           .not('company_name', 'is', null)
           .limit(20),
@@ -426,13 +427,13 @@ export default function ProjectExpandedView() {
 
   // Files for this lead (shares cache with EntityFilesSection)
   const { data: leadFiles = [] } = useQuery({
-    queryKey: ['entity-files', 'potential', project?.entity_id],
+    queryKey: ['entity-files', 'deal', project?.entity_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('entity_files')
         .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
         .eq('entity_id', project!.entity_id)
-        .eq('entity_type', 'potential')
+        .eq('entity_type', 'deal')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];

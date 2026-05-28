@@ -46,8 +46,9 @@ const RevenueChart = ({ evanId, className, annualGoal = 1_500_000 }: RevenueChar
     queryKey: ['revenue-chart-data'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, source, won_at, assigned_to, deal_value, potential_revenue, fee_percent')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'won');
       if (error) throw error;
       return data;

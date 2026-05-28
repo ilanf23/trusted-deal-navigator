@@ -219,7 +219,7 @@ export const TaskWorkspace = ({
     }
     try {
       const { data: lead, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, name, email, company_name')
         .eq('id', leadId)
         .single();
@@ -255,7 +255,7 @@ export const TaskWorkspace = ({
       if (success) {
         if (composeLeadId) {
           await supabase
-            .from('potential')
+            .from('deals')
             .update({ last_activity_at: new Date().toISOString() })
             .eq('id', composeLeadId);
         }

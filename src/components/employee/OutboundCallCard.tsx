@@ -78,7 +78,7 @@ export const OutboundCallCard = ({ initialPhone, initialLeadId }: OutboundCallCa
     let cancelled = false;
     (async () => {
       const { data } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, name, phone, company_name')
         .eq('id', initialLeadId)
         .maybeSingle();
@@ -111,8 +111,9 @@ export const OutboundCallCard = ({ initialPhone, initialLeadId }: OutboundCallCa
     queryFn: async () => {
       const trimmed = query.trim();
       let q = supabase
-        .from('potential')
+        .from('deals')
         .select('id, name, phone, company_name')
+        .eq('pipeline', 'potential')
         .not('phone', 'is', null)
         .order('name', { ascending: true })
         .limit(25);

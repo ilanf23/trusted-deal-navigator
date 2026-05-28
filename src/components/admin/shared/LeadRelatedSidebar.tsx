@@ -126,11 +126,11 @@ async function updateLeadCompany(
 ): Promise<{ error: unknown }> {
   switch (entityType) {
     case 'potential':
-      return supabase.from('potential').update({ company_name: companyName }).eq('id', leadId);
+      return supabase.from('deals').update({ company_name: companyName }).eq('id', leadId);
     case 'underwriting':
-      return supabase.from('underwriting').update({ company_name: companyName }).eq('id', leadId);
+      return supabase.from('deals').update({ company_name: companyName }).eq('id', leadId);
     case 'lender_management':
-      return supabase.from('lender_management').update({ company_name: companyName }).eq('id', leadId);
+      return supabase.from('deals').update({ company_name: companyName }).eq('id', leadId);
   }
 }
 
@@ -141,15 +141,15 @@ async function searchLeadsByName(
   let res;
   switch (entityType) {
     case 'potential':
-      res = await supabase.from('potential').select('id, name, title, email, company_name')
+      res = await supabase.from('deals').select('id, name, title, email, company_name').eq('pipeline', 'potential')
         .ilike('name', `%${query}%`).order('name', { ascending: true }).limit(20);
       break;
     case 'underwriting':
-      res = await supabase.from('underwriting').select('id, name, title, email, company_name')
+      res = await supabase.from('deals').select('id, name, title, email, company_name').eq('pipeline', 'underwriting')
         .ilike('name', `%${query}%`).order('name', { ascending: true }).limit(20);
       break;
     case 'lender_management':
-      res = await supabase.from('lender_management').select('id, name, title, email, company_name')
+      res = await supabase.from('deals').select('id, name, title, email, company_name').eq('pipeline', 'lender_management')
         .ilike('name', `%${query}%`).order('name', { ascending: true }).limit(20);
       break;
   }
@@ -163,15 +163,15 @@ async function searchLeadsByCompany(
   let res;
   switch (entityType) {
     case 'potential':
-      res = await supabase.from('potential').select('id, company_name')
+      res = await supabase.from('deals').select('id, company_name').eq('pipeline', 'potential')
         .ilike('company_name', `%${query}%`).not('company_name', 'is', null).limit(20);
       break;
     case 'underwriting':
-      res = await supabase.from('underwriting').select('id, company_name')
+      res = await supabase.from('deals').select('id, company_name').eq('pipeline', 'underwriting')
         .ilike('company_name', `%${query}%`).not('company_name', 'is', null).limit(20);
       break;
     case 'lender_management':
-      res = await supabase.from('lender_management').select('id, company_name')
+      res = await supabase.from('deals').select('id, company_name').eq('pipeline', 'lender_management')
         .ilike('company_name', `%${query}%`).not('company_name', 'is', null).limit(20);
       break;
   }
@@ -185,15 +185,15 @@ async function searchRelatedPeopleByCompany(
   let res;
   switch (entityType) {
     case 'potential':
-      res = await supabase.from('potential').select('id, name, title, email, phone, company_name')
+      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'potential')
         .eq('company_name', companyName).order('name').limit(20);
       break;
     case 'underwriting':
-      res = await supabase.from('underwriting').select('id, name, title, email, phone, company_name')
+      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'underwriting')
         .eq('company_name', companyName).order('name').limit(20);
       break;
     case 'lender_management':
-      res = await supabase.from('lender_management').select('id, name, title, email, phone, company_name')
+      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'lender_management')
         .eq('company_name', companyName).order('name').limit(20);
       break;
   }
@@ -207,15 +207,15 @@ async function searchRelatedPeopleByDomain(
   let res;
   switch (entityType) {
     case 'potential':
-      res = await supabase.from('potential').select('id, name, title, email, phone, company_name')
+      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'potential')
         .ilike('email', `%@${domain}`).limit(20);
       break;
     case 'underwriting':
-      res = await supabase.from('underwriting').select('id, name, title, email, phone, company_name')
+      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'underwriting')
         .ilike('email', `%@${domain}`).limit(20);
       break;
     case 'lender_management':
-      res = await supabase.from('lender_management').select('id, name, title, email, phone, company_name')
+      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'lender_management')
         .ilike('email', `%@${domain}`).limit(20);
       break;
   }
@@ -229,13 +229,13 @@ async function lookupPersonByName(
   let res;
   switch (entityType) {
     case 'potential':
-      res = await supabase.from('potential').select('*').ilike('name', name).limit(1).maybeSingle();
+      res = await supabase.from('deals').select('*').eq('pipeline', 'potential').ilike('name', name).limit(1).maybeSingle();
       break;
     case 'underwriting':
-      res = await supabase.from('underwriting').select('*').ilike('name', name).limit(1).maybeSingle();
+      res = await supabase.from('deals').select('*').eq('pipeline', 'underwriting').ilike('name', name).limit(1).maybeSingle();
       break;
     case 'lender_management':
-      res = await supabase.from('lender_management').select('*').ilike('name', name).limit(1).maybeSingle();
+      res = await supabase.from('deals').select('*').eq('pipeline', 'lender_management').ilike('name', name).limit(1).maybeSingle();
       break;
   }
   return (res.data ?? null) as RelatedPersonLite | null;
@@ -248,13 +248,13 @@ async function fetchSourceStageId(
   let res;
   switch (entityType) {
     case 'potential':
-      res = await supabase.from('potential').select('stage_id').eq('id', leadId).single();
+      res = await supabase.from('deals').select('stage_id').eq('pipeline', 'potential').eq('id', leadId).single();
       break;
     case 'underwriting':
-      res = await supabase.from('underwriting').select('stage_id').eq('id', leadId).single();
+      res = await supabase.from('deals').select('stage_id').eq('pipeline', 'underwriting').eq('id', leadId).single();
       break;
     case 'lender_management':
-      res = await supabase.from('lender_management').select('stage_id').eq('id', leadId).single();
+      res = await supabase.from('deals').select('stage_id').eq('pipeline', 'lender_management').eq('id', leadId).single();
       break;
   }
   return ((res.data as { stage_id: string | null } | null)?.stage_id) ?? null;
@@ -412,7 +412,7 @@ export default function LeadRelatedSidebar({
     queryKey: contactsKey,
     queryFn: async () => {
       const { data } = await supabase.from('entity_contacts').select('*')
-        .eq('entity_id', leadId).eq('entity_type', entityType);
+        .eq('entity_id', leadId).eq('entity_type', 'deal');
       return (data ?? []) as LeadContact[];
     },
     enabled: !!leadId,
@@ -432,7 +432,7 @@ export default function LeadRelatedSidebar({
     queryKey: projectsKey,
     queryFn: async () => {
       const { data } = await supabase.from('entity_projects').select('*')
-        .eq('entity_id', leadId).eq('entity_type', entityType).order('created_at', { ascending: false });
+        .eq('entity_id', leadId).eq('entity_type', 'deal').order('created_at', { ascending: false });
       return (data ?? []) as LeadProject[];
     },
     enabled: !!leadId,
@@ -486,7 +486,7 @@ export default function LeadRelatedSidebar({
         .from('entity_files')
         .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
         .eq('entity_id', leadId)
-        .eq('entity_type', entityType)
+        .eq('entity_type', 'deal')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -650,7 +650,7 @@ export default function LeadRelatedSidebar({
     setSavingContact(true);
     const { error } = await supabase.from('entity_contacts').insert({
       entity_id: leadId,
-      entity_type: entityType,
+      entity_type: 'deal',
       name: person.name,
       title: person.title || null,
       email: person.email || null,
@@ -896,7 +896,7 @@ export default function LeadRelatedSidebar({
     try {
       const { error } = await supabase.from('entity_projects').insert({
         entity_id: leadId,
-        entity_type: entityType,
+        entity_type: 'deal',
         name: suggestion.name,
         status: suggestion.status ?? 'open',
         project_stage: suggestion.project_stage ?? 'open',

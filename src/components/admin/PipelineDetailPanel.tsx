@@ -32,7 +32,7 @@ import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
-type Lead = Database['public']['Tables']['potential']['Row'];
+type Lead = Database['public']['Tables']['deals']['Row'];
 
 interface StageConfigEntry {
   title: string;
@@ -154,7 +154,7 @@ function EditableSelectField({
     if (newValue === value) return;
     setSaving(true);
     const { error } = await supabase
-      .from('potential')
+      .from('deals')
       .update({ [field]: newValue || null })
       .eq('id', leadId);
     setSaving(false);
@@ -260,7 +260,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('potential')
+      .from('deals')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', leadId);
     setSaving(false);
@@ -335,7 +335,7 @@ function EditableRichTextField({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('potential')
+      .from('deals')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);

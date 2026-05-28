@@ -234,8 +234,9 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     queryKey: ['sa-dashboard-heatmap-deals'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, created_at, stage_changed_at, won_at, source')
+        .eq('pipeline', 'potential')
         .or(`created_at.gte.${heatmapRangeStart},stage_changed_at.gte.${heatmapRangeStart},won_at.gte.${heatmapRangeStart}`);
       if (error) throw error;
       return data;
@@ -265,8 +266,9 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     queryKey: ['sa-dashboard-sparkline-data'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, won_at, lost_at, deal_value, potential_revenue, fee_percent, deal_outcome')
+        .eq('pipeline', 'potential')
         .or(`won_at.gte.${sparklineStart},lost_at.gte.${sparklineStart}`)
         .in('deal_outcome', ['won', 'lost']);
       if (error) throw error;
@@ -280,8 +282,9 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     queryKey: ['sa-dashboard-revenue-by-team', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, assigned_to, deal_value, potential_revenue, fee_percent, won_at')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'won')
         .gte('won_at', periodStartISO);
       if (error) throw error;
@@ -296,8 +299,9 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     queryKey: ['sa-dashboard-prev-won', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, deal_value, potential_revenue, fee_percent')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'won')
         .gte('won_at', prevRange.start)
         .lte('won_at', prevRange.end);

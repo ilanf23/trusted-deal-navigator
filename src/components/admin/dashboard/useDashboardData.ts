@@ -241,8 +241,9 @@ export function useDashboardData(
     queryKey: ['admin-leads-analytics', timePeriod, teamMemberId],
     queryFn: async () => {
       let query = supabase
-        .from('potential')
+        .from('deals')
         .select('id, name, status, source, created_at, won_at, deal_value, potential_revenue, fee_percent, deal_outcome')
+        .eq('pipeline', 'potential')
         .gte('created_at', periodStartISO);
       if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
       const { data, error } = await query;
@@ -256,8 +257,9 @@ export function useDashboardData(
     queryKey: ['admin-pipeline-analytics', teamMemberId],
     queryFn: async () => {
       let query = supabase
-        .from('potential')
+        .from('deals')
         .select('id, name, status, deal_value, potential_revenue, fee_percent, deal_outcome')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'open');
       if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
       const { data, error } = await query;
@@ -271,8 +273,9 @@ export function useDashboardData(
     queryKey: ['admin-funded-analytics', timePeriod, teamMemberId],
     queryFn: async () => {
       let query = supabase
-        .from('potential')
+        .from('deals')
         .select('id, won_at, deal_value, potential_revenue, fee_percent, source')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'won')
         .gte('won_at', periodStartISO);
       if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
@@ -287,8 +290,9 @@ export function useDashboardData(
     queryKey: ['admin-lost-analytics', timePeriod, teamMemberId],
     queryFn: async () => {
       let query = supabase
-        .from('potential')
+        .from('deals')
         .select('id, lost_at')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'lost')
         .gte('lost_at', periodStartISO);
       if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
@@ -303,8 +307,9 @@ export function useDashboardData(
     queryKey: ['admin-prev-funded', timePeriod, teamMemberId],
     queryFn: async () => {
       let query = supabase
-        .from('potential')
+        .from('deals')
         .select('id, won_at, deal_value, potential_revenue, fee_percent')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'won')
         .gte('won_at', prevRange.start)
         .lte('won_at', prevRange.end);
@@ -320,8 +325,9 @@ export function useDashboardData(
     queryKey: ['admin-prev-lost', timePeriod, teamMemberId],
     queryFn: async () => {
       let query = supabase
-        .from('potential')
+        .from('deals')
         .select('id')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'lost')
         .gte('lost_at', prevRange.start)
         .lte('lost_at', prevRange.end);
@@ -338,8 +344,9 @@ export function useDashboardData(
     queryFn: async () => {
       const ytdStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1)).toISOString();
       let query = supabase
-        .from('potential')
+        .from('deals')
         .select('id, name, won_at, deal_value, potential_revenue, fee_percent')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'won')
         .gte('won_at', ytdStart);
       if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
@@ -361,8 +368,9 @@ export function useDashboardData(
     queryKey: ['dashboard-heatmap-deals', teamMemberId],
     queryFn: async () => {
       let query = supabase
-        .from('potential')
+        .from('deals')
         .select('id, created_at, stage_changed_at, won_at, source')
+        .eq('pipeline', 'potential')
         .or(`created_at.gte.${heatmapRangeStart},stage_changed_at.gte.${heatmapRangeStart},won_at.gte.${heatmapRangeStart}`);
       if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
       const { data, error } = await query;
@@ -392,16 +400,19 @@ export function useDashboardData(
     queryFn: async (): Promise<ChannelDealSourceRow[]> => {
       const selectColumns = 'id, created_at, won_at, source, referral_source, deal_value';
       let potentialQuery = supabase
-        .from('potential')
+        .from('deals')
         .select(selectColumns)
+        .eq('pipeline', 'potential')
         .gte(channelDateBasis, periodStartISO);
       let underwritingQuery = supabase
-        .from('underwriting')
+        .from('deals')
         .select(selectColumns)
+        .eq('pipeline', 'underwriting')
         .gte(channelDateBasis, periodStartISO);
       let lenderQuery = supabase
-        .from('lender_management')
+        .from('deals')
         .select(selectColumns)
+        .eq('pipeline', 'lender_management')
         .gte(channelDateBasis, periodStartISO);
 
       if (teamMemberId) {
@@ -437,8 +448,9 @@ export function useDashboardData(
     queryKey: ['dashboard-sparkline-data', teamMemberId],
     queryFn: async () => {
       let query = supabase
-        .from('potential')
+        .from('deals')
         .select('id, won_at, lost_at, deal_value, potential_revenue, fee_percent, deal_outcome')
+        .eq('pipeline', 'potential')
         .or(`won_at.gte.${sparklineStart},lost_at.gte.${sparklineStart}`)
         .in('deal_outcome', ['won', 'lost']);
       if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
@@ -500,8 +512,9 @@ export function useDashboardData(
     queryKey: ['dashboard-scorecard-leads', teamMemberId],
     queryFn: async () => {
       let query = supabase
-        .from('potential')
+        .from('deals')
         .select('id, status, created_at, converted_at')
+        .eq('pipeline', 'potential')
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString());
       if (teamMemberId) query = query.eq('assigned_to', teamMemberId);
