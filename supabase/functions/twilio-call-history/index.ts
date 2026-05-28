@@ -329,7 +329,7 @@ Deno.serve(async (req) => {
     let opportunityById = new Map<string, { name: string; company_name: string | null }>();
     if (leadIds.length > 0) {
       const { data: opportunities, error: oppError } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, name, company_name')
         .in('id', leadIds);
       if (oppError) {

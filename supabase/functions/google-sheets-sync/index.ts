@@ -148,8 +148,9 @@ async function handlePull(
 
   // Get existing leads to match against
   const { data: existingLeads } = await supabaseAdmin
-    .from('potential')
-    .select('id, name, sheets_row_index');
+    .from('deals')
+    .select('id, name, sheets_row_index')
+    .eq('pipeline', 'potential');
 
   const leadsByRowIndex = new Map<number, any>();
   const leadsByName = new Map<string, any>();
@@ -203,7 +204,7 @@ async function handlePull(
     if (existingLead) {
       // Update existing lead
       const { error: updateError } = await supabaseAdmin
-        .from('potential')
+        .from('deals')
         .update(leadData)
         .eq('id', existingLead.id);
 
@@ -215,8 +216,8 @@ async function handlePull(
     } else {
       // Create new lead
       const { error: insertError } = await supabaseAdmin
-        .from('potential')
-        .insert(leadData);
+        .from('deals')
+        .insert({ ...leadData, pipeline: 'potential' });
 
       if (insertError) {
         console.error(`Failed to create lead for row ${i}:`, insertError);
@@ -271,8 +272,9 @@ async function handlePush(
 
   // Get leads to push
   let leadsQuery = supabaseAdmin
-    .from('potential')
+    .from('deals')
     .select('*')
+    .eq('pipeline', 'potential')
     .not('sheets_row_index', 'is', null);
 
   if (leadIds && leadIds.length > 0) {
@@ -342,7 +344,7 @@ async function handlePush(
 
     // Update sheets_last_synced_at on the lead
     await supabaseAdmin
-      .from('potential')
+      .from('deals')
       .update({ sheets_last_synced_at: new Date().toISOString() })
       .eq('id', lead.id);
 
@@ -411,7 +413,7 @@ async function handleUpdateCell(
 
   // Get the lead's row index
   const { data: lead, error: leadError } = await supabaseAdmin
-    .from('potential')
+    .from('deals')
     .select('sheets_row_index')
     .eq('id', leadId)
     .single();

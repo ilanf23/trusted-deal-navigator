@@ -143,7 +143,7 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
 
   // 1. The lead row itself
   const { data: potential, error: potErr } = await supabase
-    .from("potential")
+    .from("deals")
     .select(
       "id, deal_value, priority, stage_id, last_activity_at, last_contacted, " +
       "created_at, updated_at, flagged_for_weekly, close_date, source, " +
@@ -188,7 +188,7 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
       "id, communication_type, direction, duration_seconds, transcript, created_at",
     )
     .eq("lead_id", leadId)
-    .eq("entity_type", "potential")
+    .eq("entity_type", "deal")
     .order("created_at", { ascending: false })
     .limit(50);
   const comms: Array<{
@@ -222,7 +222,7 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
     .from("outbound_emails")
     .select("id, subject, body_plain, sent_at, created_at")
     .eq("lead_id", leadId)
-    .eq("entity_type", "potential")
+    .eq("entity_type", "deal")
     .order("created_at", { ascending: false })
     .limit(20);
   const emails: Array<{
@@ -245,7 +245,7 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
     .from("activities")
     .select("id", { count: "exact", head: true })
     .eq("entity_id", leadId)
-    .eq("entity_type", "potential")
+    .eq("entity_type", "deal")
     .gte("created_at", thirtyDaysAgoIso);
 
   // 6. Tasks
@@ -275,7 +275,7 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
     .from("entity_files")
     .select("id, file_name, file_type")
     .eq("entity_id", leadId)
-    .eq("entity_type", "potential")
+    .eq("entity_type", "deal")
     .limit(100);
   const files: Array<{ id: string; file_name: string; file_type: string | null }> = filesRaw ?? [];
 
@@ -576,7 +576,7 @@ Deno.serve(async (req) => {
     // Persist to potential
     const previousValue = potentialRow.win_percentage;
     const { error: updateError } = await supabase
-      .from("potential")
+      .from("deals")
       .update({
         win_percentage: clampedScore,
         updated_at: new Date().toISOString(),
