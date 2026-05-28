@@ -41,7 +41,6 @@ const AdminContracts = lazy(() => import("./pages/admin/Contracts"));
 const AdminInvoices = lazy(() => import("./pages/admin/Invoices"));
 const AdminMessages = lazy(() => import("./pages/admin/Messages"));
 const AdminMarketing = lazy(() => import("./pages/admin/Marketing"));
-const AdminNewsletter = lazy(() => import("./pages/admin/Newsletter"));
 const CRMBoard = lazy(() => import("./pages/admin/CRMBoard"));
 const AdminRateWatch = lazy(() => import("./pages/admin/RateWatch"));
 const GoogleCallback = lazy(() => import("./pages/admin/GoogleCallback"));
@@ -152,7 +151,6 @@ const App = () => (
                 <Route path="/superadmin/messages" element={<AdminMessages />} />
                 <Route path="/superadmin/bug-reporting" element={<BugReporting />} />
                 <Route path="/superadmin/marketing" element={<AdminMarketing />} />
-                <Route path="/superadmin/newsletter" element={<AdminNewsletter />} />
                 <Route path="/superadmin/rate-watch" element={<AdminRateWatch />} />
                 <Route path="/superadmin/lender-programs" element={<LenderPrograms />} />
                 <Route path="/superadmin/lender-programs/expanded-view/:lenderId" element={<LenderExpandedView />} />
@@ -218,7 +216,6 @@ const App = () => (
                 <Route path="/admin/clients" element={<AdminRoute><AdminClients /></AdminRoute>} />
                 <Route path="/admin/contracts" element={<AdminRoute><AdminContracts /></AdminRoute>} />
                 <Route path="/admin/invoices" element={<AdminRoute><AdminInvoices /></AdminRoute>} />
-                <Route path="/admin/newsletter" element={<AdminRoute><AdminNewsletter /></AdminRoute>} />
                 <Route path="/admin/marketing" element={<AdminRoute><AdminMarketing /></AdminRoute>} />
                 <Route path="/admin/tracking" element={<AdminRoute><AdminTracking /></AdminRoute>} />
                 <Route path="/admin/settings" element={<Navigate to="/admin/settings/profile" replace />} />
