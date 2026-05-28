@@ -514,7 +514,7 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
         .from('activities')
         .select('id, activity_type, title, content, created_at')
         .eq('entity_id', lead.id)
-        .eq('entity_type', 'potential')
+        .eq('entity_type', 'deal')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -681,7 +681,7 @@ function RelatedTabContent({
         .from('entity_contacts')
         .select('id, name, title, email, phone, is_primary')
         .eq('entity_id', lead.id)
-        .eq('entity_type', tableName)
+        .eq('entity_type', 'deal')
         .order('is_primary', { ascending: false });
       return data || [];
     },

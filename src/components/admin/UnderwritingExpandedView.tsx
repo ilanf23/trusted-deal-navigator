@@ -315,7 +315,7 @@ export default function UnderwritingExpandedView() {
     await supabase.from('entity_files').delete().eq('entity_id', leadId).eq('entity_type', 'underwriting');
     await supabase.from('activities').delete().eq('entity_id', leadId).eq('entity_type', 'underwriting');
     await supabase.from('tasks').delete().eq('lead_id', leadId);
-    const { error } = await supabase.from('underwriting').delete().eq('id', leadId);
+    const { error } = await supabase.from('deals').delete().eq('id', leadId);
     if (error) { toast.error('Failed to delete'); return; }
     toast.success('Deleted');
     queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
@@ -696,8 +696,9 @@ export default function UnderwritingExpandedView() {
     queryKey: ['underwriting-expanded', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('underwriting')
+        .from('deals')
         .select('*')
+        .eq('pipeline', 'underwriting')
         .eq('id', leadId!)
         .single();
       if (error) throw error;

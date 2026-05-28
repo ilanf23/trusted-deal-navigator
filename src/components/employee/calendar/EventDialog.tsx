@@ -95,8 +95,9 @@ export function EventDialog({ open, onOpenChange, data, onSave }: EventDialogPro
     queryKey: ['pipeline-leads-for-calendar'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, name, company_name')
+        .eq('pipeline', 'potential')
         .order('name');
       if (error) throw error;
       return data as { id: string; name: string; company_name: string | null }[];

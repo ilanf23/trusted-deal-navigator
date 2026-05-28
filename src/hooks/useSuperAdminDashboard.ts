@@ -334,8 +334,9 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     queryKey: ['sa-dashboard-prev-lost', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'lost')
         .gte('lost_at', prevRange.start)
         .lte('lost_at', prevRange.end);
@@ -351,8 +352,9 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     queryKey: ['sa-dashboard-pipeline-deals'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, deal_value, potential_revenue, fee_percent, status')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'open');
       if (error) throw error;
       return data;

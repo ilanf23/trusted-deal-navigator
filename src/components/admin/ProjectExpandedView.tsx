@@ -507,7 +507,7 @@ export default function ProjectExpandedView() {
     setSavingNote(true);
     await supabase.from('activities').insert({
       entity_id: project.entity_id,
-      entity_type: 'potential',
+      entity_type: 'deal',
       activity_type: activityTab === 'note' ? 'note' : activityType,
       content: noteContent.trim(),
       title: activityTab === 'note' ? 'Note' : activityType.replace(/_/g, ' '),
@@ -627,7 +627,7 @@ export default function ProjectExpandedView() {
       if (isFollowing) {
         await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('user_id', teamMemberId!);
       } else {
-        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'potential', user_id: teamMemberId! });
+        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'deal', user_id: teamMemberId! });
       }
     },
     onSuccess: () => {
@@ -709,7 +709,7 @@ export default function ProjectExpandedView() {
   const handleLinkCompany = useCallback(async (companyName: string) => {
     if (!project?.entity_id || !companyName.trim()) return;
     setSavingCompany(true);
-    const { error } = await supabase.from('potential').update({ company_name: companyName.trim() }).eq('id', project.entity_id);
+    const { error } = await supabase.from('deals').update({ company_name: companyName.trim() }).eq('id', project.entity_id);
     setSavingCompany(false);
     if (error) { toast.error('Failed to update company'); return; }
     toast.success('Company linked');

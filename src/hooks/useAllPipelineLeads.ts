@@ -72,7 +72,7 @@ export const useCompanies = () => {
           .from('entity_emails')
           .select('entity_id, email, is_primary')
           .eq('entity_type', 'companies'),
-        supabase.from('potential').select('company_name'),
+        supabase.from('deals').select('company_name').eq('pipeline', 'potential'),
       ]);
 
       const phoneByCompany = new Map<string, { phone_number: string; is_primary: boolean | null }[]>();

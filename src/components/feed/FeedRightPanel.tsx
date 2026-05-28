@@ -96,8 +96,9 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
         { count: weekComms },
       ] = await Promise.all([
         supabase
-          .from('potential')
+          .from('deals')
           .select('id', { count: 'exact', head: true })
+          .eq('pipeline', 'potential')
           .in('status', ['new', 'contacted', 'in_progress', 'underwriting', 'approved']),
         supabase
           .from('tasks')
