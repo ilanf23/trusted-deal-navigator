@@ -61,11 +61,6 @@ Deno TypeScript edge functions + shared utilities. All deployed as Supabase Edge
 - `call-to-lead-automation` — automate lead follow-up after calls (email drafts via Resend/Gmail)
 - `send-prequalification-email` — send questionnaire emails with unique token URLs (60/60s)
 
-### Newsletter
-- `send-newsletter` — bulk send via Resend with click/open tracking pixel injection (60/60s)
-- `newsletter-track` — tracking pixel + link redirect. Bot detection for accurate metrics (300/60s)
-- `newsletter-webhook` — Resend webhook events (delivered, opened, clicked, bounced, complained, unsubscribed). Svix HMAC-SHA256 signature verified via `_shared/svixSignature.ts` against `RESEND_WEBHOOK_SECRET`; 5-min replay window (300/60s)
-
 ### Dropbox
 - `dropbox-auth` — OAuth flow, token storage in `dropbox_connections` (60/60s)
 - `dropbox-files` — read paths: list, list-recursive, list-shared, download, get-temporary-link (60/60s). Issue #84 split. Shared: `_shared/dropbox/api.ts`.

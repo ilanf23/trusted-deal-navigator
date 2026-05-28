@@ -62,7 +62,7 @@ authoritative for rich content.
 - Native CRM tables (Pipeline, People, Companies, Projects, LoanVolumeLog, LenderPrograms): every body `<td>` already carries `overflow-hidden whitespace-nowrap` (or `SINGLE_LINE_CELL`). Inner pills already truncate.
 - Tags / multi-value cells: render first N + "+N overflow" pill, never `flex-wrap`. Full list goes in `title=`.
 
-**Intentional two-line cells** (Tasks, Newsletter campaigns, TopActions, RateWatch borrower/property):
+**Intentional two-line cells** (Tasks, TopActions, RateWatch borrower/property):
 - The secondary line is preserved by design.
 - Always render the second line — fall back to `' '` so rows are uniform height even when the secondary value is absent.
 - Both lines use `truncate` + `title=`.
