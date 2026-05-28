@@ -158,6 +158,9 @@ export default function ProjectExpandedView() {
 
   const [addingCompany, setAddingCompany] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
+  const companyInputRef = useRef<HTMLInputElement>(null);
+  const companyDropdownRef = useRef<HTMLDivElement>(null);
+  const [companyDropdownPos, setCompanyDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const [savingCompany, setSavingCompany] = useState(false);
 
 
@@ -322,6 +325,40 @@ export default function ProjectExpandedView() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showPeoplePicker]);
+
+  // Position the Companies picker dropdown directly below its input.
+  useEffect(() => {
+    if (!addingCompany || !companyInputRef.current) return;
+    const updatePos = () => {
+      const el = companyInputRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setCompanyDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    };
+    updatePos();
+    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', updatePos, true);
+    return () => {
+      window.removeEventListener('resize', updatePos);
+      window.removeEventListener('scroll', updatePos, true);
+    };
+  }, [addingCompany, companySearchQuery]);
+
+  // Close the Companies picker when clicking outside.
+  useEffect(() => {
+    if (!addingCompany) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const inInput = companyInputRef.current?.contains(target);
+      const inDropdown = companyDropdownRef.current?.contains(target);
+      if (!inInput && !inDropdown) {
+        setAddingCompany(false);
+        setCompanySearchQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [addingCompany]);
 
   // Company search-to-link — queries master `companies` + distinct company_names from `potential` and `people`
   const { data: companiesSearchResults = [] } = useQuery<Array<{
