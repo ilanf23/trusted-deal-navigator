@@ -524,6 +524,22 @@ export function useDashboardData(
     },
   });
 
+  // Portfolio-wide pipeline expected revenue from RPC (single source of truth shared with AI assistant)
+  const { data: pipelineTotalsByPipeline } = useQuery({
+    queryKey: ['dashboard', 'pipelineValue'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_pipeline_value', {
+        p_pipeline: null,
+        p_assigned_to: null,
+      });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const pipelineExpectedRevenue = (pipelineTotalsByPipeline ?? [])
+    .reduce((sum: number, row: { total_expected_revenue?: number | null }) => sum + Number(row.total_expected_revenue || 0), 0);
+
   // --- Derived data ---
 
   const touchpointsData = useMemo(() => {
@@ -639,17 +655,13 @@ export function useDashboardData(
     const prevDecisions = prevWon + previousLost.length;
     const prevWinRate = prevDecisions > 0 ? (prevWon / prevDecisions) * 100 : 0;
 
-    const pipelineValue = (pipelineQuery.data || []).reduce(
-      (sum, d) => sum + getDealRevenue(d), 0,
-    );
-
     return {
       revenue: makePeriodComparison(currentRevenue, previousRevenue),
       deals: makePeriodComparison(currentWon, prevWon),
       winRate: makePeriodComparison(currentWinRate, prevWinRate),
-      pipelineValue: makePeriodComparison(pipelineValue, pipelineValue),
+      pipelineValue: makePeriodComparison(pipelineExpectedRevenue, pipelineExpectedRevenue),
     };
-  }, [fundedQuery.data, prevFundedQuery.data, lostDealsQuery.data, prevLostQuery.data, pipelineQuery.data]);
+  }, [fundedQuery.data, prevFundedQuery.data, lostDealsQuery.data, prevLostQuery.data, pipelineExpectedRevenue]);
 
   // Activity heatmap data (last 90 days)
   const activityHeatmapData: ActivityDay[] = useMemo(() => {

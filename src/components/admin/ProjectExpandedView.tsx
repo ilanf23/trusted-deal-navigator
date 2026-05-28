@@ -20,6 +20,7 @@ import {
   CalendarPlus, LayoutDashboard,
 } from 'lucide-react';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
@@ -157,6 +158,9 @@ export default function ProjectExpandedView() {
 
   const [addingCompany, setAddingCompany] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
+  const companyInputRef = useRef<HTMLInputElement>(null);
+  const companyDropdownRef = useRef<HTMLDivElement>(null);
+  const [companyDropdownPos, setCompanyDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const [savingCompany, setSavingCompany] = useState(false);
 
 
@@ -264,6 +268,9 @@ export default function ProjectExpandedView() {
   // All leads for people picker
   const [showPeoplePicker, setShowPeoplePicker] = useState(false);
   const [peopleSearch, setPeopleSearch] = useState('');
+  const peopleSectionRef = useRef<HTMLDivElement>(null);
+  const peoplePickerRef = useRef<HTMLDivElement>(null);
+  const [peoplePickerPos, setPeoplePickerPos] = useState({ top: 0, left: 0, width: 0 });
   const { data: allLeadsForPicker = [] } = useQuery({
     queryKey: ['all-leads-picker-expanded'],
     queryFn: async () => {
@@ -282,6 +289,76 @@ export default function ProjectExpandedView() {
     }
     return list.slice(0, 10);
   }, [allLeadsForPicker, ppLeadIds, peopleSearch]);
+
+  // Position the People picker dropdown directly below its anchor section.
+  // Recomputes on open, on window resize, and on scroll so the dropdown
+  // follows the anchor when the right column scrolls.
+  useEffect(() => {
+    if (!showPeoplePicker || !peopleSectionRef.current) return;
+    const updatePos = () => {
+      const el = peopleSectionRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setPeoplePickerPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    };
+    updatePos();
+    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', updatePos, true);
+    return () => {
+      window.removeEventListener('resize', updatePos);
+      window.removeEventListener('scroll', updatePos, true);
+    };
+  }, [showPeoplePicker]);
+
+  // Close the People picker when clicking outside both the anchor and the portal dropdown.
+  useEffect(() => {
+    if (!showPeoplePicker) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const inAnchor = peopleSectionRef.current?.contains(target);
+      const inDropdown = peoplePickerRef.current?.contains(target);
+      if (!inAnchor && !inDropdown) {
+        setShowPeoplePicker(false);
+        setPeopleSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showPeoplePicker]);
+
+  // Position the Companies picker dropdown directly below its input.
+  useEffect(() => {
+    if (!addingCompany || !companyInputRef.current) return;
+    const updatePos = () => {
+      const el = companyInputRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setCompanyDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    };
+    updatePos();
+    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', updatePos, true);
+    return () => {
+      window.removeEventListener('resize', updatePos);
+      window.removeEventListener('scroll', updatePos, true);
+    };
+  }, [addingCompany, companySearchQuery]);
+
+  // Close the Companies picker when clicking outside.
+  useEffect(() => {
+    if (!addingCompany) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const inInput = companyInputRef.current?.contains(target);
+      const inDropdown = companyDropdownRef.current?.contains(target);
+      if (!inInput && !inDropdown) {
+        setAddingCompany(false);
+        setCompanySearchQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [addingCompany]);
 
   // Company search-to-link — queries master `companies` + distinct company_names from `potential` and `people`
   const { data: companiesSearchResults = [] } = useQuery<Array<{
@@ -1226,11 +1303,17 @@ export default function ProjectExpandedView() {
                 </RelatedSection>
 
                 {/* People */}
-                <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={projectPeople.length} onAdd={() => setShowPeoplePicker(!showPeoplePicker)}>
+                <div ref={peopleSectionRef}>
+                  <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={projectPeople.length} onAdd={() => setShowPeoplePicker(!showPeoplePicker)}>
                   <div className="space-y-3 py-1">
-                    {/* People picker */}
-                    {showPeoplePicker && (
-                      <div className="space-y-1.5">
+                    {/* People picker — portaled to document.body so ancestor overflow-hidden
+                        containers can't clip it. Anchored to peopleSectionRef. */}
+                    {showPeoplePicker && createPortal(
+                      <div
+                        ref={peoplePickerRef}
+                        style={{ position: 'fixed', top: peoplePickerPos.top, left: peoplePickerPos.left, width: peoplePickerPos.width }}
+                        className="z-[9999] bg-popover border border-border rounded-md shadow-lg p-2 space-y-1.5"
+                      >
                         <input
                           autoFocus
                           value={peopleSearch}
@@ -1239,7 +1322,7 @@ export default function ProjectExpandedView() {
                           placeholder="Search people..."
                           className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                         />
-                        <div className="max-h-[140px] overflow-y-auto space-y-0.5">
+                        <div className="max-h-[200px] overflow-y-auto space-y-0.5">
                           {filteredPickerLeads.map(l => (
                             <button
                               key={l.id}
@@ -1253,7 +1336,8 @@ export default function ProjectExpandedView() {
                           ))}
                           {filteredPickerLeads.length === 0 && <p className="text-[10px] text-muted-foreground text-center py-2">No results</p>}
                         </div>
-                      </div>
+                      </div>,
+                      document.body
                     )}
 
                     {/* Linked people list */}
@@ -1287,7 +1371,8 @@ export default function ProjectExpandedView() {
                       </button>
                     )}
                   </div>
-                </RelatedSection>
+                  </RelatedSection>
+                </div>
 
                 {/* Tasks */}
                 <RelatedSection icon={<Circle className="h-3.5 w-3.5" />} label="Tasks" count={tasks.length} onAdd={() => setAddingTask(true)}>
@@ -1360,6 +1445,7 @@ export default function ProjectExpandedView() {
                     {addingCompany ? (
                       <div className="relative mt-1">
                         <input
+                          ref={companyInputRef}
                           autoFocus
                           value={companySearchQuery}
                           onChange={(e) => setCompanySearchQuery(e.target.value)}
@@ -1381,8 +1467,12 @@ export default function ProjectExpandedView() {
                           className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                         />
                         {savingCompany && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
-                        {companySearchQuery.trim().length > 0 && companiesSearchResults.length > 0 && (
-                          <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {companySearchQuery.trim().length > 0 && companiesSearchResults.length > 0 && createPortal(
+                          <div
+                            ref={companyDropdownRef}
+                            style={{ position: 'fixed', top: companyDropdownPos.top, left: companyDropdownPos.left, width: companyDropdownPos.width }}
+                            className="z-[9999] bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto"
+                          >
                             {companiesSearchResults.map((c) => (
                               <button
                                 key={c.id}
@@ -1401,10 +1491,15 @@ export default function ProjectExpandedView() {
                                 </span>
                               </button>
                             ))}
-                          </div>
+                          </div>,
+                          document.body
                         )}
-                        {companySearchQuery.trim().length > 0 && companiesSearchResults.length === 0 && (
-                          <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg px-2 py-2">
+                        {companySearchQuery.trim().length > 0 && companiesSearchResults.length === 0 && createPortal(
+                          <div
+                            ref={companyDropdownRef}
+                            style={{ position: 'fixed', top: companyDropdownPos.top, left: companyDropdownPos.left, width: companyDropdownPos.width }}
+                            className="z-[9999] bg-popover border border-border rounded-md shadow-lg px-2 py-2"
+                          >
                             <p className="text-xs text-muted-foreground mb-1">No matching companies</p>
                             <button
                               onClick={() => handleLinkCompany(companySearchQuery.trim())}
@@ -1412,7 +1507,8 @@ export default function ProjectExpandedView() {
                             >
                               + Use "{companySearchQuery.trim()}" as company
                             </button>
-                          </div>
+                          </div>,
+                          document.body
                         )}
                       </div>
                     ) : (

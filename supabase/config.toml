@@ -10,13 +10,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ai-assistant-actions]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-assistant-agent]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-assistant-chat]
-verify_jwt = false
+verify_jwt = true
 
 [functions.gmail-auth]
 verify_jwt = false

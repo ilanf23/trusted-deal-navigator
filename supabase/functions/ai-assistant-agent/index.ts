@@ -1,19 +1,15 @@
-import { createClient } from '../_shared/supabase.ts';
+import { getRequestClients } from '../_shared/userClient.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
 import { getProviderKey } from '../_shared/userIntegrations.ts';
 import { executeAction } from '../_shared/aiAgent/executor.ts';
 import { agentTools } from '../_shared/aiAgent/tools.ts';
-import { getRequestClients } from '../_shared/userClient.ts';
 import { logAiAudit } from '../_shared/aiAgent/audit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -24,13 +20,13 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
-    const body = await req.json();
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const { authUserId, teamMember, isOwner } = await getUserFromRequest(req, supabase);
+    const { userClient, serviceClient } = getRequestClients(req);
+    const { authUserId, teamMember, isOwner } = await getUserFromRequest(req, userClient);
 
+    const body = await req.json();
     const { prompt, conversationId, teamMemberId: tmId } = body;
     const OPENAI_API_KEY = await getProviderKey(
-      supabase,
+      serviceClient,
       teamMember?.id ?? null,
       "openai",
       "OPENAI_API_KEY",
@@ -39,29 +35,29 @@ Deno.serve(async (req) => {
       throw new Error("No OpenAI API key available (user integration or OPENAI_API_KEY)");
     }
 
-    // Fetch context data (leads, tasks). Owners can target other team members
+    // Fetch context data (deals, tasks). Owners can target other team members
     // via the `teamMemberId` body param; non-owners are scoped to themselves
     // regardless of the client-supplied id.
     const memberId = isOwner ? (tmId || teamMember?.id) : teamMember?.id;
-    let leadsQuery = supabase
-      .from("leads")
-      .select("id, name, company_name, status, email, phone, updated_at, notes, next_action, waiting_on")
-      .order("updated_at", { ascending: false })
+    let dealsQuery = userClient
+      .from('deals_v')
+      .select('id, pipeline, name, company_name, status, assigned_to, updated_at, deal_value, potential_revenue, fee_percent')
+      .order('updated_at', { ascending: false })
       .limit(50);
 
     if (!isOwner && memberId) {
-      leadsQuery = leadsQuery.eq("assigned_to", memberId);
+      dealsQuery = dealsQuery.eq('assigned_to', memberId);
     }
 
-    const { data: leads } = await leadsQuery;
-    const { data: tasks } = await supabase
+    const { data: deals } = await dealsQuery;
+    const { data: tasks } = await userClient
       .from("tasks")
       .select("id, title, status, priority, due_date, is_completed, lead_id")
       .eq("is_completed", false)
       .limit(30);
 
     const contextStr = `
-Available leads: ${JSON.stringify(leads?.map(l => ({ id: l.id, name: l.name, company: l.company_name, status: l.status, last_update: l.updated_at })) || [])}
+Available deals: ${JSON.stringify(deals?.map(d => ({ id: d.id, name: d.name, company: d.company_name, status: d.status, pipeline: d.pipeline, last_update: d.updated_at })) || [])}
 
 Available tasks: ${JSON.stringify(tasks?.map(t => ({ id: t.id, title: t.title, priority: t.priority, due: t.due_date, lead_id: t.lead_id })) || [])}
 
@@ -70,7 +66,7 @@ Today: ${new Date().toISOString().split("T")[0]}`;
     // Create batch (gracefully handle if table doesn't exist yet)
     let batchId: string | null = null;
     try {
-      const { data: batch } = await supabase
+      const { data: batch } = await serviceClient
         .from("ai_agent_batches")
         .insert({
           conversation_id: conversationId,
@@ -104,7 +100,7 @@ Today: ${new Date().toISOString().split("T")[0]}`;
               content: `You are an AI agent for CommercialLendingX, a commercial loan brokerage CRM. You can make changes to the CRM by calling the provided functions.
 
 ## Instructions
-- Use the context below to identify the correct records (leads, tasks) by their IDs
+- Use the context below to identify the correct records (deals, tasks) by their IDs
 - When the user asks to update, create, or modify CRM data, use the appropriate tool functions
 - If the user asks something you cannot do with the available tools (like changing UI/icons, code changes, etc.), respond with a helpful text message explaining what you can and cannot do
 - Be concise in your responses
@@ -148,6 +144,16 @@ ${contextStr}`,
             if (!response.ok) {
               const errText = await response.text();
               send({ type: "error", content: `OpenAI error: ${errText}` });
+              await logAiAudit({
+                serviceClient,
+                userId: authUserId,
+                conversationId,
+                functionName: 'ai-assistant-agent',
+                tool: 'openai_call',
+                mode: 'agent',
+                success: false,
+                errorMessage: `OpenAI error: ${errText}`,
+              });
               break;
             }
 
@@ -166,7 +172,7 @@ ${contextStr}`,
                 // Map OpenAI function args to our action params
                 let actionParams: Record<string, string> = {};
                 if (fnName === "update_lead") {
-                  actionParams = { leadId: fnArgs.lead_id, field: fnArgs.field, newValue: fnArgs.new_value };
+                  actionParams = { dealId: fnArgs.deal_id ?? fnArgs.lead_id, pipeline: fnArgs.pipeline ?? '', field: fnArgs.field, newValue: fnArgs.new_value };
                 } else if (fnName === "create_task") {
                   actionParams = { title: fnArgs.title, leadId: fnArgs.lead_id || "", priority: fnArgs.priority || "medium", dueDate: fnArgs.due_date || "", description: fnArgs.description || "" };
                 } else if (fnName === "complete_task") {
@@ -182,12 +188,25 @@ ${contextStr}`,
                 send({ type: "tool_start", tool: fnName, description: `Executing ${fnName}...` });
 
                 const result = await executeAction(
-                  supabase, fnName, actionParams,
+                  serviceClient, fnName, actionParams,
                   authUserId, memberId || null, conversationId,
                   "agent", batchId, totalChanges, isOwner,
                 );
 
                 totalChanges += result.success ? 1 : 0;
+
+                await logAiAudit({
+                  serviceClient,
+                  userId: authUserId,
+                  conversationId,
+                  functionName: 'ai-assistant-agent',
+                  tool: fnName,
+                  scope: { actionParams },
+                  recordIds: result.changeId ? [result.changeId] : [],
+                  mode: 'agent',
+                  success: result.success,
+                  errorMessage: result.success ? undefined : result.description,
+                });
 
                 send({
                   type: "tool_result",
@@ -217,7 +236,7 @@ ${contextStr}`,
           // Update batch total (gracefully)
           if (batchId) {
             try {
-              await supabase
+              await serviceClient
                 .from("ai_agent_batches")
                 .update({ total_changes: totalChanges })
                 .eq("id", batchId);
@@ -230,6 +249,18 @@ ${contextStr}`,
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         } catch (err: any) {
           send({ type: "error", content: err.message });
+          try {
+            await logAiAudit({
+              serviceClient,
+              userId: authUserId,
+              conversationId,
+              functionName: 'ai-assistant-agent',
+              tool: 'agent_stream',
+              mode: 'agent',
+              success: false,
+              errorMessage: err?.message ?? String(err),
+            });
+          } catch { /* audit must not break the stream close */ }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         } finally {
           controller.close();

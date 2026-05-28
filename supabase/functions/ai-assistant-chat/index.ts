@@ -1,16 +1,14 @@
-import { createClient } from '../_shared/supabase.ts';
+import { getRequestClients } from '../_shared/userClient.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
 import { getProviderKey } from '../_shared/userIntegrations.ts';
 import { buildChatContext } from '../_shared/aiAgent/context.ts';
+import { logAiAudit } from '../_shared/aiAgent/audit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -21,11 +19,11 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const { teamMember, isOwner } = await getUserFromRequest(req, supabase);
+    const { userClient, serviceClient } = getRequestClients(req);
+    const { teamMember, authUserId, isOwner } = await getUserFromRequest(req, userClient);
 
     const OPENAI_API_KEY = await getProviderKey(
-      supabase,
+      serviceClient,
       teamMember?.id ?? null,
       'openai',
       'OPENAI_API_KEY',
@@ -39,7 +37,17 @@ Deno.serve(async (req) => {
     const scopedMemberId = isOwner ? (requestedMemberId || teamMember?.id) : teamMember?.id;
     const displayName = teamMember?.name?.trim() || 'there';
 
-    const contextData = await buildChatContext(supabase, scopedMemberId, displayName);
+    const contextData = await buildChatContext(userClient, scopedMemberId, displayName);
+
+    await logAiAudit({
+      serviceClient,
+      userId: authUserId,
+      functionName: 'ai-assistant-chat',
+      tool: 'read_context',
+      scope: { scopedMemberId, mode, currentPage },
+      mode: mode as 'chat' | 'assist' | 'agent',
+      success: true,
+    });
 
     const pageContext = currentPage ? `\n\n## Current Page\nThe user is currently viewing: ${currentPage}\nTailor your suggestions to be relevant to this page when possible.` : '';
 
@@ -139,6 +147,22 @@ Include these tags inline in your response text. Each action will be rendered as
     });
   } catch (error) {
     console.error('ai-assistant-chat error:', error);
+    try {
+      const { serviceClient } = getRequestClients(req);
+      await logAiAudit({
+        serviceClient,
+        // Sentinel UUID: the failure path may run before the JWT has been
+        // resolved, so we don't always have a real auth.uid(). This insert
+        // is OK because logAiAudit uses serviceClient (RLS bypassed); if the
+        // path ever switches to userClient, the WITH CHECK auth.uid() = user_id
+        // policy on ai_audit_log would reject this sentinel.
+        userId: '00000000-0000-0000-0000-000000000000',
+        functionName: 'ai-assistant-chat',
+        tool: 'read_context',
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+    } catch { /* never fail the response on audit error */ }
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

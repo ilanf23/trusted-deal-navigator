@@ -19,65 +19,12 @@ export async function executeAction(
 ): Promise<{ success: boolean; description: string; changeId?: string }> {
   try {
     switch (actionType) {
-      case "update_lead": {
-        const { leadId, field, newValue, oldValue } = params;
-        if (!leadId || !field || !newValue) {
-          return { success: false, description: "Missing required params: leadId, field, newValue" };
-        }
-
-        // Fetch current state
-        const { data: current, error: fetchErr } = await supabase
-          .from("leads")
-          .select("*")
-          .eq("id", leadId)
-          .single();
-
-        if (fetchErr || !current) {
-          return { success: false, description: `Lead ${leadId} not found` };
-        }
-
-        // Scope check for non-owners
-        if (!isOwner && teamMemberId && current.assigned_to !== teamMemberId) {
-          return { success: false, description: "Access denied: lead not assigned to you" };
-        }
-
-        const oldValues = { [field]: current[field] };
-        const newValues = { [field]: newValue };
-
-        // Perform update
-        const { error: updateErr } = await supabase
-          .from("leads")
-          .update({ [field]: newValue, updated_at: new Date().toISOString() })
-          .eq("id", leadId);
-
-        if (updateErr) {
-          return { success: false, description: `Update failed: ${updateErr.message}` };
-        }
-
-        // Log change
-        const { data: changeRow } = await supabase
-          .from("ai_agent_changes")
-          .insert({
-            conversation_id: conversationId,
-            user_id: userId,
-            team_member_id: teamMemberId,
-            mode,
-            target_table: "leads",
-            target_id: leadId,
-            operation: "update",
-            old_values: oldValues,
-            new_values: newValues,
-            description: `Updated ${field} from "${oldValues[field] || 'null'}" to "${newValue}" on lead ${current.name || leadId}`,
-            batch_id: batchId,
-            batch_order: batchOrder,
-          })
-          .select("id")
-          .single();
-
+      case "update_lead":
+      case "bulk_update_leads":
+      case "log_activity": {
         return {
-          success: true,
-          description: `Updated ${current.name || 'lead'}: ${field} → ${newValue}`,
-          changeId: changeRow?.id,
+          success: false,
+          description: `Action "${actionType}" must be rewritten against the deals_v model. Use a deal ID + pipeline (potential/underwriting/lender_management). Tracked in follow-on plan.`,
         };
       }
 
@@ -138,6 +85,10 @@ export async function executeAction(
 
         if (!current) return { success: false, description: "Task not found" };
 
+        if (!isOwner && teamMemberId && current.user_id !== teamMemberId) {
+          return { success: false, description: "Access denied: task not assigned to you" };
+        }
+
         const { error } = await supabase
           .from("tasks")
           .update({ is_completed: true, status: "done", completed_at: new Date().toISOString() })
@@ -196,70 +147,6 @@ export async function executeAction(
         return { success: true, description: `Created note` };
       }
 
-      case "log_activity": {
-        const { leadId, activityType = "note", content } = params;
-        if (!leadId || !content) return { success: false, description: "Missing leadId or content" };
-
-        const commData = {
-          lead_id: leadId,
-          communication_type: activityType,
-          direction: "outbound" as const,
-          content,
-          status: "completed",
-        };
-
-        const { data: comm, error } = await supabase
-          .from("communications")
-          .insert(commData)
-          .select("id")
-          .single();
-
-        if (error) return { success: false, description: `Activity log failed: ${error.message}` };
-
-        await supabase.from("ai_agent_changes").insert({
-          conversation_id: conversationId,
-          user_id: userId,
-          team_member_id: teamMemberId,
-          mode,
-          target_table: "communications",
-          target_id: comm.id,
-          operation: "insert",
-          old_values: null,
-          new_values: commData,
-          description: `Logged ${activityType} activity on lead`,
-          batch_id: batchId,
-          batch_order: batchOrder,
-        });
-
-        return { success: true, description: `Logged ${activityType} activity` };
-      }
-
-      case "bulk_update_leads": {
-        const { lead_ids: leadIdsStr, field, newValue } = params;
-        if (!leadIdsStr || !field || !newValue) {
-          return { success: false, description: "Missing params for bulk update" };
-        }
-
-        let leadIds: string[];
-        try {
-          leadIds = JSON.parse(leadIdsStr);
-        } catch {
-          return { success: false, description: "Invalid lead_ids format" };
-        }
-
-        let updated = 0;
-        for (const leadId of leadIds) {
-          const result = await executeAction(
-            supabase, "update_lead",
-            { leadId, field, newValue, oldValue: "" },
-            userId, teamMemberId, conversationId, mode, batchId, batchOrder + updated, isOwner,
-          );
-          if (result.success) updated++;
-        }
-
-        return { success: true, description: `Bulk updated ${updated}/${leadIds.length} leads` };
-      }
-
       default:
         return { success: false, description: `Unknown action type: ${actionType}` };
     }
@@ -268,7 +155,12 @@ export async function executeAction(
   }
 }
 
-export async function undoChange(supabase: ReturnType<typeof createClient>, changeId: string, userId: string) {
+export async function undoChange(
+  supabase: ReturnType<typeof createClient>,
+  changeId: string,
+  userId: string,
+  isOwner: boolean,
+) {
   const { data: change, error } = await supabase
     .from("ai_agent_changes")
     .select("*")
@@ -278,6 +170,9 @@ export async function undoChange(supabase: ReturnType<typeof createClient>, chan
   if (error || !change) throw new Error("Change not found");
   if (change.status !== "applied" && change.status !== "redone") {
     throw new Error(`Cannot undo change with status: ${change.status}`);
+  }
+  if (!isOwner && change.user_id !== userId) {
+    throw new Error("Forbidden: cannot undo another user's change");
   }
 
   const { target_table, target_id, operation, old_values, new_values } = change;
@@ -310,7 +205,12 @@ export async function undoChange(supabase: ReturnType<typeof createClient>, chan
 }
 
 // Redo a single change
-export async function redoChange(supabase: ReturnType<typeof createClient>, changeId: string) {
+export async function redoChange(
+  supabase: ReturnType<typeof createClient>,
+  changeId: string,
+  userId: string,
+  isOwner: boolean,
+) {
   const { data: change, error } = await supabase
     .from("ai_agent_changes")
     .select("*")
@@ -320,6 +220,9 @@ export async function redoChange(supabase: ReturnType<typeof createClient>, chan
   if (error || !change) throw new Error("Change not found");
   if (change.status !== "undone") {
     throw new Error(`Cannot redo change with status: ${change.status}`);
+  }
+  if (!isOwner && change.user_id !== userId) {
+    throw new Error("Forbidden: cannot redo another user's change");
   }
 
   const { target_table, target_id, operation, new_values } = change;

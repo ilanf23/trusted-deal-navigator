@@ -1,15 +1,13 @@
-import { createClient } from '../_shared/supabase.ts';
+import { getRequestClients } from '../_shared/userClient.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
 import { executeAction, undoChange, redoChange } from '../_shared/aiAgent/executor.ts';
+import { logAiAudit } from '../_shared/aiAgent/audit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,8 +20,8 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { action } = body;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const { authUserId, teamMember, isOwner } = await getUserFromRequest(req, supabase);
+    const { userClient, serviceClient } = getRequestClients(req);
+    const { authUserId, teamMember, isOwner } = await getUserFromRequest(req, userClient);
 
     // === Single action execution (Assist mode confirms) ===
     if (action === 'execute') {
@@ -32,7 +30,7 @@ Deno.serve(async (req) => {
       // Create a batch for single actions too (gracefully handle missing table)
       let batch: { id: string } | null = null;
       try {
-        const { data } = await supabase
+        const { data } = await serviceClient
           .from('ai_agent_batches')
           .insert({
             conversation_id: conversationId,
@@ -49,7 +47,7 @@ Deno.serve(async (req) => {
       }
 
       const result = await executeAction(
-        supabase,
+        serviceClient,
         actionType,
         params,
         authUserId,
@@ -61,6 +59,19 @@ Deno.serve(async (req) => {
         isOwner,
       );
 
+      await logAiAudit({
+        serviceClient,
+        userId: authUserId,
+        conversationId: body.conversationId ?? null,
+        functionName: 'ai-assistant-actions',
+        tool: action,
+        scope: { actionType: body.actionType },
+        recordIds: result?.changeId ? [result.changeId] : [],
+        mode: body.mode ?? 'agent',
+        success: result?.success ?? true,
+        errorMessage: result?.success === false ? result.description : undefined,
+      });
+
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -68,7 +79,21 @@ Deno.serve(async (req) => {
 
     // === Undo single change ===
     if (action === 'undo') {
-      const result = await undoChange(supabase, body.changeId, authUserId);
+      const result = await undoChange(serviceClient, body.changeId, authUserId, isOwner);
+
+      await logAiAudit({
+        serviceClient,
+        userId: authUserId,
+        conversationId: body.conversationId ?? null,
+        functionName: 'ai-assistant-actions',
+        tool: action,
+        scope: { changeId: body.changeId },
+        recordIds: result?.changeId ? [result.changeId] : [],
+        mode: body.mode ?? 'agent',
+        success: result?.success ?? true,
+        errorMessage: result?.success === false ? (result as any).description : undefined,
+      });
+
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -76,7 +101,21 @@ Deno.serve(async (req) => {
 
     // === Redo single change ===
     if (action === 'redo') {
-      const result = await redoChange(supabase, body.changeId);
+      const result = await redoChange(serviceClient, body.changeId, authUserId, isOwner);
+
+      await logAiAudit({
+        serviceClient,
+        userId: authUserId,
+        conversationId: body.conversationId ?? null,
+        functionName: 'ai-assistant-actions',
+        tool: action,
+        scope: { changeId: body.changeId },
+        recordIds: [],
+        mode: body.mode ?? 'agent',
+        success: result?.success ?? true,
+        errorMessage: result?.success === false ? (result as any).description : undefined,
+      });
+
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -85,7 +124,21 @@ Deno.serve(async (req) => {
     // === Undo entire batch ===
     if (action === 'undo_batch') {
       const { batchId } = body;
-      const { data: changes } = await supabase
+
+      const { data: batch } = await serviceClient
+        .from('ai_agent_batches')
+        .select('user_id')
+        .eq('id', batchId)
+        .single();
+
+      if (!isOwner && batch?.user_id !== authUserId) {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden: cannot undo another user\'s batch' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      const { data: changes } = await serviceClient
         .from('ai_agent_changes')
         .select('id')
         .eq('batch_id', batchId)
@@ -95,7 +148,7 @@ Deno.serve(async (req) => {
       let undone = 0;
       for (const change of (changes || [])) {
         try {
-          await undoChange(supabase, change.id, authUserId);
+          await undoChange(serviceClient, change.id, authUserId, isOwner);
           undone++;
         } catch (e) {
           console.error(`Failed to undo change ${change.id}:`, e);
@@ -103,15 +156,29 @@ Deno.serve(async (req) => {
       }
 
       // Update batch status
-      await supabase
+      await serviceClient
         .from('ai_agent_batches')
         .update({
           status: undone === (changes?.length || 0) ? 'fully_undone' : 'partially_undone',
         })
         .eq('id', batchId);
 
+      const result = { success: true, undone, total: changes?.length || 0 };
+
+      await logAiAudit({
+        serviceClient,
+        userId: authUserId,
+        conversationId: body.conversationId ?? null,
+        functionName: 'ai-assistant-actions',
+        tool: action,
+        scope: { batchId: body.batchId },
+        recordIds: [],
+        mode: body.mode ?? 'agent',
+        success: true,
+      });
+
       return new Response(
-        JSON.stringify({ success: true, undone, total: changes?.length || 0 }),
+        JSON.stringify(result),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -122,6 +189,17 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error('ai-assistant-actions error:', error);
+    try {
+      const { serviceClient } = getRequestClients(req);
+      await logAiAudit({
+        serviceClient,
+        userId: '00000000-0000-0000-0000-000000000000',
+        functionName: 'ai-assistant-actions',
+        tool: 'actions_run',
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+    } catch { /* never fail the response on audit error */ }
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
