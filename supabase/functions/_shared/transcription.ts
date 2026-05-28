@@ -1,4 +1,5 @@
 import { createClient } from './supabase.ts';
+import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_API_KEY_ENV, llmHeaders } from './llmConfig.ts';
 
 /**
  * Shared transcription pipeline for Twilio recordings.
@@ -10,9 +11,11 @@ import { createClient } from './supabase.ts';
  * Stages:
  *   1. Fetch the Twilio recording with HTTP Basic auth (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN).
  *   2. POST the audio to OpenAI Whisper (whisper-1) for raw transcription (OPENAI_API_KEY).
- *   3. Send raw transcript through Lovable AI Gateway (google/gemini-3-flash-preview)
- *      for speaker-label formatting (LOVABLE_API_KEY). Falls back to the raw
- *      transcript if speaker labeling fails — never blocks transcript persistence.
+ *      Whisper is speech-to-text and is NOT routed through _shared/llmConfig.ts —
+ *      the chat model cannot transcribe audio.
+ *   3. Send raw transcript through the configured chat model (see _shared/llmConfig.ts)
+ *      for speaker-label formatting. Falls back to the raw transcript if speaker
+ *      labeling fails — never blocks transcript persistence.
  *   4. Persist the labeled transcript to communications.transcript.
  */
 
@@ -162,7 +165,7 @@ export async function addSpeakerLabels(
   direction: string,
   agentName: string,
 ): Promise<string> {
-  const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+  const lovableApiKey = Deno.env.get(LLM_API_KEY_ENV);
   if (!lovableApiKey) {
     return rawTranscript;
   }
@@ -172,14 +175,11 @@ export async function addSpeakerLabels(
   // persist *something* — never let labeling outages eat the transcript.
   try {
     return await withRetry('gemini-speaker-labels', async () => {
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const response = await fetch(LLM_CHAT_ENDPOINT, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${lovableApiKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers: llmHeaders(lovableApiKey),
         body: JSON.stringify({
-          model: 'google/gemini-3-flash-preview',
+          model: LLM_MODEL,
           messages: [
             {
               role: 'system',

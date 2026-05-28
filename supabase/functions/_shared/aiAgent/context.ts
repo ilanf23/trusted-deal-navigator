@@ -37,13 +37,6 @@ export async function buildChatContext(
     .order("created_at", { ascending: false })
     .limit(50);
 
-  // Fetch notes
-  const { data: notes } = await supabase
-    .from("notes")
-    .select("id, content, is_pinned, created_at")
-    .order("created_at", { ascending: false })
-    .limit(20);
-
   // Fetch upcoming appointments
   const { data: appointments } = await supabase
     .from("appointments")
@@ -140,12 +133,6 @@ ${(() => {
   const staleDeals = deals?.filter(d => new Date(d.updated_at) < sevenDaysAgo && d.status !== 'funded');
   return staleDeals?.map(d => `- ${d.name}${d.company_name ? ` (${d.company_name})` : ''}: Last activity ${Math.floor((Date.now() - new Date(d.updated_at).getTime()) / (1000 * 60 * 60 * 24))} days ago`).join('\n') || 'All deals are up to date';
 })()}
-
-### Pinned Notes
-${notes?.filter(n => n.is_pinned).map(n => `- ${n.content.substring(0, 200)}`).join('\n') || 'No pinned notes'}
-
-### Recent Notes
-${notes?.slice(0, 5).map(n => `- ${new Date(n.created_at).toLocaleDateString()}: ${n.content.substring(0, 150)}${n.content.length > 150 ? '...' : ''}`).join('\n') || 'No recent notes'}
 `;
 
   // Fetch Dropbox files linked to leads for AI context

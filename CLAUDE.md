@@ -68,7 +68,7 @@ Three roles stored in `users.app_role` column (using `app_role` enum): `admin`, 
 
 - **Founders** (Ilan/Brad/Adam): full `/superadmin` + personal dashboards at `/superadmin/:name`
 - **Employees**: only their own `/admin/:name` dashboard — enforced by `EmployeeRoute` component
-- **Ilan** specifically gets a developer-mode sidebar with extra tools (bug testing, module tracker, users-roles)
+- **Ilan** specifically gets a developer-mode sidebar with extra tools (bug testing, users-roles)
 
 The `useTeamMember()` hook is the primary way to get the current user's team info and check `isOwner`. Route guards: `ProtectedRoute` (auth), `EmployeeRoute` (per-employee access).
 

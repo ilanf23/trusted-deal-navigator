@@ -12,7 +12,6 @@ Self-contained dashboard cards with own data fetching:
 - `EvanMetricsWidget` — KPIs and performance stats
 - `EvanCommunicationsWidget` — recent calls, emails, SMS
 - `EvanLeadsWidget` — assigned lead pipeline
-- `EvanNotesWidget` — personal notes
 - `EvanTasksWidget` — task overview
 - `calendar/CalendarView` — full Google Calendar-style calendar (FullCalendar engine)
 

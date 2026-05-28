@@ -1,5 +1,6 @@
 import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_API_KEY_ENV, llmHeaders } from "../_shared/llmConfig.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -263,9 +264,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const LLM_API_KEY = Deno.env.get(LLM_API_KEY_ENV);
+    if (!LLM_API_KEY) {
+      throw new Error(`${LLM_API_KEY_ENV} is not configured`);
     }
 
     let sanitizedContextStr = buildSanitizedContext(leadContext);
@@ -343,14 +344,11 @@ ${actionInstructions}`
       }
     ];
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(LLM_CHAT_ENDPOINT, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: llmHeaders(LLM_API_KEY),
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: LLM_MODEL,
         messages,
         stream: false,
         temperature: 0.2,

@@ -2,6 +2,7 @@ import { createClient } from "../_shared/supabase.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { getValidGoogleAccessToken } from "../_shared/googleToken.ts";
+import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_API_KEY_ENV, llmHeaders } from "../_shared/llmConfig.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,7 +72,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
+    const lovableApiKey = Deno.env.get(LLM_API_KEY_ENV)!;
     const resendApiKey = Deno.env.get("RESEND_API_KEY")!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -141,14 +142,11 @@ Respond with a JSON object (no markdown) with these exact fields:
 }`;
 
       try {
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiResponse = await fetch(LLM_CHAT_ENDPOINT, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${lovableApiKey}`,
-            "Content-Type": "application/json",
-          },
+          headers: llmHeaders(lovableApiKey),
           body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
+            model: LLM_MODEL,
             messages: [
               { role: "system", content: "You are an expert commercial lending sales coach. Analyze calls and provide constructive feedback. Always respond with valid JSON only, no markdown." },
               { role: "user", content: analysisPrompt }

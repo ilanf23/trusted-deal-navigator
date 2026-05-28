@@ -52,12 +52,12 @@
 - `Invoices.tsx`, `RateWatch.tsx`
 
 **Admin Tools:**
-- `UsersAndRoles.tsx`, `ModuleTracker.tsx`, `AIChanges.tsx`
+- `UsersAndRoles.tsx`, `AIChanges.tsx`
 - `BugReporting.tsx`, `BugTesting.tsx`, `DevNotes.tsx`
 
 **Personal Dashboards:**
 - `IlansPage.tsx`, `BradsPage.tsx`, `AdamsPage.tsx`, `MaurasPage.tsx`, `WendysPage.tsx`
-- `IlanTeamEvanBugs.tsx`, `IlanTeamEvanDevNotes.tsx`, `IlanTeamEvanNotes.tsx`
+- `IlanTeamEvanBugs.tsx`, `IlanTeamEvanDevNotes.tsx`
 
 ### Portal Pages (5 files, `portal/`)
 Client-only (`ProtectedRoute` with `clientOnly`), routes at `/user/*`:

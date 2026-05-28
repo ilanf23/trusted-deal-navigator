@@ -11,6 +11,7 @@
 import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { getProviderKey } from "../_shared/userIntegrations.ts";
+import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_PROVIDER, LLM_API_KEY_ENV, llmHeaders } from "../_shared/llmConfig.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -337,9 +338,9 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
     velocity_score: Number(velocityScore.toFixed(5)),
   };
 
-  // notes are intentionally omitted from feature engineering — the public
-  // notes table has no lead linkage in the generated types, so it's not
-  // safely queryable for this entity in v1
+  // notes are intentionally omitted from feature engineering — the standalone
+  // notes feature was removed; record-level notes now live in `activities`
+  // (activity_type = 'note') and are not wired into scoring in v1
   const recentNotes: RecentNoteSnippet[] = [];
 
   return {
@@ -491,24 +492,21 @@ Deno.serve(async (req) => {
       },
     ];
 
-    const OPENAI_API_KEY = await getProviderKey(
+    const LLM_API_KEY = await getProviderKey(
       supabase,
       teamMemberId,
-      "openai",
-      "OPENAI_API_KEY",
+      LLM_PROVIDER,
+      LLM_API_KEY_ENV,
     );
-    if (!OPENAI_API_KEY) {
-      throw new Error("No OpenAI API key available (user integration or OPENAI_API_KEY)");
+    if (!LLM_API_KEY) {
+      throw new Error(`No LLM API key available (user integration or ${LLM_API_KEY_ENV})`);
     }
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch(LLM_CHAT_ENDPOINT, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: llmHeaders(LLM_API_KEY),
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: LLM_MODEL,
         messages,
         max_tokens: 500,
         temperature: 0.1,
@@ -606,7 +604,7 @@ Deno.serve(async (req) => {
         new_values: { win_percentage: clampedScore },
         description: `AI scored deal at ${clampedScore}% win probability`,
         ai_reasoning: reasoning,
-        model_used: "gpt-4o-mini",
+        model_used: LLM_MODEL,
         status: "applied",
         batch_id: null,
         batch_order: 0,

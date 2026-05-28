@@ -148,24 +148,6 @@
 | resolved_at        | timestamp with time zone | No          | Yes      | -              |
 | assigned_to_id     | uuid                     | No          | Yes      | users          |
 
-## Table: `business_requirements`
-
-| Column Name         | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ------------------- | ------------------------ | ----------- | -------- | -------------- |
-| id                  | uuid                     | Yes         | No       | -              |
-| module_id           | uuid                     | No          | Yes      | modules        |
-| requirement_id      | text                     | No          | No       | -              |
-| title               | text                     | No          | No       | -              |
-| description         | text                     | No          | Yes      | -              |
-| acceptance_criteria | text                     | No          | Yes      | -              |
-| status              | text                     | No          | No       | -              |
-| assigned_to         | text                     | No          | Yes      | -              |
-| priority            | text                     | No          | No       | -              |
-| created_at          | timestamp with time zone | No          | No       | -              |
-| updated_at          | timestamp with time zone | No          | No       | -              |
-| portal              | text                     | No          | Yes      | -              |
-| is_built            | boolean                  | No          | No       | -              |
-
 ## Table: `call_events`
 
 | Column Name              | Data Type                | Primary Key | Nullable | Foreign Key To |
@@ -785,31 +767,6 @@
 | content         | text                     | No          | No       | -              |
 | read_at         | timestamp with time zone | No          | Yes      | -              |
 | created_at      | timestamp with time zone | No          | No       | -              |
-
-## Table: `module_tasks`
-
-| Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ----------- | ------------------------ | ----------- | -------- | -------------- |
-| id          | uuid                     | Yes         | No       | -              |
-| module_id   | uuid                     | No          | Yes      | modules        |
-| title       | text                     | No          | No       | -              |
-| status      | text                     | No          | No       | -              |
-| created_at  | timestamp with time zone | No          | No       | -              |
-
-## Table: `modules`
-
-| Column Name    | Data Type                | Primary Key | Nullable | Foreign Key To |
-| -------------- | ------------------------ | ----------- | -------- | -------------- |
-| id             | uuid                     | Yes         | No       | -              |
-| name           | text                     | No          | No       | -              |
-| description    | text                     | No          | Yes      | -              |
-| business_owner | text                     | No          | Yes      | -              |
-| priority       | text                     | No          | No       | -              |
-| status         | text                     | No          | No       | -              |
-| icon           | text                     | No          | Yes      | -              |
-| created_at     | timestamp with time zone | No          | No       | -              |
-| updated_at     | timestamp with time zone | No          | No       | -              |
-| portal         | text                     | No          | Yes      | -              |
 
 ## Table: `notes`
 

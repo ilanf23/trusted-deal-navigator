@@ -68,7 +68,6 @@ const Calendar = lazy(() => import("./pages/admin/Calendar"));
 const Scorecard = lazy(() => import("./pages/admin/Scorecard"));
 const ScoreSheet = lazy(() => import("./pages/admin/ScoreSheet"));
 const DevNotes = lazy(() => import("./pages/admin/DevNotes"));
-const ModuleTracker = lazy(() => import("./pages/admin/ModuleTracker"));
 const MaurasPage = lazy(() => import("./pages/admin/MaurasPage"));
 const WendysPage = lazy(() => import("./pages/admin/WendysPage"));
 const BradsPage = lazy(() => import("./pages/admin/BradsPage"));
@@ -80,7 +79,6 @@ const BugTesting = lazy(() => import("./pages/admin/BugTesting"));
 const BugReporting = lazy(() => import("./pages/admin/BugReporting"));
 const IlanTeamEvanBugs = lazy(() => import("./pages/admin/IlanTeamEvanBugs"));
 const IlanTeamEvanDevNotes = lazy(() => import("./pages/admin/IlanTeamEvanDevNotes"));
-const IlanTeamEvanNotes = lazy(() => import("./pages/admin/IlanTeamEvanNotes"));
 const UsersAndRoles = lazy(() => import("./pages/admin/UsersAndRoles"));
 const DropboxPage = lazy(() => import("./pages/admin/Dropbox"));
 const DropboxCallback = lazy(() => import("./pages/admin/DropboxCallback"));
@@ -172,8 +170,6 @@ const App = () => (
                 <Route path="/superadmin/ilan/gmail" element={<EmployeeRoute employeeName="Ilan"><IlansGmail /></EmployeeRoute>} />
                 <Route path="/superadmin/ilan/team/evan/bugs" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanBugs /></EmployeeRoute>} />
                 <Route path="/superadmin/ilan/team/evan/dev-notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanDevNotes /></EmployeeRoute>} />
-                <Route path="/superadmin/ilan/team/evan/notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanNotes /></EmployeeRoute>} />
-                <Route path="/superadmin/ilan/module-tracker" element={<EmployeeRoute employeeName="Ilan"><ModuleTracker /></EmployeeRoute>} />
                 <Route path="/superadmin/ilan/users-roles" element={<EmployeeRoute employeeName="Ilan"><UsersAndRoles /></EmployeeRoute>} />
               </Route>
               
@@ -238,8 +234,6 @@ const App = () => (
                 <Route path="/admin/ilan/gmail" element={<EmployeeRoute employeeName="Ilan"><IlansGmail /></EmployeeRoute>} />
                 <Route path="/admin/ilan/team/evan/bugs" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanBugs /></EmployeeRoute>} />
                 <Route path="/admin/ilan/team/evan/dev-notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanDevNotes /></EmployeeRoute>} />
-                <Route path="/admin/ilan/team/evan/notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanNotes /></EmployeeRoute>} />
-                <Route path="/admin/ilan/module-tracker" element={<EmployeeRoute employeeName="Ilan"><ModuleTracker /></EmployeeRoute>} />
                 <Route path="/admin/ilan/users-roles" element={<EmployeeRoute employeeName="Ilan"><UsersAndRoles /></EmployeeRoute>} />
               </Route>
 

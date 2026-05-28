@@ -40,7 +40,6 @@ const FloatingBugReport = () => {
         submitted_by: user?.email?.split('@')[0] || 'Unknown',
         submitted_by_email: user?.email,
         browser_info: navigator.userAgent,
-        assigned_to: 'Ilan',
       });
       if (error) throw error;
     },
@@ -50,7 +49,10 @@ const FloatingBugReport = () => {
       setSubmitted(true);
       toast.success('Bug report sent to Ilan!');
     },
-    onError: () => toast.error('Failed to submit bug report'),
+    onError: (err: any) => {
+      console.error('Bug report submit failed:', err);
+      toast.error(`Failed to submit bug report: ${err?.message || err?.code || 'unknown error'}`);
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -2,6 +2,7 @@ import { getRequestClients } from '../_shared/userClient.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
 import { getProviderKey } from '../_shared/userIntegrations.ts';
+import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_PROVIDER, LLM_API_KEY_ENV, llmHeaders } from '../_shared/llmConfig.ts';
 import { buildChatContext } from '../_shared/aiAgent/context.ts';
 import { logAiAudit } from '../_shared/aiAgent/audit.ts';
 
@@ -22,14 +23,14 @@ Deno.serve(async (req) => {
     const { userClient, serviceClient } = getRequestClients(req);
     const { teamMember, authUserId, isOwner } = await getUserFromRequest(req, userClient);
 
-    const OPENAI_API_KEY = await getProviderKey(
+    const LLM_API_KEY = await getProviderKey(
       serviceClient,
       teamMember?.id ?? null,
-      'openai',
-      'OPENAI_API_KEY',
+      LLM_PROVIDER,
+      LLM_API_KEY_ENV,
     );
-    if (!OPENAI_API_KEY) {
-      throw new Error('No OpenAI API key available (user integration or OPENAI_API_KEY)');
+    if (!LLM_API_KEY) {
+      throw new Error(`No LLM API key available (user integration or ${LLM_API_KEY_ENV})`);
     }
 
     const body = await req.json();
@@ -95,7 +96,6 @@ Include these tags inline in your response text. Each action will be rendered as
 <action type="create_task" title="{title}" dueDate="{YYYY-MM-DD}" priority="{high|medium|low}" leadId="{leadId}" label="Create task: {title}" />
 <action type="complete_task" taskId="{taskId}" label="Complete task: {title}" />
 <action type="log_activity" leadId="{leadId}" activityType="{call|email|meeting|note}" content="{description}" label="Log {type} activity" />
-<action type="create_note" leadId="{leadId}" content="{note text}" label="Create note on {Lead Name}" />
 
 ### Rules
 - Always explain what you're suggesting BEFORE the action tags
@@ -111,14 +111,11 @@ Include these tags inline in your response text. Each action will be rendered as
       systemPrompt = `${basePrompt}${chatCapabilities}${pageContext}\n\n${contextData}`;
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(LLM_CHAT_ENDPOINT, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: llmHeaders(LLM_API_KEY),
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: LLM_MODEL,
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,

@@ -54,21 +54,6 @@ export const agentTools = [
   {
     type: "function" as const,
     function: {
-      name: "create_note",
-      description: "Create a note, optionally linked to a lead",
-      parameters: {
-        type: "object",
-        properties: {
-          content: { type: "string" },
-          lead_id: { type: "string", description: "Optional lead UUID" },
-        },
-        required: ["content"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
       name: "log_activity",
       description: "Log an activity (call, email, meeting, note) on a lead",
       parameters: {

@@ -114,39 +114,6 @@ export async function executeAction(
         return { success: true, description: `Completed task: "${current.title}"` };
       }
 
-      case "create_note": {
-        const { content, leadId } = params;
-        if (!content) return { success: false, description: "Missing content" };
-
-        const noteData: Record<string, any> = { content, is_pinned: false };
-        if (leadId) noteData.lead_id = leadId;
-
-        const { data: note, error } = await supabase
-          .from("notes")
-          .insert(noteData)
-          .select("id")
-          .single();
-
-        if (error) return { success: false, description: `Note creation failed: ${error.message}` };
-
-        await supabase.from("ai_agent_changes").insert({
-          conversation_id: conversationId,
-          user_id: userId,
-          team_member_id: teamMemberId,
-          mode,
-          target_table: "notes",
-          target_id: note.id,
-          operation: "insert",
-          old_values: null,
-          new_values: noteData,
-          description: `Created note: "${content.substring(0, 50)}..."`,
-          batch_id: batchId,
-          batch_order: batchOrder,
-        });
-
-        return { success: true, description: `Created note` };
-      }
-
       default:
         return { success: false, description: `Unknown action type: ${actionType}` };
     }

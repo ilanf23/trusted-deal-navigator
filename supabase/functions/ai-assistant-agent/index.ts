@@ -2,6 +2,7 @@ import { getRequestClients } from '../_shared/userClient.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
 import { getProviderKey } from '../_shared/userIntegrations.ts';
+import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_PROVIDER, LLM_API_KEY_ENV, llmHeaders } from '../_shared/llmConfig.ts';
 import { executeAction } from '../_shared/aiAgent/executor.ts';
 import { agentTools } from '../_shared/aiAgent/tools.ts';
 import { logAiAudit } from '../_shared/aiAgent/audit.ts';
@@ -25,14 +26,14 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { prompt, conversationId, teamMemberId: tmId } = body;
-    const OPENAI_API_KEY = await getProviderKey(
+    const LLM_API_KEY = await getProviderKey(
       serviceClient,
       teamMember?.id ?? null,
-      "openai",
-      "OPENAI_API_KEY",
+      LLM_PROVIDER,
+      LLM_API_KEY_ENV,
     );
-    if (!OPENAI_API_KEY) {
-      throw new Error("No OpenAI API key available (user integration or OPENAI_API_KEY)");
+    if (!LLM_API_KEY) {
+      throw new Error(`No LLM API key available (user integration or ${LLM_API_KEY_ENV})`);
     }
 
     // Fetch context data (deals, tasks). Owners can target other team members
@@ -111,7 +112,6 @@ Today: ${new Date().toISOString().split("T")[0]}`;
 - update_lead: Update any field on a lead (status, notes, next_action, waiting_on, etc.)
 - create_task: Create a new task with title, priority, due date
 - complete_task: Mark a task as done
-- create_note: Add a note, optionally linked to a lead
 - log_activity: Log a call, email, meeting, or note activity on a lead
 - bulk_update_leads: Update the same field on multiple leads at once
 
@@ -127,14 +127,11 @@ ${contextStr}`,
           while (iterations < maxIterations) {
             iterations++;
 
-            const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            const response = await fetch(LLM_CHAT_ENDPOINT, {
               method: "POST",
-              headers: {
-                Authorization: `Bearer ${OPENAI_API_KEY}`,
-                "Content-Type": "application/json",
-              },
+              headers: llmHeaders(LLM_API_KEY),
               body: JSON.stringify({
-                model: "gpt-4o-mini",
+                model: LLM_MODEL,
                 messages: openaiMessages,
                 tools: agentTools,
                 tool_choice: "auto",
@@ -177,8 +174,6 @@ ${contextStr}`,
                   actionParams = { title: fnArgs.title, leadId: fnArgs.lead_id || "", priority: fnArgs.priority || "medium", dueDate: fnArgs.due_date || "", description: fnArgs.description || "" };
                 } else if (fnName === "complete_task") {
                   actionParams = { taskId: fnArgs.task_id };
-                } else if (fnName === "create_note") {
-                  actionParams = { content: fnArgs.content, leadId: fnArgs.lead_id || "" };
                 } else if (fnName === "log_activity") {
                   actionParams = { leadId: fnArgs.lead_id, activityType: fnArgs.activity_type, content: fnArgs.content };
                 } else if (fnName === "bulk_update_leads") {

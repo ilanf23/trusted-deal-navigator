@@ -2,6 +2,7 @@ import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { getUserFromRequest } from "../_shared/auth.ts";
 import { getProviderKey } from "../_shared/userIntegrations.ts";
+import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_PROVIDER, LLM_API_KEY_ENV, llmHeaders } from "../_shared/llmConfig.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,14 +31,14 @@ Deno.serve(async (req) => {
       teamMemberId = null;
     }
 
-    const OPENAI_API_KEY = await getProviderKey(
+    const LLM_API_KEY = await getProviderKey(
       supabaseAdmin,
       teamMemberId,
-      "openai",
-      "OPENAI_API_KEY",
+      LLM_PROVIDER,
+      LLM_API_KEY_ENV,
     );
-    if (!OPENAI_API_KEY) {
-      throw new Error("No OpenAI API key available (user integration or OPENAI_API_KEY)");
+    if (!LLM_API_KEY) {
+      throw new Error(`No LLM API key available (user integration or ${LLM_API_KEY_ENV})`);
     }
 
     const { message, leadContext } = await req.json();
@@ -90,14 +91,11 @@ Instructions:
 - Be concise but informative
 - If you don't have enough information to make a recommendation, ask clarifying questions about loan amount, purpose, or business type`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(LLM_CHAT_ENDPOINT, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: llmHeaders(LLM_API_KEY),
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: LLM_MODEL,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: message },
