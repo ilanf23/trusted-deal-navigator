@@ -1,9 +1,7 @@
-import { Bot, MessageCircle, Zap, CheckCircle2, Sparkles, ArrowRight } from 'lucide-react';
+import { MessageCircle, CheckCircle2, Sparkles, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { AIMode } from './CLXAssistantHeader';
 
 interface CLXAssistantEmptyStateProps {
-  mode: AIMode;
   currentPage: string;
   suggestedTasks: Array<{ id: string; title: string; priority: string | null; due_date: string | null }>;
   onSubmit: (text: string) => void;
@@ -72,91 +70,6 @@ const chatPrompts: Record<string, string[]> = {
   ],
 };
 
-const assistPrompts: Record<string, string[]> = {
-  pipeline: [
-    'Help me follow up with stale leads',
-    'Draft emails for leads awaiting documents',
-    'Update all discovery leads that are ready',
-    'Create check-in tasks for warm opportunities',
-  ],
-  general: [
-    'Help me follow up with a lead',
-    'Create tasks for my pending deals',
-    'Draft a follow-up email for a client',
-    'Plan my outreach for this week',
-  ],
-  leads: [
-    'Help me follow up with this lead',
-    'Create a task for lead outreach',
-    'Update lead statuses in bulk',
-    'Draft an intro email for new leads',
-  ],
-  tasks: [
-    'Help me clear my overdue tasks',
-    'Create follow-up tasks for my leads',
-    'Reorganize my task priorities',
-    'Break down a big task into steps',
-  ],
-  email: [
-    'Draft a follow-up email',
-    'Help me respond to this email',
-    'Create email templates for common responses',
-    'Write a check-in email to a quiet lead',
-  ],
-  dashboard: [
-    'Set up my day with tasks and follow-ups',
-    'Help me prioritize my morning workflow',
-    'Draft check-in emails for active deals',
-    'Plan a focused 90-minute block',
-  ],
-  calls: [
-    'Log notes from my last call',
-    'Create follow-up tasks from recent calls',
-    'Draft a recap email for a call',
-    'Schedule a callback for missed calls',
-  ],
-  calendar: [
-    'Schedule a follow-up meeting',
-    'Create tasks from today\'s meetings',
-    'Help me prepare for upcoming meetings',
-    'Block focus time on my calendar',
-  ],
-};
-
-const agentPrompts = [
-  'Update all stale leads to review status',
-  'Create follow-up tasks for all active deals',
-  'Log activity on all leads contacted today',
-  'Move qualified discovery leads to underwriting',
-];
-
-const modeMeta: Record<AIMode, { eyebrow: string; title: string; subtitle: string; icon: typeof MessageCircle; tint: string; iconBg: string }> = {
-  chat: {
-    eyebrow: 'Chat',
-    title: 'How can I help today?',
-    subtitle: 'Ask anything about your pipeline, leads, tasks, or calendar. I have read access to your data.',
-    icon: MessageCircle,
-    tint: 'text-primary',
-    iconBg: 'from-primary/15 to-primary/5',
-  },
-  assist: {
-    eyebrow: 'Assist',
-    title: 'What should we tackle?',
-    subtitle: 'I\'ll propose concrete actions for you to confirm before anything happens.',
-    icon: Zap,
-    tint: 'text-amber-600 dark:text-amber-400',
-    iconBg: 'from-amber-400/15 to-amber-400/5',
-  },
-  agent: {
-    eyebrow: 'Agent',
-    title: 'Hand me the work',
-    subtitle: "I'll make changes autonomously. Everything is logged and reversible from the AI Changes page.",
-    icon: Bot,
-    tint: 'text-violet-600 dark:text-violet-400',
-    iconBg: 'from-violet-500/15 to-violet-500/5',
-  },
-};
-
 const getGreeting = (name?: string | null) => {
   const hour = new Date().getHours();
   const part = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
@@ -191,42 +104,40 @@ const PromptCard = ({
   </button>
 );
 
-const CLXAssistantEmptyState = ({ mode, currentPage, suggestedTasks, onSubmit, greetingName }: CLXAssistantEmptyStateProps) => {
+const CLXAssistantEmptyState = ({ currentPage, suggestedTasks, onSubmit, greetingName }: CLXAssistantEmptyStateProps) => {
   const pageCtx = getPageContext(currentPage);
-  const meta = modeMeta[mode];
-  const Icon = meta.icon;
-
-  const prompts =
-    mode === 'chat'
-      ? chatPrompts[pageCtx] || chatPrompts.general
-      : mode === 'assist'
-      ? assistPrompts[pageCtx] || assistPrompts.general
-      : agentPrompts;
+  const prompts = chatPrompts[pageCtx] || chatPrompts.general;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-4 pb-8 pt-10 md:pt-16">
-      <div className={cn('mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br shadow-sm', meta.iconBg)}>
-        <Icon className={cn('h-7 w-7', meta.tint)} strokeWidth={1.75} />
+      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 shadow-sm">
+        <MessageCircle className="h-7 w-7 text-primary" strokeWidth={1.75} />
       </div>
 
       <div className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         <Sparkles className="h-3 w-3" />
-        {meta.eyebrow} mode
+        Chat
       </div>
       <h1 className="text-center text-2xl font-semibold tracking-tight md:text-3xl">
-        {mode === 'chat' ? getGreeting(greetingName) : meta.title}
+        {getGreeting(greetingName)}
       </h1>
       <p className="mt-2 max-w-xl text-center text-sm text-muted-foreground">
-        {meta.subtitle}
+        Ask anything about your pipeline, leads, tasks, or calendar. I have read access to your data.
       </p>
 
       <div className="mt-8 grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2">
         {prompts.map((prompt) => (
-          <PromptCard key={prompt} prompt={prompt} onSubmit={onSubmit} icon={Icon} iconClass={cn(meta.tint, 'opacity-70 group-hover:opacity-100')} />
+          <PromptCard
+            key={prompt}
+            prompt={prompt}
+            onSubmit={onSubmit}
+            icon={MessageCircle}
+            iconClass="text-primary opacity-70 group-hover:opacity-100"
+          />
         ))}
       </div>
 
-      {mode === 'chat' && suggestedTasks.length > 0 && (
+      {suggestedTasks.length > 0 && (
         <div className="mt-8 w-full">
           <div className="mb-2 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
             Help with your tasks

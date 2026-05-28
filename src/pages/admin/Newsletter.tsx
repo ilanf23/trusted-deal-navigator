@@ -515,7 +515,7 @@ const Newsletter = () => {
 
                       {/* Leads table */}
                       <ScrollArea className="flex-1 border rounded-md">
-                        <Table>
+                        <Table className="[&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                           <TableHeader>
                             <TableRow>
                               <TableHead className="w-[50px]"></TableHead>
@@ -723,7 +723,7 @@ The Commercial Lending X Team"
                     <p>No campaigns yet. Create your first campaign to get started.</p>
                   </div>
                 ) : (
-                  <Table>
+                  <Table className="[&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Campaign</TableHead>
@@ -739,9 +739,12 @@ The Commercial Lending X Team"
                       {filteredCampaigns.map((campaign) => (
                         <TableRow key={campaign.id}>
                           <TableCell>
+                            {/* Two-line campaign cell with reserved height so rows stay uniform. */}
                             <div>
-                              <div className="font-medium">{campaign.name}</div>
-                              <div className="text-sm text-muted-foreground">{campaign.subject}</div>
+                              <div className="font-medium truncate" title={campaign.name}>{campaign.name}</div>
+                              <div className="text-sm text-muted-foreground truncate" title={campaign.subject ?? undefined}>
+                                {campaign.subject || ' '}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>{getStatusBadge(campaign.status)}</TableCell>
@@ -983,7 +986,7 @@ The Commercial Lending X Team"
                       <p>No sent campaigns yet. Send your first campaign to see performance data.</p>
                     </div>
                   ) : (
-                    <Table>
+                    <Table className="[&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Campaign</TableHead>

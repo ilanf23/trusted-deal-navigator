@@ -43,8 +43,6 @@
 - `useLoanVolumeLog` — loan tracking with derived signals: stale_deal, missing_lender, no_clx_agreement, revenue_at_risk, overdue_closing.
 
 ## AI & Automation
-- `useActionParser` — parses `<action>` XML tags from AI responses. Returns `cleanText` + `actions[]`.
-- `useActionExecutor` — executes AI-proposed actions via `ai-assistant-actions` / `ai-assistant-agent` (URL from `src/lib/aiAssistantRouter.ts`). Supports undo batches.
 - `useAIChanges` — AI change history with undo/redo. Queries `ai_agent_changes`/`ai_agent_batches`. Filters by date, user, mode, status, table.
 
 ## System

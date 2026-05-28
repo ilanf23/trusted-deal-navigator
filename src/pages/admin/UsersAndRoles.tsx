@@ -387,7 +387,7 @@ const UsersAndRoles = () => {
           <>
             {/* Desktop Table */}
             <div className="hidden md:block">
-              <Table>
+              <Table className="[&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
                     <TableHead className="w-10">

@@ -318,7 +318,7 @@ const AdminMarketing = () => {
             <CardDescription>Click on a source to view all leads from that channel</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table className="min-w-[600px]">
+            <Table className="min-w-[600px] [&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
               <TableHeader>
                 <TableRow>
                   <TableHead>Source</TableHead>
@@ -387,7 +387,7 @@ const AdminMarketing = () => {
               <CardDescription>{filteredLeadsBySource.length} leads from this source</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table className="min-w-[600px]">
+              <Table className="min-w-[600px] [&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>

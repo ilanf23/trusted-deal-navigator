@@ -67,7 +67,7 @@ const AIChangesTable = ({
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm [&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
           <thead>
             <tr className="border-b bg-muted/50">
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Time</th>

@@ -130,7 +130,7 @@ const AdamsPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table className="min-w-[500px]">
+              <Table className="min-w-[500px] [&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Lender</TableHead>
@@ -170,7 +170,7 @@ const AdamsPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table className="min-w-[500px]">
+              <Table className="min-w-[500px] [&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Client</TableHead>
