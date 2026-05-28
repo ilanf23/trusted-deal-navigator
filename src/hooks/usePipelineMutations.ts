@@ -23,70 +23,51 @@ export async function moveDealBetweenPipelines(
   target: CrmTable,
 ): Promise<void> {
   if (source === target) return;
-  // RPC is not in auto-generated types.ts yet — cast until types are regenerated.
-  const { error } = await (supabase.rpc as any)('move_deal_between_pipelines', {
-    p_deal_id: dealId,
-    p_source: source,
-    p_target: target,
-  });
+  // Single-table model (#97): moving a deal is a one-field pipeline update plus
+  // re-seeding stage_id to the first stage of the target system pipeline. The
+  // old move_deal_between_pipelines RPC (which copied rows between tables) is gone.
+  const { data: stage } = await supabase
+    .from('pipeline_stages')
+    .select('id, pipelines!inner(name, is_system)')
+    .eq('pipelines.name', PIPELINE_LABELS[target])
+    .eq('pipelines.is_system', true)
+    .order('position', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from('deals')
+    .update({ pipeline: target, stage_id: (stage as { id?: string } | null)?.id ?? null })
+    .eq('id', dealId);
   if (error) throw error;
 }
 
+// Every deal — regardless of pipeline — uses a single polymorphic discriminator.
 const ENTITY_TYPE_MAP: Record<CrmTable, EntityType> = {
-  potential: 'potential',
-  underwriting: 'underwriting',
-  lender_management: 'lender_management',
+  potential: 'deal',
+  underwriting: 'deal',
+  lender_management: 'deal',
 };
 
-async function updateDealStage(table: CrmTable, dealId: string, newStageId: string) {
+async function updateDealStage(_pipeline: CrmTable, dealId: string, newStageId: string) {
   const updateData = { stage_id: newStageId, updated_at: new Date().toISOString() };
-  if (table === 'potential') {
-    return supabase.from('potential').update(updateData).eq('id', dealId);
-  } else if (table === 'underwriting') {
-    return supabase.from('underwriting').update(updateData).eq('id', dealId);
-  } else {
-    return supabase.from('lender_management').update(updateData).eq('id', dealId);
-  }
+  return supabase.from('deals').update(updateData).eq('id', dealId);
 }
 
-async function insertDeal(table: CrmTable, data: Record<string, unknown>) {
-  if (table === 'potential') {
-    return supabase.from('potential').insert(data as any).select().single();
-  } else if (table === 'underwriting') {
-    return supabase.from('underwriting').insert(data as any).select().single();
-  } else {
-    return supabase.from('lender_management').insert(data as any).select().single();
-  }
+async function insertDeal(pipeline: CrmTable, data: Record<string, unknown>) {
+  return supabase.from('deals').insert({ ...data, pipeline } as any).select().single();
 }
 
-async function selectDealById(table: CrmTable, dealId: string) {
-  if (table === 'potential') {
-    return supabase.from('potential').select('*').eq('id', dealId).single();
-  } else if (table === 'underwriting') {
-    return supabase.from('underwriting').select('*').eq('id', dealId).single();
-  } else {
-    return supabase.from('lender_management').select('*').eq('id', dealId).single();
-  }
+async function selectDealById(_pipeline: CrmTable, dealId: string) {
+  return supabase.from('deals').select('*').eq('id', dealId).single();
 }
 
-async function deleteDeal(table: CrmTable, dealId: string) {
-  if (table === 'potential') {
-    return supabase.from('potential').delete().eq('id', dealId);
-  } else if (table === 'underwriting') {
-    return supabase.from('underwriting').delete().eq('id', dealId);
-  } else {
-    return supabase.from('lender_management').delete().eq('id', dealId);
-  }
+async function deleteDeal(_pipeline: CrmTable, dealId: string) {
+  return supabase.from('deals').delete().eq('id', dealId);
 }
 
-async function bulkDeleteDeals(table: CrmTable, dealIds: string[]) {
-  if (table === 'potential') {
-    return supabase.from('potential').delete().in('id', dealIds);
-  } else if (table === 'underwriting') {
-    return supabase.from('underwriting').delete().in('id', dealIds);
-  } else {
-    return supabase.from('lender_management').delete().in('id', dealIds);
-  }
+async function bulkDeleteDeals(_pipeline: CrmTable, dealIds: string[]) {
+  return supabase.from('deals').delete().in('id', dealIds);
 }
 
 export const useCrmMutations = (table: CrmTable) => {
