@@ -49,7 +49,6 @@ const DEFAULT_NAV: Record<string, NavItem[]> = {
 const ALL_AVAILABLE: NavItem[] = [
   ...DEFAULT_NAV.admin,
   { label: 'Marketing', route: '/admin/marketing', group: 'Tools' },
-  { label: 'Newsletter', route: '/admin/newsletter', group: 'Tools' },
   { label: 'Score Sheet', route: '/admin/scorecard/score-sheet', group: 'Reports' },
   { label: 'Volume Log', route: '/superadmin/volume-log', group: 'Reports' },
   { label: 'Messages', route: '/admin/messages', group: 'Workspace' },

@@ -229,7 +229,7 @@ const AdminContracts = () => {
                 No contracts found. Create your first contract to get started.
               </div>
             ) : (
-              <Table>
+              <Table className="[&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>

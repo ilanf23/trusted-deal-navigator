@@ -4,6 +4,7 @@ import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { EditableTextBox } from '@/components/admin/shared/EditableTextBox';
 import { Maximize2, PanelRightOpen, DollarSign, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SINGLE_LINE_CELL } from '@/components/shared/singleLineCell';
 import { PIPELINE_REORDERABLE_COLUMNS, type PipelineColumnKey } from './pipelineColumns';
 
 // ─────────────────────────────────────────────────────────────────
@@ -242,7 +243,8 @@ export function PipelineTableRow(props: PipelineTableRowProps) {
       {/* ── Deal / Opportunity + Checkbox (sticky) ── */}
       <td
         className={cn(
-          'pl-2 pr-1.5 overflow-hidden sticky left-0 z-[5] transition-colors',
+          'pl-2 pr-1.5 sticky left-0 z-[5] transition-colors',
+          SINGLE_LINE_CELL,
           rowPad,
           stickyBg,
           isDetailSelected && 'border-l-[3px] border-l-[#3b2778]',
@@ -301,7 +303,7 @@ export function PipelineTableRow(props: PipelineTableRowProps) {
 
       {orderedKeys.map((k) => {
         if (!columnVisibility[k]) return null;
-        const cellClass = cn('px-3 overflow-hidden', rowPad);
+        const cellClass = cn('px-3', SINGLE_LINE_CELL, rowPad);
         const cellStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
           width: columnWidths[k],
           ...CELL_BORDER,
@@ -405,17 +407,20 @@ export function PipelineTableRow(props: PipelineTableRowProps) {
             break;
           case 'tags':
             content = tags && tags.length > 0 ? (
-              <span className="flex items-center gap-1 flex-wrap">
+              <span
+                className="flex items-center gap-1 flex-nowrap overflow-hidden"
+                title={tags.join(', ')}
+              >
                 {tags.slice(0, 2).map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground"
+                    className="inline-flex items-center shrink-0 max-w-[160px] px-2.5 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground truncate"
                   >
                     {tag}
                   </span>
                 ))}
                 {tags.length > 2 && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
+                  <span className="inline-flex items-center shrink-0 px-2 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted text-[11px] font-medium text-[#202124] dark:text-foreground">
                     +{tags.length - 2}
                   </span>
                 )}
@@ -435,7 +440,7 @@ export function PipelineTableRow(props: PipelineTableRowProps) {
       })}
 
       {/* ── Detail arrow ── */}
-      <td className={cn('px-2 w-10', rowPad)} style={{ ...CELL_BORDER }}>
+      <td className={cn('px-2 w-10', SINGLE_LINE_CELL, rowPad)} style={{ ...CELL_BORDER }}>
         <PanelRightOpen
           className={cn(
             'h-4 w-4 transition-all duration-150',

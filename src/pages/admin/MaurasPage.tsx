@@ -154,7 +154,7 @@ const MaurasPage = () => {
               {processingQueue.length === 0 ? (
                 <p className="text-muted-foreground text-sm text-center py-8">No items in the processing queue.</p>
               ) : (
-                <Table className="min-w-[600px]">
+                <Table className="min-w-[600px] [&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Client</TableHead>

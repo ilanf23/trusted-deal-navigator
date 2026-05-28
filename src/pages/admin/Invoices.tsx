@@ -265,7 +265,7 @@ const AdminInvoices = () => {
                 No invoices found. Create your first invoice to get started.
               </div>
             ) : (
-              <Table className="min-w-[700px]">
+              <Table className="min-w-[700px] [&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Invoice #</TableHead>

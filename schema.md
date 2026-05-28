@@ -830,50 +830,6 @@
 | updated_at     | timestamp with time zone | No          | No       | -              |
 | portal         | text                     | No          | Yes      | -              |
 
-## Table: `newsletter_campaign_events`
-
-| Column Name   | Data Type                | Primary Key | Nullable | Foreign Key To       |
-| ------------- | ------------------------ | ----------- | -------- | -------------------- |
-| id            | uuid                     | Yes         | No       | -                    |
-| campaign_id   | uuid                     | No          | No       | newsletter_campaigns |
-| subscriber_id | uuid                     | No          | No       | -                    |
-| event_type    | text                     | No          | No       | -                    |
-| metadata      | jsonb                    | No          | Yes      | -                    |
-| created_at    | timestamp with time zone | No          | No       | -                    |
-
-## Table: `newsletter_campaigns`
-
-| Column Name        | Data Type                | Primary Key | Nullable | Foreign Key To       |
-| ------------------ | ------------------------ | ----------- | -------- | -------------------- |
-| id                 | uuid                     | Yes         | No       | -                    |
-| name               | text                     | No          | No       | -                    |
-| subject            | text                     | No          | No       | -                    |
-| content            | text                     | No          | Yes      | -                    |
-| template_id        | uuid                     | No          | Yes      | newsletter_templates |
-| status             | text                     | No          | No       | -                    |
-| scheduled_for      | timestamp with time zone | No          | Yes      | -                    |
-| sent_at            | timestamp with time zone | No          | Yes      | -                    |
-| recipients_count   | integer                  | No          | Yes      | -                    |
-| delivered_count    | integer                  | No          | Yes      | -                    |
-| opened_count       | integer                  | No          | Yes      | -                    |
-| clicked_count      | integer                  | No          | Yes      | -                    |
-| unsubscribed_count | integer                  | No          | Yes      | -                    |
-| bounced_count      | integer                  | No          | Yes      | -                    |
-| created_at         | timestamp with time zone | No          | No       | -                    |
-| updated_at         | timestamp with time zone | No          | No       | -                    |
-
-## Table: `newsletter_templates`
-
-| Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ----------- | ------------------------ | ----------- | -------- | -------------- |
-| id          | uuid                     | Yes         | No       | -              |
-| name        | text                     | No          | No       | -              |
-| description | text                     | No          | Yes      | -              |
-| subject     | text                     | No          | Yes      | -              |
-| content     | text                     | No          | No       | -              |
-| created_at  | timestamp with time zone | No          | No       | -              |
-| updated_at  | timestamp with time zone | No          | No       | -              |
-
 ## Table: `notes`
 
 | Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |

@@ -10,7 +10,6 @@ import {
   LogOut,
   Kanban,
   TrendingDown,
-  Newspaper,
   User,
   Mail,
   ChevronDown,
@@ -163,7 +162,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         title: 'Marketing',
         icon: BarChart3,
         items: [
-          { title: 'Newsletter', url: '/superadmin/newsletter', icon: Newspaper },
           { title: 'Analytics', url: '/superadmin/marketing', icon: BarChart3 },
         ],
       });

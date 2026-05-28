@@ -1180,7 +1180,7 @@ const LoanVolumeLog = () => {
                           {/* Borrower + Checkbox (sticky) */}
                           {columnVisibility.borrower && (
                             <td
-                              className={`pl-2 pr-3 ${rowPad} overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`}
+                              className={`pl-2 pr-3 ${rowPad} overflow-hidden whitespace-nowrap sticky left-0 z-[5] transition-colors ${stickyBg}`}
                               style={{ width: columnWidths.borrower, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}
                             >
                               <div className="flex items-center gap-2">
@@ -1206,7 +1206,7 @@ const LoanVolumeLog = () => {
 
                           {/* Status */}
                           {columnVisibility.status && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.status, border: '1px solid #c8bdd6' }}>
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ${
                                 getStatusGroup(lead.status) === 'active'
                                   ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
@@ -1221,7 +1221,7 @@ const LoanVolumeLog = () => {
 
                           {/* Company */}
                           {columnVisibility.company && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
                               <InlineEditableCell
                                 value={lead.company_name ?? ''}
                                 onChange={(v) => handleInlineEdit(lead.id, 'company_name', v || null)}
@@ -1234,7 +1234,7 @@ const LoanVolumeLog = () => {
 
                           {/* Loan Amount */}
                           {columnVisibility.loanAmount && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.loanAmount, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.loanAmount, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
                                 {formatCurrency(lead.deal_value)}
                               </span>
@@ -1243,7 +1243,7 @@ const LoanVolumeLog = () => {
 
                           {/* Category */}
                           {columnVisibility.category && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.category, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.category, border: '1px solid #c8bdd6' }}>
                               <InlineEditableCell
                                 value={lead.loan_category ?? ''}
                                 onChange={(v) => handleInlineEdit(lead.id, 'loan_category', v || null)}
@@ -1257,7 +1257,7 @@ const LoanVolumeLog = () => {
 
                           {/* Stage */}
                           {columnVisibility.stage && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
                               {stageCfg ? (
                                 <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${stageCfg.pill}`}>
                                   <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
@@ -1271,7 +1271,7 @@ const LoanVolumeLog = () => {
 
                           {/* WON */}
                           {columnVisibility.won && (
-                            <td className={`px-3 ${rowPad} overflow-hidden text-center`} style={{ width: columnWidths.won, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap text-center`} style={{ width: columnWidths.won, border: '1px solid #c8bdd6' }}>
                               {isWon ? (
                                 <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-100 dark:bg-emerald-900">
                                   <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
@@ -1288,7 +1288,7 @@ const LoanVolumeLog = () => {
 
                           {/* Assigned To */}
                           {columnVisibility.assignedTo && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.assignedTo, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.assignedTo, border: '1px solid #c8bdd6' }}>
                               {assignedName ? (
                                 <div className="flex items-center gap-1.5">
                                   <CrmAvatar name={assignedName} imageUrl={assignedAvatar} size="xs" />
@@ -1302,7 +1302,7 @@ const LoanVolumeLog = () => {
 
                           {/* Lender */}
                           {columnVisibility.lender && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.lender, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.lender, border: '1px solid #c8bdd6' }}>
                               <InlineEditableCell
                                 value={lead.lender_name ?? ''}
                                 onChange={(v) => handleInlineEdit(lead.id, 'lender_name', v || null)}
@@ -1315,7 +1315,7 @@ const LoanVolumeLog = () => {
 
                           {/* Lender Type */}
                           {columnVisibility.lenderType && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.lenderType, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.lenderType, border: '1px solid #c8bdd6' }}>
                               <InlineEditableCell
                                 value={lead.lender_type ?? ''}
                                 onChange={(v) => handleInlineEdit(lead.id, 'lender_type', v || null)}
@@ -1336,7 +1336,7 @@ const LoanVolumeLog = () => {
 
                           {/* Fee % */}
                           {columnVisibility.feePercent && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.feePercent, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.feePercent, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] text-foreground/80 tabular-nums">
                                 {formatPercent(lead.fee_percent)}
                               </span>
@@ -1345,7 +1345,7 @@ const LoanVolumeLog = () => {
 
                           {/* Potential Revenue */}
                           {columnVisibility.potentialRevenue && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.potentialRevenue, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.potentialRevenue, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] font-medium text-blue-600 dark:text-blue-400 tabular-nums">
                                 {potentialRev > 0 ? formatCurrency(potentialRev) : '--'}
                               </span>
@@ -1354,7 +1354,7 @@ const LoanVolumeLog = () => {
 
                           {/* Net Revenue */}
                           {columnVisibility.netRevenue && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.netRevenue, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.netRevenue, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] font-medium text-violet-600 dark:text-violet-400 tabular-nums">
                                 {netRev ? formatCurrency(netRev) : '--'}
                               </span>
@@ -1363,7 +1363,7 @@ const LoanVolumeLog = () => {
 
                           {/* Target Closing */}
                           {columnVisibility.targetClosing && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.targetClosing, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.targetClosing, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] text-muted-foreground tabular-nums">
                                 {formatShortDate(lead.target_closing_date)}
                               </span>
@@ -1372,7 +1372,7 @@ const LoanVolumeLog = () => {
 
                           {/* WU Date */}
                           {columnVisibility.wuDate && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.wuDate, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.wuDate, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] text-muted-foreground tabular-nums">
                                 {formatShortDate(lead.wu_date)}
                               </span>
@@ -1381,7 +1381,7 @@ const LoanVolumeLog = () => {
 
                           {/* Days to WU */}
                           {columnVisibility.daysToWu && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.daysToWu, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.daysToWu, border: '1px solid #c8bdd6' }}>
                               {daysToWuVal !== null ? (
                                 <span className={`text-[12px] font-medium tabular-nums ${
                                   daysToWuVal < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
@@ -1396,7 +1396,7 @@ const LoanVolumeLog = () => {
 
                           {/* Days to Close */}
                           {columnVisibility.daysToClose && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.daysToClose, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.daysToClose, border: '1px solid #c8bdd6' }}>
                               {daysToCloseVal !== null ? (
                                 <span className={`text-[12px] font-medium tabular-nums ${
                                   daysToCloseVal < 0 ? 'text-red-600 dark:text-red-400' : daysToCloseVal < 14 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
@@ -1411,7 +1411,7 @@ const LoanVolumeLog = () => {
 
                           {/* Source */}
                           {columnVisibility.source && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.source, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.source, border: '1px solid #c8bdd6' }}>
                               <InlineEditableCell
                                 value={lead.source ?? ''}
                                 onChange={(v) => handleInlineEdit(lead.id, 'source', v || null)}
@@ -1424,7 +1424,7 @@ const LoanVolumeLog = () => {
 
                           {/* CLX Agreement */}
                           {columnVisibility.clxAgreement && (
-                            <td className={`px-3 ${rowPad} overflow-hidden text-center`} style={{ width: columnWidths.clxAgreement, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap text-center`} style={{ width: columnWidths.clxAgreement, border: '1px solid #c8bdd6' }}>
                               {lead.clx_agreement ? (
                                 <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-100 dark:bg-emerald-900">
                                   <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
@@ -1437,7 +1437,7 @@ const LoanVolumeLog = () => {
 
                           {/* Signals */}
                           {columnVisibility.signals && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.signals, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden whitespace-nowrap`} style={{ width: columnWidths.signals, border: '1px solid #c8bdd6' }}>
                               {signals.length > 0 ? (
                                 <Popover>
                                   <PopoverTrigger asChild>

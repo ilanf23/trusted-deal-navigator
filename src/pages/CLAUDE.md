@@ -48,7 +48,7 @@
 - `GoogleCallback.tsx` — Unified Google OAuth callback (Calendar, Gmail, Sheets)
 
 **Business Ops:**
-- `LenderPrograms.tsx`, `Newsletter.tsx`, `Marketing.tsx`
+- `LenderPrograms.tsx`, `Marketing.tsx`
 - `Invoices.tsx`, `Contracts.tsx`, `RateWatch.tsx`
 
 **Admin Tools:**

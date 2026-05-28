@@ -651,7 +651,7 @@ const Projects = () => {
                       </td>
 
                       {/* Name (sticky) */}
-                      <td className={`pl-2 pr-1.5 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ left: 48, width: columnWidths.name, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                      <td className={`pl-2 pr-1.5 py-1.5 overflow-hidden whitespace-nowrap sticky z-[5] transition-colors ${stickyBg}`} style={{ left: 48, width: columnWidths.name, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-2 min-w-0 flex-1 bg-[#f1f3f4] dark:bg-muted rounded-full pl-0.5 pr-3 py-0.5">
                             <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -673,18 +673,18 @@ const Projects = () => {
                       </td>
 
                       {/* Owned By */}
-                      <td className="px-4 py-1.5" style={{ width: columnWidths.owner, border: '1px solid #c8bdd6' }}>
-                        <span className="text-[16px] text-foreground truncate block">
+                      <td className="px-4 py-1.5 overflow-hidden whitespace-nowrap" style={{ width: columnWidths.owner, border: '1px solid #c8bdd6' }}>
+                        <span className="text-[16px] text-foreground truncate block" title={ownerName ?? undefined}>
                           {ownerName ?? '—'}
                         </span>
                       </td>
 
                       {/* People */}
-                      <td className="px-4 py-1.5" style={{ width: columnWidths.people, border: '1px solid #c8bdd6' }}>
+                      <td className="px-4 py-1.5 overflow-hidden whitespace-nowrap" style={{ width: columnWidths.people, border: '1px solid #c8bdd6' }}>
                         {(projectPeopleMap[p.id] ?? []).length > 0 ? (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
                             <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-[16px] text-foreground truncate">
+                            <span className="text-[16px] text-foreground truncate min-w-0" title={projectPeopleMap[p.id].join(', ')}>
                               {projectPeopleMap[p.id].join(', ')}
                             </span>
                           </div>
@@ -694,9 +694,9 @@ const Projects = () => {
                       </td>
 
                       {/* Related To */}
-                      <td className="px-4 py-1.5" style={{ width: columnWidths.related, border: '1px solid #c8bdd6' }}>
+                      <td className="px-4 py-1.5 overflow-hidden whitespace-nowrap" style={{ width: columnWidths.related, border: '1px solid #c8bdd6' }}>
                         {relatedTo ? (
-                          <span className="text-[16px] text-blue-600 dark:text-blue-400 truncate block">
+                          <span className="text-[16px] text-blue-600 dark:text-blue-400 truncate block" title={relatedTo}>
                             {relatedTo}
                           </span>
                         ) : (
@@ -705,7 +705,7 @@ const Projects = () => {
                       </td>
 
                       {/* Modified */}
-                      <td className="px-4 py-1.5" style={{ width: columnWidths.modified, border: '1px solid #c8bdd6' }}>
+                      <td className="px-4 py-1.5 overflow-hidden whitespace-nowrap" style={{ width: columnWidths.modified, border: '1px solid #c8bdd6' }}>
                         <span className="text-[16px] text-muted-foreground">
                           {format(parseISO(p.updated_at), 'M/d/yyyy')}
                         </span>

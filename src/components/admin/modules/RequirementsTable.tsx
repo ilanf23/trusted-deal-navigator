@@ -196,7 +196,7 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
 
       {/* Table */}
       <div className="border border-border/60 rounded-lg overflow-hidden">
-        <Table>
+        <Table className="[&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead className="w-16 text-xs font-semibold text-center">Built</TableHead>

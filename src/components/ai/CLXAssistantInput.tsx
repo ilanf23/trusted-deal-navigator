@@ -3,7 +3,6 @@ import { ArrowUp, Paperclip, FileText, X, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import type { AIMode } from './CLXAssistantHeader';
 
 interface UploadedFile {
   name: string;
@@ -12,7 +11,6 @@ interface UploadedFile {
 }
 
 interface CLXAssistantInputProps {
-  mode: AIMode;
   input: string;
   onInputChange: (value: string) => void;
   onSubmit: () => void;
@@ -24,20 +22,7 @@ interface CLXAssistantInputProps {
   inputRef: React.RefObject<HTMLTextAreaElement>;
 }
 
-const placeholders: Record<AIMode, string> = {
-  chat: 'Ask anything — I can see your leads, tasks, and pipeline',
-  assist: 'Describe what you need help with, and I\'ll propose actions',
-  agent: 'Tell me what to do, and I\'ll handle it autonomously',
-};
-
-const modeAccent: Record<AIMode, string> = {
-  chat: 'focus-within:ring-primary/30 focus-within:border-primary/40',
-  assist: 'focus-within:ring-amber-400/30 focus-within:border-amber-400/50',
-  agent: 'focus-within:ring-violet-400/30 focus-within:border-violet-400/50',
-};
-
 const CLXAssistantInput = ({
-  mode,
   input,
   onInputChange,
   onSubmit,
@@ -50,7 +35,6 @@ const CLXAssistantInput = ({
 }: CLXAssistantInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-resize textarea to its content, capped so it never dominates the screen.
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -118,7 +102,7 @@ const CLXAssistantInput = ({
           className={cn(
             'group relative flex items-end gap-2 rounded-2xl border bg-card p-2 shadow-sm transition-all duration-200',
             'ring-1 ring-transparent focus-within:shadow-md focus-within:ring-2',
-            modeAccent[mode],
+            'focus-within:ring-primary/30 focus-within:border-primary/40',
           )}
         >
           <input
@@ -145,7 +129,7 @@ const CLXAssistantInput = ({
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholders[mode]}
+            placeholder="Ask anything — I can see your leads, tasks, and pipeline"
             disabled={isLoading}
             rows={1}
             className={cn(

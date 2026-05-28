@@ -1042,39 +1042,42 @@ const RateWatchRow = ({
         </Tooltip>
       </td>
 
-      {/* Borrower */}
-      <td className="px-3 py-2.5 max-w-[260px]">
-        <p className="font-medium text-[13px] text-[#1a1a1a] leading-tight truncate">{entry.pipeline.name}</p>
-        {entry.pipeline.company_name && (
-          <p className="text-[12px] text-[#6b6280] leading-tight mt-0.5 truncate">{entry.pipeline.company_name}</p>
-        )}
+      {/* Borrower — always two-line so row height stays uniform */}
+      <td className="px-3 py-2.5 max-w-[260px] overflow-hidden whitespace-nowrap">
+        <p className="font-medium text-[13px] text-[#1a1a1a] leading-tight truncate" title={entry.pipeline.name}>{entry.pipeline.name}</p>
+        <p className="text-[12px] text-[#6b6280] leading-tight mt-0.5 truncate" title={entry.pipeline.company_name ?? undefined}>
+          {entry.pipeline.company_name || ' '}
+        </p>
       </td>
 
-      {/* Property / Collateral */}
-      <td className="px-3 py-2.5 max-w-[220px]">
-        {entry.collateral_type ? (
-          <p className="text-[13px] text-[#1a1a1a] leading-tight truncate">{entry.collateral_type}</p>
-        ) : null}
-        {entry.re_location ? (
-          <p className="text-[12px] text-[#6b6280] leading-tight mt-0.5 truncate">{entry.re_location}</p>
-        ) : null}
-        {!entry.collateral_type && !entry.re_location && (
+      {/* Property / Collateral — always two-line so row height stays uniform */}
+      <td className="px-3 py-2.5 max-w-[220px] overflow-hidden whitespace-nowrap">
+        {entry.collateral_type || entry.re_location ? (
+          <>
+            <p className="text-[13px] text-[#1a1a1a] leading-tight truncate" title={entry.collateral_type ?? undefined}>
+              {entry.collateral_type || ' '}
+            </p>
+            <p className="text-[12px] text-[#6b6280] leading-tight mt-0.5 truncate" title={entry.re_location ?? undefined}>
+              {entry.re_location || ' '}
+            </p>
+          </>
+        ) : (
           <span className="text-[12px] text-[#9b91a8]">—</span>
         )}
       </td>
 
       {/* Rate */}
-      <td className="px-3 py-2.5 text-right tabular-nums font-medium text-[13px] text-[#1a1a1a]">
+      <td className="px-3 py-2.5 text-right tabular-nums font-medium text-[13px] text-[#1a1a1a] whitespace-nowrap">
         {entry.current_rate}%
       </td>
 
       {/* Target */}
-      <td className="px-3 py-2.5 text-right tabular-nums text-[13px] text-[#6b6280]">
+      <td className="px-3 py-2.5 text-right tabular-nums text-[13px] text-[#6b6280] whitespace-nowrap">
         {entry.target_rate}%
       </td>
 
       {/* Gap — hero column */}
-      <td className="px-3 py-2.5 text-right tabular-nums text-[13px]">
+      <td className="px-3 py-2.5 text-right tabular-nums text-[13px] whitespace-nowrap">
         {gap <= 0 ? (
           <span className="inline-flex items-center gap-1 font-semibold text-[#0F7A3E]">
             Met <ArrowDown className="w-3 h-3" />
@@ -1087,12 +1090,12 @@ const RateWatchRow = ({
       </td>
 
       {/* Loan Amount */}
-      <td className="px-3 py-2.5 text-right tabular-nums font-medium text-[13px] text-[#1a1a1a]">
+      <td className="px-3 py-2.5 text-right tabular-nums font-medium text-[13px] text-[#1a1a1a] whitespace-nowrap">
         {entry.loan_amount ? formatCurrency(entry.loan_amount) : <span className="text-[#9b91a8]">—</span>}
       </td>
 
       {/* Maturity */}
-      <td className="px-3 py-2.5 text-[12px] text-[#1a1a1a]">
+      <td className="px-3 py-2.5 text-[12px] text-[#1a1a1a] whitespace-nowrap">
         {entry.loan_maturity ? (
           <span className="inline-flex items-center gap-1.5">
             <Calendar className="w-3 h-3 text-[#9b91a8]" />
@@ -1104,7 +1107,7 @@ const RateWatchRow = ({
       </td>
 
       {/* Last Contact */}
-      <td className="px-3 py-2.5 text-[12px] text-[#1a1a1a]">
+      <td className="px-3 py-2.5 text-[12px] text-[#1a1a1a] whitespace-nowrap">
         {entry.last_contacted_at ? (
           format(new Date(entry.last_contacted_at), 'MMM d, yyyy')
         ) : (

@@ -422,7 +422,7 @@ const SuperAdminDashboard = () => {
               {pipelineExpanded && (
                 <Card className="border-t-0 rounded-t-none">
                   <CardContent className="pt-3 pb-3">
-                    <Table>
+                    <Table className="[&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="text-xs">Stage</TableHead>
@@ -473,7 +473,7 @@ const SuperAdminDashboard = () => {
                   {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-10" />)}
                 </div>
               ) : (
-                <Table>
+                <Table className="[&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-[11px]">Member</TableHead>

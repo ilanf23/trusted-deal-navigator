@@ -1347,7 +1347,7 @@ const People = () => {
                             }`}
                           >
                             {/* Person + Checkbox (sticky) */}
-                            <td className={`pl-2 pr-1.5 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.person, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                            <td className={`pl-2 pr-1.5 py-1.5 overflow-hidden whitespace-nowrap sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.person, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                               <div className="flex items-center gap-2">
                                 <div className="shrink-0" title="Select" onClick={(e) => e.stopPropagation()}>
                                   <Checkbox

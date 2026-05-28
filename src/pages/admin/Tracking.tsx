@@ -268,7 +268,7 @@ const Tracking = () => {
         ) : (
           <Card>
             <CardContent className="p-0">
-              <Table>
+              <Table className="[&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Partner</TableHead>

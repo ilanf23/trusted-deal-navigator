@@ -162,7 +162,7 @@ export const CompletedTasksSection = ({
       {/* Collapsible Content */}
       {isExpanded && (
         <div className="rounded-xl md:rounded-2xl border bg-white dark:bg-card overflow-x-auto" style={{ borderColor: '#c8bdd6' }}>
-          <Table className="min-w-[600px]">
+          <Table className="min-w-[600px] [&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
             <TableHeader>
               <TableRow className="hover:bg-transparent" style={{ backgroundColor: '#eee6f6', borderBottom: '1px solid #c8bdd6' }}>
                 <TableHead className="w-8 md:w-10">

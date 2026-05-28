@@ -2,7 +2,7 @@ import { Suspense, Component, type ReactNode, type ErrorInfo } from 'react';
 import { pageRegistry } from './pageRegistry';
 import PageSelector from './PageSelector';
 import { AlertTriangle } from 'lucide-react';
-import { AdminLayoutMountedContext } from '@/components/admin/AdminLayout';
+import { AdminLayoutMountedContext } from '@/contexts/AdminLayoutMountedContext';
 
 interface SplitViewPanelProps {
   side: 'left' | 'right';

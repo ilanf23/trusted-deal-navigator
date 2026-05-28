@@ -126,7 +126,7 @@ const BradsPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table className="min-w-[600px]">
+              <Table className="min-w-[600px] [&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Client</TableHead>

@@ -9,6 +9,10 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import {
+  SINGLE_LINE_CELL,
+  SingleLineCellContent,
+} from "@/components/shared/singleLineCell";
 
 export interface Column<T> {
   key: string;
@@ -17,6 +21,9 @@ export interface Column<T> {
   align?: "left" | "center" | "right";
   className?: string;
   render?: (row: T) => ReactNode;
+  /** Opt this column out of single-line truncation (e.g., for action columns
+   *  or columns whose render() already controls overflow). */
+  multiLine?: boolean;
 }
 
 interface DataTableProps<T> {
@@ -27,6 +34,9 @@ interface DataTableProps<T> {
   rowId?: (row: T) => string | number;
   emptyState?: ReactNode;
   className?: string;
+  /** Enforce the one-line row contract on body cells. Defaults to true.
+   *  Pass false for tables whose cells are designed to wrap (rare). */
+  singleLine?: boolean;
 }
 
 const alignClass = {
@@ -43,6 +53,7 @@ export function DataTable<T>({
   rowId,
   emptyState,
   className,
+  singleLine = true,
 }: DataTableProps<T>) {
   return (
     <ScrollArea className={cn("w-full", className)}>
@@ -53,7 +64,7 @@ export function DataTable<T>({
               <TableHead
                 key={col.key}
                 className={cn(
-                  "px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider",
+                  "px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap",
                   alignClass[col.align || "left"],
                   col.className,
                 )}
@@ -86,21 +97,36 @@ export function DataTable<T>({
                   )}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                 >
-                  {columns.map((col) => (
-                    <TableCell
-                      key={col.key}
-                      className={cn(
-                        "px-4 py-3 text-sm",
-                        alignClass[col.align || "left"],
-                        col.className,
-                      )}
-                      style={col.width ? { width: col.width } : undefined}
-                    >
-                      {col.render
-                        ? col.render(row)
-                        : String((row as Record<string, unknown>)[col.key] ?? "")}
-                    </TableCell>
-                  ))}
+                  {columns.map((col) => {
+                    const enforceSingleLine = singleLine && !col.multiLine;
+                    let cellChildren: ReactNode;
+                    if (col.render) {
+                      cellChildren = col.render(row);
+                    } else {
+                      const raw = String(
+                        (row as Record<string, unknown>)[col.key] ?? "",
+                      );
+                      cellChildren = enforceSingleLine ? (
+                        <SingleLineCellContent title={raw}>{raw}</SingleLineCellContent>
+                      ) : (
+                        raw
+                      );
+                    }
+                    return (
+                      <TableCell
+                        key={col.key}
+                        className={cn(
+                          "px-4 py-3 text-sm",
+                          enforceSingleLine && SINGLE_LINE_CELL,
+                          alignClass[col.align || "left"],
+                          col.className,
+                        )}
+                        style={col.width ? { width: col.width } : undefined}
+                      >
+                        {cellChildren}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               );
             })

@@ -136,7 +136,7 @@ const WendysPage = () => {
               {clientFollowUps.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">No active follow-ups.</p>
               ) : (
-                <Table className="min-w-[600px]">
+                <Table className="min-w-[600px] [&_tbody_td]:overflow-hidden [&_tbody_td]:whitespace-nowrap">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Client</TableHead>

@@ -312,7 +312,7 @@ function RelatedSection({
           </div>
         </div>
       </CollapsibleTrigger>
-      <CollapsibleContent className="px-4 pb-2 min-w-0 max-w-full overflow-hidden">
+      <CollapsibleContent className="px-4 pb-2 min-w-0 max-w-full overflow-x-clip">
         {children}
       </CollapsibleContent>
     </Collapsible>

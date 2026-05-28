@@ -204,7 +204,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
       ) : (
         <ScrollArea className="h-[460px]">
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-sm">
+          <table className="w-full min-w-[640px] border-collapse text-sm [&_tbody_td]:overflow-hidden">
             <thead className="sticky top-0 z-10">
               <tr>
                 {['#', 'Action', 'Go to', 'Stage', 'Timing'].map((label) => (
