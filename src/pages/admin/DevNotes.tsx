@@ -148,19 +148,6 @@ const automations: Automation[] = [
     category: 'calendar',
   },
   {
-    name: 'Pre-qualification Email',
-    description: 'Sends pre-qualification questionnaire link to leads with unique token for tracking.',
-    triggers: ['User sends questionnaire from lead detail'],
-    actions: [
-      'Generates unique questionnaire token',
-      'Sends email with questionnaire link',
-      'Tracks questionnaire completion',
-    ],
-    edgeFunctions: ['send-prequalification-email'],
-    status: 'active',
-    category: 'leads',
-  },
-  {
     name: 'AI Lead Email Generation',
     description: 'Generates personalized email content for leads based on their profile and stage.',
     triggers: ['User requests AI email for lead'],

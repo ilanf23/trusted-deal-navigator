@@ -3,7 +3,6 @@ import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FileCheck, Clock, TrendingUp, CheckCircle2, AlertCircle, Phone, Mail } from 'lucide-react';
@@ -14,7 +13,6 @@ const WendysPage = () => {
     metrics,
     clientFollowUps,
     communicationLog,
-    dailyTargets,
     isLoading,
   } = useWendysDashboard();
 
@@ -203,30 +201,6 @@ const WendysPage = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* Daily Targets */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Today's Targets</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {dailyTargets.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No targets configured.</p>
-            ) : (
-              <div className="space-y-4">
-                {dailyTargets.map((target, index) => (
-                  <div key={index}>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>{target.label}</span>
-                      <span>{target.current} / {target.target} target</span>
-                    </div>
-                    <Progress value={target.progress} className="h-2" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </AdminLayout>
   );

@@ -3,14 +3,13 @@ import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DollarSign, TrendingUp, Users, Building2, Handshake, Crown, Settings, PieChart } from 'lucide-react';
 import { useAdamsDashboard } from '@/hooks/useAdamsDashboard';
 
 const AdamsPage = () => {
-  const { metrics, lenderActivity, termSheetsPending, operationalMetrics, isLoading } = useAdamsDashboard();
+  const { metrics, lenderActivity, termSheetsPending, isLoading } = useAdamsDashboard();
 
   const { setPageTitle } = useAdminTopBar();
   useEffect(() => {
@@ -201,34 +200,6 @@ const AdamsPage = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* Operational Metrics */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-admin-blue" />
-              Operational Efficiency Metrics
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {operationalMetrics.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4 col-span-4">No operational metrics configured</p>
-              ) : (
-                operationalMetrics.map((metric, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="text-sm font-medium">{metric.metric}</div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold">{metric.value}</span>
-                      <span className="text-sm text-muted-foreground">/ {metric.target}</span>
-                    </div>
-                    <Progress value={metric.progress} className="h-2" />
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </AdminLayout>
   );

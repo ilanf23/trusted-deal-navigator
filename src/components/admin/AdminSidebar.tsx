@@ -141,7 +141,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Messages', url: '/superadmin/messages', icon: MessageSquare },
           { title: 'Bug Reporting', url: '/superadmin/bug-reporting', icon: Bug },
           { title: 'Dropbox', url: '/superadmin/dropbox', icon: HardDrive },
-          { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
           { title: 'Volume Log', url: '/superadmin/volume-log', icon: ScrollText },
           { title: 'AI Changes', url: '/superadmin/ai-changes', icon: BrainCircuit },
           { title: 'Settings', url: '/superadmin/settings/profile', icon: Settings },

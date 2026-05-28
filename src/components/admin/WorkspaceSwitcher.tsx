@@ -11,7 +11,6 @@ import {
   Sliders,
   Mail,
   Bell,
-  Gift,
   LogOut,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -97,11 +96,6 @@ const WorkspaceMenu = ({ children }: WorkspaceMenuProps) => {
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => goto('notifications')}>
           <Bell className="h-4 w-4 mr-2" /> Notifications
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate('/admin/refer')}>
-          <Gift className="h-4 w-4 mr-2" /> Refer a friend & earn
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

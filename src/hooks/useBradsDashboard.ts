@@ -33,12 +33,6 @@ export interface BradReferralPartner {
   lastDeal: string;
 }
 
-export interface BradMonthlyGoal {
-  label: string;
-  current: number;
-  target: number;
-}
-
 const formatCurrency = (amount: number): string => {
   if (amount >= 1_000_000) {
     return `$${(amount / 1_000_000).toFixed(1)}M`;
@@ -146,20 +140,6 @@ export const useBradsDashboard = () => {
     },
   });
 
-  // Monthly goals
-  const goalsQuery = useQuery({
-    queryKey: ['brad-monthly-goals', teamMemberId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('team_monthly_goals')
-        .select('*')
-        .eq('user_id', teamMemberId!);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!teamMemberId,
-  });
-
   // Derive metrics
   const perf = perfQuery.data;
   const deals = dealsQuery.data ?? [];
@@ -200,25 +180,17 @@ export const useBradsDashboard = () => {
     lastDeal: formatDaysAgo(r.last_contact_days_ago || 0),
   }));
 
-  const monthlyGoals: BradMonthlyGoal[] = (goalsQuery.data ?? []).map((g: any) => ({
-    label: g.goal_label,
-    current: g.current_value,
-    target: g.target_value,
-  }));
-
   const isLoading =
     perfQuery.isLoading ||
     dealsQuery.isLoading ||
     meetingsQuery.isLoading ||
-    referralsQuery.isLoading ||
-    goalsQuery.isLoading;
+    referralsQuery.isLoading;
 
   return {
     metrics,
     highValueDeals,
     upcomingMeetings,
     referralPartners,
-    monthlyGoals,
     isLoading,
   };
 };

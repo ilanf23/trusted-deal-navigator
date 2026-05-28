@@ -45,13 +45,6 @@ export async function buildChatContext(
     .order("start_time", { ascending: true })
     .limit(20);
 
-  // Fetch lead responses (questionnaire data)
-  const { data: leadResponses } = await supabase
-    .from("lead_responses")
-    .select("lead_id, loan_amount, loan_type, funding_purpose, annual_revenue, business_type, borrower_credit_score, submitted_at")
-    .order("submitted_at", { ascending: false })
-    .limit(30);
-
   // Fetch email threads metadata
   const { data: emailThreads } = await supabase
     .from("email_threads")
@@ -113,12 +106,6 @@ ${communications?.filter(c => c.transcript && c.transcript.length > 50).slice(0,
 ${c.transcript!.substring(0, 1000)}${c.transcript!.length > 1000 ? '...[truncated]' : ''}
 `;
 }).join('\n') || 'No transcripts available'}
-
-### Deal Questionnaire Data
-${leadResponses?.map(r => {
-  const deal = deals?.find(d => d.id === r.lead_id);
-  return `- ${deal?.name || 'Unknown'}: Loan: $${r.loan_amount?.toLocaleString() || 'N/A'}, Type: ${r.loan_type || 'N/A'}, Purpose: ${r.funding_purpose || 'N/A'}, Revenue: ${r.annual_revenue || 'N/A'}, Credit: ${r.borrower_credit_score || 'N/A'}`;
-}).join('\n') || 'No questionnaire responses'}
 
 ### Email Threads Needing Attention
 ${emailThreads?.filter(e => e.sla_breached || e.waiting_on).map(e => {

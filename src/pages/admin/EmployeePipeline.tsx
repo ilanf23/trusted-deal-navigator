@@ -261,12 +261,6 @@ const EmployeePipeline = () => {
       usage: 'Edge function invoked when placing an outbound call from a deal card. Writes to active_calls / call_events server-side.',
       via: 'supabase.functions.invoke("twilio-call")',
     },
-    {
-      table: 'send-prequalification-email',
-      access: 'rpc',
-      usage: 'Edge function invoked when sending prequal emails from the inline compose dialog.',
-      via: 'supabase.functions.invoke("send-prequalification-email")',
-    },
   ]);
   const { getPageState, setPageState } = useEmployeeUIState();
   const persistedPipeline = getPageState('pipeline', { collapsedSections: {} as Record<LeadStatus, boolean>, selectedLeadId: null as string | null });
@@ -831,31 +825,14 @@ const EmployeePipeline = () => {
         });
       }
 
-      if ((previousStatus === 'discovery' || previousStatus === 'initial_review') && (status === 'pre_qualification' || status === 'moving_to_underwriting')) {
-        try {
-          const { error: emailError } = await supabase.functions.invoke('send-prequalification-email', {
-            body: { leadId: id },
-          });
-          if (emailError) {
-            console.error('Failed to send questionnaire email:', emailError);
-            toast.error('Lead moved but questionnaire email failed to send');
-          } else {
-            toast.success('Questionnaire email sent!');
-          }
-        } catch (err) {
-          console.error('Error sending questionnaire email:', err);
-        }
-      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
       queryClient.invalidateQueries({ queryKey: ['pipeline'] });
-      if (!((variables.previousStatus === 'discovery' || variables.previousStatus === 'initial_review') && (variables.status === 'pre_qualification' || variables.status === 'moving_to_underwriting'))) {
-        if (variables.skipUndo) {
-          toast.success('Undo successful');
-        } else {
-          toast.success('Lead status updated');
-        }
+      if (variables.skipUndo) {
+        toast.success('Undo successful');
+      } else {
+        toast.success('Lead status updated');
       }
     },
     onError: () => toast.error('Failed to update lead status'),

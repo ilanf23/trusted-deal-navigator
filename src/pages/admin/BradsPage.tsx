@@ -3,14 +3,13 @@ import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DollarSign, TrendingUp, Users, Target, Handshake, Crown, Calendar, BarChart3 } from 'lucide-react';
 import { useBradsDashboard } from '@/hooks/useBradsDashboard';
 
 const BradsPage = () => {
-  const { metrics, highValueDeals, upcomingMeetings, referralPartners, monthlyGoals, isLoading } = useBradsDashboard();
+  const { metrics, highValueDeals, upcomingMeetings, referralPartners, isLoading } = useBradsDashboard();
 
   const { setPageTitle } = useAdminTopBar();
   useEffect(() => {
@@ -216,30 +215,6 @@ const BradsPage = () => {
             </Card>
           </div>
         </div>
-
-        {/* Monthly Goals */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly Goals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {monthlyGoals.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No goals configured</p>
-              ) : (
-                monthlyGoals.map((goal, index) => (
-                  <div key={index}>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>{goal.label}</span>
-                      <span>{goal.current} / {goal.target} target</span>
-                    </div>
-                    <Progress value={goal.target > 0 ? Math.round((goal.current / goal.target) * 100) : 0} className="h-2" />
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </AdminLayout>
   );

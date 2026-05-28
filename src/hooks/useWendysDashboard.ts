@@ -27,13 +27,6 @@ export interface WendyCommunication {
   time: string;
 }
 
-export interface WendyDailyTarget {
-  label: string;
-  current: number;
-  target: number;
-  progress: number;
-}
-
 const derivePriority = (daysInStage: number): string => {
   if (daysInStage > 10) return 'High';
   if (daysInStage > 5) return 'Medium';
@@ -90,19 +83,6 @@ export const useWendysDashboard = () => {
     enabled: !!teamMemberId,
   });
 
-  const goalsQuery = useQuery({
-    queryKey: ['wendy-monthly-goals', teamMemberId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('team_monthly_goals')
-        .select('*')
-        .eq('user_id', teamMemberId!);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!teamMemberId,
-  });
-
   const perf = perfQuery.data;
   const deals = dealsQuery.data ?? [];
 
@@ -134,28 +114,14 @@ export const useWendysDashboard = () => {
 
   const communicationLog: WendyCommunication[] = [];
 
-  const dailyTargets: WendyDailyTarget[] = (goalsQuery.data ?? []).map((g: any) => {
-    const current = g.current_value;
-    const target = g.target_value;
-    const progress = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
-    return {
-      label: g.goal_label,
-      current,
-      target,
-      progress,
-    };
-  });
-
   const isLoading =
     perfQuery.isLoading ||
-    dealsQuery.isLoading ||
-    goalsQuery.isLoading;
+    dealsQuery.isLoading;
 
   return {
     metrics,
     clientFollowUps,
     communicationLog,
-    dailyTargets,
     isLoading,
   };
 };

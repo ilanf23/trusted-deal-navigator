@@ -21,7 +21,7 @@ const passwordSchema = z.string().min(6, 'Password must be at least 6 characters
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAdmin, signIn, signUp, loading: authLoading, userRole } = useAuth();
+  const { user, isAdmin, signIn, signUp, loading: authLoading } = useAuth();
   const { teamMember, loading: teamLoading } = useTeamMember();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +36,7 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
-  const [signupRole, setSignupRole] = useState<'client' | 'partner' | 'admin' | 'super_admin'>('client');
+  const [signupRole, setSignupRole] = useState<'client' | 'admin' | 'super_admin'>('client');
 
   // Redirect if already logged in
   useEffect(() => {
@@ -51,12 +51,6 @@ const Auth = () => {
         return;
       }
 
-      // Redirect partners to partner dashboard
-      if (userRole === 'partner') {
-        navigate('/partner', { replace: true });
-        return;
-      }
-
       const from = location.state?.from?.pathname;
       if (from) {
         navigate(from, { replace: true });
@@ -66,7 +60,7 @@ const Auth = () => {
         navigate('/user', { replace: true });
       }
     }
-  }, [user, isAdmin, userRole, authLoading, teamLoading, teamMember, navigate, location]);
+  }, [user, isAdmin, authLoading, teamLoading, teamMember, navigate, location]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,16 +239,6 @@ const Auth = () => {
                       <RadioGroupItem value="client" id="role-borrower" className="sr-only" />
                       <span className="font-medium text-sm">Borrower</span>
                       <span className="text-xs text-muted-foreground text-center">Looking for financing</span>
-                    </Label>
-                    <Label
-                      htmlFor="role-partner"
-                      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-3 cursor-pointer transition-colors ${
-                        signupRole === 'partner' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50'
-                      }`}
-                    >
-                      <RadioGroupItem value="partner" id="role-partner" className="sr-only" />
-                      <span className="font-medium text-sm">Partner</span>
-                      <span className="text-xs text-muted-foreground text-center">Refer deals & earn</span>
                     </Label>
                     <Label
                       htmlFor="role-admin"

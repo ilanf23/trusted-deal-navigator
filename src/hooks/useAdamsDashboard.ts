@@ -27,13 +27,6 @@ export interface AdamTermSheet {
   status: string;
 }
 
-export interface AdamOperationalMetric {
-  metric: string;
-  value: string;
-  target: string;
-  progress: number;
-}
-
 const formatCurrency = (amount: number): string => {
   if (amount >= 1_000_000) {
     return `$${(amount / 1_000_000).toFixed(1)}M`;
@@ -153,20 +146,6 @@ export const useAdamsDashboard = () => {
     },
   });
 
-  // Operational goals
-  const goalsQuery = useQuery({
-    queryKey: ['adam-monthly-goals', teamMemberId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('team_monthly_goals')
-        .select('*')
-        .eq('user_id', teamMemberId!);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!teamMemberId,
-  });
-
   // Derive metrics
   const perf = perfQuery.data;
   const deals = dealsQuery.data ?? [];
@@ -195,43 +174,16 @@ export const useAdamsDashboard = () => {
     status: d.stage || 'Unknown',
   }));
 
-  const operationalMetrics: AdamOperationalMetric[] = (goalsQuery.data ?? []).map((g: any) => {
-    const current = g.current_value;
-    const target = g.target_value;
-    const progress = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
-
-    // Format value/target based on the label
-    const label = (g.goal_label || '').toLowerCase();
-    let valueStr = `${current}`;
-    let targetStr = `${target}`;
-    if (label.includes('rate') || label.includes('acceptance')) {
-      valueStr = `${current}%`;
-      targetStr = `${target}%`;
-    } else if (label.includes('days') || label.includes('efficiency')) {
-      valueStr = `${current} days`;
-      targetStr = `${target} days`;
-    }
-
-    return {
-      metric: g.goal_label,
-      value: valueStr,
-      target: targetStr,
-      progress,
-    };
-  });
-
   const isLoading =
     perfQuery.isLoading ||
     dealsQuery.isLoading ||
     lenderCountQuery.isLoading ||
-    lenderActivityQuery.isLoading ||
-    goalsQuery.isLoading;
+    lenderActivityQuery.isLoading;
 
   return {
     metrics,
     lenderActivity,
     termSheetsPending,
-    operationalMetrics,
     isLoading,
   };
 };

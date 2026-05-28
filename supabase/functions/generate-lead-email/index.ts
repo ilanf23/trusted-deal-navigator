@@ -66,16 +66,6 @@ Deno.serve(async (req) => {
       
       lead = fetchedLead;
 
-      // Fetch questionnaire responses
-      const { data: responses } = await supabase
-        .from("lead_responses")
-        .select("*")
-        .eq("lead_id", leadId)
-        .order("submitted_at", { ascending: false })
-        .limit(1);
-
-      questionnaire = responses?.[0] || null;
-
       // Fetch rate watch data
       const { data: rateWatchData } = await supabase
         .from("rate_watch")
@@ -138,22 +128,11 @@ Rate Watch Information:
 
     if (questionnaire) {
       leadContext += `
-Questionnaire Responses:
+Loan Details:
 - Loan Type: ${questionnaire.loan_type || "Not specified"}
 - Loan Amount: ${questionnaire.loan_amount ? `$${questionnaire.loan_amount.toLocaleString()}` : "Not specified"}
-- Purpose: ${questionnaire.purpose_of_loan || questionnaire.funding_purpose || "Not specified"}
-- Business Type: ${questionnaire.business_type || "Not specified"}
-- Business Description: ${questionnaire.business_description || "Not specified"}
-- Annual Revenue: ${questionnaire.annual_revenue || "Not specified"}
-- Year Founded: ${questionnaire.year_business_founded || "Not specified"}
-- Credit Score: ${questionnaire.borrower_credit_score || "Not specified"}
-- Property Value: ${questionnaire.current_estimated_value ? `$${questionnaire.current_estimated_value.toLocaleString()}` : "Not specified"}
-- Current Loan Balance: ${questionnaire.current_loan_balance ? `$${questionnaire.current_loan_balance.toLocaleString()}` : "Not specified"}
-- Current Rate: ${questionnaire.current_loan_rate || "Not specified"}
-- Desired Rate: ${questionnaire.desired_interest_rate || "Not specified"}
-- Desired Term: ${questionnaire.desired_term || "Not specified"}
+- Purpose: ${questionnaire.funding_purpose || "Not specified"}
 - Funding Timeline: ${questionnaire.funding_timeline || "Not specified"}
-- Location: ${[questionnaire.city, questionnaire.state].filter(Boolean).join(", ") || "Not specified"}
 `;
     }
 

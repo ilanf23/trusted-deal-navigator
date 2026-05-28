@@ -17,7 +17,6 @@ import PublicLayout from "@/components/layout/PublicLayout";
 import AdminPortalWrapper from "@/components/admin/AdminPortalWrapper";
 import AdminRoute from "@/components/admin/AdminRoute";
 import DynamicEmployeeDashboard from "@/components/admin/DynamicEmployeeDashboard";
-import PartnerRouteLayout from "./components/partner/PartnerRouteLayout";
 import PageSkeleton from "@/components/admin/PageSkeleton";
 
 // Public pages — kept eager (small, often entry points)
@@ -31,7 +30,6 @@ import CommercialRealEstate from "./pages/solutions/CommercialRealEstate";
 import WorkingCapital from "./pages/solutions/WorkingCapital";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
-import Questionnaire from "./pages/Questionnaire";
 import RateWatchQuestionnaire from "./pages/RateWatchQuestionnaire";
 
 // Admin pages — lazy-loaded per route chunk
@@ -86,15 +84,7 @@ const AIChanges = lazy(() => import("./pages/admin/AIChanges"));
 const AIAssistantPage = lazy(() => import("./pages/admin/AIAssistant"));
 const LoanVolumeLog = lazy(() => import("./pages/admin/LoanVolumeLog"));
 const VolumeLogExpandedView = lazy(() => import("./components/admin/VolumeLogExpandedView"));
-const AdminTracking = lazy(() => import("./pages/admin/Tracking"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
-const ReferAFriend = lazy(() => import("./pages/admin/ReferAFriend"));
-
-// Partner pages — lazy-loaded
-const PartnerDashboard = lazy(() => import("./pages/partner/Dashboard"));
-const PartnerReferrals = lazy(() => import("./pages/partner/Referrals"));
-const PartnerCommissions = lazy(() => import("./pages/partner/Commissions"));
-const PartnerProfilePage = lazy(() => import("./pages/partner/Profile"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -132,7 +122,6 @@ const App = () => (
               <Route path="/solutions/commercial-real-estate" element={<PublicLayout><CommercialRealEstate /></PublicLayout>} />
               <Route path="/solutions/working-capital" element={<PublicLayout><WorkingCapital /></PublicLayout>} />
               <Route path="/auth" element={<PublicLayout><Auth /></PublicLayout>} />
-              <Route path="/questionnaire/:token" element={<PublicLayout><Questionnaire /></PublicLayout>} />
               <Route path="/ratewatch/:token" element={<PublicLayout><RateWatchQuestionnaire /></PublicLayout>} />
 
               {/* Super Admin Routes - persistent layout */}
@@ -150,13 +139,11 @@ const App = () => (
                 <Route path="/superadmin/rate-watch" element={<AdminRateWatch />} />
                 <Route path="/superadmin/lender-programs" element={<LenderPrograms />} />
                 <Route path="/superadmin/lender-programs/expanded-view/:lenderId" element={<LenderExpandedView />} />
-                <Route path="/superadmin/tracking" element={<AdminTracking />} />
                 <Route path="/superadmin/volume-log" element={<LoanVolumeLog />} />
                 <Route path="/superadmin/volume-log/lead/:leadId" element={<VolumeLogExpandedView />} />
                 <Route path="/superadmin/ai-changes" element={<AIChanges />} />
                 <Route path="/superadmin/settings" element={<Navigate to="/superadmin/settings/profile" replace />} />
                 <Route path="/superadmin/settings/:section" element={<AdminSettings />} />
-                <Route path="/superadmin/refer" element={<ReferAFriend />} />
                 <Route path="/superadmin/dropbox" element={<DropboxPage />} />
                 <Route path="/superadmin/dropbox/callback" element={<DropboxCallback />} />
                 <Route path="/superadmin/google-callback" element={<GoogleCallback />} />
@@ -210,10 +197,8 @@ const App = () => (
                 <Route path="/admin/clients" element={<AdminRoute><AdminClients /></AdminRoute>} />
                 <Route path="/admin/invoices" element={<AdminRoute><AdminInvoices /></AdminRoute>} />
                 <Route path="/admin/marketing" element={<AdminRoute><AdminMarketing /></AdminRoute>} />
-                <Route path="/admin/tracking" element={<AdminRoute><AdminTracking /></AdminRoute>} />
                 <Route path="/admin/settings" element={<Navigate to="/admin/settings/profile" replace />} />
                 <Route path="/admin/settings/:section" element={<AdminRoute><AdminSettings /></AdminRoute>} />
-                <Route path="/admin/refer" element={<AdminRoute><ReferAFriend /></AdminRoute>} />
                 <Route path="/admin/assistant" element={<AdminRoute><AIAssistantPage /></AdminRoute>} />
                 {/* Legacy redirects */}
                 <Route path="/admin/evan" element={<Navigate to="/admin/dashboard" replace />} />
@@ -240,15 +225,6 @@ const App = () => (
               {/* Legacy redirects for old /admin shared pages */}
               <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
-              {/* Partner Portal Routes */}
-              <Route element={<PartnerRouteLayout />}>
-                <Route path="/partner" element={<Navigate to="/partner/dashboard" replace />} />
-                <Route path="/partner/dashboard" element={<PartnerDashboard />} />
-                <Route path="/partner/referrals" element={<PartnerReferrals />} />
-                <Route path="/partner/tracking" element={<Navigate to="/partner/dashboard" replace />} />
-                <Route path="/partner/commissions" element={<PartnerCommissions />} />
-                <Route path="/partner/profile" element={<PartnerProfilePage />} />
-              </Route>
               <Route path="*" element={<NotFound />} />
               </Routes>
               </Suspense>

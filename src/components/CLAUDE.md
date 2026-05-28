@@ -32,7 +32,7 @@ List pages have companion expanded views accessed via `/expanded-view/:id` route
 Self-contained card components that fetch their own data via React Query, manage internal filter/view state, and include action buttons/dialogs.
 
 ### Layout Wrapper Pattern
-`AdminLayout`, `EvanLayout`, `PortalLayout`, `PartnerLayout` combine context providers + sidebar + floating UI elements (chat, inbox, bug reports). `EvanLayout` wraps `AdminLayout` to persist Twilio call state.
+`AdminLayout`, `EvanLayout`, `PortalLayout` combine context providers + sidebar + floating UI elements (chat, inbox, bug reports). `EvanLayout` wraps `AdminLayout` to persist Twilio call state.
 
 ## Dependencies Between Folders
 

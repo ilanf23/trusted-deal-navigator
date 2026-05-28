@@ -71,16 +71,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch questionnaire responses
-    const { data: responses } = await supabase
-      .from("lead_responses")
-      .select("*")
-      .eq("lead_id", leadId)
-      .order("submitted_at", { ascending: false })
-      .limit(1);
-
-    const questionnaire = responses?.[0] || null;
-
     // Fetch rate watch data
     const { data: rateWatch } = await supabase
       .from("rate_watch")
@@ -113,35 +103,6 @@ Deno.serve(async (req) => {
 - **Enrolled Since**: ${new Date(rateWatch.enrolled_at).toLocaleDateString()}
 - **Last Contacted**: ${rateWatch.last_contacted_at ? new Date(rateWatch.last_contacted_at).toLocaleDateString() : "Never"}
 - **Notes**: ${rateWatch.notes || "None"}
-`;
-    }
-
-    if (questionnaire) {
-      leadContext += `
-## Questionnaire Responses
-- **Loan Type Requested**: ${questionnaire.loan_type || "Not specified"}
-- **Loan Amount Requested**: ${questionnaire.loan_amount ? `$${questionnaire.loan_amount.toLocaleString()}` : "Not specified"}
-- **Purpose of Loan**: ${questionnaire.purpose_of_loan || questionnaire.funding_purpose || "Not specified"}
-- **Business Type**: ${questionnaire.business_type || "Not specified"}
-- **Business Description**: ${questionnaire.business_description || "Not specified"}
-- **Annual Revenue**: ${questionnaire.annual_revenue || "Not specified"}
-- **Year Business Founded**: ${questionnaire.year_business_founded || "Not specified"}
-- **Borrower Credit Score**: ${questionnaire.borrower_credit_score || "Not specified"}
-- **Property Estimated Value**: ${questionnaire.current_estimated_value ? `$${questionnaire.current_estimated_value.toLocaleString()}` : "Not specified"}
-- **Current Loan Balance**: ${questionnaire.current_loan_balance ? `$${questionnaire.current_loan_balance.toLocaleString()}` : "Not specified"}
-- **Current Loan Rate**: ${questionnaire.current_loan_rate || "Not specified"}
-- **Desired Interest Rate**: ${questionnaire.desired_interest_rate || "Not specified"}
-- **Desired Term**: ${questionnaire.desired_term || "Not specified"}
-- **Funding Timeline**: ${questionnaire.funding_timeline || "Not specified"}
-- **Location**: ${[questionnaire.city, questionnaire.state].filter(Boolean).join(", ") || "Not specified"}
-- **Principal Name**: ${questionnaire.principal_name || "Not specified"}
-- **Property Owner Occupied**: ${questionnaire.property_owner_occupied || "Not specified"}
-- **Number of Units**: ${questionnaire.number_of_units || "Not specified"}
-- **Square Footage**: ${questionnaire.square_footage || "Not specified"}
-- **Cash Out Requested**: ${questionnaire.cash_out || "Not specified"}
-- **Cash Out Amount**: ${questionnaire.cash_out_amount ? `$${questionnaire.cash_out_amount.toLocaleString()}` : "Not specified"}
-- **How They Heard About Us**: ${questionnaire.how_did_you_hear || "Not specified"}
-- **Additional Information**: ${questionnaire.additional_information || "None"}
 `;
     }
 

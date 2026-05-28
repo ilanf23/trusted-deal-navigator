@@ -74,17 +74,6 @@ interface Lead {
   created_at: string;
 }
 
-interface LeadResponse {
-  loan_type: string | null;
-  loan_amount: number | null;
-  funding_purpose: string | null;
-  annual_revenue: string | null;
-  business_type: string | null;
-  property_owner_occupied: string | null;
-  state: string | null;
-}
-
-
 interface CallLog {
   id: string;
   communication_type: string;
@@ -269,7 +258,6 @@ const Calls = () => {
     { table: 'potential', access: 'read', usage: 'Linked lead/deal context for each call row.', via: 'useQuery in Calls.tsx' },
     { table: 'potential', access: 'write', usage: 'Creating leads from inbound calls (Add Lead dialog).', via: 'AddOpportunityDialog → useCrmMutations in Calls.tsx' },
     { table: 'pipeline', access: 'read', usage: 'Joined for company/deal context on call history rows.', via: 'callHistory query in Calls.tsx' },
-    { table: 'deal_responses', access: 'read', usage: 'Loan questionnaire details rendered for the matched lead.', via: 'leadResponse query in Calls.tsx' },
     { table: 'twilio-call-history', access: 'rpc', usage: 'Edge function fetching call history from Twilio API and enriching with communications rows by call_sid.', via: 'supabase.functions.invoke("twilio-call-history")' },
     { table: 'retry-call-transcription', access: 'rpc', usage: 'Edge function re-triggering Whisper + Gemini speaker labeling on a stored recording.', via: 'supabase.functions.invoke("retry-call-transcription")' },
     { table: 'call-to-lead-automation', access: 'rpc', usage: 'Edge function auto-creating leads from unknown inbound numbers.', via: 'supabase.functions.invoke("call-to-lead-automation")' },
@@ -464,26 +452,6 @@ const Calls = () => {
       return data as Lead | null;
     },
     enabled: !!lookupPhone,
-  });
-
-  // Fetch lead response/questionnaire data if we have a matched lead
-  const { data: leadResponse } = useQuery({
-    queryKey: ['lead-response', matchedLead?.id],
-    queryFn: async () => {
-      if (!matchedLead?.id) return null;
-
-      const { data, error } = await supabase
-        .from('deal_responses')
-        .select('*')
-        .eq('entity_id', matchedLead.id)
-        .order('submitted_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      return data as LeadResponse | null;
-    },
-    enabled: !!matchedLead?.id,
   });
 
 
@@ -896,48 +864,6 @@ const Calls = () => {
                         )}
                       </div>
                     </div>
-
-                    {/* Questionnaire/Loan Details */}
-                    {leadResponse && (
-                      <div className="p-4 rounded-lg border">
-                        <h4 className="font-medium mb-3 flex items-center gap-2">
-                          <DollarSign className="h-4 w-4" />
-                          Loan Details
-                        </h4>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          {leadResponse.loan_type && (
-                            <div>
-                              <p className="text-muted-foreground text-xs">Loan Type</p>
-                              <p className="font-medium">{leadResponse.loan_type}</p>
-                            </div>
-                          )}
-                          {leadResponse.loan_amount && (
-                            <div>
-                              <p className="text-muted-foreground text-xs">Amount</p>
-                              <p className="font-medium">{formatCurrency(leadResponse.loan_amount)}</p>
-                            </div>
-                          )}
-                          {leadResponse.funding_purpose && (
-                            <div>
-                              <p className="text-muted-foreground text-xs">Purpose</p>
-                              <p className="font-medium">{leadResponse.funding_purpose}</p>
-                            </div>
-                          )}
-                          {leadResponse.annual_revenue && (
-                            <div>
-                              <p className="text-muted-foreground text-xs">Annual Revenue</p>
-                              <p className="font-medium">{leadResponse.annual_revenue}</p>
-                            </div>
-                          )}
-                          {leadResponse.business_type && (
-                            <div className="col-span-2">
-                              <p className="text-muted-foreground text-xs">Business Type</p>
-                              <p className="font-medium">{leadResponse.business_type}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
 
                     {/* Lead Notes */}
                     {matchedLead.notes && (

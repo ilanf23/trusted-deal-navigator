@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       active_calls: {
@@ -285,6 +310,48 @@ export type Database = {
           },
         ]
       }
+      ai_audit_log: {
+        Row: {
+          conversation_id: string | null
+          error_message: string | null
+          function_name: string
+          id: string
+          mode: string | null
+          occurred_at: string
+          record_ids: string[]
+          scope: Json
+          success: boolean
+          tool: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          error_message?: string | null
+          function_name: string
+          id?: string
+          mode?: string | null
+          occurred_at?: string
+          record_ids?: string[]
+          scope?: Json
+          success: boolean
+          tool: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          error_message?: string | null
+          function_name?: string
+          id?: string
+          mode?: string | null
+          occurred_at?: string
+          record_ids?: string[]
+          scope?: Json
+          success?: boolean
+          tool?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_conversation_messages: {
         Row: {
           content: string
@@ -474,45 +541,6 @@ export type Database = {
           },
         ]
       }
-      calendar_connections: {
-        Row: {
-          access_token: string
-          calendar_id: string | null
-          created_at: string
-          email: string
-          id: string
-          refresh_token: string
-          token_expiry: string
-          updated_at: string
-          user_id: string
-          user_name: string | null
-        }
-        Insert: {
-          access_token: string
-          calendar_id?: string | null
-          created_at?: string
-          email: string
-          id?: string
-          refresh_token: string
-          token_expiry: string
-          updated_at?: string
-          user_id: string
-          user_name?: string | null
-        }
-        Update: {
-          access_token?: string
-          calendar_id?: string | null
-          created_at?: string
-          email?: string
-          id?: string
-          refresh_token?: string
-          token_expiry?: string
-          updated_at?: string
-          user_id?: string
-          user_name?: string | null
-        }
-        Relationships: []
-      }
       call_events: {
         Row: {
           call_flow_id: string
@@ -642,9 +670,13 @@ export type Database = {
           lead_id: string | null
           phone_number: string | null
           recording_sid: string | null
+          recording_status: string | null
           recording_url: string | null
           status: string | null
           transcript: string | null
+          transcription_error: string | null
+          transcription_status: string | null
+          transcription_updated_at: string | null
           user_id: string | null
         }
         Insert: {
@@ -659,9 +691,13 @@ export type Database = {
           lead_id?: string | null
           phone_number?: string | null
           recording_sid?: string | null
+          recording_status?: string | null
           recording_url?: string | null
           status?: string | null
           transcript?: string | null
+          transcription_error?: string | null
+          transcription_status?: string | null
+          transcription_updated_at?: string | null
           user_id?: string | null
         }
         Update: {
@@ -676,9 +712,13 @@ export type Database = {
           lead_id?: string | null
           phone_number?: string | null
           recording_sid?: string | null
+          recording_status?: string | null
           recording_url?: string | null
           status?: string | null
           transcript?: string | null
+          transcription_error?: string | null
+          transcription_status?: string | null
+          transcription_updated_at?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -1000,203 +1040,44 @@ export type Database = {
         }
         Relationships: []
       }
-      deal_responses: {
+      deal_people: {
         Row: {
-          additional_information: string | null
-          address_line_1: string | null
-          address_line_2: string | null
-          annual_revenue: string | null
-          borrower_bankruptcy: string | null
-          borrower_credit_score: string | null
-          borrower_current_employer: string | null
-          borrower_occupation: string | null
-          borrower_year_started: string | null
-          business_description: string | null
-          business_type: string | null
-          cash_out: string | null
-          cash_out_amount: number | null
-          city: string | null
-          co_borrower_bankruptcy: string | null
-          co_borrower_credit_score: string | null
-          co_borrower_current_employer: string | null
-          co_borrower_occupation: string | null
-          co_borrower_year_started: string | null
-          co_borrowers: string | null
-          collateral_description: string | null
-          collateral_value: number | null
-          contact_method: string | null
-          country: string | null
           created_at: string
-          current_estimated_value: number | null
-          current_lender: string | null
-          current_loan_balance: number | null
-          current_loan_in_default: string | null
-          current_loan_maturity_date: string | null
-          current_loan_rate: string | null
-          desired_amortization: string | null
-          desired_interest_rate: string | null
-          desired_term: string | null
-          email: string | null
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
-          first_name: string | null
-          funding_amount: string | null
-          funding_purpose: string | null
-          funding_timeline: string | null
-          guarantors: string | null
-          how_did_you_hear: string | null
+          deal_id: string
           id: string
-          last_name: string | null
-          loan_amount: number | null
-          loan_type: string | null
-          loan_type_other: string | null
-          newsletter_signup: boolean | null
-          number_of_units: string | null
-          phone: string | null
-          principal_name: string | null
-          property_owner_occupied: string | null
-          purchase_price: number | null
-          purpose_of_loan: string | null
-          referred_by: string | null
-          self_employed_business_type: string | null
-          square_footage: string | null
-          state: string | null
-          submitted_at: string
-          year_acquired: string | null
-          year_business_founded: string | null
-          zip_code: string | null
+          person_id: string
+          role: string | null
         }
         Insert: {
-          additional_information?: string | null
-          address_line_1?: string | null
-          address_line_2?: string | null
-          annual_revenue?: string | null
-          borrower_bankruptcy?: string | null
-          borrower_credit_score?: string | null
-          borrower_current_employer?: string | null
-          borrower_occupation?: string | null
-          borrower_year_started?: string | null
-          business_description?: string | null
-          business_type?: string | null
-          cash_out?: string | null
-          cash_out_amount?: number | null
-          city?: string | null
-          co_borrower_bankruptcy?: string | null
-          co_borrower_credit_score?: string | null
-          co_borrower_current_employer?: string | null
-          co_borrower_occupation?: string | null
-          co_borrower_year_started?: string | null
-          co_borrowers?: string | null
-          collateral_description?: string | null
-          collateral_value?: number | null
-          contact_method?: string | null
-          country?: string | null
           created_at?: string
-          current_estimated_value?: number | null
-          current_lender?: string | null
-          current_loan_balance?: number | null
-          current_loan_in_default?: string | null
-          current_loan_maturity_date?: string | null
-          current_loan_rate?: string | null
-          desired_amortization?: string | null
-          desired_interest_rate?: string | null
-          desired_term?: string | null
-          email?: string | null
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          first_name?: string | null
-          funding_amount?: string | null
-          funding_purpose?: string | null
-          funding_timeline?: string | null
-          guarantors?: string | null
-          how_did_you_hear?: string | null
+          deal_id: string
           id?: string
-          last_name?: string | null
-          loan_amount?: number | null
-          loan_type?: string | null
-          loan_type_other?: string | null
-          newsletter_signup?: boolean | null
-          number_of_units?: string | null
-          phone?: string | null
-          principal_name?: string | null
-          property_owner_occupied?: string | null
-          purchase_price?: number | null
-          purpose_of_loan?: string | null
-          referred_by?: string | null
-          self_employed_business_type?: string | null
-          square_footage?: string | null
-          state?: string | null
-          submitted_at?: string
-          year_acquired?: string | null
-          year_business_founded?: string | null
-          zip_code?: string | null
+          person_id: string
+          role?: string | null
         }
         Update: {
-          additional_information?: string | null
-          address_line_1?: string | null
-          address_line_2?: string | null
-          annual_revenue?: string | null
-          borrower_bankruptcy?: string | null
-          borrower_credit_score?: string | null
-          borrower_current_employer?: string | null
-          borrower_occupation?: string | null
-          borrower_year_started?: string | null
-          business_description?: string | null
-          business_type?: string | null
-          cash_out?: string | null
-          cash_out_amount?: number | null
-          city?: string | null
-          co_borrower_bankruptcy?: string | null
-          co_borrower_credit_score?: string | null
-          co_borrower_current_employer?: string | null
-          co_borrower_occupation?: string | null
-          co_borrower_year_started?: string | null
-          co_borrowers?: string | null
-          collateral_description?: string | null
-          collateral_value?: number | null
-          contact_method?: string | null
-          country?: string | null
           created_at?: string
-          current_estimated_value?: number | null
-          current_lender?: string | null
-          current_loan_balance?: number | null
-          current_loan_in_default?: string | null
-          current_loan_maturity_date?: string | null
-          current_loan_rate?: string | null
-          desired_amortization?: string | null
-          desired_interest_rate?: string | null
-          desired_term?: string | null
-          email?: string | null
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          first_name?: string | null
-          funding_amount?: string | null
-          funding_purpose?: string | null
-          funding_timeline?: string | null
-          guarantors?: string | null
-          how_did_you_hear?: string | null
+          deal_id?: string
           id?: string
-          last_name?: string | null
-          loan_amount?: number | null
-          loan_type?: string | null
-          loan_type_other?: string | null
-          newsletter_signup?: boolean | null
-          number_of_units?: string | null
-          phone?: string | null
-          principal_name?: string | null
-          property_owner_occupied?: string | null
-          purchase_price?: number | null
-          purpose_of_loan?: string | null
-          referred_by?: string | null
-          self_employed_business_type?: string | null
-          square_footage?: string | null
-          state?: string | null
-          submitted_at?: string
-          year_acquired?: string | null
-          year_business_founded?: string | null
-          zip_code?: string | null
+          person_id?: string
+          role?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "deal_people_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_people_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deal_waiting_on: {
         Row: {
@@ -1236,6 +1117,270 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      deals: {
+        Row: {
+          about: string | null
+          actual_net_revenue: number | null
+          assigned_to: string | null
+          bank_relationships: string | null
+          client_other_lenders: boolean
+          close_date: string | null
+          clx_agreement: boolean | null
+          clx_file_name: string | null
+          cohort_year: number | null
+          company_name: string | null
+          contact_type: string | null
+          converted_at: string | null
+          converted_to_client_id: string | null
+          copper_opportunity_id: string | null
+          created_at: string
+          custom_fields: Json
+          deal_outcome: Database["public"]["Enums"]["deal_outcome"]
+          deal_value: number | null
+          description: string | null
+          email: string | null
+          fee_percent: number | null
+          flagged_for_weekly: boolean
+          history: string | null
+          id: string
+          initial_nudge_created_at: string | null
+          interactions_count: number
+          invoice_amount: number | null
+          known_as: string | null
+          last_activity_at: string | null
+          last_contacted: string | null
+          lender_name: string | null
+          lender_type: string | null
+          linkedin: string | null
+          loan_category: string | null
+          loan_stage: string | null
+          loss_reason: string | null
+          lost_at: string | null
+          name: string
+          net_revenue: number | null
+          next_action: string | null
+          notes: string | null
+          opportunity_name: string | null
+          phone: string | null
+          pipeline: Database["public"]["Enums"]["deal_pipeline"]
+          potential_revenue: number | null
+          priority: Database["public"]["Enums"]["deal_priority"] | null
+          qualified_at: string | null
+          questionnaire_completed_at: string | null
+          questionnaire_sent_at: string | null
+          questionnaire_token: string | null
+          ratewatch_questionnaire_completed_at: string | null
+          ratewatch_questionnaire_sent_at: string | null
+          ratewatch_questionnaire_token: string | null
+          referral_source: string | null
+          rs_fee_percent: number | null
+          rs_revenue: number | null
+          sheets_last_synced_at: string | null
+          sheets_row_index: number | null
+          sla_threshold_days: number | null
+          source: string | null
+          source_system: string
+          stage_changed_at: string | null
+          stage_id: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          tags: string[] | null
+          target_closing_date: string | null
+          title: string | null
+          twitter: string | null
+          updated_at: string
+          uw_number: string | null
+          visibility: string | null
+          volume_log_status: string | null
+          waiting_on: string | null
+          website: string | null
+          win_percentage: number | null
+          won: boolean | null
+          won_at: string | null
+          won_reason: string | null
+          work_website: string | null
+          wu_date: string | null
+        }
+        Insert: {
+          about?: string | null
+          actual_net_revenue?: number | null
+          assigned_to?: string | null
+          bank_relationships?: string | null
+          client_other_lenders?: boolean
+          close_date?: string | null
+          clx_agreement?: boolean | null
+          clx_file_name?: string | null
+          cohort_year?: number | null
+          company_name?: string | null
+          contact_type?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          copper_opportunity_id?: string | null
+          created_at?: string
+          custom_fields?: Json
+          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
+          deal_value?: number | null
+          description?: string | null
+          email?: string | null
+          fee_percent?: number | null
+          flagged_for_weekly?: boolean
+          history?: string | null
+          id?: string
+          initial_nudge_created_at?: string | null
+          interactions_count?: number
+          invoice_amount?: number | null
+          known_as?: string | null
+          last_activity_at?: string | null
+          last_contacted?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
+          linkedin?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
+          lost_at?: string | null
+          name: string
+          net_revenue?: number | null
+          next_action?: string | null
+          notes?: string | null
+          opportunity_name?: string | null
+          phone?: string | null
+          pipeline?: Database["public"]["Enums"]["deal_pipeline"]
+          potential_revenue?: number | null
+          priority?: Database["public"]["Enums"]["deal_priority"] | null
+          qualified_at?: string | null
+          questionnaire_completed_at?: string | null
+          questionnaire_sent_at?: string | null
+          questionnaire_token?: string | null
+          ratewatch_questionnaire_completed_at?: string | null
+          ratewatch_questionnaire_sent_at?: string | null
+          ratewatch_questionnaire_token?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
+          sla_threshold_days?: number | null
+          source?: string | null
+          source_system?: string
+          stage_changed_at?: string | null
+          stage_id?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          target_closing_date?: string | null
+          title?: string | null
+          twitter?: string | null
+          updated_at?: string
+          uw_number?: string | null
+          visibility?: string | null
+          volume_log_status?: string | null
+          waiting_on?: string | null
+          website?: string | null
+          win_percentage?: number | null
+          won?: boolean | null
+          won_at?: string | null
+          won_reason?: string | null
+          work_website?: string | null
+          wu_date?: string | null
+        }
+        Update: {
+          about?: string | null
+          actual_net_revenue?: number | null
+          assigned_to?: string | null
+          bank_relationships?: string | null
+          client_other_lenders?: boolean
+          close_date?: string | null
+          clx_agreement?: boolean | null
+          clx_file_name?: string | null
+          cohort_year?: number | null
+          company_name?: string | null
+          contact_type?: string | null
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          copper_opportunity_id?: string | null
+          created_at?: string
+          custom_fields?: Json
+          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
+          deal_value?: number | null
+          description?: string | null
+          email?: string | null
+          fee_percent?: number | null
+          flagged_for_weekly?: boolean
+          history?: string | null
+          id?: string
+          initial_nudge_created_at?: string | null
+          interactions_count?: number
+          invoice_amount?: number | null
+          known_as?: string | null
+          last_activity_at?: string | null
+          last_contacted?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
+          linkedin?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
+          lost_at?: string | null
+          name?: string
+          net_revenue?: number | null
+          next_action?: string | null
+          notes?: string | null
+          opportunity_name?: string | null
+          phone?: string | null
+          pipeline?: Database["public"]["Enums"]["deal_pipeline"]
+          potential_revenue?: number | null
+          priority?: Database["public"]["Enums"]["deal_priority"] | null
+          qualified_at?: string | null
+          questionnaire_completed_at?: string | null
+          questionnaire_sent_at?: string | null
+          questionnaire_token?: string | null
+          ratewatch_questionnaire_completed_at?: string | null
+          ratewatch_questionnaire_sent_at?: string | null
+          ratewatch_questionnaire_token?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
+          sla_threshold_days?: number | null
+          source?: string | null
+          source_system?: string
+          stage_changed_at?: string | null
+          stage_id?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          target_closing_date?: string | null
+          title?: string | null
+          twitter?: string | null
+          updated_at?: string
+          uw_number?: string | null
+          visibility?: string | null
+          volume_log_status?: string | null
+          waiting_on?: string | null
+          website?: string | null
+          win_percentage?: number | null
+          won?: boolean | null
+          won_at?: string | null
+          won_reason?: string | null
+          work_website?: string | null
+          wu_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dropbox_connections: {
         Row: {
@@ -1354,7 +1499,7 @@ export type Database = {
             foreignKeyName: "dropbox_files_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: "potential"
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
         ]
@@ -1461,7 +1606,7 @@ export type Database = {
             foreignKeyName: "email_threads_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: "potential"
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
         ]
@@ -1510,95 +1655,6 @@ export type Database = {
           zip_code?: string | null
         }
         Relationships: []
-      }
-      entity_checklist_items: {
-        Row: {
-          checklist_id: string
-          completed_at: string | null
-          completed_by: string | null
-          created_at: string
-          id: string
-          is_completed: boolean
-          label: string
-          sort_order: number
-        }
-        Insert: {
-          checklist_id: string
-          completed_at?: string | null
-          completed_by?: string | null
-          created_at?: string
-          id?: string
-          is_completed?: boolean
-          label: string
-          sort_order?: number
-        }
-        Update: {
-          checklist_id?: string
-          completed_at?: string | null
-          completed_by?: string | null
-          created_at?: string
-          id?: string
-          is_completed?: boolean
-          label?: string
-          sort_order?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "entity_checklist_items_checklist_id_fkey"
-            columns: ["checklist_id"]
-            isOneToOne: false
-            referencedRelation: "entity_checklists"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "entity_checklist_items_completed_by_fkey"
-            columns: ["completed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      entity_checklists: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          description: string | null
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"]
-          id: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"]
-          id?: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"]
-          id?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "entity_checklists_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       entity_contacts: {
         Row: {
@@ -1877,33 +1933,57 @@ export type Database = {
         }
         Relationships: []
       }
-      gmail_connections: {
+      google_connections: {
         Row: {
           access_token: string
+          calendar_id: string | null
           created_at: string
+          drive_watch_channel_id: string | null
+          drive_watch_channel_token: string | null
+          drive_watch_expiry: string | null
+          drive_watch_resource_id: string | null
+          drive_watch_spreadsheet_id: string | null
           email: string
           id: string
+          needs_reauth: boolean
           refresh_token: string
+          scopes: string | null
           token_expiry: string
           updated_at: string
           user_id: string
         }
         Insert: {
           access_token: string
+          calendar_id?: string | null
           created_at?: string
+          drive_watch_channel_id?: string | null
+          drive_watch_channel_token?: string | null
+          drive_watch_expiry?: string | null
+          drive_watch_resource_id?: string | null
+          drive_watch_spreadsheet_id?: string | null
           email: string
           id?: string
+          needs_reauth?: boolean
           refresh_token: string
+          scopes?: string | null
           token_expiry: string
           updated_at?: string
           user_id: string
         }
         Update: {
           access_token?: string
+          calendar_id?: string | null
           created_at?: string
+          drive_watch_channel_id?: string | null
+          drive_watch_channel_token?: string | null
+          drive_watch_expiry?: string | null
+          drive_watch_resource_id?: string | null
+          drive_watch_spreadsheet_id?: string | null
           email?: string
           id?: string
+          needs_reauth?: boolean
           refresh_token?: string
+          scopes?: string | null
           token_expiry?: string
           updated_at?: string
           user_id?: string
@@ -1992,286 +2072,6 @@ export type Database = {
           viewed_at?: string | null
         }
         Relationships: []
-      }
-      lender_management: {
-        Row: {
-          about: string | null
-          actual_net_revenue: number | null
-          assigned_to: string | null
-          bank_relationships: string | null
-          client_other_lenders: boolean
-          close_date: string | null
-          clx_agreement: boolean | null
-          clx_file_name: string | null
-          cohort_year: number | null
-          company_name: string | null
-          contact_type: string | null
-          converted_at: string | null
-          converted_to_client_id: string | null
-          copper_opportunity_id: string | null
-          created_at: string
-          custom_fields: Json
-          deal_outcome: Database["public"]["Enums"]["deal_outcome"]
-          deal_value: number | null
-          description: string | null
-          email: string | null
-          fee_percent: number | null
-          flagged_for_weekly: boolean
-          history: string | null
-          id: string
-          initial_nudge_created_at: string | null
-          interactions_count: number
-          invoice_amount: number | null
-          known_as: string | null
-          last_activity_at: string | null
-          last_contacted: string | null
-          lender_name: string | null
-          lender_type: string | null
-          loan_category: string | null
-          loan_stage: string | null
-          loss_reason: string | null
-          lost_at: string | null
-          name: string
-          net_revenue: number | null
-          next_action: string | null
-          notes: string | null
-          opportunity_name: string | null
-          origin_pipeline_id: string | null
-          phone: string | null
-          potential_revenue: number | null
-          priority: Database["public"]["Enums"]["deal_priority"] | null
-          qualified_at: string | null
-          referral_source: string | null
-          rs_fee_percent: number | null
-          rs_revenue: number | null
-          sheets_last_synced_at: string | null
-          sheets_row_index: number | null
-          sla_threshold_days: number | null
-          source: string | null
-          source_system: string
-          stage_changed_at: string | null
-          stage_id: string | null
-          status: Database["public"]["Enums"]["lead_status"]
-          tags: string[] | null
-          target_closing_date: string | null
-          title: string | null
-          updated_at: string
-          uw_number: string | null
-          visibility: string | null
-          volume_log_status: string | null
-          waiting_on: string | null
-          win_percentage: number | null
-          won: boolean | null
-          won_at: string | null
-          won_reason: string | null
-          wu_date: string | null
-        }
-        Insert: {
-          about?: string | null
-          actual_net_revenue?: number | null
-          assigned_to?: string | null
-          bank_relationships?: string | null
-          client_other_lenders?: boolean
-          close_date?: string | null
-          clx_agreement?: boolean | null
-          clx_file_name?: string | null
-          cohort_year?: number | null
-          company_name?: string | null
-          contact_type?: string | null
-          converted_at?: string | null
-          converted_to_client_id?: string | null
-          copper_opportunity_id?: string | null
-          created_at?: string
-          custom_fields?: Json
-          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
-          deal_value?: number | null
-          description?: string | null
-          email?: string | null
-          fee_percent?: number | null
-          flagged_for_weekly?: boolean
-          history?: string | null
-          id?: string
-          initial_nudge_created_at?: string | null
-          interactions_count?: number
-          invoice_amount?: number | null
-          known_as?: string | null
-          last_activity_at?: string | null
-          last_contacted?: string | null
-          lender_name?: string | null
-          lender_type?: string | null
-          loan_category?: string | null
-          loan_stage?: string | null
-          loss_reason?: string | null
-          lost_at?: string | null
-          name: string
-          net_revenue?: number | null
-          next_action?: string | null
-          notes?: string | null
-          opportunity_name?: string | null
-          origin_pipeline_id?: string | null
-          phone?: string | null
-          potential_revenue?: number | null
-          priority?: Database["public"]["Enums"]["deal_priority"] | null
-          qualified_at?: string | null
-          referral_source?: string | null
-          rs_fee_percent?: number | null
-          rs_revenue?: number | null
-          sheets_last_synced_at?: string | null
-          sheets_row_index?: number | null
-          sla_threshold_days?: number | null
-          source?: string | null
-          source_system?: string
-          stage_changed_at?: string | null
-          stage_id?: string | null
-          status?: Database["public"]["Enums"]["lead_status"]
-          tags?: string[] | null
-          target_closing_date?: string | null
-          title?: string | null
-          updated_at?: string
-          uw_number?: string | null
-          visibility?: string | null
-          volume_log_status?: string | null
-          waiting_on?: string | null
-          win_percentage?: number | null
-          won?: boolean | null
-          won_at?: string | null
-          won_reason?: string | null
-          wu_date?: string | null
-        }
-        Update: {
-          about?: string | null
-          actual_net_revenue?: number | null
-          assigned_to?: string | null
-          bank_relationships?: string | null
-          client_other_lenders?: boolean
-          close_date?: string | null
-          clx_agreement?: boolean | null
-          clx_file_name?: string | null
-          cohort_year?: number | null
-          company_name?: string | null
-          contact_type?: string | null
-          converted_at?: string | null
-          converted_to_client_id?: string | null
-          copper_opportunity_id?: string | null
-          created_at?: string
-          custom_fields?: Json
-          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
-          deal_value?: number | null
-          description?: string | null
-          email?: string | null
-          fee_percent?: number | null
-          flagged_for_weekly?: boolean
-          history?: string | null
-          id?: string
-          initial_nudge_created_at?: string | null
-          interactions_count?: number
-          invoice_amount?: number | null
-          known_as?: string | null
-          last_activity_at?: string | null
-          last_contacted?: string | null
-          lender_name?: string | null
-          lender_type?: string | null
-          loan_category?: string | null
-          loan_stage?: string | null
-          loss_reason?: string | null
-          lost_at?: string | null
-          name?: string
-          net_revenue?: number | null
-          next_action?: string | null
-          notes?: string | null
-          opportunity_name?: string | null
-          origin_pipeline_id?: string | null
-          phone?: string | null
-          potential_revenue?: number | null
-          priority?: Database["public"]["Enums"]["deal_priority"] | null
-          qualified_at?: string | null
-          referral_source?: string | null
-          rs_fee_percent?: number | null
-          rs_revenue?: number | null
-          sheets_last_synced_at?: string | null
-          sheets_row_index?: number | null
-          sla_threshold_days?: number | null
-          source?: string | null
-          source_system?: string
-          stage_changed_at?: string | null
-          stage_id?: string | null
-          status?: Database["public"]["Enums"]["lead_status"]
-          tags?: string[] | null
-          target_closing_date?: string | null
-          title?: string | null
-          updated_at?: string
-          uw_number?: string | null
-          visibility?: string | null
-          volume_log_status?: string | null
-          waiting_on?: string | null
-          win_percentage?: number | null
-          won?: boolean | null
-          won_at?: string | null
-          won_reason?: string | null
-          wu_date?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lender_management_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lender_management_origin_pipeline_fkey"
-            columns: ["origin_pipeline_id"]
-            isOneToOne: false
-            referencedRelation: "potential"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lender_management_stage_id_fkey"
-            columns: ["stage_id"]
-            isOneToOne: false
-            referencedRelation: "pipeline_stages"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lender_management_people: {
-        Row: {
-          created_at: string
-          id: string
-          lender_management_id: string
-          person_id: string
-          role: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          lender_management_id: string
-          person_id: string
-          role?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          lender_management_id?: string
-          person_id?: string
-          role?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lender_management_people_lender_management_id_fkey"
-            columns: ["lender_management_id"]
-            isOneToOne: false
-            referencedRelation: "lender_management"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lender_management_people_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       lender_programs: {
         Row: {
@@ -2502,114 +2302,12 @@ export type Database = {
         }
         Relationships: []
       }
-      partner_referrals: {
-        Row: {
-          company_name: string | null
-          created_at: string
-          email: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
-          id: string
-          lead_id: string | null
-          loan_amount: number | null
-          loan_type: string | null
-          name: string
-          notes: string | null
-          partner_id: string
-          phone: string | null
-          property_address: string | null
-          status: string
-          updated_at: string
-          urgency: string | null
-        }
-        Insert: {
-          company_name?: string | null
-          created_at?: string
-          email?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          lead_id?: string | null
-          loan_amount?: number | null
-          loan_type?: string | null
-          name: string
-          notes?: string | null
-          partner_id: string
-          phone?: string | null
-          property_address?: string | null
-          status?: string
-          updated_at?: string
-          urgency?: string | null
-        }
-        Update: {
-          company_name?: string | null
-          created_at?: string
-          email?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          lead_id?: string | null
-          loan_amount?: number | null
-          loan_type?: string | null
-          name?: string
-          notes?: string | null
-          partner_id?: string
-          phone?: string | null
-          property_address?: string | null
-          status?: string
-          updated_at?: string
-          urgency?: string | null
-        }
-        Relationships: []
-      }
-      partner_tracking: {
-        Row: {
-          created_at: string
-          id: string
-          internal_notes: string | null
-          last_contacted_at: string | null
-          next_follow_up: string | null
-          partner_id: string
-          priority: string
-          referral_id: string
-          tracking_status: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          internal_notes?: string | null
-          last_contacted_at?: string | null
-          next_follow_up?: string | null
-          partner_id: string
-          priority?: string
-          referral_id: string
-          tracking_status?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          internal_notes?: string | null
-          last_contacted_at?: string | null
-          next_follow_up?: string | null
-          partner_id?: string
-          priority?: string
-          referral_id?: string
-          tracking_status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "partner_tracking_referral_id_fkey"
-            columns: ["referral_id"]
-            isOneToOne: false
-            referencedRelation: "partner_referrals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       people: {
         Row: {
           about: string | null
           assigned_to: string | null
+          bank_relationships: string | null
+          clx_file_name: string | null
           company_id: string | null
           company_name: string | null
           contact_type: string | null
@@ -2639,6 +2337,8 @@ export type Database = {
         Insert: {
           about?: string | null
           assigned_to?: string | null
+          bank_relationships?: string | null
+          clx_file_name?: string | null
           company_id?: string | null
           company_name?: string | null
           contact_type?: string | null
@@ -2668,6 +2368,8 @@ export type Database = {
         Update: {
           about?: string | null
           assigned_to?: string | null
+          bank_relationships?: string | null
+          clx_file_name?: string | null
           company_id?: string | null
           company_name?: string | null
           contact_type?: string | null
@@ -2914,306 +2616,6 @@ export type Database = {
           },
         ]
       }
-      potential: {
-        Row: {
-          about: string | null
-          actual_net_revenue: number | null
-          assigned_to: string | null
-          bank_relationships: string | null
-          client_other_lenders: boolean
-          close_date: string | null
-          clx_agreement: boolean | null
-          clx_file_name: string | null
-          cohort_year: number | null
-          company_name: string | null
-          contact_type: string | null
-          converted_at: string | null
-          converted_to_client_id: string | null
-          copper_opportunity_id: string | null
-          created_at: string
-          custom_fields: Json
-          deal_outcome: Database["public"]["Enums"]["deal_outcome"]
-          deal_value: number | null
-          description: string | null
-          email: string | null
-          fee_percent: number | null
-          flagged_for_weekly: boolean
-          history: string | null
-          id: string
-          initial_nudge_created_at: string | null
-          interactions_count: number
-          invoice_amount: number | null
-          known_as: string | null
-          last_activity_at: string | null
-          last_contacted: string | null
-          lender_name: string | null
-          lender_type: string | null
-          linkedin: string | null
-          loan_category: string | null
-          loan_stage: string | null
-          loss_reason: string | null
-          lost_at: string | null
-          name: string
-          net_revenue: number | null
-          next_action: string | null
-          notes: string | null
-          opportunity_name: string | null
-          phone: string | null
-          potential_revenue: number | null
-          priority: Database["public"]["Enums"]["deal_priority"] | null
-          qualified_at: string | null
-          questionnaire_completed_at: string | null
-          questionnaire_sent_at: string | null
-          questionnaire_token: string | null
-          ratewatch_questionnaire_completed_at: string | null
-          ratewatch_questionnaire_sent_at: string | null
-          ratewatch_questionnaire_token: string | null
-          referral_source: string | null
-          rs_fee_percent: number | null
-          rs_revenue: number | null
-          sheets_last_synced_at: string | null
-          sheets_row_index: number | null
-          sla_threshold_days: number | null
-          source: string | null
-          source_system: string
-          stage_changed_at: string | null
-          stage_id: string | null
-          status: Database["public"]["Enums"]["lead_status"]
-          tags: string[] | null
-          target_closing_date: string | null
-          title: string | null
-          twitter: string | null
-          updated_at: string
-          uw_number: string | null
-          visibility: string | null
-          volume_log_status: string | null
-          waiting_on: string | null
-          website: string | null
-          win_percentage: number | null
-          won: boolean | null
-          won_at: string | null
-          won_reason: string | null
-          work_website: string | null
-          wu_date: string | null
-        }
-        Insert: {
-          about?: string | null
-          actual_net_revenue?: number | null
-          assigned_to?: string | null
-          bank_relationships?: string | null
-          client_other_lenders?: boolean
-          close_date?: string | null
-          clx_agreement?: boolean | null
-          clx_file_name?: string | null
-          cohort_year?: number | null
-          company_name?: string | null
-          contact_type?: string | null
-          converted_at?: string | null
-          converted_to_client_id?: string | null
-          copper_opportunity_id?: string | null
-          created_at?: string
-          custom_fields?: Json
-          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
-          deal_value?: number | null
-          description?: string | null
-          email?: string | null
-          fee_percent?: number | null
-          flagged_for_weekly?: boolean
-          history?: string | null
-          id?: string
-          initial_nudge_created_at?: string | null
-          interactions_count?: number
-          invoice_amount?: number | null
-          known_as?: string | null
-          last_activity_at?: string | null
-          last_contacted?: string | null
-          lender_name?: string | null
-          lender_type?: string | null
-          linkedin?: string | null
-          loan_category?: string | null
-          loan_stage?: string | null
-          loss_reason?: string | null
-          lost_at?: string | null
-          name: string
-          net_revenue?: number | null
-          next_action?: string | null
-          notes?: string | null
-          opportunity_name?: string | null
-          phone?: string | null
-          potential_revenue?: number | null
-          priority?: Database["public"]["Enums"]["deal_priority"] | null
-          qualified_at?: string | null
-          questionnaire_completed_at?: string | null
-          questionnaire_sent_at?: string | null
-          questionnaire_token?: string | null
-          ratewatch_questionnaire_completed_at?: string | null
-          ratewatch_questionnaire_sent_at?: string | null
-          ratewatch_questionnaire_token?: string | null
-          referral_source?: string | null
-          rs_fee_percent?: number | null
-          rs_revenue?: number | null
-          sheets_last_synced_at?: string | null
-          sheets_row_index?: number | null
-          sla_threshold_days?: number | null
-          source?: string | null
-          source_system?: string
-          stage_changed_at?: string | null
-          stage_id?: string | null
-          status?: Database["public"]["Enums"]["lead_status"]
-          tags?: string[] | null
-          target_closing_date?: string | null
-          title?: string | null
-          twitter?: string | null
-          updated_at?: string
-          uw_number?: string | null
-          visibility?: string | null
-          volume_log_status?: string | null
-          waiting_on?: string | null
-          website?: string | null
-          win_percentage?: number | null
-          won?: boolean | null
-          won_at?: string | null
-          won_reason?: string | null
-          work_website?: string | null
-          wu_date?: string | null
-        }
-        Update: {
-          about?: string | null
-          actual_net_revenue?: number | null
-          assigned_to?: string | null
-          bank_relationships?: string | null
-          client_other_lenders?: boolean
-          close_date?: string | null
-          clx_agreement?: boolean | null
-          clx_file_name?: string | null
-          cohort_year?: number | null
-          company_name?: string | null
-          contact_type?: string | null
-          converted_at?: string | null
-          converted_to_client_id?: string | null
-          copper_opportunity_id?: string | null
-          created_at?: string
-          custom_fields?: Json
-          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
-          deal_value?: number | null
-          description?: string | null
-          email?: string | null
-          fee_percent?: number | null
-          flagged_for_weekly?: boolean
-          history?: string | null
-          id?: string
-          initial_nudge_created_at?: string | null
-          interactions_count?: number
-          invoice_amount?: number | null
-          known_as?: string | null
-          last_activity_at?: string | null
-          last_contacted?: string | null
-          lender_name?: string | null
-          lender_type?: string | null
-          linkedin?: string | null
-          loan_category?: string | null
-          loan_stage?: string | null
-          loss_reason?: string | null
-          lost_at?: string | null
-          name?: string
-          net_revenue?: number | null
-          next_action?: string | null
-          notes?: string | null
-          opportunity_name?: string | null
-          phone?: string | null
-          potential_revenue?: number | null
-          priority?: Database["public"]["Enums"]["deal_priority"] | null
-          qualified_at?: string | null
-          questionnaire_completed_at?: string | null
-          questionnaire_sent_at?: string | null
-          questionnaire_token?: string | null
-          ratewatch_questionnaire_completed_at?: string | null
-          ratewatch_questionnaire_sent_at?: string | null
-          ratewatch_questionnaire_token?: string | null
-          referral_source?: string | null
-          rs_fee_percent?: number | null
-          rs_revenue?: number | null
-          sheets_last_synced_at?: string | null
-          sheets_row_index?: number | null
-          sla_threshold_days?: number | null
-          source?: string | null
-          source_system?: string
-          stage_changed_at?: string | null
-          stage_id?: string | null
-          status?: Database["public"]["Enums"]["lead_status"]
-          tags?: string[] | null
-          target_closing_date?: string | null
-          title?: string | null
-          twitter?: string | null
-          updated_at?: string
-          uw_number?: string | null
-          visibility?: string | null
-          volume_log_status?: string | null
-          waiting_on?: string | null
-          website?: string | null
-          win_percentage?: number | null
-          won?: boolean | null
-          won_at?: string | null
-          won_reason?: string | null
-          work_website?: string | null
-          wu_date?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pipeline_stage_id_fkey"
-            columns: ["stage_id"]
-            isOneToOne: false
-            referencedRelation: "pipeline_stages"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "potential_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      potential_people: {
-        Row: {
-          created_at: string
-          id: string
-          person_id: string
-          potential_id: string
-          role: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          person_id: string
-          potential_id: string
-          role?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          person_id?: string
-          potential_id?: string
-          role?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pipeline_people_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pipeline_people_pipeline_id_fkey"
-            columns: ["potential_id"]
-            isOneToOne: false
-            referencedRelation: "potential"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       project_people: {
         Row: {
           created_at: string
@@ -3367,7 +2769,15 @@ export type Database = {
           updated_at?: string
           variable_index_spread?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rate_watch_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ratewatch_questionnaire_responses: {
         Row: {
@@ -3507,86 +2917,6 @@ export type Database = {
         }
         Relationships: []
       }
-      sheets_connections: {
-        Row: {
-          access_token: string
-          created_at: string
-          email: string
-          id: string
-          refresh_token: string
-          token_expiry: string
-          updated_at: string
-          user_id: string
-          user_name: string | null
-        }
-        Insert: {
-          access_token: string
-          created_at?: string
-          email: string
-          id?: string
-          refresh_token: string
-          token_expiry: string
-          updated_at?: string
-          user_id: string
-          user_name?: string | null
-        }
-        Update: {
-          access_token?: string
-          created_at?: string
-          email?: string
-          id?: string
-          refresh_token?: string
-          token_expiry?: string
-          updated_at?: string
-          user_id?: string
-          user_name?: string | null
-        }
-        Relationships: []
-      }
-      task_saved_filters: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          criteria: Json
-          description: string | null
-          id: string
-          name: string
-          position: number
-          updated_at: string | null
-          visibility: string
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          criteria?: Json
-          description?: string | null
-          id?: string
-          name: string
-          position?: number
-          updated_at?: string | null
-          visibility?: string
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          criteria?: Json
-          description?: string | null
-          id?: string
-          name?: string
-          position?: number
-          updated_at?: string | null
-          visibility?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_saved_filters_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       task_activities: {
         Row: {
           activity_type: string
@@ -3635,6 +2965,50 @@ export type Database = {
           {
             foreignKeyName: "task_activities_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_saved_filters: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          criteria: Json
+          description: string | null
+          id: string
+          name: string
+          position: number
+          updated_at: string | null
+          visibility: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          criteria?: Json
+          description?: string | null
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string | null
+          visibility?: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          criteria?: Json
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string | null
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_saved_filters_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -3716,7 +3090,7 @@ export type Database = {
             foreignKeyName: "tasks_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: "potential"
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
           {
@@ -3724,285 +3098,6 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      team_monthly_goals: {
-        Row: {
-          created_at: string | null
-          current_value: number
-          goal_label: string
-          id: string
-          target_value: number
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          current_value?: number
-          goal_label: string
-          id?: string
-          target_value?: number
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          current_value?: number
-          goal_label?: string
-          id?: string
-          target_value?: number
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "team_monthly_goals_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      underwriting: {
-        Row: {
-          about: string | null
-          actual_net_revenue: number | null
-          assigned_to: string | null
-          bank_relationships: string | null
-          client_other_lenders: boolean
-          close_date: string | null
-          clx_agreement: boolean | null
-          clx_file_name: string | null
-          cohort_year: number | null
-          company_name: string | null
-          contact_type: string | null
-          converted_at: string | null
-          converted_to_client_id: string | null
-          copper_opportunity_id: string | null
-          created_at: string
-          custom_fields: Json
-          deal_outcome: Database["public"]["Enums"]["deal_outcome"]
-          deal_value: number | null
-          description: string | null
-          email: string | null
-          fee_percent: number | null
-          flagged_for_weekly: boolean
-          history: string | null
-          id: string
-          initial_nudge_created_at: string | null
-          interactions_count: number
-          invoice_amount: number | null
-          known_as: string | null
-          last_activity_at: string | null
-          last_contacted: string | null
-          lender_name: string | null
-          lender_type: string | null
-          loan_category: string | null
-          loan_stage: string | null
-          loss_reason: string | null
-          lost_at: string | null
-          name: string
-          net_revenue: number | null
-          next_action: string | null
-          notes: string | null
-          opportunity_name: string | null
-          origin_pipeline_id: string | null
-          phone: string | null
-          potential_revenue: number | null
-          priority: Database["public"]["Enums"]["deal_priority"] | null
-          qualified_at: string | null
-          referral_source: string | null
-          rs_fee_percent: number | null
-          rs_revenue: number | null
-          sheets_last_synced_at: string | null
-          sheets_row_index: number | null
-          sla_threshold_days: number | null
-          source: string | null
-          source_system: string
-          stage_changed_at: string | null
-          stage_id: string | null
-          status: Database["public"]["Enums"]["lead_status"]
-          tags: string[] | null
-          target_closing_date: string | null
-          title: string | null
-          updated_at: string
-          uw_number: string | null
-          visibility: string | null
-          volume_log_status: string | null
-          waiting_on: string | null
-          win_percentage: number | null
-          won: boolean | null
-          won_at: string | null
-          won_reason: string | null
-          wu_date: string | null
-        }
-        Insert: {
-          about?: string | null
-          actual_net_revenue?: number | null
-          assigned_to?: string | null
-          bank_relationships?: string | null
-          client_other_lenders?: boolean
-          close_date?: string | null
-          clx_agreement?: boolean | null
-          clx_file_name?: string | null
-          cohort_year?: number | null
-          company_name?: string | null
-          contact_type?: string | null
-          converted_at?: string | null
-          converted_to_client_id?: string | null
-          copper_opportunity_id?: string | null
-          created_at?: string
-          custom_fields?: Json
-          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
-          deal_value?: number | null
-          description?: string | null
-          email?: string | null
-          fee_percent?: number | null
-          flagged_for_weekly?: boolean
-          history?: string | null
-          id?: string
-          initial_nudge_created_at?: string | null
-          interactions_count?: number
-          invoice_amount?: number | null
-          known_as?: string | null
-          last_activity_at?: string | null
-          last_contacted?: string | null
-          lender_name?: string | null
-          lender_type?: string | null
-          loan_category?: string | null
-          loan_stage?: string | null
-          loss_reason?: string | null
-          lost_at?: string | null
-          name: string
-          net_revenue?: number | null
-          next_action?: string | null
-          notes?: string | null
-          opportunity_name?: string | null
-          origin_pipeline_id?: string | null
-          phone?: string | null
-          potential_revenue?: number | null
-          priority?: Database["public"]["Enums"]["deal_priority"] | null
-          qualified_at?: string | null
-          referral_source?: string | null
-          rs_fee_percent?: number | null
-          rs_revenue?: number | null
-          sheets_last_synced_at?: string | null
-          sheets_row_index?: number | null
-          sla_threshold_days?: number | null
-          source?: string | null
-          source_system?: string
-          stage_changed_at?: string | null
-          stage_id?: string | null
-          status?: Database["public"]["Enums"]["lead_status"]
-          tags?: string[] | null
-          target_closing_date?: string | null
-          title?: string | null
-          updated_at?: string
-          uw_number?: string | null
-          visibility?: string | null
-          volume_log_status?: string | null
-          waiting_on?: string | null
-          win_percentage?: number | null
-          won?: boolean | null
-          won_at?: string | null
-          won_reason?: string | null
-          wu_date?: string | null
-        }
-        Update: {
-          about?: string | null
-          actual_net_revenue?: number | null
-          assigned_to?: string | null
-          bank_relationships?: string | null
-          client_other_lenders?: boolean
-          close_date?: string | null
-          clx_agreement?: boolean | null
-          clx_file_name?: string | null
-          cohort_year?: number | null
-          company_name?: string | null
-          contact_type?: string | null
-          converted_at?: string | null
-          converted_to_client_id?: string | null
-          copper_opportunity_id?: string | null
-          created_at?: string
-          custom_fields?: Json
-          deal_outcome?: Database["public"]["Enums"]["deal_outcome"]
-          deal_value?: number | null
-          description?: string | null
-          email?: string | null
-          fee_percent?: number | null
-          flagged_for_weekly?: boolean
-          history?: string | null
-          id?: string
-          initial_nudge_created_at?: string | null
-          interactions_count?: number
-          invoice_amount?: number | null
-          known_as?: string | null
-          last_activity_at?: string | null
-          last_contacted?: string | null
-          lender_name?: string | null
-          lender_type?: string | null
-          loan_category?: string | null
-          loan_stage?: string | null
-          loss_reason?: string | null
-          lost_at?: string | null
-          name?: string
-          net_revenue?: number | null
-          next_action?: string | null
-          notes?: string | null
-          opportunity_name?: string | null
-          origin_pipeline_id?: string | null
-          phone?: string | null
-          potential_revenue?: number | null
-          priority?: Database["public"]["Enums"]["deal_priority"] | null
-          qualified_at?: string | null
-          referral_source?: string | null
-          rs_fee_percent?: number | null
-          rs_revenue?: number | null
-          sheets_last_synced_at?: string | null
-          sheets_row_index?: number | null
-          sla_threshold_days?: number | null
-          source?: string | null
-          source_system?: string
-          stage_changed_at?: string | null
-          stage_id?: string | null
-          status?: Database["public"]["Enums"]["lead_status"]
-          tags?: string[] | null
-          target_closing_date?: string | null
-          title?: string | null
-          updated_at?: string
-          uw_number?: string | null
-          visibility?: string | null
-          volume_log_status?: string | null
-          waiting_on?: string | null
-          win_percentage?: number | null
-          won?: boolean | null
-          won_at?: string | null
-          won_reason?: string | null
-          wu_date?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "underwriting_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "underwriting_origin_pipeline_fkey"
-            columns: ["origin_pipeline_id"]
-            isOneToOne: false
-            referencedRelation: "potential"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "underwriting_stage_id_fkey"
-            columns: ["stage_id"]
-            isOneToOne: false
-            referencedRelation: "pipeline_stages"
             referencedColumns: ["id"]
           },
         ]
@@ -4086,104 +3181,6 @@ export type Database = {
           },
         ]
       }
-      underwriting_people: {
-        Row: {
-          created_at: string
-          id: string
-          person_id: string
-          role: string | null
-          underwriting_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          person_id: string
-          role?: string | null
-          underwriting_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          person_id?: string
-          role?: string | null
-          underwriting_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "underwriting_people_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "underwriting_people_underwriting_id_fkey"
-            columns: ["underwriting_id"]
-            isOneToOne: false
-            referencedRelation: "underwriting"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_integrations: {
-        Row: {
-          auth_tag: string
-          ciphertext: string
-          created_at: string
-          dek_auth_tag: string
-          dek_iv: string
-          encrypted_dek: string
-          id: string
-          iv: string
-          key_version: number
-          label: string
-          last_used_at: string | null
-          provider: string
-          revoked_at: string | null
-          user_id: string
-        }
-        Insert: {
-          auth_tag: string
-          ciphertext: string
-          created_at?: string
-          dek_auth_tag: string
-          dek_iv: string
-          encrypted_dek: string
-          id?: string
-          iv: string
-          key_version?: number
-          label: string
-          last_used_at?: string | null
-          provider: string
-          revoked_at?: string | null
-          user_id: string
-        }
-        Update: {
-          auth_tag?: string
-          ciphertext?: string
-          created_at?: string
-          dek_auth_tag?: string
-          dek_iv?: string
-          encrypted_dek?: string
-          id?: string
-          iv?: string
-          key_version?: number
-          label?: string
-          last_used_at?: string | null
-          provider?: string
-          revoked_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_integrations_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       users: {
         Row: {
           address: string | null
@@ -4193,23 +3190,15 @@ export type Database = {
           company_name: string | null
           contact_person: string | null
           created_at: string
-          currency: string | null
-          date_format: string | null
           email: string | null
-          email_signature: string | null
           id: string
           is_active: boolean
           is_assignable: boolean
           is_owner: boolean | null
-          language: string | null
           name: string
-          notification_preferences: Json | null
           phone: string | null
           position: string | null
-          preferences: Json | null
           state: string | null
-          time_format: string | null
-          timezone: string | null
           twilio_phone_number: string | null
           updated_at: string
           user_id: string | null
@@ -4223,23 +3212,15 @@ export type Database = {
           company_name?: string | null
           contact_person?: string | null
           created_at?: string
-          currency?: string | null
-          date_format?: string | null
           email?: string | null
-          email_signature?: string | null
           id?: string
           is_active?: boolean
           is_assignable?: boolean
           is_owner?: boolean | null
-          language?: string | null
           name: string
-          notification_preferences?: Json | null
           phone?: string | null
           position?: string | null
-          preferences?: Json | null
           state?: string | null
-          time_format?: string | null
-          timezone?: string | null
           twilio_phone_number?: string | null
           updated_at?: string
           user_id?: string | null
@@ -4253,333 +3234,19 @@ export type Database = {
           company_name?: string | null
           contact_person?: string | null
           created_at?: string
-          currency?: string | null
-          date_format?: string | null
           email?: string | null
-          email_signature?: string | null
           id?: string
           is_active?: boolean
           is_assignable?: boolean
           is_owner?: boolean | null
-          language?: string | null
           name?: string
-          notification_preferences?: Json | null
           phone?: string | null
           position?: string | null
-          preferences?: Json | null
           state?: string | null
-          time_format?: string | null
-          timezone?: string | null
           twilio_phone_number?: string | null
           updated_at?: string
           user_id?: string | null
           zip_code?: string | null
-        }
-        Relationships: []
-      }
-      workspace_settings: {
-        Row: {
-          id: string
-          workspace_name: string
-          logo_url: string | null
-          primary_color: string | null
-          secondary_color: string | null
-          accent_color: string | null
-          default_theme: string | null
-          invite_admins_only: boolean | null
-          default_invite_role: string | null
-          default_google_sync: boolean | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          workspace_name?: string
-          logo_url?: string | null
-          primary_color?: string | null
-          secondary_color?: string | null
-          accent_color?: string | null
-          default_theme?: string | null
-          invite_admins_only?: boolean | null
-          default_invite_role?: string | null
-          default_google_sync?: boolean | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          workspace_name?: string
-          logo_url?: string | null
-          primary_color?: string | null
-          secondary_color?: string | null
-          accent_color?: string | null
-          default_theme?: string | null
-          invite_admins_only?: boolean | null
-          default_invite_role?: string | null
-          default_google_sync?: boolean | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      custom_field_sections: {
-        Row: {
-          id: string
-          workspace_id: string | null
-          entity_type: string
-          name: string
-          position: number
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          workspace_id?: string | null
-          entity_type: string
-          name: string
-          position?: number
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          workspace_id?: string | null
-          entity_type?: string
-          name?: string
-          position?: number
-          created_at?: string | null
-        }
-        Relationships: []
-      }
-      custom_fields: {
-        Row: {
-          id: string
-          workspace_id: string | null
-          entity_type: string
-          section_id: string | null
-          field_key: string
-          label: string
-          field_type: string
-          options: Json | null
-          required: boolean | null
-          default_value: string | null
-          position: number
-          visibility: Json | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          workspace_id?: string | null
-          entity_type: string
-          section_id?: string | null
-          field_key: string
-          label: string
-          field_type: string
-          options?: Json | null
-          required?: boolean | null
-          default_value?: string | null
-          position?: number
-          visibility?: Json | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          workspace_id?: string | null
-          entity_type?: string
-          section_id?: string | null
-          field_key?: string
-          label?: string
-          field_type?: string
-          options?: Json | null
-          required?: boolean | null
-          default_value?: string | null
-          position?: number
-          visibility?: Json | null
-          created_at?: string | null
-        }
-        Relationships: []
-      }
-      custom_field_values: {
-        Row: {
-          id: string
-          custom_field_id: string
-          record_id: string
-          record_type: string
-          value: Json | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          custom_field_id: string
-          record_id: string
-          record_type: string
-          value?: Json | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          custom_field_id?: string
-          record_id?: string
-          record_type?: string
-          value?: Json | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      record_layouts: {
-        Row: {
-          id: string
-          workspace_id: string | null
-          entity_type: string
-          pipeline_name: string | null
-          field_keys: Json
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          workspace_id?: string | null
-          entity_type: string
-          pipeline_name?: string | null
-          field_keys: Json
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          workspace_id?: string | null
-          entity_type?: string
-          pipeline_name?: string | null
-          field_keys?: Json
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      activity_types: {
-        Row: {
-          id: string
-          workspace_id: string | null
-          name: string
-          icon: string
-          color: string
-          is_system: boolean | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          workspace_id?: string | null
-          name: string
-          icon: string
-          color: string
-          is_system?: boolean | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          workspace_id?: string | null
-          name?: string
-          icon?: string
-          color?: string
-          is_system?: boolean | null
-          created_at?: string | null
-        }
-        Relationships: []
-      }
-      nav_config: {
-        Row: {
-          id: string
-          workspace_id: string | null
-          role: string
-          items: Json
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          workspace_id?: string | null
-          role: string
-          items: Json
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          workspace_id?: string | null
-          role?: string
-          items?: Json
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      email_templates: {
-        Row: {
-          id: string
-          workspace_id: string | null
-          user_id: string | null
-          name: string
-          subject: string
-          body: string
-          variables: Json | null
-          is_shared: boolean | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          workspace_id?: string | null
-          user_id?: string | null
-          name: string
-          subject: string
-          body: string
-          variables?: Json | null
-          is_shared?: boolean | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          workspace_id?: string | null
-          user_id?: string | null
-          name?: string
-          subject?: string
-          body?: string
-          variables?: Json | null
-          is_shared?: boolean | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      webhooks: {
-        Row: {
-          id: string
-          workspace_id: string | null
-          name: string
-          url: string
-          secret: string
-          events: Json
-          active: boolean | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          workspace_id?: string | null
-          name: string
-          url: string
-          secret: string
-          events: Json
-          active?: boolean | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          workspace_id?: string | null
-          name?: string
-          url?: string
-          secret?: string
-          events?: Json
-          active?: boolean | null
-          created_at?: string | null
         }
         Relationships: []
       }
@@ -4624,13 +3291,6 @@ export type Database = {
       }
     }
     Views: {
-      all_deal_tags: {
-        Row: {
-          entity_type: string | null
-          tag: string | null
-        }
-        Relationships: []
-      }
       v_pipeline_metrics: {
         Row: {
           deal_count: number | null
@@ -4692,6 +3352,14 @@ export type Database = {
         }[]
       }
       cleanup_expired_rate_limits: { Args: never; Returns: undefined }
+      compute_deal_revenue: {
+        Args: {
+          deal_value: number
+          fee_percent: number
+          potential_revenue: number
+        }
+        Returns: number
+      }
       current_team_member_id: { Args: never; Returns: string }
       get_current_team_member: {
         Args: never
@@ -4703,6 +3371,47 @@ export type Database = {
           position: string
         }[]
       }
+      get_funded_deals_summary: {
+        Args: { p_assigned_to?: string; p_from: string; p_to: string }
+        Returns: {
+          funded_count: number
+          total_actual_net_revenue: number
+          total_expected_revenue: number
+          total_loan_value: number
+        }[]
+      }
+      get_invoice_summary: {
+        Args: {
+          p_min_amount?: number
+          p_overdue_only?: boolean
+          p_status?: string
+        }
+        Returns: {
+          invoice_count: number
+          overdue_amount: number
+          overdue_count: number
+          total_amount: number
+        }[]
+      }
+      get_pipeline_value: {
+        Args: { p_assigned_to?: string; p_pipeline?: string }
+        Returns: {
+          open_count: number
+          pipeline: string
+          total_expected_revenue: number
+          total_value: number
+        }[]
+      }
+      get_revenue_vs_target: {
+        Args: { p_period_type: string }
+        Returns: {
+          actual_amount: number
+          forecast_amount: number
+          pace_vs_plan: number
+          period_type: string
+          target_amount: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4711,15 +3420,12 @@ export type Database = {
         Returns: boolean
       }
       is_team_owner: { Args: never; Returns: boolean }
-      move_deal_between_pipelines: {
-        Args: { p_deal_id: string; p_source: string; p_target: string }
-        Returns: undefined
-      }
     }
     Enums: {
       app_role: "admin" | "client" | "partner" | "super_admin"
       deal_outcome: "open" | "won" | "lost" | "abandoned"
       deal_outcome_enum: "open" | "won" | "lost" | "abandoned"
+      deal_pipeline: "potential" | "underwriting" | "lender_management"
       deal_priority: "low" | "medium" | "high"
       entity_type_enum:
         | "pipeline"
@@ -4728,7 +3434,7 @@ export type Database = {
         | "people"
         | "companies"
         | "potential"
-        | "lender_programs"
+        | "deal"
       invoice_status:
         | "draft"
         | "sent"
@@ -4896,11 +3602,15 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "client", "partner", "super_admin"],
       deal_outcome: ["open", "won", "lost", "abandoned"],
       deal_outcome_enum: ["open", "won", "lost", "abandoned"],
+      deal_pipeline: ["potential", "underwriting", "lender_management"],
       deal_priority: ["low", "medium", "high"],
       entity_type_enum: [
         "pipeline",
@@ -4909,7 +3619,7 @@ export const Constants = {
         "people",
         "companies",
         "potential",
-        "lender_programs",
+        "deal",
       ],
       invoice_status: [
         "draft",
@@ -4959,4 +3669,3 @@ export const Constants = {
     },
   },
 } as const
-

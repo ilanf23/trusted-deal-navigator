@@ -260,31 +260,13 @@ const CRMBoard = () => {
       }
       const { error } = await supabase.from('potential').update(updates).eq('id', id);
       if (error) throw error;
-
-      if (previousStatus === 'discovery' && status === 'pre_qualification') {
-        try {
-          const { error: emailError } = await supabase.functions.invoke('send-prequalification-email', {
-            body: { leadId: id },
-          });
-          if (emailError) {
-            console.error('Failed to send questionnaire email:', emailError);
-            toast.error('Lead moved but questionnaire email failed to send');
-          } else {
-            toast.success('Questionnaire email sent!');
-          }
-        } catch (err) {
-          console.error('Error sending questionnaire email:', err);
-        }
-      }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm-all-leads'] });
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
-      if (!(variables.previousStatus === 'discovery' && variables.status === 'pre_qualification')) {
-        toast.success('Lead status updated');
-      }
+      toast.success('Lead status updated');
     },
     onError: () => toast.error('Failed to update lead status'),
   });

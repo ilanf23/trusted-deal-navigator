@@ -3,7 +3,6 @@ import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FileCheck, Clock, TrendingUp, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +13,6 @@ const MaurasPage = () => {
     metrics,
     processingQueue,
     recentActivity,
-    dailyProgress,
     isLoading,
   } = useMaurasDashboard();
 
@@ -211,30 +209,6 @@ const MaurasPage = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* Daily Progress */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Today's Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {dailyProgress.length === 0 ? (
-              <p className="text-muted-foreground text-sm text-center py-4">No progress goals configured.</p>
-            ) : (
-              <div className="space-y-4">
-                {dailyProgress.map((goal, index) => (
-                  <div key={index}>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>{goal.label}</span>
-                      <span>{goal.current} / {goal.target} target</span>
-                    </div>
-                    <Progress value={goal.progress} className="h-2" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </AdminLayout>
   );

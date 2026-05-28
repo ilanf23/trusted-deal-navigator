@@ -87,8 +87,6 @@ interface Lead {
   assigned_to: string | null;
   created_at: string;
   updated_at: string;
-  questionnaire_sent_at: string | null;
-  questionnaire_completed_at: string | null;
   known_as: string | null;
   title: string | null;
   contact_type: string | null;
@@ -209,7 +207,6 @@ interface LeadLenderAssociation {
 
 // Lender data is now loaded from the deal_lender_programs database table via useQuery
 
-// Lead placeholder data is now sourced from the deal_responses database table via useQuery
 
 interface LeadDetailDialogProps {
   lead: Lead | null;
@@ -230,22 +227,6 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [customColumnsOpen, setCustomColumnsOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
   const [magicColumnsOpen, setMagicColumnsOpen] = useState(true);
-
-  // Query deal_responses from database for placeholder/custom field data
-  const { data: leadResponseData } = useQuery({
-    queryKey: ['lead-response-data', lead?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('deal_responses')
-        .select('loan_type, loan_amount, business_type, address_line_1, city, state, zip_code, collateral_description, purpose_of_loan, funding_amount')
-        .eq('entity_id', lead!.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!lead?.id && open,
-  });
 
   // Custom column values (local state for demo)
   const [customFields, setCustomFields] = useState({
@@ -350,14 +331,12 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   useEffect(() => {
     if (lead && open) {
       setActiveTab('all');
-      const addr = [leadResponseData?.address_line_1, leadResponseData?.city, leadResponseData?.state, leadResponseData?.zip_code].filter(Boolean).join(', ');
-      const amt = leadResponseData?.loan_amount ? `$${Number(leadResponseData.loan_amount).toLocaleString()}` : (leadResponseData?.funding_amount || '');
       setCustomFields({
-        address: addr,
-        loanType: leadResponseData?.loan_type || 'Conventional',
-        loanAmount: amt,
-        businessType: leadResponseData?.business_type || '',
-        propertyType: leadResponseData?.collateral_description || '',
+        address: '',
+        loanType: 'Conventional',
+        loanAmount: '',
+        businessType: '',
+        propertyType: '',
         urgency: false,
       });
       setContactInfo({
@@ -373,7 +352,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         clxFileName: lead.clx_file_name || '',
         bankRelationships: lead.bank_relationships || '',
       });
-      setNotesContent(leadResponseData?.purpose_of_loan || lead.notes || '');
+      setNotesContent(lead.notes || '');
       setAiSummary(null);
       setAiAnswer(null);
       setShowAskDialog(false);
@@ -383,32 +362,9 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       setShowAddTag(false);
       setSelectedThreadId(null);
     }
-  }, [lead, open, leadResponseData]);
+  }, [lead, open]);
 
   // Queries
-  // Fetch partner referral for this lead
-  const { data: partnerReferral } = useQuery({
-    queryKey: ['lead-partner-referral', lead?.id],
-    queryFn: async () => {
-      if (!lead) return null;
-      const { data: referral } = await supabase
-        .from('partner_referrals')
-        .select('id, partner_id, name')
-        .eq('lead_id', lead.id)
-        .limit(1)
-        .maybeSingle();
-      if (!referral) return null;
-      // Fetch partner profile for display name
-      const { data: profile } = await supabase
-        .from('users')
-        .select('contact_person, company_name')
-        .eq('user_id', referral.partner_id)
-        .maybeSingle();
-      return { ...referral, partnerName: profile?.contact_person, companyName: profile?.company_name };
-    },
-    enabled: !!lead?.id && open,
-  });
-
   // Fetch the latest lead data to ensure we have current email
   const { data: currentLead } = useQuery({
     queryKey: ['lead-detail', lead?.id],
@@ -2207,19 +2163,6 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                 </Select>
               </div>
             </div>
-            {partnerReferral && (
-              <div className="px-4 py-3 border-b bg-indigo-600/20 border-indigo-500/30">
-                <div className="flex items-center gap-2">
-                  <Handshake className="w-4 h-4 text-indigo-600" />
-                  <span className="text-sm font-semibold text-black">Referred by</span>
-                  <span className="text-sm font-bold text-black">{partnerReferral.partnerName || partnerReferral.name}</span>
-                  {partnerReferral.companyName && (
-                    <span className="text-xs text-black/70">· {partnerReferral.companyName}</span>
-                  )}
-                </div>
-              </div>
-            )}
-
             <ScrollArea className="flex-1">
               <div className="p-4 space-y-2">
                 {/* Contact Info Section */}

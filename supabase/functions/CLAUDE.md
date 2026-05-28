@@ -59,7 +59,6 @@ Deno TypeScript edge functions + shared utilities. All deployed as Supabase Edge
 - Shared helpers in `_shared/gmail/api.ts` (token validation, MIME builders, message ops).
 - `generate-lead-email` — AI-generated contextual emails for leads (60/60s)
 - `call-to-lead-automation` — automate lead follow-up after calls (email drafts via Resend/Gmail)
-- `send-prequalification-email` — send questionnaire emails with unique token URLs (60/60s)
 
 ### Dropbox
 - `dropbox-auth` — OAuth flow, token storage in `dropbox_connections` (60/60s)

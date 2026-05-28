@@ -26,13 +26,6 @@ export interface MauraActivity {
   time: string;
 }
 
-export interface MauraDailyProgress {
-  label: string;
-  current: number;
-  target: number;
-  progress: number;
-}
-
 const deriveStatus = (stage: string): string => {
   const lower = (stage || '').toLowerCase();
   if (lower.includes('closed') || lower.includes('funded') || lower.includes('complete')) return 'Complete';
@@ -80,20 +73,6 @@ export const useMaurasDashboard = () => {
     enabled: !!teamMemberId,
   });
 
-  // Daily progress goals
-  const goalsQuery = useQuery({
-    queryKey: ['maura-monthly-goals', teamMemberId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('team_monthly_goals')
-        .select('*')
-        .eq('user_id', teamMemberId!);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!teamMemberId,
-  });
-
   // Derive metrics
   const perf = perfQuery.data;
   const deals = dealsQuery.data ?? [];
@@ -127,28 +106,14 @@ export const useMaurasDashboard = () => {
   // No activity log table exists — return empty array
   const recentActivity: MauraActivity[] = [];
 
-  const dailyProgress: MauraDailyProgress[] = (goalsQuery.data ?? []).map((g: any) => {
-    const current = g.current_value;
-    const target = g.target_value;
-    const progress = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
-    return {
-      label: g.goal_label,
-      current,
-      target,
-      progress,
-    };
-  });
-
   const isLoading =
     perfQuery.isLoading ||
-    dealsQuery.isLoading ||
-    goalsQuery.isLoading;
+    dealsQuery.isLoading;
 
   return {
     metrics,
     processingQueue,
     recentActivity,
-    dailyProgress,
     isLoading,
   };
 };

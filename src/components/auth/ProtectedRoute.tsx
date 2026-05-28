@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
-  const { user, loading, isAdmin, userRole } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const { teamMember, loading: teamLoading } = useTeamMember();
   const location = useLocation();
 
@@ -19,11 +19,6 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
 
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
-  }
-
-  // Redirect partners away from admin routes
-  if (userRole === 'partner') {
-    return <Navigate to="/partner" replace />;
   }
 
   // If requireAdmin, redirect non-owner team members to their own dashboard

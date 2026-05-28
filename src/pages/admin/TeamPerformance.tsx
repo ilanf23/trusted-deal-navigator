@@ -107,10 +107,7 @@ const TeamPerformance = () => {
           created_at,
           converted_at,
           last_activity_at,
-          deal_responses (
-            loan_amount,
-            funding_amount
-          )
+          deal_value
         `)
         .gte('created_at', periodStart.toISOString());
 
@@ -132,9 +129,7 @@ const TeamPerformance = () => {
           status,
           last_activity_at,
           created_at,
-          deal_responses (
-            loan_amount
-          )
+          deal_value
         `)
         .neq('status', 'funded');
 
@@ -154,9 +149,7 @@ const TeamPerformance = () => {
         .select(`
           id,
           converted_at,
-          deal_responses (
-            loan_amount
-          )
+          deal_value
         `)
         .eq('status', 'funded')
         .gte('converted_at', periodStart.toISOString());
@@ -243,11 +236,11 @@ const TeamPerformance = () => {
     }
 
     const fundedDealsWithAmount = fundedLeads?.filter(
-      (lead) => lead.deal_responses && lead.deal_responses.length > 0 && lead.deal_responses[0]?.loan_amount
+      (lead) => lead.deal_value
     ) || [];
 
     const totalLoanVolume = fundedDealsWithAmount.reduce(
-      (sum, lead) => sum + (lead.deal_responses?.[0]?.loan_amount || 0),
+      (sum, lead) => sum + (lead.deal_value || 0),
       0
     );
     const totalRevenue = totalLoanVolume * 0.01;
@@ -255,10 +248,10 @@ const TeamPerformance = () => {
     const avgDealSize = totalDeals > 0 ? totalRevenue / totalDeals : 0;
 
     const pipelineLeadsWithAmount = pipelineData?.filter(
-      (lead) => lead.deal_responses && lead.deal_responses.length > 0
+      (lead) => lead.deal_value
     ) || [];
     const pipelineValue = pipelineLeadsWithAmount.reduce(
-      (sum, lead) => sum + (lead.deal_responses?.[0]?.loan_amount || 0) * 0.01,
+      (sum, lead) => sum + (lead.deal_value || 0) * 0.01,
       0
     );
     const pipelineDeals = pipelineData?.length || 0;
@@ -322,7 +315,7 @@ const TeamPerformance = () => {
       }) || [];
 
       const revenue = monthlyFunded.reduce(
-        (sum, lead) => sum + (lead.deal_responses?.[0]?.loan_amount || 0) * 0.01,
+        (sum, lead) => sum + (lead.deal_value || 0) * 0.01,
         0
       );
 
@@ -349,7 +342,7 @@ const TeamPerformance = () => {
         stageMap[stageName] = { count: 0, amount: 0, color: stageColor };
       }
       stageMap[stageName].count++;
-      stageMap[stageName].amount += (lead.deal_responses?.[0]?.loan_amount || 0) * 0.01;
+      stageMap[stageName].amount += (lead.deal_value || 0) * 0.01;
     });
 
     return Object.entries(stageMap).map(([name, data]) => ({
