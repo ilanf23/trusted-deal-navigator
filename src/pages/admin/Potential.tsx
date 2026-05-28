@@ -83,7 +83,7 @@ import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 
-type Lead = Database['public']['Tables']['potential']['Row'];
+type Lead = Database['public']['Tables']['deals']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 
@@ -426,7 +426,7 @@ const Pipeline = () => {
       const { data } = await supabase
         .from('entity_followers')
         .select('entity_id')
-        .eq('entity_type', 'potential')
+        .eq('entity_type', 'deal')
         .eq('user_id', currentTeamMember!.id);
       return (data ?? []).map((r) => r.entity_id);
     },

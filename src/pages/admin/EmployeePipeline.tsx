@@ -782,7 +782,7 @@ const EmployeePipeline = () => {
       // Update lead's last_activity_at
       if (composeLeadId) {
         await supabase
-          .from('potential')
+          .from('deals')
           .update({ last_activity_at: new Date().toISOString() })
           .eq('id', composeLeadId);
       }
@@ -813,7 +813,7 @@ const EmployeePipeline = () => {
       } else if (status === 'won' || status === 'funded') {
         updates.converted_at = new Date().toISOString();
       }
-      const { error } = await supabase.from('potential').update(updates).eq('id', id);
+      const { error } = await supabase.from('deals').update(updates).eq('id', id);
       if (error) throw error;
 
       // Register undo with global context (unless this is an undo operation itself)
@@ -822,7 +822,7 @@ const EmployeePipeline = () => {
           label: `${leadName || 'Lead'} moved to ${stages.find(s => s.status === status)?.title || status}`,
           execute: async () => {
             const { error: undoError } = await supabase
-              .from('potential')
+              .from('deals')
               .update({ status: previousStatus, updated_at: new Date().toISOString() })
               .eq('id', id);
             if (undoError) throw undoError;
@@ -867,12 +867,13 @@ const EmployeePipeline = () => {
     mutationFn: async ({ name, status }: { name: string; status: LeadStatus }) => {
       if (!currentMemberId) throw new Error('Current team member not found');
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .insert({
           name: name.trim(),
           status,
           assigned_to: currentMemberId,
           source: 'Pipeline',
+          pipeline: 'potential',
         })
         .select()
         .single();
@@ -898,7 +899,7 @@ const EmployeePipeline = () => {
   const updateLeadFieldMutation = useMutation({
     mutationFn: async ({ id, field, value }: { id: string; field: string; value: string | null }) => {
       if (!canEdit) throw new Error('Not authorized to update this lead');
-      const { error } = await supabase.from('potential').update({ [field]: value }).eq('id', id);
+      const { error } = await supabase.from('deals').update({ [field]: value }).eq('id', id);
       if (error) throw error;
       return { field, value };
     },
@@ -916,14 +917,14 @@ const EmployeePipeline = () => {
       
       // First, fetch the leads data before deleting (for undo)
       const { data: leadsToDelete, error: fetchError } = await supabase
-        .from('potential')
+        .from('deals')
         .select('*')
         .in('id', leadIds);
 
       if (fetchError) throw fetchError;
 
       // Delete the leads
-      const { error } = await supabase.from('potential').delete().in('id', leadIds);
+      const { error } = await supabase.from('deals').delete().in('id', leadIds);
       if (error) throw error;
 
       return leadsToDelete as Lead[];

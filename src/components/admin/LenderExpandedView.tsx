@@ -496,8 +496,9 @@ export default function LenderExpandedView() {
     queryFn: async () => {
       if (!lender?.lender_name) return [];
       const { data } = await supabase
-        .from('lender_management')
+        .from('deals')
         .select('id, name, company_name, status')
+        .eq('pipeline', 'lender_management')
         .ilike('company_name', lender.lender_name);
       return data ?? [];
     },

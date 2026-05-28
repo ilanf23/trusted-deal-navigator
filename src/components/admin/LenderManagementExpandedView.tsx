@@ -724,12 +724,12 @@ export default function LenderManagementExpandedView() {
   const handleOwnerChange = useCallback(async (newOwnerId: string) => {
     if (!leadId) return;
     const previousOwner = lead?.assigned_to ?? null;
-    const { error } = await supabase.from('lender_management').update({ assigned_to: newOwnerId || null }).eq('id', leadId);
+    const { error } = await supabase.from('deals').update({ assigned_to: newOwnerId || null }).eq('id', leadId);
     if (error) { toast.error('Failed to save'); return; }
     registerUndo({
       label: 'Owner changed',
       execute: async () => {
-        const { error: e } = await supabase.from('lender_management').update({ assigned_to: previousOwner || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('deals').update({ assigned_to: previousOwner || null }).eq('id', leadId);
         if (e) throw e;
         handleFieldSaved('assigned_to', previousOwner ?? '');
       },

@@ -162,7 +162,7 @@ function EditableSelectField({
     if (newValue === value) return;
     setSaving(true);
     const { error } = await supabase
-      .from('underwriting')
+      .from('deals')
       .update({ [field]: newValue || null })
       .eq('id', leadId);
     setSaving(false);
@@ -318,7 +318,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('underwriting')
+      .from('deals')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', leadId);
     setSaving(false);
@@ -393,7 +393,7 @@ function EditableRichTextField({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('underwriting')
+      .from('deals')
       .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
@@ -852,8 +852,9 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
                       className="text-[12px] font-semibold text-foreground truncate leading-tight hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer"
                       onClick={async () => {
                         const { data } = await supabase
-                          .from('underwriting')
+                          .from('deals')
                           .select('id')
+                          .eq('pipeline', 'underwriting')
                           .ilike('name', c.name)
                           .limit(1)
                           .maybeSingle();
@@ -1372,7 +1373,7 @@ export default function UnderwritingDetailPanel({
               <div className="border-b border-[#3b2778]/30 dark:border-[#a78bfa]/30 pb-1">
                 {ownerOptions.length > 0 ? (
                   <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
-                    const { error } = await supabase.from('underwriting').update({ assigned_to: v || null }).eq('id', lead.id);
+                    const { error } = await supabase.from('deals').update({ assigned_to: v || null }).eq('id', lead.id);
                     if (!error) { handleFieldSaved('assigned_to', v); }
                   }}>
                     <SelectTrigger className="h-10 w-full text-base text-foreground border-0 bg-transparent shadow-none px-1 rounded-none">
@@ -1527,7 +1528,7 @@ export default function UnderwritingDetailPanel({
                 <button
                   onClick={async () => {
                     const newVal = !lead.client_other_lenders;
-                    const { error } = await supabase.from('underwriting').update({ client_other_lenders: newVal }).eq('id', lead.id);
+                    const { error } = await supabase.from('deals').update({ client_other_lenders: newVal }).eq('id', lead.id);
                     if (!error) handleFieldSaved('client_other_lenders', String(newVal));
                   }}
                   className="text-base text-foreground py-1.5 px-1 hover:text-blue-600 transition-colors"
@@ -1544,7 +1545,7 @@ export default function UnderwritingDetailPanel({
                 <button
                   onClick={async () => {
                     const newVal = !lead.flagged_for_weekly;
-                    const { error } = await supabase.from('underwriting').update({ flagged_for_weekly: newVal }).eq('id', lead.id);
+                    const { error } = await supabase.from('deals').update({ flagged_for_weekly: newVal }).eq('id', lead.id);
                     if (!error) handleFieldSaved('flagged_for_weekly', String(newVal));
                   }}
                   className="text-base text-foreground py-1.5 px-1 hover:text-blue-600 transition-colors"
