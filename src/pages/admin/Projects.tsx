@@ -163,8 +163,9 @@ const Projects = () => {
     queryFn: async () => {
       if (leadIds.length === 0) return {};
       const { data } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, name, opportunity_name, company_name')
+        .eq('pipeline', 'potential')
         .in('id', leadIds);
       const map: Record<string, { name: string; opportunity_name: string | null; company_name: string | null }> = {};
       for (const l of data ?? []) map[l.id] = l;
@@ -200,8 +201,9 @@ const Projects = () => {
     queryFn: async () => {
       if (linkedLeadIds.length === 0) return {};
       const { data } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, name')
+        .eq('pipeline', 'potential')
         .in('id', linkedLeadIds);
       const map: Record<string, string> = {};
       for (const l of data ?? []) map[l.id] = l.name;

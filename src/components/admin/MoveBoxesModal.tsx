@@ -181,10 +181,10 @@ const MoveBoxesModal = ({
       }
 
       const { error } = await supabase
-        .from('potential')
+        .from('deals')
         .update(updates)
         .in('id', leadIds);
-      
+
       if (error) throw error;
       return { count: leadIds.length, targetStage };
     },
@@ -220,7 +220,7 @@ const MoveBoxesModal = ({
       // Update each deal's pipeline_id and stage_id directly on the pipeline table
       for (const leadId of leadIds) {
         const { error: updateError } = await supabase
-          .from('potential')
+          .from('deals')
           .update({
             pipeline_id: targetPipelineId,
             stage_id: targetStageId,

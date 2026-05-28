@@ -261,9 +261,8 @@ export function ExpandedLeftColumn({
     // `deal_outcome`, `won_reason`, `won_at`, `lost_at`, and repurposes the
     // existing `loss_reason` column for parity with Copper's free-form field.
     //
-    // Supabase's typed client requires a literal string for `.from()`, so we
-    // dispatch over the three concrete tables instead of passing a variable.
-    // This gives us full TS coverage with no casts.
+    // The three former pipeline tables are now the single `deals` table, so
+    // the update targets `deals` directly (by id) regardless of pipeline.
     const nowIso = new Date().toISOString();
     const baseUpdates = {
       deal_outcome: payload.outcome,
@@ -287,24 +286,7 @@ export function ExpandedLeftColumn({
       });
     }
 
-    let updateError: unknown = null;
-    switch (tableName) {
-      case 'potential': {
-        const { error } = await supabase.from('potential').update(baseUpdates).eq('id', lead.id);
-        updateError = error;
-        break;
-      }
-      case 'underwriting': {
-        const { error } = await supabase.from('underwriting').update(baseUpdates).eq('id', lead.id);
-        updateError = error;
-        break;
-      }
-      case 'lender_management': {
-        const { error } = await supabase.from('lender_management').update(baseUpdates).eq('id', lead.id);
-        updateError = error;
-        break;
-      }
-    }
+    const { error: updateError } = await supabase.from('deals').update(baseUpdates).eq('id', lead.id);
     if (updateError) {
       toast.error('Failed to save outcome');
       return;
@@ -338,7 +320,7 @@ export function ExpandedLeftColumn({
         .from('entity_contacts')
         .select('id, name, title, email, phone')
         .eq('entity_id', lead.id)
-        .eq('entity_type', tableName);
+        .eq('entity_type', 'deal');
       return (data ?? []) as Array<{ id: string; name: string; title: string | null; email: string | null; phone: string | null }>;
     },
     enabled: !!lead.id,
@@ -353,7 +335,7 @@ export function ExpandedLeftColumn({
       if (hasCurrentPrimary) {
         const { error: insertErr } = await supabase.from('entity_contacts').insert({
           entity_id: lead.id,
-          entity_type: tableName,
+          entity_type: 'deal',
           name: lead.name || '(No name)',
           title: lead.title ?? null,
           email: lead.email ?? null,
@@ -377,24 +359,7 @@ export function ExpandedLeftColumn({
         email: newPrimary.email,
         phone: newPrimary.phone,
       };
-      let updateErr: unknown = null;
-      switch (tableName) {
-        case 'potential': {
-          const { error } = await supabase.from('potential').update(updates).eq('id', lead.id);
-          updateErr = error;
-          break;
-        }
-        case 'underwriting': {
-          const { error } = await supabase.from('underwriting').update(updates).eq('id', lead.id);
-          updateErr = error;
-          break;
-        }
-        case 'lender_management': {
-          const { error } = await supabase.from('lender_management').update(updates).eq('id', lead.id);
-          updateErr = error;
-          break;
-        }
-      }
+      const { error: updateErr } = await supabase.from('deals').update(updates).eq('id', lead.id);
       if (updateErr) throw updateErr;
     },
     onSuccess: () => {
@@ -519,7 +484,7 @@ export function ExpandedLeftColumn({
           field="opportunity_name"
           leadId={lead.id}
           onSaved={onFieldSaved}
-          tableName={tableName}
+          tableName="deals"
         />
 
         {/* Pipeline */}
@@ -532,19 +497,19 @@ export function ExpandedLeftColumn({
           field="loan_stage"
           leadId={lead.id}
           onSaved={onFieldSaved}
-          tableName={tableName}
+          tableName="deals"
         />
 
         {/* CLX - File Name */}
-        <StackedEditableField label="CLX - File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={onFieldSaved} tableName={tableName} />
+        <StackedEditableField label="CLX - File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={onFieldSaved} tableName="deals" />
 
         {/* Waiting On: */}
-        <StackedEditableField label="Waiting On:" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={onFieldSaved} tableName={tableName} />
+        <StackedEditableField label="Waiting On:" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={onFieldSaved} tableName="deals" />
 
         {/* Tags */}
         <div>
           <label className="text-sm text-muted-foreground block mb-3">Tags</label>
-          <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={onFieldSaved} tableName={tableName} />
+          <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={onFieldSaved} tableName="deals" />
         </div>
 
         {/* Value */}
@@ -555,11 +520,11 @@ export function ExpandedLeftColumn({
           leadId={lead.id}
           onSaved={onFieldSaved}
           transform={(v) => v ? Number(v.replace(/[^0-9.]/g, '')) : null}
-          tableName={tableName}
+          tableName="deals"
         />
 
         {/* Description */}
-        <StackedEditableField label="Description" value={lead.description ?? ''} field="description" leadId={lead.id} onSaved={onFieldSaved} tableName={tableName} />
+        <StackedEditableField label="Description" value={lead.description ?? ''} field="description" leadId={lead.id} onSaved={onFieldSaved} tableName="deals" />
 
         {/* Primary Contact */}
         <div>
@@ -660,7 +625,7 @@ export function ExpandedLeftColumn({
         />
 
         {/* Close Date */}
-        <StackedEditableField label="Close Date" value={lead.close_date ? formatDate(lead.close_date) : ''} field="close_date" leadId={lead.id} onSaved={onFieldSaved} tableName={tableName} />
+        <StackedEditableField label="Close Date" value={lead.close_date ? formatDate(lead.close_date) : ''} field="close_date" leadId={lead.id} onSaved={onFieldSaved} tableName="deals" />
 
         {/* Owner */}
         {ownerOptions.length > 0 ? (
@@ -676,7 +641,7 @@ export function ExpandedLeftColumn({
         )}
 
         {/* Source */}
-        <StackedEditableField label="Source" value={lead.source ?? ''} field="source" leadId={lead.id} onSaved={onFieldSaved} tableName={tableName} emptyText="No Source" />
+        <StackedEditableField label="Source" value={lead.source ?? ''} field="source" leadId={lead.id} onSaved={onFieldSaved} tableName="deals" emptyText="No Source" />
 
         {/* Created */}
         <StackedReadOnlyField label="Created" value={formatDate(lead.created_at)} locked />
@@ -737,15 +702,15 @@ export function ExpandedLeftColumn({
         </div>
 
         {/* Loss Reason */}
-        <StackedEditableField label="Loss Reason" value={lead.loss_reason ?? ''} field="loss_reason" leadId={lead.id} onSaved={onFieldSaved} tableName={tableName} emptyText="No Loss Reason" />
+        <StackedEditableField label="Loss Reason" value={lead.loss_reason ?? ''} field="loss_reason" leadId={lead.id} onSaved={onFieldSaved} tableName="deals" emptyText="No Loss Reason" />
 
         {/* Visibility */}
-        <StackedEditableField label="Visibility" value={lead.visibility && lead.visibility !== 'everyone' ? lead.visibility : ''} field="visibility" leadId={lead.id} onSaved={onFieldSaved} tableName={tableName} emptyText="Everyone" />
+        <StackedEditableField label="Visibility" value={lead.visibility && lead.visibility !== 'everyone' ? lead.visibility : ''} field="visibility" leadId={lead.id} onSaved={onFieldSaved} tableName="deals" emptyText="Everyone" />
 
         {/* Bank Relationships */}
         <div>
           <label className="text-sm text-muted-foreground block mb-3">Bank Relationships</label>
-          <EditableNotesField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Add Bank Relationships" onSaved={onFieldSaved} tableName={tableName} />
+          <EditableNotesField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Add Bank Relationships" onSaved={onFieldSaved} tableName="deals" />
         </div>
 
         {/* Client Working with Other Lenders */}

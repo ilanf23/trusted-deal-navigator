@@ -779,8 +779,9 @@ export default function CompanyExpandedView() {
     queryFn: async () => {
       if (!company?.company_name) return [];
       const { data } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, name, status, deal_value, assigned_to')
+        .eq('pipeline', 'potential')
         .eq('company_name', company.company_name)
         .order('created_at', { ascending: false });
       return data ?? [];
