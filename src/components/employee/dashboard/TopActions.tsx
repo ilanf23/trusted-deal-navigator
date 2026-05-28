@@ -57,7 +57,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
         .from('tasks')
         .select(`
           id, title, description, due_date, priority, status, lead_id,
-          lead:potential(
+          lead:deals(
             id, name, company_name, status, email, phone,
             deal_value, potential_revenue
           )

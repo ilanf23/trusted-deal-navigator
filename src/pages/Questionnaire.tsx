@@ -174,8 +174,9 @@ const Questionnaire = () => {
 
       try {
         const { data, error } = await supabase
-          .from('potential')
+          .from('deals')
           .select('id, name, company_name, questionnaire_completed_at')
+          .eq('pipeline', 'potential')
           .eq('questionnaire_token', token)
           .maybeSingle();
 
@@ -225,13 +226,14 @@ const Questionnaire = () => {
       // For generic links, create a new lead first
       if (isGenericLink) {
         const { data: newLead, error: leadError } = await supabase
-          .from('potential')
+          .from('deals')
           .insert({
             name: `${formData.first_name} ${formData.last_name}`.trim(),
             email: formData.email || null,
             phone: formData.phone || null,
             company_name: formData.principal_name || null,
             source: 'partner_referral',
+            pipeline: 'potential',
             questionnaire_completed_at: new Date().toISOString(),
           })
           .select('id')
@@ -304,7 +306,7 @@ const Questionnaire = () => {
 
       if (!isGenericLink) {
         await supabase
-          .from('potential')
+          .from('deals')
           .update({ questionnaire_completed_at: new Date().toISOString() })
           .eq('id', leadId);
       }

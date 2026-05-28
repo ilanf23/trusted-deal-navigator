@@ -81,7 +81,7 @@ import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 
-type Lead = Database['public']['Tables']['lender_management']['Row'];
+type Lead = Database['public']['Tables']['deals']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 
@@ -481,7 +481,7 @@ const LenderManagement = () => {
       const { data } = await supabase
         .from('entity_followers')
         .select('entity_id')
-        .eq('entity_type', 'lender_management')
+        .eq('entity_type', 'deal')
         .eq('user_id', currentTeamMember!.id);
       return (data ?? []).map((r) => r.entity_id);
     },

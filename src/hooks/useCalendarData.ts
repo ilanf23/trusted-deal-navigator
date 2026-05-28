@@ -195,7 +195,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
       const { start, end } = getDateRange();
       let query = supabase
         .from('tasks')
-        .select('id, title, due_date, is_completed, priority, status, lead:potential(name, company_name)')
+        .select('id, title, due_date, is_completed, priority, status, lead:deals(name, company_name)')
         .not('due_date', 'is', null)
         .gte('due_date', start.toISOString())
         .lte('due_date', end.toISOString())
