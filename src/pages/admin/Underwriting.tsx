@@ -85,7 +85,7 @@ import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
 import { AddOpportunityDialog } from '@/components/admin/AddOpportunityDialog';
 
-type Lead = Database['public']['Tables']['underwriting']['Row'];
+type Lead = Database['public']['Tables']['deals']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 
@@ -447,7 +447,7 @@ const Underwriting = () => {
       const { data } = await supabase
         .from('entity_followers')
         .select('entity_id')
-        .eq('entity_type', 'underwriting')
+        .eq('entity_type', 'deal')
         .eq('user_id', currentTeamMember!.id);
       return (data ?? []).map((r) => r.entity_id);
     },
@@ -631,7 +631,7 @@ const Underwriting = () => {
   const bulkDeleteMutation = useMutation({
     mutationFn: async (dealIds: string[]) => {
       const { error } = await supabase
-        .from('underwriting')
+        .from('deals')
         .delete()
         .in('id', dealIds);
       if (error) throw error;
@@ -660,7 +660,7 @@ const Underwriting = () => {
   const bulkAssignOwnerMutation = useMutation({
     mutationFn: async ({ leadIds, ownerId }: { leadIds: string[]; ownerId: string }) => {
       const { error } = await supabase
-        .from('underwriting')
+        .from('deals')
         .update({ assigned_to: ownerId })
         .in('id', leadIds);
       if (error) throw error;
@@ -683,7 +683,7 @@ const Underwriting = () => {
   const bulkAddTagsMutation = useMutation({
     mutationFn: async ({ leadIds, tags }: { leadIds: string[]; tags: string[] }) => {
       const { data: currentLeads, error: fetchError } = await supabase
-        .from('underwriting')
+        .from('deals')
         .select('id, tags')
         .in('id', leadIds);
       if (fetchError) throw fetchError;
@@ -692,7 +692,7 @@ const Underwriting = () => {
         const existingTags: string[] = (lead.tags as string[]) || [];
         const mergedTags = Array.from(new Set([...existingTags, ...tags]));
         const { error } = await supabase
-          .from('underwriting')
+          .from('deals')
           .update({ tags: mergedTags })
           .eq('id', lead.id);
         if (error) throw error;

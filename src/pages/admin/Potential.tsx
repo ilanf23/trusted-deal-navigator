@@ -459,7 +459,7 @@ const Pipeline = () => {
     registerUndo({
       label: `Created opportunity "${lead.name}"`,
       execute: async () => {
-        const { error } = await supabase.from('potential').delete().eq('id', lead.id);
+        const { error } = await supabase.from('deals').delete().eq('id', lead.id);
         if (error) throw error;
         setDetailDialogLead(null);
         queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
@@ -690,7 +690,7 @@ const Pipeline = () => {
     }
 
     const { error } = await supabase
-      .from('potential')
+      .from('deals')
       .update({ [field]: saveValue, updated_at: new Date().toISOString() })
       .eq('id', leadId);
 
@@ -740,11 +740,11 @@ const Pipeline = () => {
     mutationFn: async (dealIds: string[]) => {
       // Capture pipeline records before deleting for undo
       const { data: deletedRecords } = await supabase
-        .from('potential')
+        .from('deals')
         .select('*')
         .in('id', dealIds);
       const { error } = await supabase
-        .from('potential')
+        .from('deals')
         .delete()
         .in('id', dealIds);
       if (error) throw error;
@@ -759,7 +759,7 @@ const Pipeline = () => {
         registerUndo({
           label: `Removed ${ids.length} lead(s) from pipeline`,
           execute: async () => {
-            const { error: e } = await supabase.from('potential').insert(deletedRecords);
+            const { error: e } = await supabase.from('deals').insert(deletedRecords);
             if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
           },
@@ -784,12 +784,12 @@ const Pipeline = () => {
     mutationFn: async ({ leadIds, ownerId }: { leadIds: string[]; ownerId: string }) => {
       // Capture previous owners for undo
       const { data: prevLeads } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, assigned_to')
         .in('id', leadIds);
       const previousOwners = (prevLeads ?? []).map(l => ({ id: l.id, assigned_to: l.assigned_to }));
       const { error } = await supabase
-        .from('potential')
+        .from('deals')
         .update({ assigned_to: ownerId })
         .in('id', leadIds);
       if (error) throw error;
@@ -804,7 +804,7 @@ const Pipeline = () => {
         label: `Assigned ${result.leadIds.length} lead(s) to ${ownerName}`,
         execute: async () => {
           for (const prev of result.previousOwners) {
-            const { error: e } = await supabase.from('potential').update({ assigned_to: prev.assigned_to }).eq('id', prev.id);
+            const { error: e } = await supabase.from('deals').update({ assigned_to: prev.assigned_to }).eq('id', prev.id);
             if (e) throw e;
           }
           queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
@@ -823,7 +823,7 @@ const Pipeline = () => {
     mutationFn: async ({ leadIds, tags }: { leadIds: string[]; tags: string[] }) => {
       // Fetch current tags for selected deals
       const { data: currentLeads, error: fetchError } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, tags')
         .in('id', leadIds);
       if (fetchError) throw fetchError;
@@ -836,7 +836,7 @@ const Pipeline = () => {
         const existingTags: string[] = (lead.tags as string[]) || [];
         const mergedTags = Array.from(new Set([...existingTags, ...tags]));
         const { error } = await supabase
-          .from('potential')
+          .from('deals')
           .update({ tags: mergedTags })
           .eq('id', lead.id);
         if (error) throw error;
@@ -853,7 +853,7 @@ const Pipeline = () => {
         label: `Added tags to ${result.count} lead(s)`,
         execute: async () => {
           for (const prev of result.previousTags) {
-            const { error: e } = await supabase.from('potential').update({ tags: prev.tags }).eq('id', prev.id);
+            const { error: e } = await supabase.from('deals').update({ tags: prev.tags }).eq('id', prev.id);
             if (e) throw e;
           }
           queryClient.invalidateQueries({ queryKey: ['potential-deals'] });

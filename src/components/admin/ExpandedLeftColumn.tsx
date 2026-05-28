@@ -200,7 +200,7 @@ export function ExpandedLeftColumn({
         .from('entity_followers')
         .select('id')
         .eq('entity_id', lead.id)
-        .eq('entity_type', tableName)
+        .eq('entity_type', 'deal')
         .eq('user_id', teamMemberId!)
         .maybeSingle();
       return !!data;
@@ -215,13 +215,13 @@ export function ExpandedLeftColumn({
           .from('entity_followers')
           .delete()
           .eq('entity_id', lead.id)
-          .eq('entity_type', tableName)
+          .eq('entity_type', 'deal')
           .eq('user_id', teamMemberId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('entity_followers')
-          .insert({ entity_id: lead.id, entity_type: tableName, user_id: teamMemberId });
+          .insert({ entity_id: lead.id, entity_type: 'deal', user_id: teamMemberId });
         if (error) throw error;
       }
     },
@@ -279,7 +279,7 @@ export function ExpandedLeftColumn({
       const noteTitle = payload.outcome === 'won' ? 'Win notes' : 'Loss notes';
       await supabase.from('activities').insert({
         entity_id: lead.id,
-        entity_type: tableName,
+        entity_type: 'deal',
         activity_type: 'note',
         title: noteTitle,
         content: `${payload.reason} — ${payload.notes}`,

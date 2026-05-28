@@ -948,7 +948,7 @@ const EmployeePipeline = () => {
           execute: async () => {
             // Restore the deleted leads
             const { error: restoreError } = await supabase
-              .from('potential')
+              .from('deals')
               .insert(deletedLeads.map(lead => ({
                 ...lead,
                 updated_at: new Date().toISOString(),
@@ -972,11 +972,11 @@ const EmployeePipeline = () => {
       
       // Get current assignments before updating (for undo)
       const { data: leadsBeforeUpdate } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, assigned_to, name')
         .in('id', leadIds);
 
-      const { error } = await supabase.from('potential').update({ assigned_to: ownerId }).in('id', leadIds);
+      const { error } = await supabase.from('deals').update({ assigned_to: ownerId }).in('id', leadIds);
       if (error) throw error;
       return { ownerId, leadsBeforeUpdate, leadCount: leadIds.length };
     },
@@ -998,7 +998,7 @@ const EmployeePipeline = () => {
           execute: async () => {
             // Restore original assignments
             for (const lead of result.leadsBeforeUpdate!) {
-              await supabase.from('potential').update({ assigned_to: lead.assigned_to }).eq('id', lead.id);
+              await supabase.from('deals').update({ assigned_to: lead.assigned_to }).eq('id', lead.id);
             }
             queryClient.invalidateQueries({ queryKey: ['evans-pipeline-deals'] });
             queryClient.invalidateQueries({ queryKey: ['pipeline'] });

@@ -894,7 +894,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const updateLead = useMutation({
     mutationFn: async (updates: { name?: string; company_name?: string | null; email?: string | null; phone?: string | null }) => {
       if (!lead) return;
-      const { error } = await supabase.from('potential').update(updates).eq('id', lead.id);
+      const { error } = await supabase.from('deals').update(updates).eq('id', lead.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -956,7 +956,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       if (!lead) return;
       const { error } = await supabase.from('activities').insert({
         entity_id: lead.id,
-        entity_type: 'potential',
+        entity_type: 'deal',
         activity_type: 'comment',
         title: 'Comment added',
         content: comment,
@@ -1021,7 +1021,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       if (!lead) return;
       const { error } = await supabase.from('activities').insert({
         entity_id: lead.id,
-        entity_type: 'potential',
+        entity_type: 'deal',
         activity_type: 'meeting',
         title: title || 'Scheduled meeting',
         content: `Meeting scheduled for ${date}`,
@@ -1877,7 +1877,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                   <TabsContent value="files" className="m-0 p-4">
                     <EntityFilesSection
                       entityId={lead.id}
-                      entityType="potential"
+                      entityType="deal"
                       entityName={lead.name}
                       companyName={lead.company_name}
                     />
