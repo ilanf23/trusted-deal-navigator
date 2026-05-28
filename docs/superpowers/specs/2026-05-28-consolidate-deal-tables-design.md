@@ -73,13 +73,11 @@ More conservative. Keeps the three-name branching in ~62 files and does not fix 
 
 ## 3. Naming
 
-Candidates: `deals`, `pipeline_deals`, or keep `potential`.
+**Decision: the consolidated table is named `deals`** (confirmed by Ilan, 2026-05-28), with the matching junction named `deal_people` (§5).
 
-- **`deals` (recommended).** Clearest, matches the existing `deal_outcome` / `deal_priority` / `deal_milestones` / `deal_responses` vocabulary already in the schema. Renaming cost is low: only **5 real inbound FK columns** point at these tables (§4), and the polymorphic children use `entity_id` + `entity_type` (no hard FK), so they are unaffected by the table name.
-- **Keep `potential`.** Avoids renaming those 5 FK columns but is semantically wrong (a won lender-management deal is not "potential") and confusing for future devs.
-- **`pipeline_deals`.** Fine, but redundant given the `pipeline` enum lives on the row.
+Rationale: `deals` matches the existing `deal_outcome` / `deal_priority` / `deal_milestones` / `deal_responses` vocabulary already in the schema, and reads correctly at every stage (a won lender-management record is a "deal," not a "potential"). Renaming cost is low: only **5 real inbound FK columns** point at these tables (§4), and the polymorphic children use `entity_id` + `entity_type` (no hard FK), so they are unaffected by the table name.
 
-**Recommendation: `deals`**, with the matching junction renamed `deal_people` (§5). Confirm with team.
+Rejected alternatives: keeping `potential` (semantically wrong for later-stage deals) and `pipeline_deals` (redundant since the `pipeline` enum already lives on the row).
 
 ---
 
