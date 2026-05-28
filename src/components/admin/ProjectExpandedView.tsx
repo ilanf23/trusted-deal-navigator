@@ -1266,11 +1266,17 @@ export default function ProjectExpandedView() {
                 </RelatedSection>
 
                 {/* People */}
-                <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={projectPeople.length} onAdd={() => setShowPeoplePicker(!showPeoplePicker)}>
+                <div ref={peopleSectionRef}>
+                  <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={projectPeople.length} onAdd={() => setShowPeoplePicker(!showPeoplePicker)}>
                   <div className="space-y-3 py-1">
-                    {/* People picker */}
-                    {showPeoplePicker && (
-                      <div className="space-y-1.5">
+                    {/* People picker — portaled to document.body so ancestor overflow-hidden
+                        containers can't clip it. Anchored to peopleSectionRef. */}
+                    {showPeoplePicker && createPortal(
+                      <div
+                        ref={peoplePickerRef}
+                        style={{ position: 'fixed', top: peoplePickerPos.top, left: peoplePickerPos.left, width: peoplePickerPos.width }}
+                        className="z-[9999] bg-popover border border-border rounded-md shadow-lg p-2 space-y-1.5"
+                      >
                         <input
                           autoFocus
                           value={peopleSearch}
@@ -1279,7 +1285,7 @@ export default function ProjectExpandedView() {
                           placeholder="Search people..."
                           className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                         />
-                        <div className="max-h-[140px] overflow-y-auto space-y-0.5">
+                        <div className="max-h-[200px] overflow-y-auto space-y-0.5">
                           {filteredPickerLeads.map(l => (
                             <button
                               key={l.id}
@@ -1293,7 +1299,8 @@ export default function ProjectExpandedView() {
                           ))}
                           {filteredPickerLeads.length === 0 && <p className="text-[10px] text-muted-foreground text-center py-2">No results</p>}
                         </div>
-                      </div>
+                      </div>,
+                      document.body
                     )}
 
                     {/* Linked people list */}
@@ -1327,7 +1334,8 @@ export default function ProjectExpandedView() {
                       </button>
                     )}
                   </div>
-                </RelatedSection>
+                  </RelatedSection>
+                </div>
 
                 {/* Tasks */}
                 <RelatedSection icon={<Circle className="h-3.5 w-3.5" />} label="Tasks" count={tasks.length} onAdd={() => setAddingTask(true)}>
