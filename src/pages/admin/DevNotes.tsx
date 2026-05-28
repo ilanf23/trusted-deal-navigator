@@ -22,7 +22,6 @@ import {
   Users,
   Target,
   Clock,
-  Newspaper,
 } from 'lucide-react';
 
 interface Automation {
@@ -32,7 +31,7 @@ interface Automation {
   actions: string[];
   edgeFunctions: string[];
   status: 'active' | 'beta' | 'planned';
-  category: 'calls' | 'email' | 'leads' | 'calendar' | 'newsletter' | 'ai';
+  category: 'calls' | 'email' | 'leads' | 'calendar' | 'ai';
 }
 
 const automations: Automation[] = [
@@ -149,21 +148,6 @@ const automations: Automation[] = [
     category: 'calendar',
   },
   {
-    name: 'Newsletter System',
-    description: 'Full newsletter campaign management with tracking for opens, clicks, and unsubscribes.',
-    triggers: ['Campaign scheduled/sent', 'Subscriber opens/clicks email'],
-    actions: [
-      'Sends newsletters to subscriber list',
-      'Tracks open events',
-      'Tracks click events',
-      'Handles unsubscribe requests',
-      'Webhook for email events',
-    ],
-    edgeFunctions: ['send-newsletter', 'newsletter-track', 'newsletter-webhook'],
-    status: 'active',
-    category: 'newsletter',
-  },
-  {
     name: 'Pre-qualification Email',
     description: 'Sends pre-qualification questionnaire link to leads with unique token for tracking.',
     triggers: ['User sends questionnaire from lead detail'],
@@ -208,7 +192,6 @@ const categoryConfig = {
   email: { icon: Mail, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400' },
   leads: { icon: Users, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-400' },
   calendar: { icon: Calendar, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' },
-  newsletter: { icon: Newspaper, color: 'bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-400' },
   ai: { icon: Bot, color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-400' },
 };
 

@@ -10,7 +10,6 @@ import {
   LogOut,
   Kanban,
   TrendingDown,
-  Newspaper,
   User,
   Mail,
   ChevronDown,
