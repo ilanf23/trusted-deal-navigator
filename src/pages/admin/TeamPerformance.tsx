@@ -98,7 +98,7 @@ const TeamPerformance = () => {
     queryKey: ['team-leads-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select(`
           id,
           name,
@@ -112,6 +112,7 @@ const TeamPerformance = () => {
             funding_amount
           )
         `)
+        .eq('pipeline', 'potential')
         .gte('created_at', periodStart.toISOString());
 
       if (error) throw error;
@@ -126,7 +127,7 @@ const TeamPerformance = () => {
     queryKey: ['team-pipeline-analytics'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select(`
           id,
           status,
@@ -136,6 +137,7 @@ const TeamPerformance = () => {
             loan_amount
           )
         `)
+        .eq('pipeline', 'potential')
         .neq('status', 'funded');
 
       if (error) throw error;

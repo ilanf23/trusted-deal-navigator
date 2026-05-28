@@ -358,7 +358,7 @@ export default function UnderwritingExpandedView() {
     registerUndo({
       label: `Stage changed to ${canonicalStageConfig[newStatus]?.title ?? newStatus}`,
       execute: async () => {
-        const { error: e } = await supabase.from('underwriting').update({ status: previousStatus }).eq('id', leadId);
+        const { error: e } = await supabase.from('deals').update({ status: previousStatus }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
         queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
@@ -372,10 +372,10 @@ export default function UnderwritingExpandedView() {
   // ── Deal-outcome change handler (Status dropdown: Open / Won / Lost / Abandoned) ──
   const handleDealOutcomeChange = useCallback(async (newOutcome: 'open' | 'won' | 'lost' | 'abandoned') => {
     if (!leadId) return;
-    const { data: current } = await supabase.from('underwriting').select('deal_outcome').eq('id', leadId).single();
+    const { data: current } = await supabase.from('deals').select('deal_outcome').eq('id', leadId).single();
     const previousOutcome = (current?.deal_outcome ?? 'open') as 'open' | 'won' | 'lost' | 'abandoned';
     const { error } = await supabase
-      .from('underwriting')
+      .from('deals')
       .update({ deal_outcome: newOutcome })
       .eq('id', leadId);
     if (error) {
@@ -385,7 +385,7 @@ export default function UnderwritingExpandedView() {
     registerUndo({
       label: `Status changed to ${newOutcome}`,
       execute: async () => {
-        const { error: e } = await supabase.from('underwriting').update({ deal_outcome: previousOutcome }).eq('id', leadId);
+        const { error: e } = await supabase.from('deals').update({ deal_outcome: previousOutcome }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
         queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
@@ -399,10 +399,10 @@ export default function UnderwritingExpandedView() {
   // ── Priority change handler (Priority dropdown: None / Low / Medium / High) ──
   const handlePriorityChange = useCallback(async (newPriority: 'low' | 'medium' | 'high' | null) => {
     if (!leadId) return;
-    const { data: current } = await supabase.from('underwriting').select('priority').eq('id', leadId).single();
+    const { data: current } = await supabase.from('deals').select('priority').eq('id', leadId).single();
     const previousPriority = (current?.priority ?? null) as 'low' | 'medium' | 'high' | null;
     const { error } = await supabase
-      .from('underwriting')
+      .from('deals')
       .update({ priority: newPriority })
       .eq('id', leadId);
     if (error) {
@@ -412,7 +412,7 @@ export default function UnderwritingExpandedView() {
     registerUndo({
       label: `Priority changed to ${newPriority ?? 'None'}`,
       execute: async () => {
-        const { error: e } = await supabase.from('underwriting').update({ priority: previousPriority }).eq('id', leadId);
+        const { error: e } = await supabase.from('deals').update({ priority: previousPriority }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
         queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });

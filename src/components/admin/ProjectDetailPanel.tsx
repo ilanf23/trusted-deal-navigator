@@ -88,7 +88,7 @@ export default function ProjectDetailPanel({
   const { data: lead } = useQuery({
     queryKey: ['project-lead', project.entity_id],
     queryFn: async () => {
-      const { data } = await supabase.from('potential').select('name, company_name, opportunity_name, email, last_activity_at').eq('id', project.entity_id).single();
+      const { data } = await supabase.from('deals').select('name, company_name, opportunity_name, email, last_activity_at').eq('pipeline', 'potential').eq('id', project.entity_id).single();
       return data;
     },
     enabled: !!project.entity_id,
@@ -249,8 +249,9 @@ export default function ProjectDetailPanel({
     queryKey: ['project-panel-pipeline', project.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('potential')
+        .from('deals')
         .select('pipeline_id, pipelines:pipeline_id(name)')
+        .eq('pipeline', 'potential')
         .eq('id', project.entity_id)
         .single();
       return data as { pipeline_id: string; pipelines: { name: string } | null } | null;

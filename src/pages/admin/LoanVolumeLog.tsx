@@ -342,8 +342,9 @@ const LoanVolumeLog = () => {
     queryKey: ['volume-log-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('*')
+        .eq('pipeline', 'potential')
         .order('updated_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as Lead[];

@@ -1294,7 +1294,7 @@ export default function ProjectExpandedView() {
                   {project?.entity_id && (
                     <EntityFilesSection
                       entityId={project.entity_id}
-                      entityType="potential"
+                      entityType="deal"
                       entityName={project?.name ?? lead?.name}
                       companyName={lead?.company_name ?? undefined}
                       hideHeader
