@@ -164,8 +164,9 @@ const CRMBoard = () => {
     queryKey: ['crm-all-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('*, team_member:users(id, name, email, position)')
+        .eq('pipeline', 'potential')
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -258,7 +259,7 @@ const CRMBoard = () => {
       } else if (status === 'funded') {
         updates.converted_at = new Date().toISOString();
       }
-      const { error } = await supabase.from('potential').update(updates).eq('id', id);
+      const { error } = await supabase.from('deals').update(updates).eq('id', id);
       if (error) throw error;
 
       if (previousStatus === 'discovery' && status === 'pre_qualification') {

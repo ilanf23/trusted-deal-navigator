@@ -380,7 +380,7 @@ const LoanVolumeLog = () => {
   const updateLeadMutation = useMutation({
     mutationFn: async ({ leadId, field, value }: { leadId: string; field: string; value: any }) => {
       const { error } = await supabase
-        .from('potential')
+        .from('deals')
         .update({ [field]: value })
         .eq('id', leadId);
       if (error) throw error;

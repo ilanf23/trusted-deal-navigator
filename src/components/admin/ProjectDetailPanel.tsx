@@ -280,7 +280,7 @@ export default function ProjectDetailPanel({
     queryKey: ['linked-lead-names-panel', linkedLeadIds],
     queryFn: async () => {
       if (linkedLeadIds.length === 0) return {};
-      const { data } = await supabase.from('potential').select('id, name, company_name, phone, email, title, avatar_url').in('id', linkedLeadIds);
+      const { data } = await supabase.from('deals').select('id, name, company_name, phone, email, title, avatar_url').eq('pipeline', 'potential').in('id', linkedLeadIds);
       const m: Record<string, { name: string; company_name: string | null; phone: string | null; email: string | null; title: string | null; avatar_url: string | null }> = {};
       for (const l of data ?? []) m[l.id] = l;
       return m;
@@ -292,7 +292,7 @@ export default function ProjectDetailPanel({
   const { data: allLeads = [] } = useQuery({
     queryKey: ['all-leads-for-picker'],
     queryFn: async () => {
-      const { data } = await supabase.from('potential').select('id, name, company_name').order('name').limit(200);
+      const { data } = await supabase.from('deals').select('id, name, company_name').eq('pipeline', 'potential').order('name').limit(200);
       return (data ?? []) as { id: string; name: string; company_name: string | null }[];
     },
     enabled: showPeoplePicker,
@@ -371,7 +371,7 @@ export default function ProjectDetailPanel({
     });
     setSavingActivity(false);
     if (error) { toast.error('Failed to save activity'); return; }
-    await supabase.from('potential').update({ last_activity_at: new Date().toISOString() }).eq('id', project.entity_id);
+    await supabase.from('deals').update({ last_activity_at: new Date().toISOString() }).eq('id', project.entity_id);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote(''); else setNoteContent('');
     queryClient.invalidateQueries({ queryKey: ['project-panel-activities', project.entity_id] });
@@ -836,7 +836,7 @@ export default function ProjectDetailPanel({
               </label>
               <EntityFilesSection
                 entityId={project.entity_id}
-                entityType="potential"
+                entityType="deal"
                 entityName={project.name}
               />
             </div>

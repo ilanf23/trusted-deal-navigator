@@ -41,7 +41,7 @@ import { differenceInDays, parseISO, format } from 'date-fns';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 
 
-type Lead = Database['public']['Tables']['lender_management']['Row'];
+type Lead = Database['public']['Tables']['deals']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 // ── Pipeline stage config (7 stages) ──
@@ -218,10 +218,10 @@ export default function LenderManagementExpandedView() {
   // ── Stage change handler ──
   const handleStageChange = useCallback(async (newStatus: LeadStatus) => {
     if (!leadId) return;
-    const { data: current } = await supabase.from('lender_management').select('status').eq('id', leadId).single();
+    const { data: current } = await supabase.from('deals').select('status').eq('id', leadId).single();
     const previousStatus = current?.status as LeadStatus | null;
     const { error } = await supabase
-      .from('lender_management')
+      .from('deals')
       .update({ status: newStatus })
       .eq('id', leadId);
     if (error) {
@@ -231,7 +231,7 @@ export default function LenderManagementExpandedView() {
     registerUndo({
       label: `Stage changed to ${pipelineStageConfig[newStatus]?.title ?? newStatus}`,
       execute: async () => {
-        const { error: e } = await supabase.from('lender_management').update({ status: previousStatus }).eq('id', leadId);
+        const { error: e } = await supabase.from('deals').update({ status: previousStatus }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
         queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
@@ -245,10 +245,10 @@ export default function LenderManagementExpandedView() {
   // ── Deal-outcome change handler (Status dropdown: Open / Won / Lost / Abandoned) ──
   const handleDealOutcomeChange = useCallback(async (newOutcome: 'open' | 'won' | 'lost' | 'abandoned') => {
     if (!leadId) return;
-    const { data: current } = await supabase.from('lender_management').select('deal_outcome').eq('id', leadId).single();
+    const { data: current } = await supabase.from('deals').select('deal_outcome').eq('id', leadId).single();
     const previousOutcome = (current?.deal_outcome ?? 'open') as 'open' | 'won' | 'lost' | 'abandoned';
     const { error } = await supabase
-      .from('lender_management')
+      .from('deals')
       .update({ deal_outcome: newOutcome })
       .eq('id', leadId);
     if (error) {
@@ -258,7 +258,7 @@ export default function LenderManagementExpandedView() {
     registerUndo({
       label: `Status changed to ${newOutcome}`,
       execute: async () => {
-        const { error: e } = await supabase.from('lender_management').update({ deal_outcome: previousOutcome }).eq('id', leadId);
+        const { error: e } = await supabase.from('deals').update({ deal_outcome: previousOutcome }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
         queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
@@ -272,10 +272,10 @@ export default function LenderManagementExpandedView() {
   // ── Priority change handler (Priority dropdown: None / Low / Medium / High) ──
   const handlePriorityChange = useCallback(async (newPriority: 'low' | 'medium' | 'high' | null) => {
     if (!leadId) return;
-    const { data: current } = await supabase.from('lender_management').select('priority').eq('id', leadId).single();
+    const { data: current } = await supabase.from('deals').select('priority').eq('id', leadId).single();
     const previousPriority = (current?.priority ?? null) as 'low' | 'medium' | 'high' | null;
     const { error } = await supabase
-      .from('lender_management')
+      .from('deals')
       .update({ priority: newPriority })
       .eq('id', leadId);
     if (error) {
@@ -285,7 +285,7 @@ export default function LenderManagementExpandedView() {
     registerUndo({
       label: `Priority changed to ${newPriority ?? 'None'}`,
       execute: async () => {
-        const { error: e } = await supabase.from('lender_management').update({ priority: previousPriority }).eq('id', leadId);
+        const { error: e } = await supabase.from('deals').update({ priority: previousPriority }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
         queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
@@ -305,12 +305,12 @@ export default function LenderManagementExpandedView() {
 
   const handleBooleanToggle = useCallback(async (field: string, currentVal: boolean) => {
     if (!leadId) return;
-    const { error } = await supabase.from('lender_management').update({ [field]: !currentVal }).eq('id', leadId);
+    const { error } = await supabase.from('deals').update({ [field]: !currentVal }).eq('id', leadId);
     if (error) { toast.error('Failed to save'); return; }
     registerUndo({
       label: `Toggled ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('lender_management').update({ [field]: currentVal }).eq('id', leadId);
+        const { error: e } = await supabase.from('deals').update({ [field]: currentVal }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
         queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
@@ -334,7 +334,7 @@ export default function LenderManagementExpandedView() {
     setSavingActivity(true);
     const { error } = await supabase.from('activities').insert({
       entity_id: leadId,
-      entity_type: 'lender_management',
+      entity_type: 'deal',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -345,7 +345,7 @@ export default function LenderManagementExpandedView() {
       return;
     }
     // Reset inactive days timer
-    await supabase.from('lender_management').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
+    await supabase.from('deals').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote('');
     else setNoteContent('');
@@ -378,7 +378,7 @@ export default function LenderManagementExpandedView() {
     queryKey: ['lm-expanded-lead', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lender_management')
+        .from('deals')
         .select('*')
         .eq('id', leadId!)
         .single();
@@ -410,7 +410,7 @@ export default function LenderManagementExpandedView() {
     if (!leadId) return;
     // Polymorphic children are cleaned up by the BEFORE DELETE trigger
     // (cleanup_deal_polymorphic_children).
-    const { error } = await supabase.from('lender_management').delete().eq('id', leadId);
+    const { error } = await supabase.from('deals').delete().eq('id', leadId);
     if (error) {
       toast.error('Failed to delete');
       return;
@@ -457,7 +457,7 @@ export default function LenderManagementExpandedView() {
         .from('activities')
         .select('*')
         .eq('entity_id', leadId!)
-        .eq('entity_type', 'lender_management')
+        .eq('entity_type', 'deal')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -488,7 +488,7 @@ export default function LenderManagementExpandedView() {
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['lm-lead-emails', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadId!).eq('entity_type', 'lender_management');
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
       return (data || []) as LeadEmail[];
     },
     enabled: !!leadId,
@@ -497,7 +497,7 @@ export default function LenderManagementExpandedView() {
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['lm-lead-phones', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadId!).eq('entity_type', 'lender_management');
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
       return (data || []) as LeadPhone[];
     },
     enabled: !!leadId,
@@ -506,7 +506,7 @@ export default function LenderManagementExpandedView() {
   const { data: leadAddresses = [] } = useQuery({
     queryKey: ['lm-lead-addresses', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadId!).eq('entity_type', 'lender_management');
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
       return (data || []) as LeadAddress[];
     },
     enabled: !!leadId,
@@ -646,7 +646,7 @@ export default function LenderManagementExpandedView() {
   const addEmailMutation = useMutation({
     mutationFn: async ({ email, type }: { email: string; type: string }) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'lender_management', email, email_type: type });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'deal', email, email_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -669,7 +669,7 @@ export default function LenderManagementExpandedView() {
   const addPhoneMutation = useMutation({
     mutationFn: async ({ phone, type }: { phone: string; type: string }) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'lender_management', phone_number: phone, phone_type: type });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'deal', phone_number: phone, phone_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -694,7 +694,7 @@ export default function LenderManagementExpandedView() {
       if (!leadId || !line1) return;
       const { error } = await supabase.from('entity_addresses').insert({
         entity_id: leadId,
-        entity_type: 'lender_management',
+        entity_type: 'deal',
         address_line_1: line1,
         city: city || null,
         state: state || null,

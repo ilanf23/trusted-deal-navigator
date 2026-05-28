@@ -414,7 +414,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-detail', lead?.id],
     queryFn: async () => {
       if (!lead) return null;
-      const { data } = await supabase.from('potential').select('*').eq('id', lead.id).maybeSingle();
+      const { data } = await supabase.from('deals').select('*').eq('pipeline', 'potential').eq('id', lead.id).maybeSingle();
       return data;
     },
     enabled: !!lead && open,
@@ -707,7 +707,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const updateLeadStatus = useMutation({
     mutationFn: async (newStatus: string) => {
       if (!lead) return;
-      const { error } = await supabase.from('potential').update({ status: newStatus as LeadStatus }).eq('id', lead.id);
+      const { error } = await supabase.from('deals').update({ status: newStatus as LeadStatus }).eq('id', lead.id);
       if (error) throw error;
     },
     onSuccess: () => {

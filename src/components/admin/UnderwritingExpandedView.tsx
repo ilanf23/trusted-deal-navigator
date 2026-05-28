@@ -292,7 +292,7 @@ export default function UnderwritingExpandedView() {
     queryKey: ['entity-follow', leadId, teamMemberId],
     queryFn: async () => {
       const { data } = await supabase.from('entity_followers').select('id')
-        .eq('entity_id', leadId!).eq('entity_type', 'underwriting').eq('user_id', teamMemberId!).maybeSingle();
+        .eq('entity_id', leadId!).eq('entity_type', 'deal').eq('user_id', teamMemberId!).maybeSingle();
       return !!data;
     },
     enabled: !!leadId && !!teamMemberId,
@@ -300,9 +300,9 @@ export default function UnderwritingExpandedView() {
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
       if (isFollowing) {
-        await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('entity_type', 'underwriting').eq('user_id', teamMemberId!);
+        await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('entity_type', 'deal').eq('user_id', teamMemberId!);
       } else {
-        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'underwriting', user_id: teamMemberId! });
+        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'deal', user_id: teamMemberId! });
       }
     },
     onSuccess: () => {
@@ -312,8 +312,8 @@ export default function UnderwritingExpandedView() {
   });
   const handleDeleteLead = useCallback(async () => {
     if (!leadId) return;
-    await supabase.from('entity_files').delete().eq('entity_id', leadId).eq('entity_type', 'underwriting');
-    await supabase.from('activities').delete().eq('entity_id', leadId).eq('entity_type', 'underwriting');
+    await supabase.from('entity_files').delete().eq('entity_id', leadId).eq('entity_type', 'deal');
+    await supabase.from('activities').delete().eq('entity_id', leadId).eq('entity_type', 'deal');
     await supabase.from('tasks').delete().eq('lead_id', leadId);
     const { error } = await supabase.from('deals').delete().eq('id', leadId);
     if (error) { toast.error('Failed to delete'); return; }
@@ -432,12 +432,12 @@ export default function UnderwritingExpandedView() {
 
   const handleBooleanToggle = useCallback(async (field: string, currentVal: boolean) => {
     if (!leadId) return;
-    const { error } = await supabase.from('underwriting').update({ [field]: !currentVal }).eq('id', leadId);
+    const { error } = await supabase.from('deals').update({ [field]: !currentVal }).eq('id', leadId);
     if (error) { toast.error('Failed to save'); return; }
     registerUndo({
       label: `Toggled ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('underwriting').update({ [field]: currentVal }).eq('id', leadId);
+        const { error: e } = await supabase.from('deals').update({ [field]: currentVal }).eq('id', leadId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
         queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
@@ -461,7 +461,7 @@ export default function UnderwritingExpandedView() {
     setSavingActivity(true);
     const { error } = await supabase.from('activities').insert({
       entity_id: leadId,
-      entity_type: 'underwriting',
+      entity_type: 'deal',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -472,7 +472,7 @@ export default function UnderwritingExpandedView() {
       return;
     }
     // Reset inactive days timer
-    await supabase.from('underwriting').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
+    await supabase.from('deals').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote('');
     else setNoteContent('');
@@ -496,7 +496,7 @@ export default function UnderwritingExpandedView() {
       .from('activities')
       .insert({
         entity_id: leadId,
-        entity_type: 'underwriting',
+        entity_type: 'deal',
         activity_type: 'checklist',
         content,
         title: checklistTitle || 'Checklist',
@@ -515,7 +515,7 @@ export default function UnderwritingExpandedView() {
       .from('underwriting_checklists')
       .insert({
         entity_id: leadId,
-        entity_type: 'underwriting',
+        entity_type: 'deal',
         title: checklistTitle || 'Checklist',
         created_by: teamMember?.name ?? null,
         activity_id: actData.id,
@@ -539,7 +539,7 @@ export default function UnderwritingExpandedView() {
     await supabase.from('underwriting_checklist_items').insert(itemRows);
 
     // 4. Stamp last_activity_at
-    await supabase.from('underwriting').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
+    await supabase.from('deals').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
 
     setSavingChecklist(false);
     toast.success('Checklist saved');
@@ -743,7 +743,7 @@ export default function UnderwritingExpandedView() {
         .from('activities')
         .select('*')
         .eq('entity_id', leadId!)
-        .eq('entity_type', 'underwriting')
+        .eq('entity_type', 'deal')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -778,7 +778,7 @@ export default function UnderwritingExpandedView() {
         .from('underwriting_checklists')
         .select('*')
         .eq('entity_id', leadId!)
-        .eq('entity_type', 'underwriting')
+        .eq('entity_type', 'deal')
         .order('created_at', { ascending: false });
       if (clErr || !checklists || checklists.length === 0) return [];
       const ids = checklists.map((c) => c.id);
@@ -799,7 +799,7 @@ export default function UnderwritingExpandedView() {
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['underwriting-emails', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadId!).eq('entity_type', 'underwriting');
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
       return (data || []) as LeadEmail[];
     },
     enabled: !!leadId,
@@ -966,7 +966,7 @@ export default function UnderwritingExpandedView() {
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['underwriting-phones', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadId!).eq('entity_type', 'underwriting');
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
       return (data || []) as LeadPhone[];
     },
     enabled: !!leadId,
@@ -975,7 +975,7 @@ export default function UnderwritingExpandedView() {
   const { data: leadAddresses = [] } = useQuery({
     queryKey: ['underwriting-addresses', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadId!).eq('entity_type', 'underwriting');
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
       return (data || []) as LeadAddress[];
     },
     enabled: !!leadId,
@@ -985,7 +985,7 @@ export default function UnderwritingExpandedView() {
   const addEmailMutation = useMutation({
     mutationFn: async ({ email, type }: { email: string; type: string }) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'underwriting', email, email_type: type });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'deal', email, email_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1008,7 +1008,7 @@ export default function UnderwritingExpandedView() {
   const addPhoneMutation = useMutation({
     mutationFn: async ({ phone, type }: { phone: string; type: string }) => {
       if (!leadId) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'underwriting', phone_number: phone, phone_type: type });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'deal', phone_number: phone, phone_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1033,7 +1033,7 @@ export default function UnderwritingExpandedView() {
       if (!leadId || !line1) return;
       const { error } = await supabase.from('entity_addresses').insert({
         entity_id: leadId,
-        entity_type: 'underwriting',
+        entity_type: 'deal',
         address_line_1: line1,
         city: city || null,
         state: state || null,
@@ -1063,12 +1063,12 @@ export default function UnderwritingExpandedView() {
   const handleOwnerChange = useCallback(async (newOwnerId: string) => {
     if (!leadId) return;
     const previousOwner = lead?.assigned_to ?? null;
-    const { error } = await supabase.from('underwriting').update({ assigned_to: newOwnerId || null }).eq('id', leadId);
+    const { error } = await supabase.from('deals').update({ assigned_to: newOwnerId || null }).eq('id', leadId);
     if (error) { toast.error('Failed to save'); return; }
     registerUndo({
       label: 'Owner changed',
       execute: async () => {
-        const { error: e } = await supabase.from('underwriting').update({ assigned_to: previousOwner || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('deals').update({ assigned_to: previousOwner || null }).eq('id', leadId);
         if (e) throw e;
         handleFieldSaved('assigned_to', previousOwner ?? '');
       },

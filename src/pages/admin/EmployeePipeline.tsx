@@ -134,7 +134,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-type Lead = Database['public']['Tables']['potential']['Row'];
+type Lead = Database['public']['Tables']['deals']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 // Status enum values in pipeline order
@@ -226,9 +226,9 @@ const EmployeePipeline = () => {
   // ── Dev-mode: declare Supabase tables this page touches ──
   usePageDatabases([
     {
-      table: 'potential',
+      table: 'deals',
       access: 'readwrite',
-      usage: 'Primary deal records for the pipeline (kanban/table). Read via useQuery("evans-pipeline-deals"). Written inline for inline-edit, bulk delete, owner reassignment, and stage moves.',
+      usage: 'Primary deal records (potential pipeline) for the pipeline (kanban/table). Read via useQuery("evans-pipeline-deals"). Written inline for inline-edit, bulk delete, owner reassignment, and stage moves.',
       via: 'src/pages/admin/EmployeePipeline.tsx (useQuery + direct supabase.from updates)',
     },
     {
@@ -513,10 +513,11 @@ const EmployeePipeline = () => {
       if (!currentMemberId) return [];
 
       let query = supabase
-        .from('potential')
+        .from('deals')
         .select('*')
+        .eq('pipeline', 'potential')
         .order('updated_at', { ascending: false });
-      
+
       // Filter by specific team member when not "all"
       if (ownerFilter !== 'all') {
         const memberId = teamMemberNameToId[ownerFilter.toLowerCase()];
@@ -671,7 +672,7 @@ const EmployeePipeline = () => {
       
       // Fetch additional lead data for context
       const { data: leadData } = await supabase
-        .from('potential')
+        .from('deals')
         .select(`
           *,
           pipeline_stages(name, color),

@@ -152,7 +152,7 @@ const TeamPerformance = () => {
     queryKey: ['team-funded-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select(`
           id,
           converted_at,
@@ -160,6 +160,7 @@ const TeamPerformance = () => {
             loan_amount
           )
         `)
+        .eq('pipeline', 'potential')
         .eq('status', 'funded')
         .gte('converted_at', periodStart.toISOString());
 
@@ -215,8 +216,9 @@ const TeamPerformance = () => {
     queryKey: ['leads-map-for-calls'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
-        .select('id, name, company_name');
+        .from('deals')
+        .select('id, name, company_name')
+        .eq('pipeline', 'potential');
       if (error) throw error;
       return data?.reduce((acc, lead) => {
         acc[lead.id] = lead;

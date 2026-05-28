@@ -229,7 +229,7 @@ const TaskTile = ({ icon, label, value, variant, index }: TaskTileProps) => {
 const Scorecard = () => {
   const { teamMember } = useTeamMember();
   usePageDatabases([
-    { table: 'potential', access: 'read', usage: 'Deal records used to calculate weekly/monthly scoring metrics.', via: 'useQuery in Scorecard.tsx' },
+    { table: 'deals', access: 'read', usage: 'Deal records (potential pipeline) used to calculate weekly/monthly scoring metrics.', via: 'useQuery in Scorecard.tsx' },
     { table: 'tasks', access: 'read', usage: 'Task completion counts contributing to the scorecard.', via: 'useQuery in Scorecard.tsx' },
     { table: 'communications', access: 'read', usage: 'Call/email activity counts feeding the scorecard.', via: 'useQuery in Scorecard.tsx' },
     { table: 'users', access: 'read', usage: 'Current team-member context for scoping metrics.', via: 'src/hooks/useTeamMember.ts' },
@@ -310,8 +310,9 @@ const Scorecard = () => {
     queryKey: ['scorecard-all-leads', repFilter, currentUserMember?.id, selectedWeek],
     queryFn: async () => {
       let query = supabase
-        .from('potential')
-        .select('id, name, company_name, status, assigned_to, created_at, updated_at');
+        .from('deals')
+        .select('id, name, company_name, status, assigned_to, created_at, updated_at')
+        .eq('pipeline', 'potential');
       if (repFilter === 'me' && currentUserMember?.id) {
         query = query.eq('assigned_to', currentUserMember.id);
       }

@@ -454,8 +454,9 @@ const Calls = () => {
       ];
 
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('*')
+        .eq('pipeline', 'potential')
         .or(phoneVariants.map(p => `phone.ilike.%${p.slice(-10)}%`).join(','))
         .limit(1)
         .maybeSingle();
@@ -540,7 +541,7 @@ const Calls = () => {
         let leadData: { name: string; email: string | null; phone: string | null } | null = null;
         if (updatedComm?.lead_id) {
           const { data: opp, error: oppError } = await supabase
-            .from('potential')
+            .from('deals')
             .select('name, email, phone')
             .eq('id', updatedComm.lead_id)
             .maybeSingle();
