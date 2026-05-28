@@ -37,7 +37,6 @@ import RateWatchQuestionnaire from "./pages/RateWatchQuestionnaire";
 // Admin pages — lazy-loaded per route chunk
 const SuperAdminDashboard = lazy(() => import("./pages/admin/SuperAdminDashboard"));
 const AdminClients = lazy(() => import("./pages/admin/Clients"));
-const AdminContracts = lazy(() => import("./pages/admin/Contracts"));
 const AdminInvoices = lazy(() => import("./pages/admin/Invoices"));
 const AdminMessages = lazy(() => import("./pages/admin/Messages"));
 const AdminMarketing = lazy(() => import("./pages/admin/Marketing"));
@@ -146,7 +145,6 @@ const App = () => (
                 <Route path="/superadmin/pipeline-test" element={<EmployeePipeline />} />
                 <Route path="/superadmin/crm" element={<EmployeePipeline />} />
                 <Route path="/superadmin/clients" element={<AdminClients />} />
-                <Route path="/superadmin/contracts" element={<AdminContracts />} />
                 <Route path="/superadmin/invoices" element={<AdminInvoices />} />
                 <Route path="/superadmin/messages" element={<AdminMessages />} />
                 <Route path="/superadmin/bug-reporting" element={<BugReporting />} />
@@ -214,7 +212,6 @@ const App = () => (
                 <Route path="/admin/pipeline-test" element={<AdminRoute><EmployeePipeline /></AdminRoute>} />
                 <Route path="/admin/crm" element={<AdminRoute><EmployeePipeline /></AdminRoute>} />
                 <Route path="/admin/clients" element={<AdminRoute><AdminClients /></AdminRoute>} />
-                <Route path="/admin/contracts" element={<AdminRoute><AdminContracts /></AdminRoute>} />
                 <Route path="/admin/invoices" element={<AdminRoute><AdminInvoices /></AdminRoute>} />
                 <Route path="/admin/marketing" element={<AdminRoute><AdminMarketing /></AdminRoute>} />
                 <Route path="/admin/tracking" element={<AdminRoute><AdminTracking /></AdminRoute>} />

@@ -261,25 +261,6 @@
 | role        | text                     | No          | Yes      | -              |
 | created_at  | timestamp with time zone | No          | No       | -              |
 
-## Table: `contracts`
-
-| Column Name    | Data Type                | Primary Key | Nullable | Foreign Key To |
-| -------------- | ------------------------ | ----------- | -------- | -------------- |
-| id             | uuid                     | Yes         | No       | -              |
-| client_id      | uuid                     | No          | No       | -              |
-| title          | text                     | No          | No       | -              |
-| content        | text                     | No          | No       | -              |
-| status         | USER-DEFINED             | No          | No       | -              |
-| sent_at        | timestamp with time zone | No          | Yes      | -              |
-| viewed_at      | timestamp with time zone | No          | Yes      | -              |
-| signed_at      | timestamp with time zone | No          | Yes      | -              |
-| signature_data | text                     | No          | Yes      | -              |
-| signer_name    | text                     | No          | Yes      | -              |
-| signer_ip      | text                     | No          | Yes      | -              |
-| expires_at     | timestamp with time zone | No          | Yes      | -              |
-| created_at     | timestamp with time zone | No          | No       | -              |
-| updated_at     | timestamp with time zone | No          | No       | -              |
-
 ## Table: `conversations`
 
 | Column Name     | Data Type                | Primary Key | Nullable | Foreign Key To |

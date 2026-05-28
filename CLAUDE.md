@@ -91,7 +91,7 @@ Full database schema: `schema.md` — all public tables with columns, types, pri
 
 Edge functions live in `supabase/functions/`. Each function is a Deno TypeScript module. All use a shared rate limiting pattern via Postgres atomic counters (`enforceRateLimit(req, funcName, limit, window)`). See `supabase/functions/CLAUDE.md` for full catalog.
 
-Key tables: `users`, `leads`, `tasks`, `active_calls`, `call_events`, `evan_communications`, `ai_conversations`, `contracts`, `invoices`, `partner_referrals`. The `users` table consolidates former `team_members`, `profiles`, and `people` tables. The `tasks` table is the unified task store (replaces former `lead_tasks`). Task status values are `todo`, `in_progress`, `done`. Assignment uses `team_member_id` (FK to `users`).
+Key tables: `users`, `leads`, `tasks`, `active_calls`, `call_events`, `evan_communications`, `ai_conversations`, `invoices`, `partner_referrals`. The `users` table consolidates former `team_members`, `profiles`, and `people` tables. The `tasks` table is the unified task store (replaces former `lead_tasks`). Task status values are `todo`, `in_progress`, `done`. Assignment uses `team_member_id` (FK to `users`).
 
 Deal pipeline tables (`potential`, `underwriting`, `lender_management`) share two enum columns: `deal_outcome` (open/won/lost/abandoned via `deal_outcome_enum` — tracks win/loss independently of pipeline stage) and `priority` (low/medium/high, nullable `deal_priority` enum).
 

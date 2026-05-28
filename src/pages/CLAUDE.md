@@ -49,7 +49,7 @@
 
 **Business Ops:**
 - `LenderPrograms.tsx`, `Marketing.tsx`
-- `Invoices.tsx`, `Contracts.tsx`, `RateWatch.tsx`
+- `Invoices.tsx`, `RateWatch.tsx`
 
 **Admin Tools:**
 - `UsersAndRoles.tsx`, `ModuleTracker.tsx`, `AIChanges.tsx`

@@ -851,57 +851,6 @@ export type Database = {
           },
         ]
       }
-      contracts: {
-        Row: {
-          client_id: string
-          content: string
-          created_at: string
-          expires_at: string | null
-          id: string
-          sent_at: string | null
-          signature_data: string | null
-          signed_at: string | null
-          signer_ip: string | null
-          signer_name: string | null
-          status: Database["public"]["Enums"]["contract_status"]
-          title: string
-          updated_at: string
-          viewed_at: string | null
-        }
-        Insert: {
-          client_id: string
-          content: string
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          sent_at?: string | null
-          signature_data?: string | null
-          signed_at?: string | null
-          signer_ip?: string | null
-          signer_name?: string | null
-          status?: Database["public"]["Enums"]["contract_status"]
-          title: string
-          updated_at?: string
-          viewed_at?: string | null
-        }
-        Update: {
-          client_id?: string
-          content?: string
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          sent_at?: string | null
-          signature_data?: string | null
-          signed_at?: string | null
-          signer_ip?: string | null
-          signer_name?: string | null
-          status?: Database["public"]["Enums"]["contract_status"]
-          title?: string
-          updated_at?: string
-          viewed_at?: string | null
-        }
-        Relationships: []
-      }
       conversations: {
         Row: {
           client_id: string
@@ -4940,13 +4889,6 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "client" | "partner" | "super_admin"
-      contract_status:
-        | "draft"
-        | "sent"
-        | "viewed"
-        | "signed"
-        | "expired"
-        | "cancelled"
       deal_outcome: "open" | "won" | "lost" | "abandoned"
       deal_outcome_enum: "open" | "won" | "lost" | "abandoned"
       deal_priority: "low" | "medium" | "high"
@@ -5128,14 +5070,6 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "client", "partner", "super_admin"],
-      contract_status: [
-        "draft",
-        "sent",
-        "viewed",
-        "signed",
-        "expired",
-        "cancelled",
-      ],
       deal_outcome: ["open", "won", "lost", "abandoned"],
       deal_outcome_enum: ["open", "won", "lost", "abandoned"],
       deal_priority: ["low", "medium", "high"],
