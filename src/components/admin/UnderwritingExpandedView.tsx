@@ -50,7 +50,7 @@ import {
   stageConfig as canonicalStageConfig,
 } from './InlineEditableFields';
 
-type Lead = Database['public']['Tables']['underwriting']['Row'];
+type Lead = Database['public']['Tables']['deals']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 interface LeadEmail {

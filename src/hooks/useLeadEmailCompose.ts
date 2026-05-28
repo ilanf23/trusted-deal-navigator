@@ -135,9 +135,11 @@ export function useLeadEmailCompose({ leadId, tableName, onSent }: UseLeadEmailC
             .replace(/\s+/g, ' ')
             .trim()
             .slice(0, 500);
+          const activityEntityType =
+            tableName === 'lender_programs' ? 'lender_programs' : 'deal';
           await supabase.from('activities').insert({
             entity_id: leadId,
-            entity_type: tableName,
+            entity_type: activityEntityType,
             activity_type: 'email',
             title: subject,
             content: plainBody,
@@ -149,13 +151,9 @@ export function useLeadEmailCompose({ leadId, tableName, onSent }: UseLeadEmailC
           const updates = { last_activity_at: new Date().toISOString() } as const;
           switch (tableName) {
             case 'potential':
-              await supabase.from('potential').update(updates).eq('id', leadId);
-              break;
             case 'underwriting':
-              await supabase.from('underwriting').update(updates).eq('id', leadId);
-              break;
             case 'lender_management':
-              await supabase.from('lender_management').update(updates).eq('id', leadId);
+              await supabase.from('deals').update(updates).eq('id', leadId);
               break;
             case 'lender_programs':
               break;

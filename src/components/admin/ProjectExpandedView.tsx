@@ -447,8 +447,9 @@ export default function ProjectExpandedView() {
     queryKey: ['lead-pipeline-info', project?.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('potential')
+        .from('deals')
         .select('pipeline_id, pipelines:pipeline_id(name)')
+        .eq('pipeline', 'potential')
         .eq('id', project!.entity_id)
         .single();
       return data as { pipeline_id: string; pipelines: { name: string } | null } | null;

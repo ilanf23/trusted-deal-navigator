@@ -317,8 +317,9 @@ export const useSuperAdminDashboard = (timePeriod: TimePeriod) => {
     queryKey: ['sa-dashboard-current-lost', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'lost')
         .gte('lost_at', periodStartISO);
       if (error) throw error;
