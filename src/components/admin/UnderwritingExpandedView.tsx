@@ -345,10 +345,10 @@ export default function UnderwritingExpandedView() {
   // ── Stage change handler ──
   const handleStageChange = useCallback(async (newStatus: LeadStatus) => {
     if (!leadId) return;
-    const { data: current } = await supabase.from('underwriting').select('status').eq('id', leadId).single();
+    const { data: current } = await supabase.from('deals').select('status').eq('id', leadId).single();
     const previousStatus = current?.status as LeadStatus | null;
     const { error } = await supabase
-      .from('underwriting')
+      .from('deals')
       .update({ status: newStatus })
       .eq('id', leadId);
     if (error) {

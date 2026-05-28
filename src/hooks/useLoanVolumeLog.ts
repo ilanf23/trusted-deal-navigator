@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { differenceInDays, parseISO } from 'date-fns';
 
-type Lead = Database['public']['Tables']['potential']['Row'];
+type Lead = Database['public']['Tables']['deals']['Row'];
 
 export interface VolumeLogSignal {
   type: string;
@@ -35,8 +35,9 @@ export function useLoanVolumeLog() {
     queryKey: ['volume-log-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('*')
+        .eq('pipeline', 'potential')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as Lead[];

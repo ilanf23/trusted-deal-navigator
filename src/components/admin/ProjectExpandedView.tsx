@@ -722,7 +722,7 @@ export default function ProjectExpandedView() {
   const handleRemoveCompany = useCallback(async () => {
     if (!project?.entity_id) return;
     setSavingCompany(true);
-    const { error } = await supabase.from('potential').update({ company_name: null }).eq('id', project.entity_id);
+    const { error } = await supabase.from('deals').update({ company_name: null }).eq('id', project.entity_id);
     setSavingCompany(false);
     if (error) { toast.error('Failed to remove company'); return; }
     toast.success('Company removed');

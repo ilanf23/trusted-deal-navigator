@@ -176,8 +176,9 @@ const Dashboard = () => {
     queryFn: async () => {
       const yearStart = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1)).toISOString();
       const { data, error } = await supabase
-        .from('potential')
+        .from('deals')
         .select('id, won_at, deal_value, potential_revenue, fee_percent')
+        .eq('pipeline', 'potential')
         .eq('deal_outcome', 'won')
         .gte('won_at', yearStart);
       if (error) throw error;

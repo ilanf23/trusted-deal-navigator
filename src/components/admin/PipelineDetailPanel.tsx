@@ -732,7 +732,7 @@ function RelatedTabContent({
         .from('entity_files')
         .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
         .eq('entity_id', lead.id)
-        .eq('entity_type', 'potential')
+        .eq('entity_type', 'deal')
         .order('created_at', { ascending: false });
       return data || [];
     },
@@ -897,7 +897,7 @@ function RelatedTabContent({
       >
         <EntityFilesSection
           entityId={lead.id}
-          entityType="potential"
+          entityType="deal"
           entityName={lead.name}
           companyName={lead.company_name}
           hideHeader
