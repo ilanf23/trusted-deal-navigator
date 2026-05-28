@@ -1445,6 +1445,7 @@ export default function ProjectExpandedView() {
                     {addingCompany ? (
                       <div className="relative mt-1">
                         <input
+                          ref={companyInputRef}
                           autoFocus
                           value={companySearchQuery}
                           onChange={(e) => setCompanySearchQuery(e.target.value)}
@@ -1466,8 +1467,12 @@ export default function ProjectExpandedView() {
                           className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                         />
                         {savingCompany && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
-                        {companySearchQuery.trim().length > 0 && companiesSearchResults.length > 0 && (
-                          <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {companySearchQuery.trim().length > 0 && companiesSearchResults.length > 0 && createPortal(
+                          <div
+                            ref={companyDropdownRef}
+                            style={{ position: 'fixed', top: companyDropdownPos.top, left: companyDropdownPos.left, width: companyDropdownPos.width }}
+                            className="z-[9999] bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto"
+                          >
                             {companiesSearchResults.map((c) => (
                               <button
                                 key={c.id}
@@ -1486,10 +1491,15 @@ export default function ProjectExpandedView() {
                                 </span>
                               </button>
                             ))}
-                          </div>
+                          </div>,
+                          document.body
                         )}
-                        {companySearchQuery.trim().length > 0 && companiesSearchResults.length === 0 && (
-                          <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg px-2 py-2">
+                        {companySearchQuery.trim().length > 0 && companiesSearchResults.length === 0 && createPortal(
+                          <div
+                            ref={companyDropdownRef}
+                            style={{ position: 'fixed', top: companyDropdownPos.top, left: companyDropdownPos.left, width: companyDropdownPos.width }}
+                            className="z-[9999] bg-popover border border-border rounded-md shadow-lg px-2 py-2"
+                          >
                             <p className="text-xs text-muted-foreground mb-1">No matching companies</p>
                             <button
                               onClick={() => handleLinkCompany(companySearchQuery.trim())}
@@ -1497,7 +1507,8 @@ export default function ProjectExpandedView() {
                             >
                               + Use "{companySearchQuery.trim()}" as company
                             </button>
-                          </div>
+                          </div>,
+                          document.body
                         )}
                       </div>
                     ) : (
