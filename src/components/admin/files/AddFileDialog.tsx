@@ -172,7 +172,12 @@ export function AddFileDialog({
 
         successCount++;
         if (entityName && dropboxConnected) {
-          syncPromises.push(syncToDropbox(file, entityName, companyName || '', entityId));
+          syncPromises.push(syncToDropbox(file, {
+            entityId,
+            entityName,
+            entityType,
+            companyName: companyName || '',
+          }));
         }
       }
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { dropboxActionToFunction } from '@/lib/dropboxRouter';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 export interface DropboxEntry {
@@ -36,37 +37,42 @@ export async function invokeDropboxApi(action: string, body?: Record<string, unk
 }
 
 export function useDropboxList(path: string, enabled = true) {
+  const { user } = useAuth();
   return useQuery<ListResult>({
-    queryKey: ['dropbox-files', path],
+    queryKey: ['dropbox-files', user?.id, path],
     queryFn: () => invokeDropboxApi('list', { path: path || '' }),
     staleTime: 30_000,
-    enabled,
+    enabled: enabled && !!user?.id,
   });
 }
 
 export function useDropboxListRecursive(enabled = false, includeDeleted = false, fileExtensions?: string[]) {
+  const { user } = useAuth();
   return useQuery<{ entries: DropboxEntry[] }>({
-    queryKey: ['dropbox-files-recursive', includeDeleted, fileExtensions ?? null],
+    queryKey: ['dropbox-files-recursive', user?.id, includeDeleted, fileExtensions ?? null],
     queryFn: () => invokeDropboxApi('list-recursive', {
       path: '',
       include_deleted: includeDeleted,
       ...(fileExtensions?.length ? { file_extensions: fileExtensions } : {}),
     }),
     staleTime: 300_000,
-    enabled,
+    enabled: enabled && !!user?.id,
   });
 }
 
 const PHOTO_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tiff', 'heic'];
 
 export function useDropboxPhotosFromDB(enabled = false) {
+  const { user } = useAuth();
   return useQuery<{ entries: DropboxEntry[] }>({
-    queryKey: ['dropbox-photos-db'],
+    queryKey: ['dropbox-photos-db', user?.id],
     queryFn: async () => {
+      if (!user?.id) return { entries: [] };
       const orFilter = PHOTO_EXTENSIONS.map(ext => `name.ilike.%.${ext}`).join(',');
       const { data, error } = await supabase
         .from('dropbox_files')
         .select('*, lead:pipeline(name)')
+        .eq('user_id', user.id)
         .eq('is_folder', false)
         .or(orFilter)
         .order('modified_at', { ascending: false })
@@ -90,16 +96,17 @@ export function useDropboxPhotosFromDB(enabled = false) {
     },
     staleTime: 300_000,
     gcTime: 600_000,
-    enabled,
+    enabled: enabled && !!user?.id,
   });
 }
 
 export function useDropboxShared(enabled = false) {
+  const { user } = useAuth();
   return useQuery<{ entries: DropboxEntry[] }>({
-    queryKey: ['dropbox-shared'],
+    queryKey: ['dropbox-shared', user?.id],
     queryFn: () => invokeDropboxApi('list-shared'),
     staleTime: 300_000,
-    enabled,
+    enabled: enabled && !!user?.id,
   });
 }
 
@@ -217,10 +224,11 @@ export function useDropboxSaveEdited() {
 }
 
 export function useDropboxSearch(query: string, leadId?: string) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['dropbox-search', query, leadId],
+    queryKey: ['dropbox-search', user?.id, query, leadId],
     queryFn: () => invokeDropboxApi('search-content', { query, leadId }),
-    enabled: query.length >= 2,
+    enabled: !!user?.id && query.length >= 2,
     staleTime: 10_000,
   });
 }

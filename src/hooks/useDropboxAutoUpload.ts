@@ -1,12 +1,18 @@
 import { useCallback } from 'react';
 import { invokeDropboxApi } from './useDropbox';
+import type { EntityType } from '@/components/admin/files/types';
+
+interface DropboxAutoUploadTarget {
+  entityId: string;
+  entityName: string;
+  entityType: EntityType;
+  companyName?: string;
+}
 
 export function useDropboxAutoUpload(enabled: boolean) {
   const syncToDropbox = useCallback(async (
     file: File,
-    leadName: string,
-    companyName: string,
-    leadId: string,
+    target: DropboxAutoUploadTarget,
   ) => {
     if (!enabled) return;
 
@@ -20,9 +26,10 @@ export function useDropboxAutoUpload(enabled: boolean) {
       const content = btoa(binary);
 
       await invokeDropboxApi('upload-to-lead-folder', {
-        leadName,
-        companyName,
-        leadId,
+        entityId: target.entityId,
+        entityName: target.entityName,
+        entityType: target.entityType,
+        companyName: target.companyName || '',
         fileName: file.name,
         content,
       });
