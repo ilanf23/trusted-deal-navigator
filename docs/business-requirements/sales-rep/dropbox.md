@@ -34,7 +34,8 @@ Sales rep collecting and organizing deal documents. Secondary: founders auditing
 
 - Connection is **per-user** (not shared) — each rep needs to OAuth individually
 - **Per-user token scoping** (post 2026-05-15): the shared `getValidAccessToken(supabase, userId)` helper in `_shared/dropbox/api.ts` now filters `dropbox_connections` by the caller's `user_id`. Prior to this fix, all edge function calls grabbed an arbitrary row, meaning Evan's Dropbox picker showed *Ilan's* files (and vice versa) whenever multiple reps were connected. See [expanded-view-files.md](./expanded-view-files.md) for the unified Files picker that exposed this bug.
-- If no connection exists, the page shows a *Manual Setup Required* card asking to contact the dev
+- If no connection exists, the page shows a Connect Dropbox empty state.
+- `dropbox_files` is a per-user cache. Every cached Dropbox metadata row is scoped by the connecting rep's Supabase auth `user_id`.
 - File metadata is cached locally in `dropbox_files` for fast search; mutations flow through edge functions and update the cache
 - The router (`src/lib/dropboxRouter.ts`) decides which edge function to call based on operation type
 
@@ -65,7 +66,7 @@ Sales rep collecting and organizing deal documents. Secondary: founders auditing
 
 ## Edge cases & known gaps
 
-- New reps require manual OAuth setup by the dev — there's no self-serve config currently
+- New reps connect Dropbox through self-serve OAuth from Dropbox, Settings, or the Add file dialog.
 - Cache can drift if a file is changed in Dropbox while the user is mid-session
 - No bulk operations (multi-select upload, batch delete)
 - Large folders (1000+ files) paginate slowly

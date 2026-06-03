@@ -42,6 +42,7 @@ The section is rendered inside every right-rail "related" sidebar / detail panel
 - **Add a file** via a tabbed dialog — Computer / Dropbox / Google Sheets
   - Computer: native upload to Supabase storage (`lead-files` bucket); if Dropbox is connected, the file is auto-synced to a record-named Dropbox folder
   - Dropbox: pick from the rep's connected Dropbox; only the **link** is stored (no copy)
+    The picker and local cache are scoped to the current connected rep.
   - Google Sheets: pick a spreadsheet from the rep's connected Drive; only the **link** is stored
 - Open a file (signed-URL preview dialog for native, dedicated viewer for sheets/dropbox)
 - Download native files (60s signed URL)
@@ -85,7 +86,7 @@ The section is rendered inside every right-rail "related" sidebar / detail panel
 
 ### 3. Link a Google Sheet
 1. Rep clicks **+** → **Google Sheets** tab
-2. If not connected, sees **Connect Google Sheets** CTA → OAuth popup → callback at `/admin/sheets-callback` saves tokens
+2. If not connected to Dropbox or Google, sees the relevant Connect CTA → OAuth popup → unified callback saves tokens
 3. Picks a sheet → row inserted with `source_system = 'google_sheets'`, `file_url = spreadsheet ID`
 4. Clicking the row opens `SheetViewerDialog`
 
