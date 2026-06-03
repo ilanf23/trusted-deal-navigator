@@ -15,9 +15,19 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+const ENTITY_FOLDER_ROOTS: Record<string, string> = {
+  people: 'People',
+  companies: 'Companies',
+  lender_programs: 'Lender Programs',
+  potential: 'Leads',
+  underwriting: 'Leads',
+  lender_management: 'Leads',
+  pipeline: 'Leads',
+};
+
 // === Write-side Dropbox handlers (shared token refresh: _shared/dropbox/api.ts) ===
 
-async function handleUpload(accessToken: string, body: any, supabase: any) {
+async function handleUpload(accessToken: string, body: any, supabase: any, userId: string) {
   const { path, content, mode: uploadMode } = body;
 
   if (!path || !content) {
@@ -60,6 +70,7 @@ async function handleUpload(accessToken: string, body: any, supabase: any) {
     .from('dropbox_files')
     .upsert(
       {
+        user_id: userId,
         dropbox_id: metadata.id,
         dropbox_path: metadata.path_lower,
         dropbox_path_display: metadata.path_display,
@@ -71,13 +82,13 @@ async function handleUpload(accessToken: string, body: any, supabase: any) {
         modified_at: metadata.server_modified,
         synced_at: new Date().toISOString(),
       },
-      { onConflict: 'dropbox_id' }
+      { onConflict: 'user_id,dropbox_id' }
     );
 
   return metadata;
 }
 
-async function handleMove(accessToken: string, body: any, supabase: any) {
+async function handleMove(accessToken: string, body: any, supabase: any, userId: string) {
   const { from_path, to_path } = body;
 
   if (!from_path || !to_path) {
@@ -115,12 +126,13 @@ async function handleMove(accessToken: string, body: any, supabase: any) {
       name: metadata.name,
       synced_at: new Date().toISOString(),
     })
+    .eq('user_id', userId)
     .eq('dropbox_path', from_path.toLowerCase());
 
   return metadata;
 }
 
-async function handleDelete(accessToken: string, body: any, supabase: any) {
+async function handleDelete(accessToken: string, body: any, supabase: any, userId: string) {
   const { path } = body;
 
   if (!path) {
@@ -148,6 +160,7 @@ async function handleDelete(accessToken: string, body: any, supabase: any) {
   await supabase
     .from('dropbox_files')
     .delete()
+    .eq('user_id', userId)
     .eq('dropbox_path', path.toLowerCase());
 
   return data.metadata;
@@ -182,20 +195,23 @@ async function handleCreateFolder(accessToken: string, body: any) {
   return data.metadata;
 }
 
-async function handleUploadToLeadFolder(accessToken: string, body: any, supabase: any) {
-  const { leadName, companyName, leadId, fileName, content } = body;
+async function handleUploadToLeadFolder(accessToken: string, body: any, supabase: any, userId: string) {
+  const entityId = body.entityId || body.leadId;
+  const entityName = body.entityName || body.leadName;
+  const entityType = body.entityType || 'potential';
+  const { companyName, fileName, content } = body;
 
-  if (!leadName || !leadId || !fileName || !content) {
-    throw new Error('Missing required fields: leadName, leadId, fileName, content');
+  if (!entityName || !entityId || !fileName || !content) {
+    throw new Error('Missing required fields: entityName, entityId, fileName, content');
   }
 
-  // Build folder name: "Company - Name" or just "Name" if no company
   const sanitizedCompany = companyName ? sanitizeDropboxPath(companyName) : '';
-  const sanitizedLead = sanitizeDropboxPath(leadName);
+  const sanitizedEntity = sanitizeDropboxPath(entityName);
   const folderName = sanitizedCompany
-    ? `${sanitizedCompany} - ${sanitizedLead}`
-    : sanitizedLead;
-  const folderPath = `/Leads/${folderName}`;
+    ? `${sanitizedCompany} - ${sanitizedEntity}`
+    : sanitizedEntity;
+  const rootFolder = ENTITY_FOLDER_ROOTS[entityType] || 'Records';
+  const folderPath = `/${rootFolder}/${folderName}`;
 
   // Create folder (ignore conflict if it already exists)
   const folderResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
@@ -259,6 +275,7 @@ async function handleUploadToLeadFolder(accessToken: string, body: any, supabase
     .from('dropbox_files')
     .upsert(
       {
+        user_id: userId,
         dropbox_id: metadata.id,
         dropbox_path: metadata.path_lower,
         dropbox_path_display: metadata.path_display,
@@ -269,10 +286,11 @@ async function handleUploadToLeadFolder(accessToken: string, body: any, supabase
         content_hash: metadata.content_hash,
         modified_at: metadata.server_modified,
         synced_at: new Date().toISOString(),
-        lead_id: leadId,
-        lead_name: leadName,
+        ...(entityType === 'potential' || entityType === 'underwriting' || entityType === 'lender_management' || body.leadId
+          ? { lead_id: entityId, lead_name: entityName }
+          : {}),
       },
-      { onConflict: 'dropbox_id' }
+      { onConflict: 'user_id,dropbox_id' }
     );
 
   return metadata;
@@ -308,20 +326,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    const userId = authResult.auth.authUserId;
+
     let result: any;
     switch (action) {
       case 'upload':
-        result = await handleUpload(accessToken, body, supabaseAdmin);
+        result = await handleUpload(accessToken, body, supabaseAdmin, userId);
         break;
       case 'upload-to-lead-folder':
-        result = await handleUploadToLeadFolder(accessToken, body, supabaseAdmin);
+        result = await handleUploadToLeadFolder(accessToken, body, supabaseAdmin, userId);
         break;
       case 'move':
       case 'rename':
-        result = await handleMove(accessToken, body, supabaseAdmin);
+        result = await handleMove(accessToken, body, supabaseAdmin, userId);
         break;
       case 'delete':
-        result = await handleDelete(accessToken, body, supabaseAdmin);
+        result = await handleDelete(accessToken, body, supabaseAdmin, userId);
         break;
       case 'create-folder':
         result = await handleCreateFolder(accessToken, body);

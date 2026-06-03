@@ -206,6 +206,11 @@ Deno.serve(async (req) => {
         .delete()
         .eq('user_id', userId);
 
+      await supabaseAdmin
+        .from('dropbox_files')
+        .delete()
+        .eq('user_id', userId);
+
       const { error: insertError } = await supabaseAdmin
         .from('dropbox_connections')
         .insert({
@@ -245,6 +250,11 @@ Deno.serve(async (req) => {
           { status: 500, headers: corsHeaders }
         );
       }
+
+      await supabaseAdmin
+        .from('dropbox_files')
+        .delete()
+        .eq('user_id', userId);
 
       return new Response(
         JSON.stringify({ success: true }),

@@ -12,7 +12,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 // === DB-only Dropbox handlers (no Dropbox API token for some actions) ===
 
-async function handleLinkToLead(body: any, supabase: any) {
+async function handleLinkToLead(body: any, supabase: any, userId: string) {
   const { fileId, leadId, leadName } = body;
 
   if (!fileId) {
@@ -25,6 +25,7 @@ async function handleLinkToLead(body: any, supabase: any) {
       lead_id: leadId,
       lead_name: leadName,
     })
+    .eq('user_id', userId)
     .eq('id', fileId);
 
   if (error) {
@@ -35,7 +36,7 @@ async function handleLinkToLead(body: any, supabase: any) {
   return { success: true, fileId, leadId, leadName };
 }
 
-async function handleSearchContent(body: any, supabase: any) {
+async function handleSearchContent(body: any, supabase: any, userId: string) {
   const { query, leadId } = body;
 
   if (!query) {
@@ -52,6 +53,7 @@ async function handleSearchContent(body: any, supabase: any) {
   let sqlQuery = supabase
     .from('dropbox_files')
     .select('id, name, dropbox_path_display, lead_id, lead_name, extracted_text, modified_at, size')
+    .eq('user_id', userId)
     .textSearch('extracted_text', tsQuery);
 
   if (leadId) {
@@ -116,13 +118,15 @@ Deno.serve(async (req) => {
     try { body = await req.json(); } catch {}
     const action = body.action || new URL(req.url).searchParams.get('action');
 
+    const userId = authResult.auth.authUserId;
+
     let result: any;
     switch (action) {
       case 'link-to-lead':
-        result = await handleLinkToLead(body, supabaseAdmin);
+        result = await handleLinkToLead(body, supabaseAdmin, userId);
         break;
       case 'search-content':
-        result = await handleSearchContent(body, supabaseAdmin);
+        result = await handleSearchContent(body, supabaseAdmin, userId);
         break;
       default:
         return new Response(JSON.stringify({ error: 'Unknown action' }), {
