@@ -1449,6 +1449,7 @@ export type Database = {
           size: number | null
           synced_at: string | null
           updated_at: string | null
+          user_id: string
         }
         Insert: {
           content_hash?: string | null
@@ -1471,6 +1472,7 @@ export type Database = {
           size?: number | null
           synced_at?: string | null
           updated_at?: string | null
+          user_id: string
         }
         Update: {
           content_hash?: string | null
@@ -1493,6 +1495,7 @@ export type Database = {
           size?: number | null
           synced_at?: string | null
           updated_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
