@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
           'Authorization': `Bearer ${supabaseServiceKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: 'incremental-sync' }),
+        body: JSON.stringify({ action: 'incremental-sync-all' }),
       }).catch(err => console.error('Failed to trigger sync:', err));
 
       return new Response('OK', { status: 200, headers: corsHeaders });

@@ -25,6 +25,7 @@ const MAX_EXTRACTED_TEXT = 50000;
 
 interface DropboxConnection {
   id: string;
+  user_id: string;
   access_token: string;
   refresh_token: string;
   token_expiry: string;
@@ -90,18 +91,31 @@ async function refreshDropboxToken(connection: DropboxConnection, supabaseAdmin:
   return connection.access_token;
 }
 
-async function getConnection(supabaseAdmin: any): Promise<DropboxConnection> {
+async function getConnectionForUser(supabaseAdmin: any, userId: string): Promise<DropboxConnection> {
   const { data, error } = await supabaseAdmin
     .from('dropbox_connections')
-    .select('id, access_token, refresh_token, token_expiry, cursor')
-    .limit(1)
-    .single();
+    .select('id, user_id, access_token, refresh_token, token_expiry, cursor')
+    .eq('user_id', userId)
+    .maybeSingle();
 
   if (error || !data) {
     throw new Error('No Dropbox connection found');
   }
 
   return data as DropboxConnection;
+}
+
+async function getAllConnections(supabaseAdmin: any): Promise<DropboxConnection[]> {
+  const { data, error } = await supabaseAdmin
+    .from('dropbox_connections')
+    .select('id, user_id, access_token, refresh_token, token_expiry, cursor')
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    throw new Error('Failed to fetch Dropbox connections');
+  }
+
+  return (data || []) as DropboxConnection[];
 }
 
 function getFileExtension(name: string): string {
@@ -112,6 +126,7 @@ function getFileExtension(name: string): string {
 async function processEntries(
   entries: DropboxEntry[],
   supabaseAdmin: any,
+  userId: string,
 ): Promise<number> {
   let count = 0;
 
@@ -121,6 +136,7 @@ async function processEntries(
         .from('dropbox_files')
         .upsert(
           {
+            user_id: userId,
             dropbox_id: entry.id,
             dropbox_path: entry.path_lower,
             dropbox_path_display: entry.path_display,
@@ -132,7 +148,7 @@ async function processEntries(
             modified_at: entry.server_modified,
             synced_at: new Date().toISOString(),
           },
-          { onConflict: 'dropbox_id' },
+          { onConflict: 'user_id,dropbox_id' },
         );
 
       if (error) {
@@ -145,6 +161,7 @@ async function processEntries(
         .from('dropbox_files')
         .upsert(
           {
+            user_id: userId,
             dropbox_id: entry.id,
             dropbox_path: entry.path_lower,
             dropbox_path_display: entry.path_display,
@@ -152,7 +169,7 @@ async function processEntries(
             is_folder: true,
             synced_at: new Date().toISOString(),
           },
-          { onConflict: 'dropbox_id' },
+          { onConflict: 'user_id,dropbox_id' },
         );
 
       if (error) {
@@ -164,6 +181,7 @@ async function processEntries(
       const { error } = await supabaseAdmin
         .from('dropbox_files')
         .delete()
+        .eq('user_id', userId)
         .eq('dropbox_path', entry.path_lower);
 
       if (error) {
@@ -177,8 +195,7 @@ async function processEntries(
   return count;
 }
 
-async function handleFullSync(supabaseAdmin: any): Promise<Response> {
-  const connection = await getConnection(supabaseAdmin);
+async function handleFullSync(connection: DropboxConnection, supabaseAdmin: any): Promise<{ synced: number; cursor: string | null; has_more: boolean }> {
   const accessToken = await refreshDropboxToken(connection, supabaseAdmin);
 
   let totalSynced = 0;
@@ -208,7 +225,7 @@ async function handleFullSync(supabaseAdmin: any): Promise<Response> {
   }
 
   let result: DropboxListFolderResult = await initialResponse.json();
-  totalSynced += await processEntries(result.entries, supabaseAdmin);
+  totalSynced += await processEntries(result.entries, supabaseAdmin, connection.user_id);
   cursor = result.cursor;
   hasMore = result.has_more;
 
@@ -230,7 +247,7 @@ async function handleFullSync(supabaseAdmin: any): Promise<Response> {
     }
 
     result = await continueResponse.json();
-    totalSynced += await processEntries(result.entries, supabaseAdmin);
+    totalSynced += await processEntries(result.entries, supabaseAdmin, connection.user_id);
     cursor = result.cursor;
     hasMore = result.has_more;
   }
@@ -244,20 +261,12 @@ async function handleFullSync(supabaseAdmin: any): Promise<Response> {
     })
     .eq('id', connection.id);
 
-  return new Response(
-    JSON.stringify({ synced: totalSynced, cursor, has_more: false }),
-    { headers: corsHeaders },
-  );
+  return { synced: totalSynced, cursor, has_more: false };
 }
 
-async function handleIncrementalSync(supabaseAdmin: any): Promise<Response> {
-  const connection = await getConnection(supabaseAdmin);
-
+async function handleIncrementalSync(connection: DropboxConnection, supabaseAdmin: any): Promise<{ changes: number; cursor: string | null; has_more: boolean; skipped?: boolean }> {
   if (!connection.cursor) {
-    return new Response(
-      JSON.stringify({ error: 'No cursor found. Run full-sync first.' }),
-      { status: 400, headers: corsHeaders },
-    );
+    return { changes: 0, cursor: null, has_more: false, skipped: true };
   }
 
   const accessToken = await refreshDropboxToken(connection, supabaseAdmin);
@@ -278,7 +287,7 @@ async function handleIncrementalSync(supabaseAdmin: any): Promise<Response> {
   }
 
   const result: DropboxListFolderResult = await response.json();
-  const changes = await processEntries(result.entries, supabaseAdmin);
+  const changes = await processEntries(result.entries, supabaseAdmin, connection.user_id);
 
   // Save new cursor
   await supabaseAdmin
@@ -289,20 +298,17 @@ async function handleIncrementalSync(supabaseAdmin: any): Promise<Response> {
     })
     .eq('id', connection.id);
 
-  return new Response(
-    JSON.stringify({ changes, cursor: result.cursor, has_more: result.has_more }),
-    { headers: corsHeaders },
-  );
+  return { changes, cursor: result.cursor, has_more: result.has_more };
 }
 
-async function handleExtractText(supabaseAdmin: any): Promise<Response> {
-  const connection = await getConnection(supabaseAdmin);
+async function handleExtractText(connection: DropboxConnection, supabaseAdmin: any): Promise<Response> {
   const accessToken = await refreshDropboxToken(connection, supabaseAdmin);
 
   // Select batch of files pending extraction
   const { data: files, error: selectError } = await supabaseAdmin
     .from('dropbox_files')
     .select('id, dropbox_path, name')
+    .eq('user_id', connection.user_id)
     .eq('extraction_status', 'pending')
     .eq('is_folder', false)
     .limit(10);
@@ -479,25 +485,79 @@ Deno.serve(async (req) => {
   try {
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const authResult = await requireAdmin(req, supabaseAdmin, { corsHeaders });
-    if (!authResult.ok) return authResult.response;
-
     const { action } = await req.json();
+    const authHeader = req.headers.get('Authorization') || '';
+    const bearer = authHeader.replace('Bearer ', '');
+    const isServiceRole = bearer === SUPABASE_SERVICE_ROLE_KEY;
+
+    let authUserId: string | null = null;
+    if (!isServiceRole) {
+      const authResult = await requireAdmin(req, supabaseAdmin, { corsHeaders });
+      if (!authResult.ok) return authResult.response;
+      authUserId = authResult.auth.authUserId;
+    }
 
     if (action === 'full-sync') {
-      return await handleFullSync(supabaseAdmin);
+      if (!authUserId) {
+        return new Response(JSON.stringify({ error: 'full-sync requires a user session' }), {
+          status: 401,
+          headers: corsHeaders,
+        });
+      }
+      const connection = await getConnectionForUser(supabaseAdmin, authUserId);
+      const result = await handleFullSync(connection, supabaseAdmin);
+      return new Response(JSON.stringify(result), { headers: corsHeaders });
     }
 
     if (action === 'incremental-sync') {
-      return await handleIncrementalSync(supabaseAdmin);
+      if (!authUserId) {
+        return new Response(JSON.stringify({ error: 'incremental-sync requires a user session' }), {
+          status: 401,
+          headers: corsHeaders,
+        });
+      }
+      const connection = await getConnectionForUser(supabaseAdmin, authUserId);
+      const result = await handleIncrementalSync(connection, supabaseAdmin);
+      return new Response(JSON.stringify(result), { headers: corsHeaders });
+    }
+
+    if (action === 'incremental-sync-all') {
+      if (!isServiceRole) {
+        return new Response(JSON.stringify({ error: 'incremental-sync-all requires service role' }), {
+          status: 403,
+          headers: corsHeaders,
+        });
+      }
+      const connections = await getAllConnections(supabaseAdmin);
+      const results = [];
+      for (const connection of connections) {
+        try {
+          const result = await handleIncrementalSync(connection, supabaseAdmin);
+          results.push({ userId: connection.user_id, success: true, ...result });
+        } catch (error) {
+          results.push({
+            userId: connection.user_id,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+      return new Response(JSON.stringify({ processed: results.length, results }), { headers: corsHeaders });
     }
 
     if (action === 'extract-text') {
-      return await handleExtractText(supabaseAdmin);
+      if (!authUserId) {
+        return new Response(JSON.stringify({ error: 'extract-text requires a user session' }), {
+          status: 401,
+          headers: corsHeaders,
+        });
+      }
+      const connection = await getConnectionForUser(supabaseAdmin, authUserId);
+      return await handleExtractText(connection, supabaseAdmin);
     }
 
     return new Response(
-      JSON.stringify({ error: 'Invalid action. Use: full-sync, incremental-sync, extract-text' }),
+      JSON.stringify({ error: 'Invalid action. Use: full-sync, incremental-sync, incremental-sync-all, extract-text' }),
       { status: 400, headers: corsHeaders },
     );
   } catch (error) {
