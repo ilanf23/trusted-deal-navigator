@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useDropboxConnection } from '@/hooks/useDropboxConnection';
 import {
   useDropboxList,
@@ -63,6 +63,14 @@ export function DropboxBrowser() {
   const [moveOpen, setMoveOpen] = useState(false);
   const [moveTarget, setMoveTarget] = useState<DropboxEntry | null>(null);
   const [moveDestination, setMoveDestination] = useState('');
+
+  useEffect(() => {
+    if (isConnected) return;
+    setCurrentPath('');
+    setActiveSection('home');
+    setSelectedEntry(null);
+    setSearchQuery('');
+  }, [isConnected]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);

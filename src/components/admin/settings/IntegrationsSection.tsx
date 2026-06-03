@@ -42,6 +42,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useDropboxConnection } from '@/hooks/useDropboxConnection';
 import type { LucideIcon } from 'lucide-react';
 
 interface IntegrationCard {
@@ -52,6 +53,8 @@ interface IntegrationCard {
   color: string;
   status: 'connected' | 'available' | 'coming-soon' | 'managed';
   connectAction?: () => void;
+  configureAction?: () => void;
+  disconnectAction?: () => void;
 }
 
 interface UserIntegrationMetadata {
@@ -176,12 +179,14 @@ const Card = ({ card }: { card: IntegrationCard }) => {
       <div className="mt-auto flex gap-2">
         {status === 'connected' ? (
           <>
-            <Button size="sm" variant="outline" className="flex-1">
+            <Button size="sm" variant="outline" className="flex-1" onClick={card.configureAction}>
               Configure
             </Button>
-            <Button size="sm" variant="ghost" onClick={card.connectAction}>
-              Disconnect
-            </Button>
+            {card.disconnectAction && (
+              <Button size="sm" variant="ghost" onClick={card.disconnectAction}>
+                Disconnect
+              </Button>
+            )}
           </>
         ) : status === 'available' ? (
           <Button size="sm" className="flex-1" onClick={card.connectAction}>
@@ -205,6 +210,7 @@ const IntegrationsSection = () => {
   const navigate = useNavigate();
   const { data: status } = useConnectionStatuses();
   const { teamMember, isOwner } = useTeamMember();
+  const dropboxConnection = useDropboxConnection();
 
   const {
     data: adminKeys,
@@ -323,13 +329,15 @@ const IntegrationsSection = () => {
       connectAction: () => navigate('/admin/calendar'),
     },
     {
-      id: 'drive',
-      name: 'Google Drive',
-      description: 'Attach files from Drive and auto-store deal documents.',
+      id: 'dropbox',
+      name: 'Dropbox',
+      description: 'Connect your Dropbox account to browse files and link documents to CRM records.',
       icon: HardDrive,
-      color: '#0f9d58',
-      status: status?.dropbox ? 'connected' : 'available',
-      connectAction: () => navigate('/admin/dropbox'),
+      color: '#0061ff',
+      status: dropboxConnection.isConnected ? 'connected' : 'available',
+      connectAction: dropboxConnection.connect,
+      configureAction: () => navigate('/admin/dropbox'),
+      disconnectAction: dropboxConnection.disconnect,
     },
     {
       id: 'twilio',

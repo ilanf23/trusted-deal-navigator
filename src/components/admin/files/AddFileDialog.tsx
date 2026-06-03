@@ -15,6 +15,8 @@ import { sanitizeFileName, cn } from '@/lib/utils';
 import { useDropboxAutoUpload } from '@/hooks/useDropboxAutoUpload';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAuth } from '@/contexts/AuthContext';
+import { useDropboxConnection } from '@/hooks/useDropboxConnection';
 import type { EntityType } from './types';
 
 interface AddFileDialogProps {
@@ -53,6 +55,13 @@ export function AddFileDialog({
 }: AddFileDialogProps) {
   const queryClient = useQueryClient();
   const { teamMember } = useTeamMember();
+  const { user } = useAuth();
+  const {
+    isConnected: dropboxHookConnected,
+    loading: dropboxConnectionLoading,
+    connect: connectDropbox,
+    refreshStatus: refreshDropboxStatus,
+  } = useDropboxConnection();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<'computer' | 'dropbox' | 'sheets'>('computer');
   const [uploading, setUploading] = useState(false);
@@ -68,7 +77,7 @@ export function AddFileDialog({
 
   // ── Dropbox connection + listing ─────────────────────────────────────────
   const { data: dropboxStatus } = useQuery({
-    queryKey: ['dropbox-connection-status'],
+    queryKey: ['dropbox-connection-status', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('dropbox-auth', {
         body: { action: 'getStatus' },
@@ -76,13 +85,14 @@ export function AddFileDialog({
       if (error) return { connected: false };
       return { connected: data?.connected ?? false };
     },
+    enabled: !!user?.id,
     staleTime: 5 * 60 * 1000,
   });
-  const dropboxConnected = !!dropboxStatus?.connected;
+  const dropboxConnected = dropboxHookConnected || !!dropboxStatus?.connected;
   const { syncToDropbox } = useDropboxAutoUpload(dropboxConnected);
 
   const { data: dropboxFiles = [], isLoading: dropboxLoading } = useQuery<DropboxFileEntry[]>({
-    queryKey: ['add-file-dropbox-list-recursive'],
+    queryKey: ['add-file-dropbox-list-recursive', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('dropbox-files', {
         body: { action: 'list-recursive', path: '' },
@@ -319,8 +329,26 @@ export function AddFileDialog({
           {/* Dropbox tab */}
           <TabsContent value="dropbox" className="mt-4">
             {!dropboxConnected ? (
-              <div className="rounded-md border border-border p-6 text-center text-sm text-muted-foreground">
-                Connect Dropbox in Settings to pick files from your account.
+              <div className="rounded-md border border-border p-6 text-center text-sm text-muted-foreground space-y-3">
+                <p>Connect Dropbox to pick files from your account.</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    connectDropbox();
+                    setTimeout(() => {
+                      refreshDropboxStatus();
+                    }, 1500);
+                  }}
+                  disabled={dropboxConnectionLoading}
+                >
+                  {dropboxConnectionLoading ? (
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Cloud className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  Connect Dropbox
+                </Button>
               </div>
             ) : (
               <div className="space-y-3">
