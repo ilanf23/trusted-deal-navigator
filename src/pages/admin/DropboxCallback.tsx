@@ -9,6 +9,14 @@ const getCallbackUrl = () => {
   return `${window.location.origin}/admin/dropbox/callback`;
 };
 
+const getReturnPath = () => {
+  const storedPath = localStorage.getItem('dropboxReturnPath');
+  if (storedPath) return storedPath;
+  return window.location.pathname.startsWith('/superadmin')
+    ? '/superadmin/dropbox'
+    : '/admin/dropbox';
+};
+
 export default function DropboxCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
@@ -44,10 +52,10 @@ export default function DropboxCallback() {
             // Can't close
           }
           setTimeout(() => {
-            if (!window.closed) navigate('/admin/dropbox');
+            if (!window.closed) navigate(getReturnPath());
           }, 500);
         } else {
-          navigate('/admin/dropbox');
+          navigate(getReturnPath());
         }
       };
 
@@ -87,6 +95,7 @@ export default function DropboxCallback() {
 
         localStorage.removeItem('dropboxCallbackUrl');
         localStorage.removeItem('dropboxTeamMember');
+        localStorage.removeItem('dropboxReturnPath');
 
         if (exchangeError) {
           // Try to extract detailed error from edge function response
