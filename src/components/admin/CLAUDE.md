@@ -27,7 +27,7 @@
 - `PeopleTaskDetailDialog`, `GmailTaskDialog` — task-specific
 - `CreateFilterDialog`, `CreatePipelineModal`, `StageManagerModal` — pipeline config
 - `PipelineSettingsDialog`, `PipelineSharingModal` — pipeline admin
-- `ColumnManagerModal`, `MoveBoxesModal`, `ChecklistBuilder` — utilities
+- `ColumnManagerModal`, `MoveBoxesModal` — utilities
 
 **Pipeline Components:**
 - `PipelineColumnHeader`, `ResizableColumnHeader` — board UI

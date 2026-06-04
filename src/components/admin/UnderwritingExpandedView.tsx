@@ -18,8 +18,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import ChecklistBuilder, { type ChecklistItem } from './ChecklistBuilder';
-import SavedChecklistCard, { type SavedChecklist } from './SavedChecklistCard';
 import {
   X, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, CheckSquare, FileText,
@@ -246,7 +244,7 @@ export default function UnderwritingExpandedView() {
     return () => setSearchComponent(null);
   }, [searchTerm]);
 
-  const [activityTab, setActivityTab] = useState<'log' | 'note' | 'checklist'>('log');
+  const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
 
   // Activity form state
   const [activityType, setActivityType] = useState('todo');
@@ -255,19 +253,6 @@ export default function UnderwritingExpandedView() {
   const [savingActivity, setSavingActivity] = useState(false);
   const [activityDropdownOpen, setActivityDropdownOpen] = useState(false);
 
-  // Checklist builder state
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
-  const addMenuTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const openAddMenu = useCallback(() => { if (addMenuTimer.current) clearTimeout(addMenuTimer.current); setAddMenuOpen(true); }, []);
-  const closeAddMenu = useCallback(() => { addMenuTimer.current = setTimeout(() => setAddMenuOpen(false), 150); }, []);
-  const [checklistTabVisible, setChecklistTabVisible] = useState(false);
-  const [checklistTitle, setChecklistTitle] = useState('Checklist');
-  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
-  const [newItemText, setNewItemText] = useState('');
-  const [savingChecklist, setSavingChecklist] = useState(false);
-  const [showTemplateSaveDialog, setShowTemplateSaveDialog] = useState(false);
-  const [templateName, setTemplateName] = useState('');
-  const [savingTemplate, setSavingTemplate] = useState(false);
 
   // Selected person for person detail panel (kept — sidebar `onPersonSelect` sets this)
   const [selectedPerson, setSelectedPerson] = useState<any>(null);
@@ -480,118 +465,6 @@ export default function UnderwritingExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
   }, [leadId, activityTab, activityType, activityNote, noteContent, queryClient]);
 
-  // ── Save checklist ──
-  const handleSaveChecklist = useCallback(async () => {
-    if (!leadId || checklistItems.length === 0) return;
-    setSavingChecklist(true);
-
-    // Build plain-text content for the activity timeline
-    const lines = checklistItems.map(
-      (i) => `${i.is_checked ? '[x]' : '[ ]'} ${i.text}`
-    );
-    const content = `<strong>${checklistTitle}</strong><br/>${lines.join('<br/>')}`;
-
-    // 1. Insert activities row
-    const { data: actData, error: actErr } = await supabase
-      .from('activities')
-      .insert({
-        entity_id: leadId,
-        entity_type: 'deal',
-        activity_type: 'checklist',
-        content,
-        title: checklistTitle || 'Checklist',
-      })
-      .select('id')
-      .single();
-
-    if (actErr || !actData) {
-      setSavingChecklist(false);
-      toast.error('Failed to save checklist');
-      return;
-    }
-
-    // 2. Insert underwriting_checklists row
-    const { data: clData, error: clErr } = await supabase
-      .from('underwriting_checklists')
-      .insert({
-        entity_id: leadId,
-        entity_type: 'deal',
-        title: checklistTitle || 'Checklist',
-        created_by: teamMember?.name ?? null,
-        activity_id: actData.id,
-      })
-      .select('id')
-      .single();
-
-    if (clErr || !clData) {
-      setSavingChecklist(false);
-      toast.error('Failed to save checklist');
-      return;
-    }
-
-    // 3. Bulk insert items
-    const itemRows = checklistItems.map((item, idx) => ({
-      checklist_id: clData.id,
-      text: item.text,
-      is_checked: item.is_checked,
-      position: idx,
-    }));
-    await supabase.from('underwriting_checklist_items').insert(itemRows);
-
-    // 4. Stamp last_activity_at
-    await supabase.from('deals').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
-
-    setSavingChecklist(false);
-    toast.success('Checklist saved');
-    // Reset builder
-    setChecklistTitle('Checklist');
-    setChecklistItems([]);
-    setNewItemText('');
-    setChecklistTabVisible(false);
-    setActivityTab('checklist');
-    queryClient.invalidateQueries({ queryKey: ['underwriting-activities', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['underwriting-saved-checklists', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['underwriting-expanded', leadId] });
-  }, [leadId, checklistTitle, checklistItems, teamMember, queryClient]);
-
-  // ── Save checklist as template ──
-  const handleSaveAsTemplate = useCallback(async () => {
-    setShowTemplateSaveDialog(true);
-  }, []);
-
-  const handleConfirmSaveTemplate = useCallback(async () => {
-    if (!templateName.trim() || checklistItems.length === 0) return;
-    setSavingTemplate(true);
-
-    const { data: tmplData, error: tmplErr } = await supabase
-      .from('checklist_templates')
-      .insert({
-        name: templateName.trim(),
-        created_by: teamMember?.name ?? null,
-      })
-      .select('id')
-      .single();
-
-    if (tmplErr || !tmplData) {
-      setSavingTemplate(false);
-      toast.error('Failed to save template');
-      return;
-    }
-
-    const itemRows = checklistItems.map((item, idx) => ({
-      template_id: tmplData.id,
-      text: item.text,
-      position: idx,
-    }));
-    await supabase.from('checklist_template_items').insert(itemRows);
-
-    setSavingTemplate(false);
-    setShowTemplateSaveDialog(false);
-    setTemplateName('');
-    toast.success('Template saved');
-    queryClient.invalidateQueries({ queryKey: ['checklist-templates'] });
-  }, [templateName, checklistItems, teamMember, queryClient]);
-
   // ── Save activity comment ──
   const handleSaveComment = useCallback(async (activityId: string) => {
     const text = (commentTexts[activityId] ?? '').trim();
@@ -770,31 +643,6 @@ export default function UnderwritingExpandedView() {
     enabled: !!leadId,
   });
 
-  // ── Saved checklists query ──
-  const { data: savedChecklists = [] } = useQuery<SavedChecklist[]>({
-    queryKey: ['underwriting-saved-checklists', leadId],
-    queryFn: async () => {
-      const { data: checklists, error: clErr } = await supabase
-        .from('underwriting_checklists')
-        .select('*')
-        .eq('entity_id', leadId!)
-        .eq('entity_type', 'deal')
-        .order('created_at', { ascending: false });
-      if (clErr || !checklists || checklists.length === 0) return [];
-      const ids = checklists.map((c) => c.id);
-      const { data: items } = await supabase
-        .from('underwriting_checklist_items')
-        .select('*')
-        .in('checklist_id', ids)
-        .order('position');
-      return checklists.map((c) => ({
-        ...c,
-        items: (items ?? []).filter((i) => i.checklist_id === c.id),
-      }));
-    },
-    enabled: !!leadId,
-    refetchOnMount: 'always',
-  });
 
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['underwriting-emails', leadId],
@@ -1168,7 +1016,6 @@ export default function UnderwritingExpandedView() {
                   {([
                     { key: 'log' as const, label: 'Log Activity' },
                     { key: 'note' as const, label: 'Create Note' },
-                    ...((checklistTabVisible || savedChecklists.length > 0) ? [{ key: 'checklist' as const, label: 'Checklist' }] : []),
                   ]).map((tab) => (
                     <button
                       key={tab.key}
@@ -1261,43 +1108,6 @@ export default function UnderwritingExpandedView() {
                     </Button>
                   </div>
                 </div>
-              ) : activityTab === 'checklist' ? (
-                <div className="space-y-4">
-                  <ChecklistBuilder
-                    title={checklistTitle}
-                    onTitleChange={setChecklistTitle}
-                    items={checklistItems}
-                    onItemsChange={setChecklistItems}
-                    newItemText={newItemText}
-                    onNewItemTextChange={setNewItemText}
-                    onSave={handleSaveChecklist}
-                    saving={savingChecklist}
-                    onSaveAsTemplate={handleSaveAsTemplate}
-                  />
-                  {/* Inline template save dialog */}
-                  {showTemplateSaveDialog && (
-                    <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                      <span className="text-xs font-semibold text-foreground">Save as Template</span>
-                      <input
-                        autoFocus
-                        value={templateName}
-                        onChange={(e) => setTemplateName(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && templateName.trim()) handleConfirmSaveTemplate(); if (e.key === 'Escape') { setShowTemplateSaveDialog(false); setTemplateName(''); } }}
-                        placeholder="Template name..."
-                        className="w-full text-xs bg-transparent border border-border rounded-lg px-3 py-2 outline-none focus:border-blue-500 transition-colors placeholder:text-muted-foreground/50"
-                      />
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setShowTemplateSaveDialog(false); setTemplateName(''); }}>
-                          Cancel
-                        </Button>
-                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7 px-3" onClick={handleConfirmSaveTemplate} disabled={savingTemplate || !templateName.trim()}>
-                          {savingTemplate && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
               ) : (
                 <div className="space-y-4">
                   <RichTextEditor
@@ -1320,23 +1130,6 @@ export default function UnderwritingExpandedView() {
                 </div>
               )}
 
-              {/* Saved Checklists — persistent interactive cards */}
-              {savedChecklists.length > 0 && (
-                <>
-                  <Separator className="my-6" />
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Checklists</h3>
-                  <div className="space-y-3 mb-4">
-                    {savedChecklists.map((cl) => (
-                      <SavedChecklistCard
-                        key={cl.id}
-                        checklist={cl}
-                        formatDate={formatShortDate}
-                        leadId={leadId!}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
                 </div>
               </div>
 
@@ -1451,8 +1244,6 @@ export default function UnderwritingExpandedView() {
               <div className="space-y-3">
                 {filteredTimelineItems.length > 0 ? (
                   filteredTimelineItems.map((item) => {
-                    // Skip checklist activities — they're rendered above as interactive cards
-                    if (item.type === 'activity' && item.data?.activity_type === 'checklist') return null;
                     if (item.type === 'email_thread') {
                       const thread = item.data;
                       const isThreadExpanded = !!expandedThreads[thread.id];

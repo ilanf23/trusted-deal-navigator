@@ -897,27 +897,6 @@ function ExpandedDetails({
         </div>
       )}
 
-      {/* Checklist */}
-      {activity.checklistItems && activity.checklistItems.length > 0 && (
-        <div className="space-y-1.5">
-          {activity.checklistTitle && (
-            <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">{activity.checklistTitle}</span>
-          )}
-          {activity.checklistItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              {item.isChecked ? (
-                <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              ) : (
-                <Square className="w-3.5 h-3.5 text-gray-300 shrink-0" />
-              )}
-              <span className={cn('text-[13px] tracking-normal', item.isChecked ? 'line-through text-gray-400' : 'text-gray-700')}>
-                {item.text}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Footer action */}
       {activity.leadId && (
         <div className="pt-1">

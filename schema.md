@@ -1270,31 +1270,6 @@
 | interactions_count       | integer                  | No          | No       | -               |
 | stage_changed_at         | timestamp with time zone | No          | Yes      | -               |
 
-## Table: `underwriting_checklist_items`
-
-| Column Name  | Data Type                | Primary Key | Nullable | Foreign Key To          |
-| ------------ | ------------------------ | ----------- | -------- | ----------------------- |
-| id           | uuid                     | Yes         | No       | -                       |
-| checklist_id | uuid                     | No          | No       | underwriting_checklists |
-| text         | text                     | No          | No       | -                       |
-| is_checked   | boolean                  | No          | No       | -                       |
-| position     | integer                  | No          | No       | -                       |
-| created_at   | timestamp with time zone | No          | No       | -                       |
-| due_date     | date                     | No          | Yes      | -                       |
-| assigned_to  | text                     | No          | Yes      | -                       |
-
-## Table: `underwriting_checklists`
-
-| Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ----------- | ------------------------ | ----------- | -------- | -------------- |
-| id          | uuid                     | Yes         | No       | -              |
-| entity_id   | uuid                     | No          | No       | -              |
-| title       | text                     | No          | No       | -              |
-| created_by  | text                     | No          | Yes      | -              |
-| activity_id | uuid                     | No          | Yes      | activities     |
-| created_at  | timestamp with time zone | No          | No       | -              |
-| entity_type | USER-DEFINED             | No          | Yes      | -              |
-
 ## Table: `underwriting_people`
 
 | Column Name     | Data Type                | Primary Key | Nullable | Foreign Key To |
