@@ -23,7 +23,10 @@ BEGIN
 END $$;
 
 WITH connection_owner AS (
-  SELECT count(*) AS connection_count, min(user_id) AS only_user_id
+  -- (array_agg(...))[1] instead of min(): Postgres has no min(uuid) aggregate.
+  -- only_user_id is only consumed when connection_count = 1, so this returns
+  -- that single owner's id — behaviour-identical, just type-valid.
+  SELECT count(*) AS connection_count, (array_agg(user_id))[1] AS only_user_id
   FROM public.dropbox_connections
 )
 UPDATE public.dropbox_files AS f
