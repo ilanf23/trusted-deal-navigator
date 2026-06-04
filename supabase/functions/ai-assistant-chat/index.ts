@@ -122,7 +122,12 @@ Today: ${new Date().toISOString().split('T')[0]}`;
       serviceClient,
       userClient,
       isFounder,
-      memberId: scopedMemberId ?? null,
+      // Rep scoping MUST pin to the caller's own id, never a client-supplied
+      // value. scopedMemberId can be a request-controlled `requestedMemberId`
+      // for loose `isOwner` employee-admins; using it here would let a
+      // non-founder read another rep's data. Founders are unscoped, so
+      // memberId only governs the non-founder path.
+      memberId: teamMember?.id ?? null,
     };
     const tools = readToolSchemas(isFounder);
 
