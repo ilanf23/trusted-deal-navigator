@@ -2,6 +2,7 @@ import { Bot, User } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import AssistantThinking from './AssistantThinking';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -35,14 +36,6 @@ const UserAvatar = ({ url, name }: { url?: string | null; name?: string }) => (
   </Avatar>
 );
 
-const TypingDots = () => (
-  <div className="flex items-center gap-1 py-2">
-    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60" />
-    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:120ms]" />
-    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:240ms]" />
-  </div>
-);
-
 const ChatMessages = ({ messages, isLoading, userAvatarUrl, userName }: ChatMessagesProps) => {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-6">
@@ -65,7 +58,7 @@ const ChatMessages = ({ messages, isLoading, userAvatarUrl, userName }: ChatMess
               ) : (
                 <div className="pt-0.5">
                   {msg.content === '' && isLoading && i === messages.length - 1 ? (
-                    <TypingDots />
+                    <AssistantThinking />
                   ) : (
                     <div className="prose prose-sm max-w-none break-words text-foreground dark:prose-invert prose-p:my-2 prose-p:leading-relaxed prose-pre:my-3 prose-pre:rounded-lg prose-pre:bg-muted prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:text-[0.85em] prose-code:before:content-none prose-code:after:content-none prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:mt-4 prose-headings:mb-2">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>

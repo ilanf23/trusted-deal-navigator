@@ -102,7 +102,7 @@ export function readToolSchemas(isFounder: boolean) {
       type: "function" as const,
       function: {
         name: "run_read_sql",
-        description: "Founder-only. Run an arbitrary READ-ONLY SQL SELECT against the business database when no other tool fits. Use standard Postgres. Allowlisted tables: deals_v, potential, underwriting, lender_management, tasks, communications, appointments, email_threads, deal_responses, dropbox_files, invoices, partner_referrals, lender_programs, deal_lender_programs, revenue_targets, rate_watch, people, company_people, users. Results are capped at 500 rows.",
+        description: "Founder-only. Run an arbitrary READ-ONLY SQL SELECT against the business database when no other tool fits. Use standard Postgres. Allowlisted tables: deals, tasks, communications, appointments, email_threads, dropbox_files, invoices, lender_programs, deal_lender_programs, revenue_targets, rate_watch, people, company_people, users. (All deals live in the single `deals` table — pipeline is a column, not separate tables.) Results are capped at 500 rows.",
         parameters: {
           type: "object",
           properties: {
@@ -137,7 +137,7 @@ export async function executeReadTool(
 
   switch (name) {
     case "query_deals": {
-      let q = svc.from("deals_v").select(
+      let q = svc.from("deals").select(
         "id, pipeline, name, company_name, status, deal_outcome, priority, deal_value, potential_revenue, assigned_to, updated_at",
       );
       q = scopeDeals(q, ctx);
@@ -156,14 +156,24 @@ export async function executeReadTool(
     }
 
     case "get_metrics": {
-      // Reuse the existing SECURITY INVOKER RPC via the service client. Pass
-      // p_assigned_to to scope reps; null for founders (company-wide).
-      const { data, error } = await svc.rpc("get_pipeline_value", {
-        p_pipeline: args.pipeline ?? null,
-        p_assigned_to: ctx.isFounder ? null : ctx.memberId,
-      });
+      // Aggregate open deals grouped by pipeline directly off the consolidated
+      // `deals` table (the former get_pipeline_value RPC read the now-dropped
+      // deals_v view). Reps are scoped to their own deals; founders see all.
+      let mq = svc.from("deals").select("pipeline, deal_value, potential_revenue").eq("deal_outcome", "open");
+      mq = scopeDeals(mq, ctx);
+      if (args.pipeline) mq = mq.eq("pipeline", args.pipeline);
+      const { data, error } = await mq.limit(5000);
       if (error) return { error: error.message };
-      return { metrics: data };
+      const byPipeline: Record<string, { open_count: number; total_value: number; total_potential_revenue: number }> = {};
+      for (const d of (data ?? []) as any[]) {
+        const key = d.pipeline ?? "unknown";
+        const row = byPipeline[key] ??= { open_count: 0, total_value: 0, total_potential_revenue: 0 };
+        row.open_count += 1;
+        row.total_value += Number(d.deal_value) || 0;
+        row.total_potential_revenue += Number(d.potential_revenue) || 0;
+      }
+      const metrics = Object.entries(byPipeline).map(([pipeline, v]) => ({ pipeline, ...v }));
+      return { metrics };
     }
 
     case "search_communications": {
@@ -178,7 +188,7 @@ export async function executeReadTool(
       if (error) return { error: error.message };
       // Reps can only see comms tied to their own deals. Resolve allowed deal ids.
       if (!ctx.isFounder && ctx.memberId) {
-        const { data: mine } = await svc.from("deals_v").select("id").eq("assigned_to", ctx.memberId);
+        const { data: mine } = await svc.from("deals").select("id").eq("assigned_to", ctx.memberId);
         const allowed = new Set((mine ?? []).map((d: any) => d.id));
         return { rows: (data ?? []).filter((c: any) => !c.lead_id || allowed.has(c.lead_id)) };
       }
@@ -187,16 +197,15 @@ export async function executeReadTool(
 
     case "lookup_lead": {
       if (!args.lead_id) return { error: "lead_id is required" };
-      let dealQ = svc.from("deals_v").select("*").eq("id", args.lead_id);
+      let dealQ = svc.from("deals").select("*").eq("id", args.lead_id);
       dealQ = scopeDeals(dealQ, ctx);
       const { data: deal } = await dealQ.maybeSingle();
       if (!deal) return { error: "Deal not found or not visible to you" };
-      const [{ data: tasks }, { data: comms }, { data: responses }] = await Promise.all([
+      const [{ data: tasks }, { data: comms }] = await Promise.all([
         svc.from("tasks").select("id, title, status, priority, due_date").eq("lead_id", args.lead_id).eq("is_completed", false),
         svc.from("communications").select("communication_type, direction, created_at, content, transcript").eq("lead_id", args.lead_id).order("created_at", { ascending: false }).limit(20),
-        svc.from("deal_responses").select("*").eq("lead_id", args.lead_id).limit(5),
       ]);
-      return { deal, tasks, communications: comms, responses };
+      return { deal, tasks, communications: comms };
     }
 
     case "query_tasks": {
