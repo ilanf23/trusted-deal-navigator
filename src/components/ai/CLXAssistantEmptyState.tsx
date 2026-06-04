@@ -21,8 +21,8 @@ const getPageContext = (path: string): string => {
 
 const chatPrompts: Record<string, string[]> = {
   pipeline: [
-    'What leads need follow-up today?',
-    'Summarize my pipeline status',
+    'Total expected revenue by pipeline this quarter',
+    'Which deals are stalling (no activity in 7+ days)?',
     'Which deals are closest to closing?',
     'Find stale opportunities worth re-engaging',
   ],
@@ -45,8 +45,8 @@ const chatPrompts: Record<string, string[]> = {
     'Find threads waiting on me',
   ],
   general: [
-    'What leads need follow-up today?',
-    'Summarize my pipeline status',
+    'Total expected revenue by pipeline this quarter',
+    'Which deals are stalling (no activity in 7+ days)?',
     'What are my overdue tasks?',
     'Give me a quick morning briefing',
   ],
