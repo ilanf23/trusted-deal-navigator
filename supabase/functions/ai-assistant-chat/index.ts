@@ -1,9 +1,11 @@
 import { getRequestClients } from '../_shared/userClient.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
+import { streamText, stepCountIs } from 'npm:ai@6';
 import { getProviderKey } from '../_shared/userIntegrations.ts';
-import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_PROVIDER, LLM_API_KEY_ENV, llmHeaders } from '../_shared/llmConfig.ts';
-import { readToolSchemas, executeReadTool, type ReadToolContext } from '../_shared/aiAgent/readTools.ts';
+import { LLM_PROVIDER, LLM_API_KEY_ENV } from '../_shared/llmConfig.ts';
+import { buildReadSdkTools, type ReadToolContext } from '../_shared/aiAgent/readTools.ts';
+import { resolveModel, DEFAULT_MODEL } from '../_shared/aiAgent/provider.ts';
 import { logAiAudit } from '../_shared/aiAgent/audit.ts';
 
 const corsHeaders = {
@@ -129,79 +131,48 @@ Today: ${new Date().toISOString().split('T')[0]}`;
       // memberId only governs the non-founder path.
       memberId: teamMember?.id ?? null,
     };
-    const tools = readToolSchemas(isFounder);
-
-    const convo: any[] = [
-      { role: "system", content: systemPrompt },
-      ...messages,
-    ];
-
-    // --- Phase 1: resolve tool calls (non-streaming) ---
-    const maxIterations = 5;
-    for (let i = 0; i < maxIterations; i++) {
-      const toolResp = await fetch(LLM_CHAT_ENDPOINT, {
-        method: "POST",
-        headers: llmHeaders(LLM_API_KEY),
-        body: JSON.stringify({ model: LLM_MODEL, messages: convo, tools, tool_choice: "auto" }),
+    // Read tools as Vercel AI SDK tools. Each tool's `execute` runs the existing
+    // `executeReadTool` (which keeps all rep-scoping/founder security) and the
+    // audit hook logs every call, preserving the previous per-tool audit trail.
+    const tools = buildReadSdkTools(toolCtx, isFounder, async (name, args, result) => {
+      await logAiAudit({
+        serviceClient,
+        userId: authUserId,
+        functionName: 'ai-assistant-chat',
+        tool: name,
+        scope: { args, isFounder },
+        mode: 'chat',
+        success: !(result as any)?.error,
+        errorMessage: (result as any)?.error,
       });
-      if (!toolResp.ok) {
-        const errText = await toolResp.text();
-        return new Response(JSON.stringify({ error: "LLM error: " + errText }), {
-          status: toolResp.status === 429 ? 429 : 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const toolData = await toolResp.json();
-      const msg = toolData.choices?.[0]?.message;
-      convo.push(msg);
-      if (!msg?.tool_calls?.length) break;
-
-      for (const call of msg.tool_calls) {
-        let result: unknown;
-        try {
-          result = await executeReadTool(toolCtx, call.function.name, JSON.parse(call.function.arguments || "{}"));
-        } catch (e) {
-          result = { error: e instanceof Error ? e.message : String(e) };
-        }
-        await logAiAudit({
-          serviceClient,
-          userId: authUserId,
-          functionName: 'ai-assistant-chat',
-          tool: call.function.name,
-          scope: { args: call.function.arguments, isFounder },
-          mode: 'chat',
-          success: !(result as any)?.error,
-          errorMessage: (result as any)?.error,
-        });
-        convo.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
-      }
-    }
-
-    // --- Phase 2: stream the final answer (tools disabled) ---
-    const response = await fetch(LLM_CHAT_ENDPOINT, {
-      method: "POST",
-      headers: llmHeaders(LLM_API_KEY),
-      body: JSON.stringify({ model: LLM_MODEL, messages: convo, tool_choice: "none", stream: true }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      console.error("LLM API error:", response.status, errorText);
-      return new Response(JSON.stringify({ error: "LLM API error: " + errorText }), {
-        status: 500,
+    // Resolve the provider/model (defaults to the OpenRouter model in llmConfig.ts).
+    // A bad/unconfigured provider is a client error, surfaced before streaming.
+    let model;
+    try {
+      model = await resolveModel(DEFAULT_MODEL, { openrouterKey: LLM_API_KEY });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    // streamText runs the read-tool loop server-side (up to 5 steps) and streams
+    // the final answer as plain text. The frontend reads a plain text stream.
+    const result = streamText({
+      model,
+      system: systemPrompt,
+      messages,
+      tools,
+      stopWhen: stepCountIs(5),
+      onError: ({ error }) => {
+        console.error("ai-assistant-chat streamText error:", error);
+      },
     });
+
+    return result.toTextStreamResponse({ headers: corsHeaders });
   } catch (error) {
     console.error('ai-assistant-chat error:', error);
     try {

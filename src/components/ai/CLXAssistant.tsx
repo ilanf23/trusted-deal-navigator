@@ -176,37 +176,17 @@ const CLXAssistant = () => {
       let assistantContent = '';
       setMessages([...newMessages, { role: 'assistant', content: '' }]);
 
-      let buffer = '';
+      // ai-assistant-chat now streams plain text (Vercel AI SDK
+      // toTextStreamResponse), not OpenAI SSE — append each chunk directly.
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-          let line = buffer.slice(0, newlineIndex);
-          buffer = buffer.slice(newlineIndex + 1);
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              assistantContent += delta;
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
-                return updated;
-              });
-            }
-          } catch {
-            buffer = line + '\n' + buffer;
-            break;
-          }
-        }
+        assistantContent += decoder.decode(value, { stream: true });
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
+          return updated;
+        });
       }
 
       const finalMessages = [...newMessages, { role: 'assistant' as const, content: assistantContent }];
@@ -257,8 +237,7 @@ const CLXAssistant = () => {
             onLoad={async (id) => {
               await loadConversation(id);
             }}
-            onDelete={async (e, id) => {
-              e.stopPropagation();
+            onDelete={async (id) => {
               await deleteConversation(id);
             }}
             onNewChat={startNewConversation}

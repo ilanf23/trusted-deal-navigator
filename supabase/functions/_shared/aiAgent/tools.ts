@@ -1,86 +1,66 @@
 // supabase/functions/_shared/aiAgent/tools.ts
-// OpenAI function-calling tool definitions for AI agent mode.
-// Shared by ai-assistant-agent edge function.
+// Vercel AI SDK write-tool definitions for AI agent mode (Zod inputSchema).
+// Shared by the ai-assistant-agent edge function.
+//
+// These tools have NO standalone `execute` — the agent runs every action through
+// `executeAction()` so it can map args, emit SSE progress, and log changes to
+// `ai_events` for undo/redo. `buildAgentSdkTools(run)` wires each tool's execute
+// to a single runner the agent provides (see ai-assistant-agent/index.ts).
 
-export const agentTools = [
-  {
-    type: "function" as const,
-    function: {
-      name: "update_lead",
+import { tool } from "npm:ai@6";
+import { z } from "npm:zod";
+
+/** The agent supplies this; it maps args, executes, emits SSE, and logs audit. */
+export type AgentToolRunner = (name: string, args: Record<string, any>) => Promise<unknown>;
+
+export function buildAgentSdkTools(run: AgentToolRunner) {
+  const w = (name: string) => (args: Record<string, any>) => run(name, args ?? {});
+
+  return {
+    update_lead: tool({
       description: "Update a field on a lead record",
-      parameters: {
-        type: "object",
-        properties: {
-          lead_id: { type: "string", description: "UUID of the lead" },
-          field: { type: "string", description: "Field name to update (status, notes, next_action, waiting_on, tags, etc.)" },
-          new_value: { type: "string", description: "New value for the field" },
-        },
-        required: ["lead_id", "field", "new_value"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "create_task",
+      inputSchema: z.object({
+        lead_id: z.string().describe("UUID of the lead"),
+        field: z.string().describe("Field name to update (status, notes, next_action, waiting_on, tags, etc.)"),
+        new_value: z.string().describe("New value for the field"),
+      }),
+      execute: w("update_lead"),
+    }),
+    create_task: tool({
       description: "Create a new task",
-      parameters: {
-        type: "object",
-        properties: {
-          title: { type: "string" },
-          lead_id: { type: "string", description: "Optional lead UUID to link the task" },
-          priority: { type: "string", enum: ["low", "medium", "high"] },
-          due_date: { type: "string", description: "ISO date string (YYYY-MM-DD)" },
-          description: { type: "string" },
-        },
-        required: ["title"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "complete_task",
+      inputSchema: z.object({
+        title: z.string(),
+        lead_id: z.string().optional().describe("Optional lead UUID to link the task"),
+        priority: z.enum(["low", "medium", "high"]).optional(),
+        due_date: z.string().optional().describe("ISO date string (YYYY-MM-DD)"),
+        description: z.string().optional(),
+      }),
+      execute: w("create_task"),
+    }),
+    complete_task: tool({
       description: "Mark a task as completed",
-      parameters: {
-        type: "object",
-        properties: {
-          task_id: { type: "string", description: "UUID of the task" },
-        },
-        required: ["task_id"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "log_activity",
+      inputSchema: z.object({
+        task_id: z.string().describe("UUID of the task"),
+      }),
+      execute: w("complete_task"),
+    }),
+    log_activity: tool({
       description: "Log an activity (call, email, meeting, note) on a lead",
-      parameters: {
-        type: "object",
-        properties: {
-          lead_id: { type: "string" },
-          activity_type: { type: "string", enum: ["call", "email", "meeting", "note"] },
-          content: { type: "string" },
-        },
-        required: ["lead_id", "activity_type", "content"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "bulk_update_leads",
+      inputSchema: z.object({
+        lead_id: z.string(),
+        activity_type: z.enum(["call", "email", "meeting", "note"]),
+        content: z.string(),
+      }),
+      execute: w("log_activity"),
+    }),
+    bulk_update_leads: tool({
       description: "Update a field on multiple leads at once",
-      parameters: {
-        type: "object",
-        properties: {
-          lead_ids: { type: "array", items: { type: "string" }, description: "Array of lead UUIDs" },
-          field: { type: "string" },
-          new_value: { type: "string" },
-        },
-        required: ["lead_ids", "field", "new_value"],
-      },
-    },
-  },
-];
+      inputSchema: z.object({
+        lead_ids: z.array(z.string()).describe("Array of lead UUIDs"),
+        field: z.string(),
+        new_value: z.string(),
+      }),
+      execute: w("bulk_update_leads"),
+    }),
+  };
+}

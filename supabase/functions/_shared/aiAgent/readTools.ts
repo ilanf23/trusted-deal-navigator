@@ -5,6 +5,8 @@
 // assigned_to. run_read_sql is founder-only and runs via the USER client so
 // the RPC can resolve auth.uid().
 
+import { tool } from "npm:ai@6";
+import { z } from "npm:zod";
 import type { SupabaseClient } from "../supabase.ts";
 import { validateReadOnlySql } from "./sqlGuard.ts";
 
@@ -13,6 +15,90 @@ export interface ReadToolContext {
   userClient: SupabaseClient;    // carries caller JWT; used only for run_read_sql
   isFounder: boolean;
   memberId: string | null;       // the caller's users.id (for rep scoping)
+}
+
+/** Optional hook fired after each read tool runs (used by callers for audit logging). */
+export type ReadToolHook = (
+  name: string,
+  args: Record<string, any>,
+  result: unknown,
+) => void | Promise<void>;
+
+/**
+ * Build the read tools as Vercel AI SDK `tool()` objects (Zod `inputSchema`).
+ * Each tool's `execute` delegates to `executeReadTool`, which keeps all the
+ * rep-scoping/founder security logic. `run_read_sql` is included only for
+ * founders, exactly like `readToolSchemas`. Build this inside the request
+ * handler so it closes over the per-request `ctx` and audit `hook`.
+ */
+export function buildReadSdkTools(ctx: ReadToolContext, isFounder: boolean, hook?: ReadToolHook) {
+  const run = (name: string) => async (args: Record<string, any>) => {
+    const safeArgs = args ?? {};
+    const result = await executeReadTool(ctx, name, safeArgs);
+    if (hook) await hook(name, safeArgs, result);
+    return result;
+  };
+
+  const tools: Record<string, any> = {
+    query_deals: tool({
+      description: "List deals filtered by pipeline, status, outcome, value range, or update date. Returns deal rows.",
+      inputSchema: z.object({
+        pipeline: z.enum(["potential", "underwriting", "lender_management"]).optional(),
+        status: z.string().optional().describe("Exact status value to match"),
+        outcome: z.enum(["open", "won", "lost", "abandoned"]).optional(),
+        min_value: z.number().optional().describe("Minimum deal_value"),
+        updated_within_days: z.number().optional().describe("Only deals updated within the last N days"),
+        limit: z.number().optional().describe("Max rows (default 50, max 200)"),
+      }),
+      execute: run("query_deals"),
+    }),
+    get_metrics: tool({
+      description: "Aggregate pipeline metrics: open counts, total value, and expected revenue, grouped by pipeline. Optionally narrow to one pipeline.",
+      inputSchema: z.object({
+        pipeline: z.enum(["potential", "underwriting", "lender_management"]).optional().describe("Optional pipeline filter"),
+      }),
+      execute: run("get_metrics"),
+    }),
+    search_communications: tool({
+      description: "Find recent communications (calls/emails/notes) optionally filtered by deal/lead id, type, or a keyword in the content/transcript.",
+      inputSchema: z.object({
+        lead_id: z.string().optional().describe("Optional deal/lead UUID"),
+        communication_type: z.string().optional().describe("e.g. call, email, sms, note"),
+        keyword: z.string().optional().describe("Case-insensitive substring to match in content/transcript"),
+        limit: z.number().optional().describe("Max rows (default 30, max 100)"),
+      }),
+      execute: run("search_communications"),
+    }),
+    lookup_lead: tool({
+      description: "Get a 360 view of one deal/lead: the deal row, its open tasks, recent communications, and questionnaire responses.",
+      inputSchema: z.object({
+        lead_id: z.string().describe("The deal/lead UUID"),
+      }),
+      execute: run("lookup_lead"),
+    }),
+    query_tasks: tool({
+      description: "List tasks filtered by completion, priority, or due-date window.",
+      inputSchema: z.object({
+        is_completed: z.boolean().optional().describe("Default false (pending tasks)"),
+        priority: z.enum(["low", "medium", "high"]).optional(),
+        overdue_only: z.boolean().optional().describe("Only tasks past their due_date"),
+        limit: z.number().optional().describe("Max rows (default 50, max 200)"),
+      }),
+      execute: run("query_tasks"),
+    }),
+  };
+
+  if (isFounder) {
+    tools.run_read_sql = tool({
+      description: "Founder-only. Run an arbitrary READ-ONLY SQL SELECT against the business database when no other tool fits. Use standard Postgres. Allowlisted tables: deals, tasks, communications, appointments, email_threads, dropbox_files, invoices, lender_programs, deal_lender_programs, revenue_targets, rate_watch, people, company_people, users. (All deals live in the single `deals` table — pipeline is a column, not separate tables.) Results are capped at 500 rows.",
+      inputSchema: z.object({
+        query: z.string().describe("A single read-only SELECT or WITH query."),
+      }),
+      execute: run("run_read_sql"),
+    });
+  }
+
+  return tools;
 }
 
 // OpenAI/OpenRouter function-calling schemas exposed to the model.
