@@ -1,7 +1,7 @@
 // supabase/functions/_shared/aiAgent/sqlGuard.ts
 // Pure, defense-in-depth validator for the owner-only run_read_sql fallback.
 // The authoritative security boundary is the clx_ai_readonly role's table
-// grants (see migration 20260604120000_ai_read_sql.sql). This just gives
+// grants (see migration 20260604121000_ai_read_sql.sql). This just gives
 // clean, early rejections for obviously-unsafe input.
 
 export interface SqlGuardResult {
