@@ -70,13 +70,20 @@ export const AIAssistantProvider = ({ children }: AIAssistantProviderProps) => {
       if (!user) return [];
 
       const { data, error } = await supabase
-        .from('ai_conversations')
-        .select('*')
+        .from('ai_events' as any)
+        .select('id, user_id, created_at, updated_at, payload')
+        .eq('event_type', 'conversation')
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      return data as Conversation[];
+      return (data ?? []).map((row: any) => ({
+        id: row.id,
+        user_id: row.user_id,
+        title: row.payload?.title ?? 'New conversation',
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      })) as Conversation[];
     },
   });
 
@@ -86,9 +93,9 @@ export const AIAssistantProvider = ({ children }: AIAssistantProviderProps) => {
     if (!user) return null;
 
     const { data, error } = await supabase
-      .from('ai_conversations')
-      .insert({ user_id: user.id, title: 'New conversation' })
-      .select()
+      .from('ai_events' as any)
+      .insert({ event_type: 'conversation', user_id: user.id, payload: { title: 'New conversation' } })
+      .select('id')
       .single();
 
     if (error) {
@@ -103,9 +110,10 @@ export const AIAssistantProvider = ({ children }: AIAssistantProviderProps) => {
   // Load a conversation's messages
   const loadConversation = useCallback(async (id: string) => {
     const { data, error } = await supabase
-      .from('ai_conversation_messages')
-      .select('role, content')
-      .eq('conversation_id', id)
+      .from('ai_events' as any)
+      .select('payload')
+      .eq('event_type', 'message')
+      .eq('parent_id', id)
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -113,44 +121,49 @@ export const AIAssistantProvider = ({ children }: AIAssistantProviderProps) => {
       return;
     }
 
-    setMessages(data as Message[]);
+    setMessages((data ?? []).map((row: any) => ({
+      role: row.payload?.role,
+      content: row.payload?.content,
+    })) as Message[]);
     setCurrentConversationId(id);
   }, []);
 
   // Save messages to a conversation
   const saveMessages = useCallback(async (conversationId: string, newMessages: Message[]) => {
-    // Get existing message count
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Count existing message events for this conversation
     const { count } = await supabase
-      .from('ai_conversation_messages')
+      .from('ai_events' as any)
       .select('*', { count: 'exact', head: true })
-      .eq('conversation_id', conversationId);
+      .eq('event_type', 'message')
+      .eq('parent_id', conversationId);
 
     // Only insert new messages
     const messagesToInsert = newMessages.slice(count || 0).map(msg => ({
-      conversation_id: conversationId,
-      role: msg.role,
-      content: msg.content,
+      event_type: 'message' as const,
+      user_id: user.id,
+      parent_id: conversationId,
+      payload: { role: msg.role, content: msg.content },
     }));
 
     if (messagesToInsert.length > 0) {
-      await supabase
-        .from('ai_conversation_messages')
-        .insert(messagesToInsert);
+      await supabase.from('ai_events' as any).insert(messagesToInsert);
 
-      // Update conversation title based on first user message if it's a new conversation
+      // Title the conversation from the first user message on first save
       if (count === 0 && newMessages.length > 0) {
         const firstUserMsg = newMessages.find(m => m.role === 'user');
         if (firstUserMsg) {
           const title = firstUserMsg.content.slice(0, 50) + (firstUserMsg.content.length > 50 ? '...' : '');
           await supabase
-            .from('ai_conversations')
-            .update({ title, updated_at: new Date().toISOString() })
+            .from('ai_events' as any)
+            .update({ payload: { title }, updated_at: new Date().toISOString() })
             .eq('id', conversationId);
         }
       } else {
-        // Just update the timestamp
         await supabase
-          .from('ai_conversations')
+          .from('ai_events' as any)
           .update({ updated_at: new Date().toISOString() })
           .eq('id', conversationId);
       }
@@ -162,7 +175,7 @@ export const AIAssistantProvider = ({ children }: AIAssistantProviderProps) => {
   // Delete a conversation
   const deleteConversation = useCallback(async (id: string) => {
     await supabase
-      .from('ai_conversations')
+      .from('ai_events' as any)
       .delete()
       .eq('id', id);
 

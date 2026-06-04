@@ -45,7 +45,6 @@ Sales rep starting their day or returning after a meeting and wanting to catch u
 | Activity items | `lead_activities`, `communications`, `tasks`, `outbound_emails`, `notes` | Unioned in hook |
 | Author | `users` joined per row | Avatar in feed |
 | Linked lead | each row's `lead_id` | Click opens detail |
-| Unread notifications | `call_rating_notifications` where `read_at IS NULL` | Badge |
 | Overdue tasks | `tasks` where `status='todo' AND due_date < now()` | Count |
 
 ## User flows
@@ -55,12 +54,6 @@ Sales rep starting their day or returning after a meeting and wanting to catch u
 2. Filter to *Phone Call* + *Email* → only customer-facing touches
 3. Click a call → side panel opens the deal
 4. Move on to overdue tasks via the count link
-
-### 2. Triage an AI quality flag
-1. Unread notification appears at top
-2. Click → expand reasoning + transcript preview
-3. Decide to listen → routes to `/admin/calls`
-4. `read_at` set so it stops surfacing
 
 ## Edge cases & known gaps
 
@@ -94,7 +87,6 @@ Sales rep starting their day or returning after a meeting and wanting to catch u
 | `outbound_emails` | ✓ | — |
 | `notes` | ✓ | — |
 | `users` | ✓ | — |
-| `call_rating_notifications` | ✓ | ✓ (mark read) |
 
 ### Edge functions
 - None directly — direct Supabase queries

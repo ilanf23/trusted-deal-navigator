@@ -55,19 +55,23 @@ export async function executeAction(
           return { success: false, description: `Task creation failed: ${taskErr.message}` };
         }
 
-        await supabase.from("ai_agent_changes").insert({
-          conversation_id: conversationId,
+        await supabase.from("ai_events").insert({
+          event_type: "agent_change",
           user_id: userId,
-          team_member_id: teamMemberId,
-          mode,
-          target_table: "tasks",
-          target_id: task.id,
-          operation: "insert",
-          old_values: null,
-          new_values: taskData,
-          description: `Created task: "${title}"${dueDate ? ` (due ${dueDate})` : ""}`,
-          batch_id: batchId,
-          batch_order: batchOrder,
+          parent_id: batchId ?? conversationId,
+          payload: {
+            conversation_id: conversationId,
+            team_member_id: teamMemberId,
+            mode,
+            target_table: "tasks",
+            target_id: task.id,
+            operation: "insert",
+            old_values: null,
+            new_values: taskData,
+            description: `Created task: "${title}"${dueDate ? ` (due ${dueDate})` : ""}`,
+            status: "applied",
+            batch_order: batchOrder,
+          },
         });
 
         return { success: true, description: `Created task: "${title}"`, changeId: task.id };
@@ -96,19 +100,23 @@ export async function executeAction(
 
         if (error) return { success: false, description: `Failed: ${error.message}` };
 
-        await supabase.from("ai_agent_changes").insert({
-          conversation_id: conversationId,
+        await supabase.from("ai_events").insert({
+          event_type: "agent_change",
           user_id: userId,
-          team_member_id: teamMemberId,
-          mode,
-          target_table: "tasks",
-          target_id: taskId,
-          operation: "update",
-          old_values: { is_completed: false, status: current.status },
-          new_values: { is_completed: true, status: "done" },
-          description: `Completed task: "${current.title}"`,
-          batch_id: batchId,
-          batch_order: batchOrder,
+          parent_id: batchId ?? conversationId,
+          payload: {
+            conversation_id: conversationId,
+            team_member_id: teamMemberId,
+            mode,
+            target_table: "tasks",
+            target_id: taskId,
+            operation: "update",
+            old_values: { is_completed: false, status: current.status },
+            new_values: { is_completed: true, status: "done" },
+            description: `Completed task: "${current.title}"`,
+            status: "applied",
+            batch_order: batchOrder,
+          },
         });
 
         return { success: true, description: `Completed task: "${current.title}"` };
@@ -128,21 +136,23 @@ export async function undoChange(
   userId: string,
   isOwner: boolean,
 ) {
-  const { data: change, error } = await supabase
-    .from("ai_agent_changes")
+  const { data: event, error } = await supabase
+    .from("ai_events")
     .select("*")
     .eq("id", changeId)
+    .eq("event_type", "agent_change")
     .single();
 
-  if (error || !change) throw new Error("Change not found");
+  if (error || !event) throw new Error("Change not found");
+  const change = event.payload as any;
   if (change.status !== "applied" && change.status !== "redone") {
     throw new Error(`Cannot undo change with status: ${change.status}`);
   }
-  if (!isOwner && change.user_id !== userId) {
+  if (!isOwner && event.user_id !== userId) {
     throw new Error("Forbidden: cannot undo another user's change");
   }
 
-  const { target_table, target_id, operation, old_values, new_values } = change;
+  const { target_table, target_id, operation, old_values } = change;
 
   if (operation === "update" && old_values) {
     const { error: updateErr } = await supabase
@@ -164,8 +174,11 @@ export async function undoChange(
   }
 
   await supabase
-    .from("ai_agent_changes")
-    .update({ status: "undone", undone_at: new Date().toISOString(), undone_by: userId })
+    .from("ai_events")
+    .update({
+      payload: { ...change, status: "undone", undone_at: new Date().toISOString(), undone_by: userId },
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", changeId);
 
   return { success: true };
@@ -178,17 +191,19 @@ export async function redoChange(
   userId: string,
   isOwner: boolean,
 ) {
-  const { data: change, error } = await supabase
-    .from("ai_agent_changes")
+  const { data: event, error } = await supabase
+    .from("ai_events")
     .select("*")
     .eq("id", changeId)
+    .eq("event_type", "agent_change")
     .single();
 
-  if (error || !change) throw new Error("Change not found");
+  if (error || !event) throw new Error("Change not found");
+  const change = event.payload as any;
   if (change.status !== "undone") {
     throw new Error(`Cannot redo change with status: ${change.status}`);
   }
-  if (!isOwner && change.user_id !== userId) {
+  if (!isOwner && event.user_id !== userId) {
     throw new Error("Forbidden: cannot redo another user's change");
   }
 
@@ -214,8 +229,11 @@ export async function redoChange(
   }
 
   await supabase
-    .from("ai_agent_changes")
-    .update({ status: "redone", undone_at: null, undone_by: null })
+    .from("ai_events")
+    .update({
+      payload: { ...change, status: "redone", undone_at: null, undone_by: null },
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", changeId);
 
   return { success: true };

@@ -29,19 +29,19 @@ GRANT clx_ai_readonly TO postgres;
 -- 2. Table allowlist == the SELECT grants on this role. To add/remove a table
 --    from the assistant's reach, add/remove one GRANT line and re-deploy.
 GRANT USAGE ON SCHEMA public TO clx_ai_readonly;
+-- NOTE: schema reflects the post-consolidation DB. The former potential /
+-- underwriting / lender_management tables and the deals_v view were dropped
+-- and replaced by a single public.deals table; partner_referrals and
+-- deal_responses were dropped with their features. See the consolidate-deal
+-- migrations (20260528180000..220100).
 GRANT SELECT ON
-  public.deals_v,
-  public.potential,
-  public.underwriting,
-  public.lender_management,
+  public.deals,
   public.tasks,
   public.communications,
   public.appointments,
   public.email_threads,
-  public.deal_responses,
   public.dropbox_files,
   public.invoices,
-  public.partner_referrals,
   public.lender_programs,
   public.deal_lender_programs,
   public.revenue_targets,

@@ -68,13 +68,17 @@ Today: ${new Date().toISOString().split("T")[0]}`;
     let batchId: string | null = null;
     try {
       const { data: batch } = await serviceClient
-        .from("ai_agent_batches")
+        .from("ai_events")
         .insert({
-          conversation_id: conversationId,
+          event_type: "agent_batch",
           user_id: authUserId,
-          mode: "agent",
-          prompt_summary: prompt.substring(0, 200),
-          total_changes: 0,
+          parent_id: conversationId,
+          payload: {
+            mode: "agent",
+            prompt_summary: prompt.substring(0, 200),
+            total_changes: 0,
+            status: "applied",
+          },
         })
         .select("id")
         .single();
@@ -232,8 +236,16 @@ ${contextStr}`,
           if (batchId) {
             try {
               await serviceClient
-                .from("ai_agent_batches")
-                .update({ total_changes: totalChanges })
+                .from("ai_events")
+                .update({
+                  payload: {
+                    mode: "agent",
+                    prompt_summary: prompt.substring(0, 200),
+                    total_changes: totalChanges,
+                    status: "applied",
+                  },
+                  updated_at: new Date().toISOString(),
+                })
                 .eq("id", batchId);
             } catch (e) {
               console.warn("Could not update batch total:", e);

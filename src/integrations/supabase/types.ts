@@ -607,56 +607,6 @@ export type Database = {
         }
         Relationships: []
       }
-      call_rating_notifications: {
-        Row: {
-          call_date: string
-          call_direction: string
-          call_rating: number
-          communication_id: string | null
-          created_at: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
-          id: string
-          lead_id: string | null
-          rating_reasoning: string | null
-          read_at: string | null
-          transcript_preview: string | null
-        }
-        Insert: {
-          call_date: string
-          call_direction?: string
-          call_rating: number
-          communication_id?: string | null
-          created_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          lead_id?: string | null
-          rating_reasoning?: string | null
-          read_at?: string | null
-          transcript_preview?: string | null
-        }
-        Update: {
-          call_date?: string
-          call_direction?: string
-          call_rating?: number
-          communication_id?: string | null
-          created_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          lead_id?: string | null
-          rating_reasoning?: string | null
-          read_at?: string | null
-          transcript_preview?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "call_rating_notifications_communication_id_fkey"
-            columns: ["communication_id"]
-            isOneToOne: false
-            referencedRelation: "communications"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       communications: {
         Row: {
           call_sid: string | null

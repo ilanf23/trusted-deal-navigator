@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import EmployeeLayout from '@/components/employee/EmployeeLayout';
@@ -49,27 +49,11 @@ const PipelineFeed = () => {
   ]);
   const { data: activities = [], isLoading } = useFeedData();
   const { teamMember } = useTeamMember();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const { data: teamMembers = [] } = useAssignableUsers();
 
   // ── Notification queries ──
-  const { data: unreadNotifications = [] } = useQuery({
-    queryKey: ['feed-unread-notifications'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('call_rating_notifications')
-        .select('*')
-        .is('read_at', null)
-        .order('created_at', { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return data || [];
-    },
-    refetchInterval: 60000,
-  });
-
   const { data: overdueTasks = [] } = useQuery({
     queryKey: ['feed-overdue-tasks'],
     queryFn: async () => {
@@ -86,15 +70,7 @@ const PipelineFeed = () => {
     refetchInterval: 60000,
   });
 
-  const notificationCount = unreadNotifications.length + overdueTasks.length;
-
-  const handleMarkRead = async (notifId: string) => {
-    await supabase
-      .from('call_rating_notifications')
-      .update({ read_at: new Date().toISOString() })
-      .eq('id', notifId);
-    queryClient.invalidateQueries({ queryKey: ['feed-unread-notifications'] });
-  };
+  const notificationCount = overdueTasks.length;
 
   const [selectedTeamMembers, setSelectedTeamMembers] = useState<Set<string>>(new Set());
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());

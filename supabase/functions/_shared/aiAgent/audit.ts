@@ -16,16 +16,19 @@ export interface AuditInput {
 
 export async function logAiAudit(input: AuditInput): Promise<void> {
   try {
-    await input.serviceClient.from('ai_audit_log').insert({
+    await input.serviceClient.from('ai_events').insert({
+      event_type: 'audit',
       user_id: input.userId,
-      conversation_id: input.conversationId ?? null,
-      function_name: input.functionName,
-      tool: input.tool,
-      scope: input.scope ?? {},
-      record_ids: input.recordIds ?? [],
-      mode: input.mode ?? null,
-      success: input.success,
-      error_message: input.errorMessage ?? null,
+      parent_id: input.conversationId ?? null,
+      payload: {
+        function_name: input.functionName,
+        tool: input.tool,
+        scope: input.scope ?? {},
+        record_ids: input.recordIds ?? [],
+        mode: input.mode ?? null,
+        success: input.success,
+        error_message: input.errorMessage ?? null,
+      },
     });
   } catch (e) {
     // Audit failures must never break the assistant. Log and move on.

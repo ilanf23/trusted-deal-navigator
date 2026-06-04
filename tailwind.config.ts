@@ -168,6 +168,10 @@ export default {
           "0%": { transform: "translateX(-150%)" },
           "100%": { transform: "translateX(450%)" },
         },
+        "text-shimmer": {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -180,6 +184,9 @@ export default {
         "pulse-scale": "pulse-scale 12s ease-in-out infinite",
         "shimmer-slide": "shimmer-slide var(--speed) ease-in-out infinite alternate",
         "spin-around": "spin-around calc(var(--speed) * 2) infinite linear",
+        "loader-orbit": "loader-orbit 2.4s linear infinite",
+        "loader-shimmer": "loader-shimmer 1.6s ease-in-out infinite",
+        "text-shimmer": "text-shimmer 2.5s linear infinite",
       },
     },
   },

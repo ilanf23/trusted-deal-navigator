@@ -48,65 +48,17 @@
 | created_at  | timestamp with time zone | No          | No       | -              |
 | entity_type | USER-DEFINED             | No          | Yes      | -              |
 
-## Table: `ai_agent_batches`
-
-| Column Name     | Data Type                | Primary Key | Nullable | Foreign Key To   |
-| --------------- | ------------------------ | ----------- | -------- | ---------------- |
-| id              | uuid                     | Yes         | No       | -                |
-| conversation_id | uuid                     | No          | Yes      | ai_conversations |
-| user_id         | uuid                     | No          | No       | -                |
-| mode            | text                     | No          | No       | -                |
-| prompt_summary  | text                     | No          | Yes      | -                |
-| total_changes   | integer                  | No          | Yes      | -                |
-| status          | text                     | No          | No       | -                |
-| created_at      | timestamp with time zone | No          | Yes      | -                |
-
-## Table: `ai_agent_changes`
-
-| Column Name     | Data Type                | Primary Key | Nullable | Foreign Key To   |
-| --------------- | ------------------------ | ----------- | -------- | ---------------- |
-| id              | uuid                     | Yes         | No       | -                |
-| conversation_id | uuid                     | No          | Yes      | ai_conversations |
-| user_id         | uuid                     | No          | No       | -                |
-| team_member_id  | uuid                     | No          | Yes      | users            |
-| mode            | text                     | No          | No       | -                |
-| target_table    | text                     | No          | No       | -                |
-| target_id       | uuid                     | No          | No       | -                |
-| operation       | text                     | No          | No       | -                |
-| old_values      | jsonb                    | No          | Yes      | -                |
-| new_values      | jsonb                    | No          | No       | -                |
-| description     | text                     | No          | No       | -                |
-| ai_reasoning    | text                     | No          | Yes      | -                |
-| status          | text                     | No          | No       | -                |
-| undone_at       | timestamp with time zone | No          | Yes      | -                |
-| undone_by       | uuid                     | No          | Yes      | -                |
-| batch_id        | uuid                     | No          | Yes      | ai_agent_batches |
-| batch_order     | integer                  | No          | Yes      | -                |
-| created_at      | timestamp with time zone | No          | Yes      | -                |
-| model_used      | text                     | No          | Yes      | -                |
-
-## Table: `ai_conversation_messages`
-
-| Column Name     | Data Type                | Primary Key | Nullable | Foreign Key To   |
-| --------------- | ------------------------ | ----------- | -------- | ---------------- |
-| id              | uuid                     | Yes         | No       | -                |
-| conversation_id | uuid                     | No          | No       | ai_conversations |
-| role            | text                     | No          | No       | -                |
-| content         | text                     | No          | No       | -                |
-| created_at      | timestamp with time zone | No          | No       | -                |
-| message_type    | text                     | No          | Yes      | -                |
-| metadata        | jsonb                    | No          | Yes      | -                |
-
-## Table: `ai_conversations`
+## Table: `ai_events`
 
 | Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
 | ----------- | ------------------------ | ----------- | -------- | -------------- |
 | id          | uuid                     | Yes         | No       | -              |
+| event_type  | USER-DEFINED             | No          | No       | -              |
 | user_id     | uuid                     | No          | Yes      | -              |
-| title       | text                     | No          | Yes      | -              |
+| parent_id   | uuid                     | No          | Yes      | ai_events      |
 | created_at  | timestamp with time zone | No          | No       | -              |
 | updated_at  | timestamp with time zone | No          | No       | -              |
-| mode        | text                     | No          | Yes      | -              |
+| payload     | jsonb                    | No          | No       | -              |
 
 ## Table: `appointments`
 
@@ -171,22 +123,6 @@
 | metadata                 | jsonb                    | No          | Yes      | -              |
 | created_at               | timestamp with time zone | No          | No       | -              |
 | entity_type              | USER-DEFINED             | No          | Yes      | -              |
-
-## Table: `call_rating_notifications`
-
-| Column Name        | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ------------------ | ------------------------ | ----------- | -------- | -------------- |
-| id                 | uuid                     | Yes         | No       | -              |
-| lead_id            | uuid                     | No          | Yes      | -              |
-| communication_id   | uuid                     | No          | Yes      | communications |
-| call_date          | text                     | No          | No       | -              |
-| call_direction     | text                     | No          | No       | -              |
-| call_rating        | integer                  | No          | No       | -              |
-| rating_reasoning   | text                     | No          | Yes      | -              |
-| transcript_preview | text                     | No          | Yes      | -              |
-| created_at         | timestamp with time zone | No          | No       | -              |
-| read_at            | timestamp with time zone | No          | Yes      | -              |
-| entity_type        | USER-DEFINED             | No          | Yes      | -              |
 
 ## Table: `communications`
 
@@ -318,73 +254,15 @@
 | updated_at     | timestamp with time zone | No          | No       | -              |
 | entity_type    | USER-DEFINED             | No          | Yes      | -              |
 
-## Table: `deal_responses`
+## Table: `deal_people`
 
-| Column Name                  | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ---------------------------- | ------------------------ | ----------- | -------- | -------------- |
-| id                           | uuid                     | Yes         | No       | -              |
-| entity_id                    | uuid                     | No          | No       | -              |
-| business_type                | text                     | No          | Yes      | -              |
-| funding_amount               | text                     | No          | Yes      | -              |
-| funding_timeline             | text                     | No          | Yes      | -              |
-| annual_revenue               | text                     | No          | Yes      | -              |
-| funding_purpose              | text                     | No          | Yes      | -              |
-| submitted_at                 | timestamp with time zone | No          | No       | -              |
-| created_at                   | timestamp with time zone | No          | No       | -              |
-| first_name                   | text                     | No          | Yes      | -              |
-| last_name                    | text                     | No          | Yes      | -              |
-| email                        | text                     | No          | Yes      | -              |
-| phone                        | text                     | No          | Yes      | -              |
-| newsletter_signup            | boolean                  | No          | Yes      | -              |
-| contact_method               | text                     | No          | Yes      | -              |
-| country                      | text                     | No          | Yes      | -              |
-| address_line_1               | text                     | No          | Yes      | -              |
-| address_line_2               | text                     | No          | Yes      | -              |
-| city                         | text                     | No          | Yes      | -              |
-| state                        | text                     | No          | Yes      | -              |
-| zip_code                     | text                     | No          | Yes      | -              |
-| principal_name               | text                     | No          | Yes      | -              |
-| co_borrowers                 | text                     | No          | Yes      | -              |
-| guarantors                   | text                     | No          | Yes      | -              |
-| loan_amount                  | numeric                  | No          | Yes      | -              |
-| purpose_of_loan              | text                     | No          | Yes      | -              |
-| collateral_value             | numeric                  | No          | Yes      | -              |
-| collateral_description       | text                     | No          | Yes      | -              |
-| loan_type                    | text                     | No          | Yes      | -              |
-| loan_type_other              | text                     | No          | Yes      | -              |
-| cash_out                     | text                     | No          | Yes      | -              |
-| cash_out_amount              | numeric                  | No          | Yes      | -              |
-| current_lender               | text                     | No          | Yes      | -              |
-| current_loan_balance         | numeric                  | No          | Yes      | -              |
-| current_loan_rate            | text                     | No          | Yes      | -              |
-| current_loan_maturity_date   | date                     | No          | Yes      | -              |
-| current_loan_in_default      | text                     | No          | Yes      | -              |
-| property_owner_occupied      | text                     | No          | Yes      | -              |
-| year_acquired                | text                     | No          | Yes      | -              |
-| purchase_price               | numeric                  | No          | Yes      | -              |
-| current_estimated_value      | numeric                  | No          | Yes      | -              |
-| square_footage               | text                     | No          | Yes      | -              |
-| number_of_units              | text                     | No          | Yes      | -              |
-| borrower_occupation          | text                     | No          | Yes      | -              |
-| borrower_year_started        | text                     | No          | Yes      | -              |
-| borrower_current_employer    | text                     | No          | Yes      | -              |
-| co_borrower_occupation       | text                     | No          | Yes      | -              |
-| co_borrower_year_started     | text                     | No          | Yes      | -              |
-| co_borrower_current_employer | text                     | No          | Yes      | -              |
-| self_employed_business_type  | text                     | No          | Yes      | -              |
-| year_business_founded        | text                     | No          | Yes      | -              |
-| business_description         | text                     | No          | Yes      | -              |
-| desired_interest_rate        | text                     | No          | Yes      | -              |
-| desired_term                 | text                     | No          | Yes      | -              |
-| desired_amortization         | text                     | No          | Yes      | -              |
-| borrower_bankruptcy          | text                     | No          | Yes      | -              |
-| co_borrower_bankruptcy       | text                     | No          | Yes      | -              |
-| borrower_credit_score        | text                     | No          | Yes      | -              |
-| co_borrower_credit_score     | text                     | No          | Yes      | -              |
-| additional_information       | text                     | No          | Yes      | -              |
-| how_did_you_hear             | text                     | No          | Yes      | -              |
-| referred_by                  | text                     | No          | Yes      | -              |
-| entity_type                  | USER-DEFINED             | No          | Yes      | -              |
+| Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
+| ----------- | ------------------------ | ----------- | -------- | -------------- |
+| id          | uuid                     | Yes         | No       | -              |
+| deal_id     | uuid                     | No          | No       | deals          |
+| person_id   | uuid                     | No          | No       | people         |
+| role        | text                     | No          | Yes      | -              |
+| created_at  | timestamp with time zone | No          | No       | -              |
 
 ## Table: `deal_waiting_on`
 
@@ -400,6 +278,91 @@
 | created_at  | timestamp with time zone | No          | No       | -              |
 | updated_at  | timestamp with time zone | No          | No       | -              |
 | entity_type | USER-DEFINED             | No          | Yes      | -              |
+
+## Table: `deals`
+
+| Column Name                          | Data Type                | Primary Key | Nullable | Foreign Key To  |
+| ------------------------------------ | ------------------------ | ----------- | -------- | --------------- |
+| id                                   | uuid                     | Yes         | No       | -               |
+| name                                 | text                     | No          | No       | -               |
+| email                                | text                     | No          | Yes      | -               |
+| phone                                | text                     | No          | Yes      | -               |
+| company_name                         | text                     | No          | Yes      | -               |
+| status                               | USER-DEFINED             | No          | No       | -               |
+| stage_id                             | uuid                     | No          | Yes      | pipeline_stages |
+| source                               | text                     | No          | Yes      | -               |
+| notes                                | text                     | No          | Yes      | -               |
+| assigned_to                          | uuid                     | No          | Yes      | users           |
+| qualified_at                         | timestamp with time zone | No          | Yes      | -               |
+| converted_at                         | timestamp with time zone | No          | Yes      | -               |
+| converted_to_client_id               | uuid                     | No          | Yes      | -               |
+| questionnaire_token                  | text                     | No          | Yes      | -               |
+| questionnaire_sent_at                | timestamp with time zone | No          | Yes      | -               |
+| questionnaire_completed_at           | timestamp with time zone | No          | Yes      | -               |
+| known_as                             | text                     | No          | Yes      | -               |
+| title                                | text                     | No          | Yes      | -               |
+| contact_type                         | text                     | No          | Yes      | -               |
+| tags                                 | ARRAY                    | No          | Yes      | -               |
+| about                                | text                     | No          | Yes      | -               |
+| website                              | text                     | No          | Yes      | -               |
+| linkedin                             | text                     | No          | Yes      | -               |
+| twitter                              | text                     | No          | Yes      | -               |
+| next_action                          | text                     | No          | Yes      | -               |
+| waiting_on                           | text                     | No          | Yes      | -               |
+| sla_threshold_days                   | integer                  | No          | Yes      | -               |
+| last_activity_at                     | timestamp with time zone | No          | Yes      | -               |
+| ratewatch_questionnaire_token        | uuid                     | No          | Yes      | -               |
+| ratewatch_questionnaire_sent_at      | timestamp with time zone | No          | Yes      | -               |
+| ratewatch_questionnaire_completed_at | timestamp with time zone | No          | Yes      | -               |
+| initial_nudge_created_at             | timestamp with time zone | No          | Yes      | -               |
+| cohort_year                          | integer                  | No          | Yes      | -               |
+| flagged_for_weekly                   | boolean                  | No          | No       | -               |
+| uw_number                            | text                     | No          | Yes      | -               |
+| client_other_lenders                 | boolean                  | No          | No       | -               |
+| deal_value                           | numeric                  | No          | Yes      | -               |
+| history                              | text                     | No          | Yes      | -               |
+| bank_relationships                   | text                     | No          | Yes      | -               |
+| opportunity_name                     | text                     | No          | Yes      | -               |
+| clx_file_name                        | text                     | No          | Yes      | -               |
+| description                          | text                     | No          | Yes      | -               |
+| close_date                           | timestamp with time zone | No          | Yes      | -               |
+| loss_reason                          | text                     | No          | Yes      | -               |
+| priority                             | USER-DEFINED             | No          | Yes      | -               |
+| win_percentage                       | integer                  | No          | Yes      | -               |
+| visibility                           | text                     | No          | Yes      | -               |
+| last_contacted                       | timestamp with time zone | No          | Yes      | -               |
+| work_website                         | text                     | No          | Yes      | -               |
+| target_closing_date                  | date                     | No          | Yes      | -               |
+| clx_agreement                        | boolean                  | No          | Yes      | -               |
+| loan_category                        | text                     | No          | Yes      | -               |
+| wu_date                              | date                     | No          | Yes      | -               |
+| loan_stage                           | text                     | No          | Yes      | -               |
+| won                                  | boolean                  | No          | Yes      | -               |
+| lender_type                          | text                     | No          | Yes      | -               |
+| lender_name                          | text                     | No          | Yes      | -               |
+| fee_percent                          | numeric                  | No          | Yes      | -               |
+| potential_revenue                    | numeric                  | No          | Yes      | -               |
+| referral_source                      | text                     | No          | Yes      | -               |
+| rs_fee_percent                       | numeric                  | No          | Yes      | -               |
+| rs_revenue                           | numeric                  | No          | Yes      | -               |
+| net_revenue                          | numeric                  | No          | Yes      | -               |
+| invoice_amount                       | numeric                  | No          | Yes      | -               |
+| actual_net_revenue                   | numeric                  | No          | Yes      | -               |
+| volume_log_status                    | text                     | No          | Yes      | -               |
+| sheets_row_index                     | integer                  | No          | Yes      | -               |
+| sheets_last_synced_at                | timestamp with time zone | No          | Yes      | -               |
+| created_at                           | timestamp with time zone | No          | No       | -               |
+| updated_at                           | timestamp with time zone | No          | No       | -               |
+| deal_outcome                         | USER-DEFINED             | No          | No       | -               |
+| copper_opportunity_id                | text                     | No          | Yes      | -               |
+| source_system                        | text                     | No          | No       | -               |
+| won_reason                           | text                     | No          | Yes      | -               |
+| won_at                               | timestamp with time zone | No          | Yes      | -               |
+| lost_at                              | timestamp with time zone | No          | Yes      | -               |
+| custom_fields                        | jsonb                    | No          | No       | -               |
+| interactions_count                   | integer                  | No          | No       | -               |
+| stage_changed_at                     | timestamp with time zone | No          | Yes      | -               |
+| pipeline                             | USER-DEFINED             | No          | No       | -               |
 
 ## Table: `dropbox_connections`
 
@@ -437,11 +400,12 @@
 | extraction_status    | text                     | No          | Yes      | -              |
 | extraction_error     | text                     | No          | Yes      | -              |
 | extracted_at         | timestamp with time zone | No          | Yes      | -              |
-| lead_id              | uuid                     | No          | Yes      | potential      |
+| lead_id              | uuid                     | No          | Yes      | deals          |
 | synced_at            | timestamp with time zone | No          | Yes      | -              |
 | created_at           | timestamp with time zone | No          | Yes      | -              |
 | updated_at           | timestamp with time zone | No          | Yes      | -              |
 | entity_type          | USER-DEFINED             | No          | Yes      | -              |
+| user_id              | uuid                     | No          | No       | -              |
 
 ## Table: `email_templates`
 
@@ -462,7 +426,7 @@
 | ------------------ | ------------------------ | ----------- | -------- | -------------- |
 | id                 | uuid                     | Yes         | No       | -              |
 | thread_id          | text                     | No          | No       | -              |
-| lead_id            | uuid                     | No          | Yes      | potential      |
+| lead_id            | uuid                     | No          | Yes      | deals          |
 | subject            | text                     | No          | Yes      | -              |
 | last_message_date  | timestamp with time zone | No          | Yes      | -              |
 | next_action        | text                     | No          | Yes      | -              |
@@ -643,91 +607,6 @@
 | created_at        | timestamp with time zone | No          | No       | -              |
 | updated_at        | timestamp with time zone | No          | No       | -              |
 
-## Table: `lender_management`
-
-| Column Name              | Data Type                | Primary Key | Nullable | Foreign Key To  |
-| ------------------------ | ------------------------ | ----------- | -------- | --------------- |
-| id                       | uuid                     | Yes         | No       | -               |
-| name                     | text                     | No          | No       | -               |
-| email                    | text                     | No          | Yes      | -               |
-| phone                    | text                     | No          | Yes      | -               |
-| company_name             | text                     | No          | Yes      | -               |
-| status                   | USER-DEFINED             | No          | No       | -               |
-| stage_id                 | uuid                     | No          | Yes      | pipeline_stages |
-| origin_pipeline_id       | uuid                     | No          | Yes      | potential       |
-| source                   | text                     | No          | Yes      | -               |
-| notes                    | text                     | No          | Yes      | -               |
-| assigned_to              | uuid                     | No          | Yes      | users           |
-| qualified_at             | timestamp with time zone | No          | Yes      | -               |
-| converted_at             | timestamp with time zone | No          | Yes      | -               |
-| converted_to_client_id   | uuid                     | No          | Yes      | -               |
-| known_as                 | text                     | No          | Yes      | -               |
-| title                    | text                     | No          | Yes      | -               |
-| contact_type             | text                     | No          | Yes      | -               |
-| tags                     | ARRAY                    | No          | Yes      | -               |
-| about                    | text                     | No          | Yes      | -               |
-| next_action              | text                     | No          | Yes      | -               |
-| waiting_on               | text                     | No          | Yes      | -               |
-| sla_threshold_days       | integer                  | No          | Yes      | -               |
-| last_activity_at         | timestamp with time zone | No          | Yes      | -               |
-| initial_nudge_created_at | timestamp with time zone | No          | Yes      | -               |
-| cohort_year              | integer                  | No          | Yes      | -               |
-| flagged_for_weekly       | boolean                  | No          | No       | -               |
-| uw_number                | text                     | No          | Yes      | -               |
-| client_other_lenders     | boolean                  | No          | No       | -               |
-| deal_value               | numeric                  | No          | Yes      | -               |
-| history                  | text                     | No          | Yes      | -               |
-| bank_relationships       | text                     | No          | Yes      | -               |
-| opportunity_name         | text                     | No          | Yes      | -               |
-| clx_file_name            | text                     | No          | Yes      | -               |
-| description              | text                     | No          | Yes      | -               |
-| close_date               | timestamp with time zone | No          | Yes      | -               |
-| loss_reason              | text                     | No          | Yes      | -               |
-| priority                 | USER-DEFINED             | No          | Yes      | -               |
-| win_percentage           | integer                  | No          | Yes      | -               |
-| visibility               | text                     | No          | Yes      | -               |
-| last_contacted           | timestamp with time zone | No          | Yes      | -               |
-| target_closing_date      | date                     | No          | Yes      | -               |
-| clx_agreement            | boolean                  | No          | Yes      | -               |
-| loan_category            | text                     | No          | Yes      | -               |
-| wu_date                  | date                     | No          | Yes      | -               |
-| loan_stage               | text                     | No          | Yes      | -               |
-| won                      | boolean                  | No          | Yes      | -               |
-| lender_type              | text                     | No          | Yes      | -               |
-| lender_name              | text                     | No          | Yes      | -               |
-| fee_percent              | numeric                  | No          | Yes      | -               |
-| potential_revenue        | numeric                  | No          | Yes      | -               |
-| referral_source          | text                     | No          | Yes      | -               |
-| rs_fee_percent           | numeric                  | No          | Yes      | -               |
-| rs_revenue               | numeric                  | No          | Yes      | -               |
-| net_revenue              | numeric                  | No          | Yes      | -               |
-| invoice_amount           | numeric                  | No          | Yes      | -               |
-| actual_net_revenue       | numeric                  | No          | Yes      | -               |
-| volume_log_status        | text                     | No          | Yes      | -               |
-| sheets_row_index         | integer                  | No          | Yes      | -               |
-| sheets_last_synced_at    | timestamp with time zone | No          | Yes      | -               |
-| created_at               | timestamp with time zone | No          | No       | -               |
-| updated_at               | timestamp with time zone | No          | No       | -               |
-| deal_outcome             | USER-DEFINED             | No          | No       | -               |
-| copper_opportunity_id    | text                     | No          | Yes      | -               |
-| source_system            | text                     | No          | No       | -               |
-| won_reason               | text                     | No          | Yes      | -               |
-| won_at                   | timestamp with time zone | No          | Yes      | -               |
-| lost_at                  | timestamp with time zone | No          | Yes      | -               |
-| custom_fields            | jsonb                    | No          | No       | -               |
-| interactions_count       | integer                  | No          | No       | -               |
-| stage_changed_at         | timestamp with time zone | No          | Yes      | -               |
-
-## Table: `lender_management_people`
-
-| Column Name          | Data Type                | Primary Key | Nullable | Foreign Key To    |
-| -------------------- | ------------------------ | ----------- | -------- | ----------------- |
-| id                   | uuid                     | Yes         | No       | -                 |
-| lender_management_id | uuid                     | No          | No       | lender_management |
-| person_id            | uuid                     | No          | No       | people            |
-| role                 | text                     | No          | Yes      | -                 |
-| created_at           | timestamp with time zone | No          | No       | -                 |
-
 ## Table: `lender_programs`
 
 | Column Name      | Data Type                | Primary Key | Nullable | Foreign Key To |
@@ -768,20 +647,6 @@
 | read_at         | timestamp with time zone | No          | Yes      | -              |
 | created_at      | timestamp with time zone | No          | No       | -              |
 
-## Table: `notes`
-
-| Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ----------- | ------------------------ | ----------- | -------- | -------------- |
-| id          | uuid                     | Yes         | No       | -              |
-| content     | text                     | No          | No       | -              |
-| is_pinned   | boolean                  | No          | No       | -              |
-| created_at  | timestamp with time zone | No          | No       | -              |
-| updated_at  | timestamp with time zone | No          | No       | -              |
-| user_id     | uuid                     | No          | Yes      | users          |
-| entity_id   | uuid                     | No          | Yes      | -              |
-| entity_type | USER-DEFINED             | No          | Yes      | -              |
-| title       | text                     | No          | Yes      | -              |
-
 ## Table: `notifications`
 
 | Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
@@ -821,73 +686,39 @@
 | cc_emails         | text                     | No          | Yes      | -              |
 | entity_type       | USER-DEFINED             | No          | Yes      | -              |
 
-## Table: `partner_referrals`
-
-| Column Name      | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ---------------- | ------------------------ | ----------- | -------- | -------------- |
-| id               | uuid                     | Yes         | No       | -              |
-| partner_id       | uuid                     | No          | No       | -              |
-| lead_id          | uuid                     | No          | Yes      | -              |
-| name             | text                     | No          | No       | -              |
-| email            | text                     | No          | Yes      | -              |
-| phone            | text                     | No          | Yes      | -              |
-| company_name     | text                     | No          | Yes      | -              |
-| loan_amount      | numeric                  | No          | Yes      | -              |
-| loan_type        | text                     | No          | Yes      | -              |
-| property_address | text                     | No          | Yes      | -              |
-| urgency          | text                     | No          | Yes      | -              |
-| notes            | text                     | No          | Yes      | -              |
-| status           | text                     | No          | No       | -              |
-| created_at       | timestamp with time zone | No          | No       | -              |
-| updated_at       | timestamp with time zone | No          | No       | -              |
-| entity_type      | USER-DEFINED             | No          | Yes      | -              |
-
-## Table: `partner_tracking`
-
-| Column Name       | Data Type                | Primary Key | Nullable | Foreign Key To    |
-| ----------------- | ------------------------ | ----------- | -------- | ----------------- |
-| id                | uuid                     | Yes         | No       | -                 |
-| partner_id        | uuid                     | No          | No       | -                 |
-| referral_id       | uuid                     | No          | No       | partner_referrals |
-| tracking_status   | text                     | No          | No       | -                 |
-| priority          | text                     | No          | No       | -                 |
-| internal_notes    | text                     | No          | Yes      | -                 |
-| last_contacted_at | timestamp with time zone | No          | Yes      | -                 |
-| next_follow_up    | date                     | No          | Yes      | -                 |
-| created_at        | timestamp with time zone | No          | No       | -                 |
-| updated_at        | timestamp with time zone | No          | No       | -                 |
-
 ## Table: `people`
 
-| Column Name      | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ---------------- | ------------------------ | ----------- | -------- | -------------- |
-| id               | uuid                     | Yes         | No       | -              |
-| name             | text                     | No          | No       | -              |
-| email            | text                     | No          | Yes      | -              |
-| phone            | text                     | No          | Yes      | -              |
-| title            | text                     | No          | Yes      | -              |
-| known_as         | text                     | No          | Yes      | -              |
-| company_name     | text                     | No          | Yes      | -              |
-| company_id       | uuid                     | No          | Yes      | companies      |
-| contact_type     | text                     | No          | Yes      | -              |
-| source           | text                     | No          | Yes      | -              |
-| referral_source  | text                     | No          | Yes      | -              |
-| assigned_to      | uuid                     | No          | Yes      | users          |
-| about            | text                     | No          | Yes      | -              |
-| notes            | text                     | No          | Yes      | -              |
-| description      | text                     | No          | Yes      | -              |
-| history          | text                     | No          | Yes      | -              |
-| tags             | ARRAY                    | No          | Yes      | -              |
-| linkedin         | text                     | No          | Yes      | -              |
-| twitter          | text                     | No          | Yes      | -              |
-| website          | text                     | No          | Yes      | -              |
-| work_website     | text                     | No          | Yes      | -              |
-| last_activity_at | timestamp with time zone | No          | Yes      | -              |
-| last_contacted   | timestamp with time zone | No          | Yes      | -              |
-| created_at       | timestamp with time zone | No          | No       | -              |
-| updated_at       | timestamp with time zone | No          | No       | -              |
-| copper_person_id | text                     | No          | Yes      | -              |
-| source_system    | text                     | No          | No       | -              |
+| Column Name        | Data Type                | Primary Key | Nullable | Foreign Key To |
+| ------------------ | ------------------------ | ----------- | -------- | -------------- |
+| id                 | uuid                     | Yes         | No       | -              |
+| name               | text                     | No          | No       | -              |
+| email              | text                     | No          | Yes      | -              |
+| phone              | text                     | No          | Yes      | -              |
+| title              | text                     | No          | Yes      | -              |
+| known_as           | text                     | No          | Yes      | -              |
+| company_name       | text                     | No          | Yes      | -              |
+| company_id         | uuid                     | No          | Yes      | companies      |
+| contact_type       | text                     | No          | Yes      | -              |
+| source             | text                     | No          | Yes      | -              |
+| referral_source    | text                     | No          | Yes      | -              |
+| assigned_to        | uuid                     | No          | Yes      | users          |
+| about              | text                     | No          | Yes      | -              |
+| notes              | text                     | No          | Yes      | -              |
+| description        | text                     | No          | Yes      | -              |
+| history            | text                     | No          | Yes      | -              |
+| tags               | ARRAY                    | No          | Yes      | -              |
+| linkedin           | text                     | No          | Yes      | -              |
+| twitter            | text                     | No          | Yes      | -              |
+| website            | text                     | No          | Yes      | -              |
+| work_website       | text                     | No          | Yes      | -              |
+| last_activity_at   | timestamp with time zone | No          | Yes      | -              |
+| last_contacted     | timestamp with time zone | No          | Yes      | -              |
+| created_at         | timestamp with time zone | No          | No       | -              |
+| updated_at         | timestamp with time zone | No          | No       | -              |
+| copper_person_id   | text                     | No          | Yes      | -              |
+| source_system      | text                     | No          | No       | -              |
+| clx_file_name      | text                     | No          | Yes      | -              |
+| bank_relationships | text                     | No          | Yes      | -              |
 
 ## Table: `pipeline_shares`
 
@@ -929,100 +760,6 @@
 | updated_at    | timestamp with time zone | No          | No       | -              |
 | is_system     | boolean                  | No          | No       | -              |
 
-## Table: `potential`
-
-| Column Name                          | Data Type                | Primary Key | Nullable | Foreign Key To  |
-| ------------------------------------ | ------------------------ | ----------- | -------- | --------------- |
-| id                                   | uuid                     | Yes         | No       | -               |
-| name                                 | text                     | No          | No       | -               |
-| email                                | text                     | No          | Yes      | -               |
-| phone                                | text                     | No          | Yes      | -               |
-| company_name                         | text                     | No          | Yes      | -               |
-| status                               | USER-DEFINED             | No          | No       | -               |
-| stage_id                             | uuid                     | No          | Yes      | pipeline_stages |
-| source                               | text                     | No          | Yes      | -               |
-| notes                                | text                     | No          | Yes      | -               |
-| assigned_to                          | uuid                     | No          | Yes      | users           |
-| qualified_at                         | timestamp with time zone | No          | Yes      | -               |
-| converted_at                         | timestamp with time zone | No          | Yes      | -               |
-| converted_to_client_id               | uuid                     | No          | Yes      | -               |
-| questionnaire_token                  | text                     | No          | Yes      | -               |
-| questionnaire_sent_at                | timestamp with time zone | No          | Yes      | -               |
-| questionnaire_completed_at           | timestamp with time zone | No          | Yes      | -               |
-| known_as                             | text                     | No          | Yes      | -               |
-| title                                | text                     | No          | Yes      | -               |
-| contact_type                         | text                     | No          | Yes      | -               |
-| tags                                 | ARRAY                    | No          | Yes      | -               |
-| about                                | text                     | No          | Yes      | -               |
-| website                              | text                     | No          | Yes      | -               |
-| linkedin                             | text                     | No          | Yes      | -               |
-| twitter                              | text                     | No          | Yes      | -               |
-| next_action                          | text                     | No          | Yes      | -               |
-| waiting_on                           | text                     | No          | Yes      | -               |
-| sla_threshold_days                   | integer                  | No          | Yes      | -               |
-| last_activity_at                     | timestamp with time zone | No          | Yes      | -               |
-| ratewatch_questionnaire_token        | uuid                     | No          | Yes      | -               |
-| ratewatch_questionnaire_sent_at      | timestamp with time zone | No          | Yes      | -               |
-| ratewatch_questionnaire_completed_at | timestamp with time zone | No          | Yes      | -               |
-| initial_nudge_created_at             | timestamp with time zone | No          | Yes      | -               |
-| cohort_year                          | integer                  | No          | Yes      | -               |
-| flagged_for_weekly                   | boolean                  | No          | No       | -               |
-| uw_number                            | text                     | No          | Yes      | -               |
-| client_other_lenders                 | boolean                  | No          | No       | -               |
-| deal_value                           | numeric                  | No          | Yes      | -               |
-| history                              | text                     | No          | Yes      | -               |
-| bank_relationships                   | text                     | No          | Yes      | -               |
-| opportunity_name                     | text                     | No          | Yes      | -               |
-| clx_file_name                        | text                     | No          | Yes      | -               |
-| description                          | text                     | No          | Yes      | -               |
-| close_date                           | timestamp with time zone | No          | Yes      | -               |
-| loss_reason                          | text                     | No          | Yes      | -               |
-| priority                             | USER-DEFINED             | No          | Yes      | -               |
-| win_percentage                       | integer                  | No          | Yes      | -               |
-| visibility                           | text                     | No          | Yes      | -               |
-| last_contacted                       | timestamp with time zone | No          | Yes      | -               |
-| work_website                         | text                     | No          | Yes      | -               |
-| target_closing_date                  | date                     | No          | Yes      | -               |
-| clx_agreement                        | boolean                  | No          | Yes      | -               |
-| loan_category                        | text                     | No          | Yes      | -               |
-| wu_date                              | date                     | No          | Yes      | -               |
-| loan_stage                           | text                     | No          | Yes      | -               |
-| won                                  | boolean                  | No          | Yes      | -               |
-| lender_type                          | text                     | No          | Yes      | -               |
-| lender_name                          | text                     | No          | Yes      | -               |
-| fee_percent                          | numeric                  | No          | Yes      | -               |
-| potential_revenue                    | numeric                  | No          | Yes      | -               |
-| referral_source                      | text                     | No          | Yes      | -               |
-| rs_fee_percent                       | numeric                  | No          | Yes      | -               |
-| rs_revenue                           | numeric                  | No          | Yes      | -               |
-| net_revenue                          | numeric                  | No          | Yes      | -               |
-| invoice_amount                       | numeric                  | No          | Yes      | -               |
-| actual_net_revenue                   | numeric                  | No          | Yes      | -               |
-| volume_log_status                    | text                     | No          | Yes      | -               |
-| sheets_row_index                     | integer                  | No          | Yes      | -               |
-| sheets_last_synced_at                | timestamp with time zone | No          | Yes      | -               |
-| created_at                           | timestamp with time zone | No          | No       | -               |
-| updated_at                           | timestamp with time zone | No          | No       | -               |
-| deal_outcome                         | USER-DEFINED             | No          | No       | -               |
-| copper_opportunity_id                | text                     | No          | Yes      | -               |
-| source_system                        | text                     | No          | No       | -               |
-| won_reason                           | text                     | No          | Yes      | -               |
-| won_at                               | timestamp with time zone | No          | Yes      | -               |
-| lost_at                              | timestamp with time zone | No          | Yes      | -               |
-| custom_fields                        | jsonb                    | No          | No       | -               |
-| interactions_count                   | integer                  | No          | No       | -               |
-| stage_changed_at                     | timestamp with time zone | No          | Yes      | -               |
-
-## Table: `potential_people`
-
-| Column Name  | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ------------ | ------------------------ | ----------- | -------- | -------------- |
-| id           | uuid                     | Yes         | No       | -              |
-| potential_id | uuid                     | No          | No       | potential      |
-| person_id    | uuid                     | No          | No       | people         |
-| role         | text                     | No          | Yes      | -              |
-| created_at   | timestamp with time zone | No          | No       | -              |
-
 ## Table: `project_people`
 
 | Column Name | Data Type                | Primary Key | Nullable | Foreign Key To  |
@@ -1049,7 +786,7 @@
 | Column Name           | Data Type                | Primary Key | Nullable | Foreign Key To |
 | --------------------- | ------------------------ | ----------- | -------- | -------------- |
 | id                    | uuid                     | Yes         | No       | -              |
-| lead_id               | uuid                     | No          | No       | potential      |
+| lead_id               | uuid                     | No          | No       | deals          |
 | current_rate          | numeric                  | No          | No       | -              |
 | target_rate           | numeric                  | No          | No       | -              |
 | loan_type             | text                     | No          | Yes      | -              |
@@ -1173,7 +910,7 @@
 | estimated_hours | numeric                  | No          | Yes      | -              |
 | group_name      | text                     | No          | Yes      | -              |
 | tags            | ARRAY                    | No          | Yes      | -              |
-| lead_id         | uuid                     | No          | Yes      | potential      |
+| lead_id         | uuid                     | No          | Yes      | deals          |
 | source          | text                     | No          | Yes      | -              |
 | task_type       | text                     | No          | Yes      | -              |
 | user_id         | uuid                     | No          | Yes      | users          |
@@ -1182,103 +919,6 @@
 | entity_type     | USER-DEFINED             | No          | Yes      | -              |
 | copper_task_id  | text                     | No          | Yes      | -              |
 | source_system   | text                     | No          | No       | -              |
-
-## Table: `team_monthly_goals`
-
-| Column Name   | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ------------- | ------------------------ | ----------- | -------- | -------------- |
-| id            | uuid                     | Yes         | No       | -              |
-| goal_label    | text                     | No          | No       | -              |
-| current_value | integer                  | No          | No       | -              |
-| target_value  | integer                  | No          | No       | -              |
-| created_at    | timestamp with time zone | No          | Yes      | -              |
-| updated_at    | timestamp with time zone | No          | Yes      | -              |
-| user_id       | uuid                     | No          | Yes      | users          |
-
-## Table: `underwriting`
-
-| Column Name              | Data Type                | Primary Key | Nullable | Foreign Key To  |
-| ------------------------ | ------------------------ | ----------- | -------- | --------------- |
-| id                       | uuid                     | Yes         | No       | -               |
-| name                     | text                     | No          | No       | -               |
-| email                    | text                     | No          | Yes      | -               |
-| phone                    | text                     | No          | Yes      | -               |
-| company_name             | text                     | No          | Yes      | -               |
-| status                   | USER-DEFINED             | No          | No       | -               |
-| stage_id                 | uuid                     | No          | Yes      | pipeline_stages |
-| origin_pipeline_id       | uuid                     | No          | Yes      | potential       |
-| source                   | text                     | No          | Yes      | -               |
-| notes                    | text                     | No          | Yes      | -               |
-| assigned_to              | uuid                     | No          | Yes      | users           |
-| qualified_at             | timestamp with time zone | No          | Yes      | -               |
-| converted_at             | timestamp with time zone | No          | Yes      | -               |
-| converted_to_client_id   | uuid                     | No          | Yes      | -               |
-| known_as                 | text                     | No          | Yes      | -               |
-| title                    | text                     | No          | Yes      | -               |
-| contact_type             | text                     | No          | Yes      | -               |
-| tags                     | ARRAY                    | No          | Yes      | -               |
-| about                    | text                     | No          | Yes      | -               |
-| next_action              | text                     | No          | Yes      | -               |
-| waiting_on               | text                     | No          | Yes      | -               |
-| sla_threshold_days       | integer                  | No          | Yes      | -               |
-| last_activity_at         | timestamp with time zone | No          | Yes      | -               |
-| initial_nudge_created_at | timestamp with time zone | No          | Yes      | -               |
-| cohort_year              | integer                  | No          | Yes      | -               |
-| flagged_for_weekly       | boolean                  | No          | No       | -               |
-| uw_number                | text                     | No          | Yes      | -               |
-| client_other_lenders     | boolean                  | No          | No       | -               |
-| deal_value               | numeric                  | No          | Yes      | -               |
-| history                  | text                     | No          | Yes      | -               |
-| bank_relationships       | text                     | No          | Yes      | -               |
-| opportunity_name         | text                     | No          | Yes      | -               |
-| clx_file_name            | text                     | No          | Yes      | -               |
-| description              | text                     | No          | Yes      | -               |
-| close_date               | timestamp with time zone | No          | Yes      | -               |
-| loss_reason              | text                     | No          | Yes      | -               |
-| priority                 | USER-DEFINED             | No          | Yes      | -               |
-| win_percentage           | integer                  | No          | Yes      | -               |
-| visibility               | text                     | No          | Yes      | -               |
-| last_contacted           | timestamp with time zone | No          | Yes      | -               |
-| target_closing_date      | date                     | No          | Yes      | -               |
-| clx_agreement            | boolean                  | No          | Yes      | -               |
-| loan_category            | text                     | No          | Yes      | -               |
-| wu_date                  | date                     | No          | Yes      | -               |
-| loan_stage               | text                     | No          | Yes      | -               |
-| won                      | boolean                  | No          | Yes      | -               |
-| lender_type              | text                     | No          | Yes      | -               |
-| lender_name              | text                     | No          | Yes      | -               |
-| fee_percent              | numeric                  | No          | Yes      | -               |
-| potential_revenue        | numeric                  | No          | Yes      | -               |
-| referral_source          | text                     | No          | Yes      | -               |
-| rs_fee_percent           | numeric                  | No          | Yes      | -               |
-| rs_revenue               | numeric                  | No          | Yes      | -               |
-| net_revenue              | numeric                  | No          | Yes      | -               |
-| invoice_amount           | numeric                  | No          | Yes      | -               |
-| actual_net_revenue       | numeric                  | No          | Yes      | -               |
-| volume_log_status        | text                     | No          | Yes      | -               |
-| sheets_row_index         | integer                  | No          | Yes      | -               |
-| sheets_last_synced_at    | timestamp with time zone | No          | Yes      | -               |
-| created_at               | timestamp with time zone | No          | No       | -               |
-| updated_at               | timestamp with time zone | No          | No       | -               |
-| deal_outcome             | USER-DEFINED             | No          | No       | -               |
-| copper_opportunity_id    | text                     | No          | Yes      | -               |
-| source_system            | text                     | No          | No       | -               |
-| won_reason               | text                     | No          | Yes      | -               |
-| won_at                   | timestamp with time zone | No          | Yes      | -               |
-| lost_at                  | timestamp with time zone | No          | Yes      | -               |
-| custom_fields            | jsonb                    | No          | No       | -               |
-| interactions_count       | integer                  | No          | No       | -               |
-| stage_changed_at         | timestamp with time zone | No          | Yes      | -               |
-
-## Table: `underwriting_people`
-
-| Column Name     | Data Type                | Primary Key | Nullable | Foreign Key To |
-| --------------- | ------------------------ | ----------- | -------- | -------------- |
-| id              | uuid                     | Yes         | No       | -              |
-| underwriting_id | uuid                     | No          | No       | underwriting   |
-| person_id       | uuid                     | No          | No       | people         |
-| role            | text                     | No          | Yes      | -              |
-| created_at      | timestamp with time zone | No          | No       | -              |
 
 ## Table: `users`
 

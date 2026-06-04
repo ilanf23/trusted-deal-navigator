@@ -7,19 +7,12 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Loader2, 
-  Phone, 
-  PhoneIncoming, 
-  PhoneOutgoing,
+import {
+  Loader2,
   MessageSquare,
   Send,
   User,
-  Clock,
   CheckCircle2,
-  TrendingUp,
-  BarChart3,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,20 +22,6 @@ import { format, isToday, isYesterday } from 'date-fns';
 
 type Message = Database['public']['Tables']['messages']['Row'];
 type Conversation = Database['public']['Tables']['conversations']['Row'];
-
-interface CallRatingNotification {
-  id: string;
-  lead_id: string | null;
-  communication_id: string | null;
-  lead?: { name: string; phone: string | null; email: string | null } | null;
-  call_date: string;
-  call_direction: string;
-  call_rating: number;
-  rating_reasoning: string | null;
-  transcript_preview: string | null;
-  created_at: string;
-  read_at: string | null;
-}
 
 interface ConversationWithClient extends Conversation {
   client_email?: string;
@@ -68,8 +47,6 @@ const AdminMessages = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [callRatings, setCallRatings] = useState<CallRatingNotification[]>([]);
-  const [ratingsLoading, setRatingsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { setPageTitle } = useAdminTopBar();
@@ -77,33 +54,6 @@ const AdminMessages = () => {
     setPageTitle('Messages');
     return () => { setPageTitle(null); };
   }, []);
-
-  const fetchCallRatings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('call_rating_notifications')
-        .select('*, lead:pipeline(name, phone, email)')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      setCallRatings((data || []) as CallRatingNotification[]);
-    } catch (error) {
-      console.error('Error fetching call ratings:', error);
-    } finally {
-      setRatingsLoading(false);
-    }
-  };
-
-  const markRatingAsRead = async (id: string) => {
-    await supabase
-      .from('call_rating_notifications')
-      .update({ read_at: new Date().toISOString() })
-      .eq('id', id);
-    
-    setCallRatings(prev => prev.map(r => 
-      r.id === id ? { ...r, read_at: new Date().toISOString() } : r
-    ));
-  };
 
   const fetchConversations = async () => {
     try {
@@ -153,7 +103,6 @@ const AdminMessages = () => {
 
   useEffect(() => {
     fetchConversations();
-    fetchCallRatings();
   }, []);
 
   useEffect(() => {
@@ -213,182 +162,13 @@ const AdminMessages = () => {
     }
   };
 
-  const unreadRatingsCount = callRatings.filter(r => !r.read_at).length;
-
-  const getRatingStyle = (rating: number) => {
-    if (rating >= 8) return { border: 'border-l-green-600', bg: 'bg-card', text: 'text-green-600' };
-    if (rating >= 6) return { border: 'border-l-blue-600', bg: 'bg-card', text: 'text-blue-600' };
-    if (rating >= 4) return { border: 'border-l-amber-600', bg: 'bg-card', text: 'text-amber-600' };
-    return { border: 'border-l-red-600', bg: 'bg-card', text: 'text-red-600' };
-  };
-
   const selectedConvo = conversations.find(c => c.id === selectedConversation);
-
-  // Stats for call ratings
-  const excellentCalls = callRatings.filter(r => r.call_rating >= 8).length;
-  const avgRating = callRatings.length > 0 
-    ? (callRatings.reduce((sum, r) => sum + r.call_rating, 0) / callRatings.length).toFixed(1)
-    : '0';
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <Tabs defaultValue="client-messages" className="w-full">
-          <TabsList className="bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
-            <TabsTrigger value="client-messages" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
-              <MessageSquare className="w-4 h-4" />
-              Client Messages
-            </TabsTrigger>
-            <TabsTrigger value="call-ratings" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
-              <Phone className="w-4 h-4" />
-              Call Ratings
-              {unreadRatingsCount > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs bg-primary/10 text-primary">
-                  {unreadRatingsCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Call Ratings Tab */}
-          <TabsContent value="call-ratings" className="mt-6 space-y-6">
-            {/* Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Excellent Calls</p>
-                      <p className="text-2xl font-semibold mt-1">{excellentCalls}</p>
-                    </div>
-                    <div className="p-2 rounded-md bg-green-50 dark:bg-green-950">
-                      <TrendingUp className="w-5 h-5 text-green-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="border">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Average Rating</p>
-                      <p className="text-2xl font-semibold mt-1">{avgRating}<span className="text-sm text-muted-foreground">/10</span></p>
-                    </div>
-                    <div className="p-2 rounded-md bg-blue-50 dark:bg-blue-950">
-                      <BarChart3 className="w-5 h-5 text-blue-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="border">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Calls</p>
-                      <p className="text-2xl font-semibold mt-1">{callRatings.length}</p>
-                    </div>
-                    <div className="p-2 rounded-md bg-slate-100 dark:bg-slate-800">
-                      <Phone className="w-5 h-5 text-slate-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="border">
-              <CardHeader className="border-b bg-muted/30">
-                <CardTitle className="text-base font-medium flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  Call Rating History
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                {ratingsLoading ? (
-                  <div className="flex items-center justify-center py-16">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : callRatings.length === 0 ? (
-                  <div className="text-center py-16 px-4">
-                    <Phone className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-                    <p className="font-medium text-sm">No call ratings</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Ratings will appear here when calls are analyzed.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {callRatings.map((rating) => {
-                      const style = getRatingStyle(rating.call_rating);
-                      return (
-                        <div
-                          key={rating.id}
-                          onClick={() => !rating.read_at && markRatingAsRead(rating.id)}
-                          className={`p-4 border-l-4 ${style.border} hover:bg-muted/30 transition-colors cursor-pointer ${
-                            !rating.read_at ? 'bg-primary/5' : ''
-                          }`}
-                        >
-                          <div className="flex items-start gap-4">
-                            {/* Rating Score */}
-                            <div className={`flex-shrink-0 w-12 h-12 rounded border flex items-center justify-center font-semibold text-lg ${style.text} bg-background`}>
-                              {rating.call_rating}
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium">{rating.lead?.name || 'Unknown'}</span>
-                                <Badge variant="outline" className="text-xs gap-1 font-normal">
-                                  {rating.call_direction === 'inbound' ? (
-                                    <>
-                                      <PhoneIncoming className="w-3 h-3" />
-                                      Inbound
-                                    </>
-                                  ) : (
-                                    <>
-                                      <PhoneOutgoing className="w-3 h-3" />
-                                      Outbound
-                                    </>
-                                  )}
-                                </Badge>
-                                {!rating.read_at && (
-                                  <Badge variant="default" className="text-xs">New</Badge>
-                                )}
-                              </div>
-                              
-                              {rating.rating_reasoning && (
-                                <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                                  {rating.rating_reasoning}
-                                </p>
-                              )}
-
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                {rating.lead?.phone && (
-                                  <span className="flex items-center gap-1">
-                                    <Phone className="w-3 h-3" />
-                                    {rating.lead?.phone}
-                                  </span>
-                                )}
-                                <span className="flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  {formatMessageDate(rating.created_at)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Client Messages Tab */}
-          <TabsContent value="client-messages" className="mt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[600px]">
+        <div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[600px]">
               {/* Conversations List */}
               <Card className="lg:col-span-1 border">
                 <CardHeader className="py-3 px-4 border-b bg-muted/30">
@@ -524,8 +304,7 @@ const AdminMessages = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-        </Tabs>
+        </div>
       </div>
     </AdminLayout>
   );

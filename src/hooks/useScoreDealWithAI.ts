@@ -82,16 +82,23 @@ export function useLatestWinScoreReasoning(leadId: string | undefined) {
     enabled: !!leadId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('ai_agent_changes')
-        .select('ai_reasoning, created_at, new_values')
-        .eq('target_table', 'potential')
-        .eq('target_id', leadId!)
-        .ilike('description', '%AI scored deal%')
+        .from('ai_events')
+        .select('created_at, payload')
+        .eq('event_type', 'agent_change')
+        .eq('payload->>target_table', 'deals')
+        .eq('payload->>target_id', leadId!)
+        .ilike('payload->>description', '%AI scored deal%')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return (data ?? null) as LatestWinScoreReasoning | null;
+      if (!data) return null;
+      const payload = (data as any).payload ?? {};
+      return {
+        ai_reasoning: payload.ai_reasoning ?? null,
+        created_at: (data as any).created_at,
+        new_values: payload.new_values ?? null,
+      } as LatestWinScoreReasoning;
     },
     staleTime: 30_000,
   });
