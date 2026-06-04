@@ -1,5 +1,10 @@
 # Add Vercel AI SDK — Replace Raw OpenAI Calls
 
+> ⚠️ **OUTDATED — DO NOT IMPLEMENT.** This plan was written against an earlier codebase state and is
+> wrong about the current code (the system is already on OpenRouter via `llmConfig.ts`, not raw
+> OpenAI; chat already runs a read-tool loop; undo/redo is on `ai_events`). Use the corrected plan:
+> **`docs/plans/2026-06-04-vercel-ai-sdk-migration-revised.md`**.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add the Vercel AI SDK (`ai` package) to the Supabase Edge Functions. Replace all raw `fetch()` calls to the OpenAI API with the SDK's `streamText` / `generateText` helpers. This gives us a single abstraction for streaming, tool calling, and provider switching — so we can use Anthropic, OpenAI, or OpenRouter without changing function logic.

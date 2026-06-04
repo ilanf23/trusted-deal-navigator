@@ -40,7 +40,6 @@ import {
   ArrowUpRight,
   ArrowRight,
   Activity,
-  Star,
   PhoneIncoming,
   PhoneOutgoing,
 } from 'lucide-react';
@@ -197,20 +196,6 @@ const TeamPerformance = () => {
     },
   });
 
-  // Fetch call ratings
-  const { data: callRatingsData } = useQuery({
-    queryKey: ['call-ratings', timePeriod],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('call_rating_notifications')
-        .select('*, lead:pipeline(name, phone, email)')
-        .gte('created_at', periodStart.toISOString())
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-
   // Fetch leads for mapping to calls
   const { data: allLeadsMap } = useQuery({
     queryKey: ['leads-map-for-calls'],
@@ -286,11 +271,6 @@ const TeamPerformance = () => {
     const tasksCompleted = tasksData?.filter(t => t.is_completed).length || 0;
     const tasksPending = tasksData?.filter(t => !t.is_completed).length || 0;
 
-    // Call ratings stats
-    const avgRating = callRatingsData && callRatingsData.length > 0
-      ? callRatingsData.reduce((sum, r) => sum + r.call_rating, 0) / callRatingsData.length
-      : 0;
-
     return {
       totalRevenue,
       totalDeals,
@@ -304,10 +284,8 @@ const TeamPerformance = () => {
       tasksCompleted,
       tasksPending,
       avgCallDuration,
-      avgCallRating: avgRating,
-      ratedCallsCount: callRatingsData?.length || 0,
     };
-  }, [leadsData, pipelineData, fundedLeads, communicationsData, tasksData, callRatingsData, now]);
+  }, [leadsData, pipelineData, fundedLeads, communicationsData, tasksData, now]);
 
   // Monthly revenue chart data
   const monthlyRevenueData = useMemo(() => {
@@ -689,26 +667,6 @@ const TeamPerformance = () => {
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-yellow-500">
-                <CardContent className="pt-5">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-full bg-yellow-500/10">
-                      <Star className="h-5 w-5 text-yellow-500" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-2xl font-bold">
-                        {employeeMetrics.avgCallRating > 0 ? employeeMetrics.avgCallRating.toFixed(1) : 'N/A'}
-                        <span className="text-sm font-normal text-muted-foreground">/10</span>
-                      </p>
-                      <p className="text-sm text-muted-foreground">Avg Call Rating</p>
-                    </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {employeeMetrics.ratedCallsCount} rated
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
               <Card>
                 <CardContent className="pt-5">
                   <div className="flex items-center gap-4">
@@ -743,87 +701,8 @@ const TeamPerformance = () => {
               </Card>
             </div>
 
-            {/* Call Ratings Summary & Call History */}
-            <div className="grid lg:grid-cols-2 gap-6">
-              {/* Call Ratings Summary */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Star className="h-4 w-4 text-yellow-500" />
-                    Call Ratings Summary
-                  </CardTitle>
-                  <CardDescription>AI-analyzed call performance</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {callRatingsData && callRatingsData.length > 0 ? (
-                    <div className="space-y-4">
-                      {/* Rating Distribution */}
-                      <div className="grid grid-cols-5 gap-2">
-                        {[
-                          { label: '1-2', color: 'bg-red-500', range: [1, 2] },
-                          { label: '3-4', color: 'bg-orange-500', range: [3, 4] },
-                          { label: '5-6', color: 'bg-yellow-500', range: [5, 6] },
-                          { label: '7-8', color: 'bg-emerald-400', range: [7, 8] },
-                          { label: '9-10', color: 'bg-green-500', range: [9, 10] },
-                        ].map((bucket) => {
-                          const count = callRatingsData.filter(
-                            (r) => r.call_rating >= bucket.range[0] && r.call_rating <= bucket.range[1]
-                          ).length;
-                          return (
-                            <div key={bucket.label} className="text-center">
-                              <div className={`h-16 rounded-lg ${bucket.color} opacity-${count > 0 ? '100' : '20'} flex items-end justify-center pb-1`}>
-                                <span className="text-white font-bold text-lg">{count}</span>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">{bucket.label}</p>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Recent Rated Calls */}
-                      <div className="space-y-2 mt-4">
-                        <p className="text-sm font-medium">Recent Rated Calls</p>
-                        <ScrollArea className="h-[160px]">
-                          <div className="space-y-2">
-                            {callRatingsData.slice(0, 5).map((rating) => (
-                              <div
-                                key={rating.id}
-                                className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                                    rating.call_rating >= 8 ? 'bg-green-500' :
-                                    rating.call_rating >= 6 ? 'bg-yellow-500' :
-                                    rating.call_rating >= 4 ? 'bg-orange-500' : 'bg-red-500'
-                                  }`}>
-                                    {rating.call_rating}
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium">{rating.lead?.name || 'Unknown'}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {formatDistanceToNow(new Date(rating.call_date), { addSuffix: true })}
-                                    </p>
-                                  </div>
-                                </div>
-                                <Badge variant={rating.call_direction === 'inbound' ? 'outline' : 'secondary'} className="text-[10px]">
-                                  {rating.call_direction === 'inbound' ? 'Inbound' : 'Outbound'}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
-                      <Star className="h-8 w-8 mb-2 opacity-30" />
-                      <p className="text-sm">No rated calls yet</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Call History */}
+            {/* Call History */}
+            <div>
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
@@ -841,9 +720,6 @@ const TeamPerformance = () => {
                           .slice(0, 15)
                           .map((call) => {
                             const leadInfo = call.lead_id && allLeadsMap ? allLeadsMap[call.lead_id] : null;
-                            const rating = callRatingsData?.find(
-                              (r) => r.communication_id === call.id
-                            );
 
                             return (
                               <div
@@ -877,15 +753,6 @@ const TeamPerformance = () => {
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  {rating && (
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                                      rating.call_rating >= 8 ? 'bg-green-500' :
-                                      rating.call_rating >= 6 ? 'bg-yellow-500' :
-                                      rating.call_rating >= 4 ? 'bg-orange-500' : 'bg-red-500'
-                                    }`}>
-                                      {rating.call_rating}
-                                    </div>
-                                  )}
                                   {call.transcript && (
                                     <Badge variant="outline" className="text-[10px]">
                                       Transcript

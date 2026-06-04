@@ -605,17 +605,12 @@ const Calls = () => {
         toast.error('Automation partially failed - check tasks manually');
       } else {
         console.log('Automation result:', automationResult);
-        const rating = automationResult?.callRating;
         const draftCreated = automationResult?.gmailDraftCreated;
 
-        if (rating) {
-          const draftMessage = draftCreated
-            ? ', Gmail draft ready'
-            : (pendingAutomationData?.leadEmail ? '' : ' (no email for draft)');
-          toast.success(`✅ Task created, call rated ${rating}/10${draftMessage}`);
-        } else {
-          toast.success('✅ Follow-up task created');
-        }
+        const draftMessage = draftCreated
+          ? ', Gmail draft ready'
+          : (pendingAutomationData?.leadEmail ? '' : ' (no email for draft)');
+        toast.success(`✅ Follow-up task created${draftMessage}`);
 
         // Refresh Gmail emails if draft was created
         if (draftCreated) {

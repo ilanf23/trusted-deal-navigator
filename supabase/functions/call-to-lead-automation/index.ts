@@ -1,5 +1,4 @@
 import { createClient } from "../_shared/supabase.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { getValidGoogleAccessToken } from "../_shared/googleToken.ts";
 import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_API_KEY_ENV, llmHeaders } from "../_shared/llmConfig.ts";
@@ -73,10 +72,8 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableApiKey = Deno.env.get(LLM_API_KEY_ENV)!;
-    const resendApiKey = Deno.env.get("RESEND_API_KEY")!;
-    
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const resend = new Resend(resendApiKey);
 
     const body: RequestBody = await req.json();
     const { leadId, communicationId, leadName, leadEmail, leadPhone, transcript, callDirection, callDate, teamMemberId } = body;
@@ -111,20 +108,18 @@ Deno.serve(async (req) => {
       repAuthUserId = (rep?.user_id as string | undefined) ?? null;
     }
 
-    let callRating = 5;
-    let ratingReasoning = "No transcript available for analysis.";
+    let callSummary = "No transcript available for analysis.";
     let followUpEmailSubject = "";
     let followUpEmailContent = "";
 
-    // Step 1: Use AI to analyze the call transcript and generate rating + follow-up email
+    // Step 1: Use AI to summarize the call transcript and draft a follow-up email
     if (transcript) {
       console.log("Analyzing transcript with AI...");
-      
-      const analysisPrompt = `You are a commercial lending sales coach. Analyze this call transcript and provide:
 
-1. A rating from 1-10 for the call quality (consider rapport building, needs discovery, professionalism, objection handling, and next steps)
-2. A detailed reasoning for the rating (2-3 sentences)
-3. A personalized follow-up email based on what was discussed in the call
+      const analysisPrompt = `You are a commercial lending sales assistant. Analyze this call transcript and provide:
+
+1. A brief summary of the call (2-3 sentences covering what was discussed and any next steps)
+2. A personalized follow-up email based on what was discussed in the call
 
 Call Direction: ${callDirection}
 Lead Name: ${leadName}
@@ -133,8 +128,7 @@ ${transcript}
 
 Respond with a JSON object (no markdown) with these exact fields:
 {
-  "rating": <number 1-10>,
-  "reasoning": "<detailed reasoning>",
+  "summary": "<brief summary of the call>",
   "followUpEmail": {
     "subject": "<email subject line>",
     "body": "<email body - professional, warm, and personalized based on the call>"
@@ -148,7 +142,7 @@ Respond with a JSON object (no markdown) with these exact fields:
           body: JSON.stringify({
             model: LLM_MODEL,
             messages: [
-              { role: "system", content: "You are an expert commercial lending sales coach. Analyze calls and provide constructive feedback. Always respond with valid JSON only, no markdown." },
+              { role: "system", content: "You are an expert commercial lending sales assistant. Summarize calls and draft follow-up emails. Always respond with valid JSON only, no markdown." },
               { role: "user", content: analysisPrompt }
             ],
             temperature: 0.7,
@@ -158,18 +152,17 @@ Respond with a JSON object (no markdown) with these exact fields:
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
           const content = aiData.choices?.[0]?.message?.content;
-          
+
           if (content) {
             try {
               // Clean potential markdown code blocks
               const cleanedContent = content.replace(/```json\n?|\n?```/g, '').trim();
               const analysis = JSON.parse(cleanedContent);
-              callRating = analysis.rating || 5;
-              ratingReasoning = analysis.reasoning || "Analysis completed.";
+              callSummary = analysis.summary || "Analysis completed.";
               followUpEmailSubject = analysis.followUpEmail?.subject || `Following up on our conversation - ${leadName}`;
               followUpEmailContent = analysis.followUpEmail?.body || "";
-              
-              console.log("AI Analysis complete - Rating:", callRating);
+
+              console.log("AI analysis complete");
             } catch (parseError) {
               console.error("Failed to parse AI response:", parseError);
             }
@@ -199,13 +192,13 @@ Respond with a JSON object (no markdown) with these exact fields:
 ${leadEmail ? `- Email: ${leadEmail}` : '- No email on file'}
 
 **Call Summary:**
-${transcript ? ratingReasoning : 'No transcript available - call was not recorded or transcription pending.'}
+${transcript ? callSummary : 'No transcript available - call was not recorded or transcription pending.'}
 
 **Next Steps:**
 1. Review call transcript in Leads section
 2. Send personalized follow-up email (draft created in Gmail)
 3. Schedule discovery meeting if qualified`,
-        priority: callRating >= 7 ? 'high' : callRating >= 5 ? 'medium' : 'low',
+        priority: 'medium',
         status: 'todo',
         due_date: taskDueDate.toISOString(),
         group_name: 'To Do',
@@ -283,133 +276,9 @@ ${followUpEmailContent}`;
         .eq('id', leadId);
     }
 
-    // Step 5: Send rating notification email to founders (owner role)
-    console.log("Sending rating notification to founders...");
-
-    const ratingEmoji = callRating >= 8 ? '🌟' : callRating >= 6 ? '👍' : callRating >= 4 ? '📊' : '⚠️';
-    const ratingColor = callRating >= 8 ? '#22c55e' : callRating >= 6 ? '#3b82f6' : callRating >= 4 ? '#f59e0b' : '#ef4444';
-
-    const notificationHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 20px; border-radius: 12px 12px 0 0; }
-    .content { background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; border-top: 0; }
-    .rating-box { background: white; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .rating-number { font-size: 48px; font-weight: bold; color: ${ratingColor}; }
-    .rating-label { color: #64748b; font-size: 14px; }
-    .details { background: white; border-radius: 8px; padding: 15px; margin-top: 15px; }
-    .label { font-weight: 600; color: #475569; }
-    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
-    .draft-badge { display: inline-block; background: #22c55e; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-top: 10px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1 style="margin: 0;">${ratingEmoji} New Call Rating</h1>
-      <p style="margin: 10px 0 0 0; opacity: 0.9;">${repName} just completed a call with a new lead</p>
-    </div>
-    <div class="content">
-      <div class="rating-box">
-        <div class="rating-number">${callRating}/10</div>
-        <div class="rating-label">Call Quality Score</div>
-        ${gmailDraftCreated ? '<div class="draft-badge">✉️ Gmail Draft Created</div>' : ''}
-      </div>
-      
-      <div class="details">
-        <p><span class="label">Lead Name:</span> ${leadName}</p>
-        <p><span class="label">Phone:</span> ${leadPhone}</p>
-        ${leadEmail ? `<p><span class="label">Email:</span> ${leadEmail}</p>` : ''}
-        <p><span class="label">Call Date:</span> ${callDate}</p>
-        <p><span class="label">Direction:</span> ${callDirection === 'inbound' ? '📥 Inbound' : '📤 Outbound'}</p>
-      </div>
-
-      <div class="details" style="margin-top: 15px;">
-        <p><span class="label">AI Analysis:</span></p>
-        <p style="color: #475569;">${ratingReasoning}</p>
-      </div>
-
-      ${transcript ? `
-      <div class="details" style="margin-top: 15px;">
-        <p><span class="label">Transcript Preview:</span></p>
-        <p style="color: #64748b; font-size: 13px; white-space: pre-wrap; max-height: 200px; overflow: hidden;">${transcript.substring(0, 500)}${transcript.length > 500 ? '...' : ''}</p>
-      </div>
-      ` : ''}
-    </div>
-    <div class="footer">
-      <p>CommercialLendingX CRM - Automated Call Analysis</p>
-    </div>
-  </div>
-</body>
-</html>`;
-
-    // Step 6: Save notification to database for in-app viewing
-    console.log("Saving call rating notification to database...");
-    
-    const { data: notification, error: notificationError } = await supabase
-      .from('call_rating_notifications')
-      .insert({
-        lead_id: leadId,
-        communication_id: communicationId,
-        lead_name: leadName,
-        lead_phone: leadPhone,
-        lead_email: leadEmail,
-        call_date: callDate,
-        call_direction: callDirection,
-        call_rating: callRating,
-        rating_reasoning: ratingReasoning,
-        transcript_preview: transcript ? transcript.substring(0, 500) : null,
-      })
-      .select()
-      .single();
-
-    if (notificationError) {
-      console.error("Failed to save notification:", notificationError);
-    } else {
-      console.log("Notification saved:", notification.id);
-    }
-
-    // Resolve founder recipients from the users table — never hardcode names.
-    const { data: owners, error: ownersError } = await supabase
-      .from('users')
-      .select('email')
-      .eq('is_owner', true)
-      .eq('is_active', true);
-
-    if (ownersError) {
-      console.error("Failed to load founder recipients:", ownersError);
-    }
-
-    const recipients = (owners ?? [])
-      .map((row) => (row.email as string | null) ?? '')
-      .filter((email) => email.length > 0);
-
-    if (recipients.length === 0) {
-      console.warn("No active founder emails found — skipping rating notification email");
-    } else {
-      try {
-        const emailResult = await resend.emails.send({
-          from: "CLX CRM <onboarding@resend.dev>",
-          to: recipients,
-          subject: `${ratingEmoji} ${repName}'s Call Rating: ${callRating}/10 - ${leadName}`,
-          html: notificationHtml,
-        });
-
-        console.log("Rating notification sent:", emailResult);
-      } catch (emailError) {
-        console.error("Failed to send rating email:", emailError);
-      }
-    }
-
     return new Response(
       JSON.stringify({
         success: true,
-        callRating,
-        ratingReasoning,
         taskId: task?.id,
         followUpEmailGenerated: !!followUpEmailContent,
         gmailDraftCreated,

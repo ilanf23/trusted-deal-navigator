@@ -30,15 +30,12 @@ interface Automation {
 const automations: Automation[] = [
   {
     name: 'Call-to-Lead Automation',
-    description: 'When a lead is created from call history, AI analyzes the transcript, generates a 1-10 rating, creates a follow-up task, and drafts a personalized email in Gmail.',
+    description: 'When a lead is created from call history, AI summarizes the transcript, creates a follow-up task, and drafts a personalized email in Gmail.',
     triggers: ['Lead created from call history', 'User confirms automation dialog'],
     actions: [
-      'AI analyzes call transcript',
-      'Generates call rating (1-10)',
+      'AI summarizes call transcript',
       'Creates follow-up task in tasks',
       'Drafts personalized email in Gmail',
-      'Sends rating notification to Adam & Brad via email',
-      'Stores rating in call_rating_notifications table',
     ],
     edgeFunctions: ['call-to-lead-automation', 'gmail-mailbox', 'gmail-write'],
     status: 'active',
