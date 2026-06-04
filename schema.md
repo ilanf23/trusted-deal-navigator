@@ -889,31 +889,6 @@
 | copper_person_id | text                     | No          | Yes      | -              |
 | source_system    | text                     | No          | No       | -              |
 
-## Table: `person_connections`
-
-| Column Name       | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ----------------- | ------------------------ | ----------- | -------- | -------------- |
-| id                | uuid                     | Yes         | No       | -              |
-| entity_id         | uuid                     | No          | No       | -              |
-| connected_lead_id | uuid                     | No          | Yes      | -              |
-| connected_name    | text                     | No          | Yes      | -              |
-| connected_company | text                     | No          | Yes      | -              |
-| relationship_type | text                     | No          | Yes      | -              |
-| notes             | text                     | No          | Yes      | -              |
-| created_at        | timestamp with time zone | No          | No       | -              |
-| entity_type       | USER-DEFINED             | No          | Yes      | -              |
-
-## Table: `person_other_contacts`
-
-| Column Name   | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ------------- | ------------------------ | ----------- | -------- | -------------- |
-| id            | uuid                     | Yes         | No       | -              |
-| entity_id     | uuid                     | No          | No       | -              |
-| contact_type  | text                     | No          | No       | -              |
-| contact_value | text                     | No          | No       | -              |
-| created_at    | timestamp with time zone | No          | No       | -              |
-| entity_type   | USER-DEFINED             | No          | Yes      | -              |
-
 ## Table: `pipeline_shares`
 
 | Column Name    | Data Type                | Primary Key | Nullable | Foreign Key To |

@@ -2416,69 +2416,6 @@ export type Database = {
           },
         ]
       }
-      person_connections: {
-        Row: {
-          connected_company: string | null
-          connected_lead_id: string | null
-          connected_name: string | null
-          created_at: string
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
-          id: string
-          notes: string | null
-          relationship_type: string | null
-        }
-        Insert: {
-          connected_company?: string | null
-          connected_lead_id?: string | null
-          connected_name?: string | null
-          created_at?: string
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          notes?: string | null
-          relationship_type?: string | null
-        }
-        Update: {
-          connected_company?: string | null
-          connected_lead_id?: string | null
-          connected_name?: string | null
-          created_at?: string
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          notes?: string | null
-          relationship_type?: string | null
-        }
-        Relationships: []
-      }
-      person_other_contacts: {
-        Row: {
-          contact_type: string
-          contact_value: string
-          created_at: string
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
-          id: string
-        }
-        Insert: {
-          contact_type: string
-          contact_value: string
-          created_at?: string
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-        }
-        Update: {
-          contact_type?: string
-          contact_value?: string
-          created_at?: string
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-        }
-        Relationships: []
-      }
       pipeline_shares: {
         Row: {
           access_level: string
