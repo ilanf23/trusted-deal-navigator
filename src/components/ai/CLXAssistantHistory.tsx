@@ -1,6 +1,17 @@
+import { useState } from 'react';
 import { History, Loader2, Trash2, Plus, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
@@ -16,7 +27,7 @@ interface CLXAssistantHistoryProps {
   isLoading: boolean;
   currentConversationId: string | null;
   onLoad: (id: string) => void;
-  onDelete: (e: React.MouseEvent, id: string) => void;
+  onDelete: (id: string) => void;
   onNewChat?: () => void;
 }
 
@@ -66,6 +77,7 @@ const CLXAssistantHistory = ({
   onNewChat,
 }: CLXAssistantHistoryProps) => {
   const buckets = groupByDate(conversations);
+  const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null);
 
   return (
     <motion.aside
@@ -135,7 +147,7 @@ const CLXAssistantHistory = ({
                           />
                           <span
                             className={cn(
-                              'flex-1 truncate text-xs',
+                              'min-w-0 flex-1 truncate text-xs',
                               active ? 'font-medium text-foreground' : 'text-foreground/80',
                             )}
                           >
@@ -145,7 +157,10 @@ const CLXAssistantHistory = ({
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                            onClick={(e) => onDelete(e, conv.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPendingDelete(conv);
+                            }}
                             aria-label="Delete conversation"
                           >
                             <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
@@ -160,6 +175,35 @@ const CLXAssistantHistory = ({
           )}
         </ScrollArea>
       </div>
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{pendingDelete?.title || 'Untitled'}" and all of its messages will be
+              permanently deleted. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (pendingDelete) onDelete(pendingDelete.id);
+                setPendingDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.aside>
   );
 };

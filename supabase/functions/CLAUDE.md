@@ -33,8 +33,9 @@ Deno TypeScript edge functions + shared utilities. All deployed as Supabase Edge
 - Shared crypto: `_shared/crypto.ts`, resolver: `_shared/userIntegrations.ts` (`getProviderKey` with env fallback).
 
 ### AI Assistants
-- `ai-assistant-chat` — streaming chat + assist modes (no `body.action`). OpenAI. Issue #84 split.
-- `ai-assistant-agent` — autonomous tool-calling loop (`action: "agent"`). OpenAI SSE. Issue #84 split.
+- `ai-assistant-chat` — streaming chat + assist modes (no `body.action`). Vercel AI SDK (`npm:ai@6`) `streamText` over the read tools; returns a **plain text stream** (`toTextStreamResponse`). Issue #84 split / #98 migration.
+- `ai-assistant-agent` — autonomous tool-calling loop (`action: "agent"`). Vercel AI SDK `streamText` (`stopWhen: stepCountIs(5)`); still emits the **custom SSE event protocol** (`text` / `tool_start` / `tool_result` / `batch_complete` / `[DONE]`) and runs writes through `executeAction` → `ai_events`. Issue #84 split / #98 migration.
+- Provider/model resolution: `_shared/aiAgent/provider.ts` (`resolveModel` + `DEFAULT_MODEL`), seeded from `_shared/llmConfig.ts` (currently OpenRouter + `google/gemma-4-31b-it`). Tools are Zod `inputSchema` via `tool()` in `_shared/aiAgent/tools.ts` (write) and `readTools.ts` (read).
 - `ai-assistant-actions` — execute / undo / redo / undo_batch for AI agent changes. Issue #84 split.
 - Shared helpers: `_shared/aiAgent/context.ts`, `tools.ts`, `executor.ts`.
 - `lead-ai-assistant` — lead-specific assistant with activity context (10/60s)

@@ -141,6 +141,42 @@ Evidence:
 
 ---
 
+## Execution status (2026-06-04)
+
+- ✅ **Task 1.1 provider.ts** — created (lazy-loads optional providers; default seeded from llmConfig).
+- ✅ **Task 1.2 readTools.ts** — `buildReadSdkTools()` added (Zod `inputSchema`); `executeReadTool`
+  kept intact. (Write tools in `tools.ts` deferred to the agent slice.)
+- ✅ **Task 1.3 ai-assistant-chat** — migrated to `streamText` + `stopWhen(5)`; **deployed and
+  verified live** against project `kpgrogjmvjauusdnnrln`:
+  - Chat: `get_metrics` returned 60 open deals / $416.3M — **exact DB match**, not hallucinated.
+  - Assist: emitted valid `<action>` tags with real deal UUIDs.
+  - Founder gate: `run_read_sql` worked for founder; non-founder (Evan) correctly lacked the tool.
+  - Rep scoping: founder saw 60 open deals, Evan scoped to his own (0, DB-confirmed).
+- ✅ **Task 1.4 ai-assistant-agent** — migrated to `streamText` + `stopWhen(5)`; custom SSE protocol
+  and `executeAction`/`ai_events` logging preserved. **Deployed and verified live:** create_task
+  produced a real task (count 478→479), an `agent_batch` + `agent_change` (parent_id=batch) +
+  `audit` row in `ai_events` (undo/redo chain intact), and the SSE frames were byte-identical to the
+  old protocol. Test artifacts cleaned up.
+- ✅ **Task 1.2 tools.ts** — write tools converted to Zod `tool()` via `buildAgentSdkTools(runner)`.
+- ✅ **Phase 2 frontend** — `CLXAssistant.tsx` (the **only** streaming consumer in the app) switched
+  from OpenAI-SSE parsing to plain-text reading. No assist/agent streaming UI exists yet, so nothing
+  else needed changing. Change is tsc/eslint-clean on the edited lines.
+- ⬜ **Phase 3 (optional client model param)** — deferred. `resolveModel(modelId, keys)` already
+  accepts a model id; wiring an optional `body.model` override is a small follow-up when a picker is
+  built. Default path unchanged.
+
+### Reality corrections found during execution (plan vs. code)
+- Frontend had **one** streaming handler (chat-only `CLXAssistant.tsx`), not "3 handlers / ~150
+  lines". No `useActionParser`/`<action>`-tag parser exists. `useAIChanges.ts` does no streaming.
+- `run_read_sql` runs via the **user client under RLS**, so a founder's count can differ from a
+  service-role count (observed 200 vs 478 tasks) — expected, not a regression.
+
+### Frontend not yet deployed
+The Vite SPA deploys separately from edge functions. The chat backend (plain text) is live now, so the
+**app's chat UI needs this frontend change shipped** to render correctly. Verify by running the app.
+
+---
+
 ## Phase 1 — Backend migration
 
 ### Task 1.1 — Provider registry that extends `llmConfig.ts` (do NOT duplicate it)

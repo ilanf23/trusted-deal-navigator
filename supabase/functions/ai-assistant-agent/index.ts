@@ -1,10 +1,12 @@
 import { getRequestClients } from '../_shared/userClient.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
+import { streamText, stepCountIs } from 'npm:ai@6';
 import { getProviderKey } from '../_shared/userIntegrations.ts';
-import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_PROVIDER, LLM_API_KEY_ENV, llmHeaders } from '../_shared/llmConfig.ts';
+import { LLM_PROVIDER, LLM_API_KEY_ENV } from '../_shared/llmConfig.ts';
 import { executeAction } from '../_shared/aiAgent/executor.ts';
-import { agentTools } from '../_shared/aiAgent/tools.ts';
+import { buildAgentSdkTools } from '../_shared/aiAgent/tools.ts';
+import { resolveModel, DEFAULT_MODEL } from '../_shared/aiAgent/provider.ts';
 import { logAiAudit } from '../_shared/aiAgent/audit.ts';
 
 const corsHeaders = {
@@ -98,11 +100,7 @@ Today: ${new Date().toISOString().split("T")[0]}`;
         try {
           send({ type: "text", content: "Processing your request..." });
 
-          // Call OpenAI with tools
-          const openaiMessages = [
-            {
-              role: "system",
-              content: `You are an AI agent for CommercialLendingX, a commercial loan brokerage CRM. You can make changes to the CRM by calling the provided functions.
+          const systemContent = `You are an AI agent for CommercialLendingX, a commercial loan brokerage CRM. You can make changes to the CRM by calling the provided functions.
 
 ## Instructions
 - Use the context below to identify the correct records (deals, tasks) by their IDs
@@ -119,117 +117,83 @@ Today: ${new Date().toISOString().split("T")[0]}`;
 - log_activity: Log a call, email, meeting, or note activity on a lead
 - bulk_update_leads: Update the same field on multiple leads at once
 
-${contextStr}`,
-            },
-            { role: "user", content: prompt },
-          ];
+${contextStr}`;
 
           let totalChanges = 0;
-          let iterations = 0;
-          const maxIterations = 5;
 
-          while (iterations < maxIterations) {
-            iterations++;
+          // Per tool call: map snake_case args to our camelCase action params,
+          // emit SSE progress, run executeAction() (which logs to ai_events for
+          // undo/redo), and audit. Returns the result so the SDK feeds it back to
+          // the model and continues the loop.
+          const runTool = async (fnName: string, fnArgs: Record<string, any>) => {
+            let actionParams: Record<string, string> = {};
+            if (fnName === "update_lead") {
+              actionParams = { dealId: fnArgs.deal_id ?? fnArgs.lead_id, pipeline: fnArgs.pipeline ?? '', field: fnArgs.field, newValue: fnArgs.new_value };
+            } else if (fnName === "create_task") {
+              actionParams = { title: fnArgs.title, leadId: fnArgs.lead_id || "", priority: fnArgs.priority || "medium", dueDate: fnArgs.due_date || "", description: fnArgs.description || "" };
+            } else if (fnName === "complete_task") {
+              actionParams = { taskId: fnArgs.task_id };
+            } else if (fnName === "log_activity") {
+              actionParams = { leadId: fnArgs.lead_id, activityType: fnArgs.activity_type, content: fnArgs.content };
+            } else if (fnName === "bulk_update_leads") {
+              actionParams = { lead_ids: JSON.stringify(fnArgs.lead_ids), field: fnArgs.field, newValue: fnArgs.new_value };
+            }
 
-            const response = await fetch(LLM_CHAT_ENDPOINT, {
-              method: "POST",
-              headers: llmHeaders(LLM_API_KEY),
-              body: JSON.stringify({
-                model: LLM_MODEL,
-                messages: openaiMessages,
-                tools: agentTools,
-                tool_choice: "auto",
-              }),
+            send({ type: "tool_start", tool: fnName, description: `Executing ${fnName}...` });
+
+            const order = totalChanges;
+            const result = await executeAction(
+              serviceClient, fnName, actionParams,
+              authUserId, memberId || null, conversationId,
+              "agent", batchId, order, isOwner,
+            );
+
+            totalChanges += result.success ? 1 : 0;
+
+            await logAiAudit({
+              serviceClient,
+              userId: authUserId,
+              conversationId,
+              functionName: 'ai-assistant-agent',
+              tool: fnName,
+              scope: { actionParams },
+              recordIds: result.changeId ? [result.changeId] : [],
+              mode: 'agent',
+              success: result.success,
+              errorMessage: result.success ? undefined : result.description,
             });
 
-            if (!response.ok) {
-              const errText = await response.text();
-              send({ type: "error", content: `OpenAI error: ${errText}` });
-              await logAiAudit({
-                serviceClient,
-                userId: authUserId,
-                conversationId,
-                functionName: 'ai-assistant-agent',
-                tool: 'openai_call',
-                mode: 'agent',
-                success: false,
-                errorMessage: `OpenAI error: ${errText}`,
-              });
-              break;
-            }
+            send({
+              type: "tool_result",
+              success: result.success,
+              description: result.description,
+              changeId: result.changeId,
+            });
 
-            const data = await response.json();
-            const choice = data.choices[0];
-            const message = choice.message;
+            return result;
+          };
 
-            openaiMessages.push(message);
+          // Resolve provider/model (defaults to the OpenRouter model in llmConfig.ts).
+          const model = await resolveModel(DEFAULT_MODEL, { openrouterKey: LLM_API_KEY });
 
-            // If the model wants to call tools
-            if (message.tool_calls && message.tool_calls.length > 0) {
-              for (const toolCall of message.tool_calls) {
-                const fnName = toolCall.function.name;
-                const fnArgs = JSON.parse(toolCall.function.arguments);
+          // streamText runs the tool-calling loop (up to 5 steps); each tool's
+          // execute is wired to runTool. We await the final assistant text and
+          // emit it as a single text event, matching the previous behavior.
+          const result = streamText({
+            model,
+            system: systemContent,
+            messages: [{ role: "user", content: prompt }],
+            tools: buildAgentSdkTools(runTool),
+            stopWhen: stepCountIs(5),
+            onError: ({ error }) => {
+              console.error("ai-assistant-agent streamText error:", error);
+              send({ type: "error", content: error instanceof Error ? error.message : String(error) });
+            },
+          });
 
-                // Map OpenAI function args to our action params
-                let actionParams: Record<string, string> = {};
-                if (fnName === "update_lead") {
-                  actionParams = { dealId: fnArgs.deal_id ?? fnArgs.lead_id, pipeline: fnArgs.pipeline ?? '', field: fnArgs.field, newValue: fnArgs.new_value };
-                } else if (fnName === "create_task") {
-                  actionParams = { title: fnArgs.title, leadId: fnArgs.lead_id || "", priority: fnArgs.priority || "medium", dueDate: fnArgs.due_date || "", description: fnArgs.description || "" };
-                } else if (fnName === "complete_task") {
-                  actionParams = { taskId: fnArgs.task_id };
-                } else if (fnName === "log_activity") {
-                  actionParams = { leadId: fnArgs.lead_id, activityType: fnArgs.activity_type, content: fnArgs.content };
-                } else if (fnName === "bulk_update_leads") {
-                  actionParams = { lead_ids: JSON.stringify(fnArgs.lead_ids), field: fnArgs.field, newValue: fnArgs.new_value };
-                }
-
-                send({ type: "tool_start", tool: fnName, description: `Executing ${fnName}...` });
-
-                const result = await executeAction(
-                  serviceClient, fnName, actionParams,
-                  authUserId, memberId || null, conversationId,
-                  "agent", batchId, totalChanges, isOwner,
-                );
-
-                totalChanges += result.success ? 1 : 0;
-
-                await logAiAudit({
-                  serviceClient,
-                  userId: authUserId,
-                  conversationId,
-                  functionName: 'ai-assistant-agent',
-                  tool: fnName,
-                  scope: { actionParams },
-                  recordIds: result.changeId ? [result.changeId] : [],
-                  mode: 'agent',
-                  success: result.success,
-                  errorMessage: result.success ? undefined : result.description,
-                });
-
-                send({
-                  type: "tool_result",
-                  success: result.success,
-                  description: result.description,
-                  changeId: result.changeId,
-                });
-
-                // Feed result back to OpenAI
-                openaiMessages.push({
-                  role: "tool",
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify(result),
-                } as any);
-              }
-            } else {
-              // Model is done — send final text
-              if (message.content) {
-                send({ type: "text", content: message.content });
-              }
-              break;
-            }
-
-            if (choice.finish_reason === "stop") break;
+          const finalText = await result.text;
+          if (finalText && finalText.trim()) {
+            send({ type: "text", content: finalText });
           }
 
           // Update batch total (gracefully)
