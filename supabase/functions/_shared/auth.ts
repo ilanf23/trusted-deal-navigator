@@ -13,6 +13,7 @@ export interface ResolvedAuth {
   authUserEmail: string | null;
   teamMember: ResolvedTeamMember | null;
   isOwner: boolean;
+  isFounder: boolean;
 }
 
 export type RequireAdminResult =
@@ -41,12 +42,16 @@ export async function getUserFromRequest(
 
   const { data: teamMember } = await supabase
     .from('users')
-    .select('id, name, email, app_role')
+    .select('id, name, email, app_role, is_owner')
     .eq('user_id', user.id)
     .maybeSingle();
 
   const role = teamMember?.app_role ?? null;
   const isOwner = role === 'admin' || role === 'super_admin';
+  // Founder = authoritative is_owner column OR super_admin. Distinct from the
+  // loose isOwner above, which (intentionally, for write flows) also treats
+  // employee `admin`s as owners. Founder gates company-wide reads + raw SQL.
+  const isFounder = teamMember?.is_owner === true || role === 'super_admin';
 
   return {
     authUserId: user.id,
@@ -61,6 +66,7 @@ export async function getUserFromRequest(
         }
       : null,
     isOwner,
+    isFounder,
   };
 }
 
