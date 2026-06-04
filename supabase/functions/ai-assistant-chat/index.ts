@@ -3,7 +3,7 @@ import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
 import { getProviderKey } from '../_shared/userIntegrations.ts';
 import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_PROVIDER, LLM_API_KEY_ENV, llmHeaders } from '../_shared/llmConfig.ts';
-import { buildChatContext } from '../_shared/aiAgent/context.ts';
+import { readToolSchemas, executeReadTool, type ReadToolContext } from '../_shared/aiAgent/readTools.ts';
 import { logAiAudit } from '../_shared/aiAgent/audit.ts';
 
 const corsHeaders = {
@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
   try {
     const { userClient, serviceClient } = getRequestClients(req);
-    const { teamMember, authUserId, isOwner } = await getUserFromRequest(req, userClient);
+    const { teamMember, authUserId, isOwner, isFounder } = await getUserFromRequest(req, userClient);
 
     const LLM_API_KEY = await getProviderKey(
       serviceClient,
@@ -37,8 +37,6 @@ Deno.serve(async (req) => {
     const { messages, teamMemberId: requestedMemberId, mode = 'chat', currentPage = '' } = body;
     const scopedMemberId = isOwner ? (requestedMemberId || teamMember?.id) : teamMember?.id;
     const displayName = teamMember?.name?.trim() || 'there';
-
-    const contextData = await buildChatContext(userClient, scopedMemberId, displayName);
 
     await logAiAudit({
       serviceClient,
@@ -104,24 +102,81 @@ Include these tags inline in your response text. Each action will be rendered as
 - Keep the label short and descriptive
 - Include the leadId when the action relates to a specific lead`;
 
+    const starterContext = `## How to answer
+You do NOT have the data in front of you. To answer ANY question about deals,
+tasks, communications, pipeline, revenue, or leads, you MUST call the provided
+read tools to fetch live data first, then answer from the results. Never invent
+numbers. ${isFounder
+  ? 'You may use run_read_sql for arbitrary questions the other tools do not cover.'
+  : 'You can only see this user\'s own assigned data.'}
+Today: ${new Date().toISOString().split('T')[0]}`;
+
     let systemPrompt: string;
     if (mode === 'assist') {
-      systemPrompt = `${basePrompt}${assistCapabilities}${pageContext}\n\n${contextData}`;
+      systemPrompt = `${basePrompt}${assistCapabilities}${pageContext}\n\n${starterContext}`;
     } else {
-      systemPrompt = `${basePrompt}${chatCapabilities}${pageContext}\n\n${contextData}`;
+      systemPrompt = `${basePrompt}${chatCapabilities}${pageContext}\n\n${starterContext}`;
     }
 
+    const toolCtx: ReadToolContext = {
+      serviceClient,
+      userClient,
+      isFounder,
+      memberId: scopedMemberId ?? null,
+    };
+    const tools = readToolSchemas(isFounder);
+
+    const convo: any[] = [
+      { role: "system", content: systemPrompt },
+      ...messages,
+    ];
+
+    // --- Phase 1: resolve tool calls (non-streaming) ---
+    const maxIterations = 5;
+    for (let i = 0; i < maxIterations; i++) {
+      const toolResp = await fetch(LLM_CHAT_ENDPOINT, {
+        method: "POST",
+        headers: llmHeaders(LLM_API_KEY),
+        body: JSON.stringify({ model: LLM_MODEL, messages: convo, tools, tool_choice: "auto" }),
+      });
+      if (!toolResp.ok) {
+        const errText = await toolResp.text();
+        return new Response(JSON.stringify({ error: "LLM error: " + errText }), {
+          status: toolResp.status === 429 ? 429 : 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const toolData = await toolResp.json();
+      const msg = toolData.choices?.[0]?.message;
+      convo.push(msg);
+      if (!msg?.tool_calls?.length) break;
+
+      for (const call of msg.tool_calls) {
+        let result: unknown;
+        try {
+          result = await executeReadTool(toolCtx, call.function.name, JSON.parse(call.function.arguments || "{}"));
+        } catch (e) {
+          result = { error: e instanceof Error ? e.message : String(e) };
+        }
+        await logAiAudit({
+          serviceClient,
+          userId: authUserId,
+          functionName: 'ai-assistant-chat',
+          tool: call.function.name,
+          scope: { args: call.function.arguments, isFounder },
+          mode: 'chat',
+          success: !(result as any)?.error,
+          errorMessage: (result as any)?.error,
+        });
+        convo.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
+      }
+    }
+
+    // --- Phase 2: stream the final answer (tools disabled) ---
     const response = await fetch(LLM_CHAT_ENDPOINT, {
       method: "POST",
       headers: llmHeaders(LLM_API_KEY),
-      body: JSON.stringify({
-        model: LLM_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
-        stream: true,
-      }),
+      body: JSON.stringify({ model: LLM_MODEL, messages: convo, tool_choice: "none", stream: true }),
     });
 
     if (!response.ok) {
@@ -132,8 +187,8 @@ Include these tags inline in your response text. Each action will be rendered as
         });
       }
       const errorText = await response.text();
-      console.error("OpenAI API error:", response.status, errorText);
-      return new Response(JSON.stringify({ error: "OpenAI API error: " + errorText }), {
+      console.error("LLM API error:", response.status, errorText);
+      return new Response(JSON.stringify({ error: "LLM API error: " + errorText }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
