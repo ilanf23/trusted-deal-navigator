@@ -593,24 +593,28 @@ Deno.serve(async (req) => {
 
     // Audit log — best-effort, never bubble a failure into a 500
     try {
-      const { error: auditError } = await supabase.from("ai_agent_changes").insert({
+      const { error: auditError } = await supabase.from("ai_events").insert({
+        event_type: "agent_change",
         user_id: user.id,
-        team_member_id: teamMemberId,
-        mode: "assist",
-        target_table: "potential",
-        target_id: leadId,
-        operation: "update",
-        old_values: { win_percentage: previousValue },
-        new_values: { win_percentage: clampedScore },
-        description: `AI scored deal at ${clampedScore}% win probability`,
-        ai_reasoning: reasoning,
-        model_used: LLM_MODEL,
-        status: "applied",
-        batch_id: null,
-        batch_order: 0,
+        parent_id: null,
+        payload: {
+          conversation_id: null,
+          team_member_id: teamMemberId,
+          mode: "assist",
+          target_table: "deals",
+          target_id: leadId,
+          operation: "update",
+          old_values: { win_percentage: previousValue },
+          new_values: { win_percentage: clampedScore },
+          description: `AI scored deal at ${clampedScore}% win probability`,
+          ai_reasoning: reasoning,
+          model_used: LLM_MODEL,
+          status: "applied",
+          batch_order: 0,
+        },
       });
       if (auditError) {
-        console.warn("ai_agent_changes insert failed (non-fatal):", auditError);
+        console.warn("ai_events insert failed (non-fatal):", auditError);
       }
     } catch (e) {
       console.warn("ai_agent_changes insert threw (non-fatal):", e);

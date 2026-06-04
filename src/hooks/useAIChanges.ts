@@ -52,8 +52,9 @@ export const useAIChanges = (filters?: UseAIChangesFilters) => {
     queryKey: ['ai-agent-changes', filters],
     queryFn: async () => {
       let q = supabase
-        .from('ai_agent_changes' as any)
-        .select('*, team_member:users(name, avatar_url)')
+        .from('ai_events' as any)
+        .select('id, user_id, parent_id, created_at, payload')
+        .eq('event_type', 'agent_change')
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -67,10 +68,10 @@ export const useAIChanges = (filters?: UseAIChangesFilters) => {
         q = q.eq('user_id', filters.userId);
       }
       if (filters?.mode) {
-        q = q.eq('mode', filters.mode);
+        q = q.eq('payload->>mode', filters.mode);
       }
       if (filters?.status) {
-        q = q.eq('status', filters.status);
+        q = q.eq('payload->>status', filters.status);
       }
       if (filters?.targetTable) {
         // Match both new and legacy table names for historical records
@@ -80,12 +81,53 @@ export const useAIChanges = (filters?: UseAIChangesFilters) => {
           communications: ['communications', 'evan_communications'],
         };
         const names = tableNameMap[filters.targetTable] || [filters.targetTable];
-        q = q.in('target_table', names);
+        q = q.in('payload->>target_table', names);
       }
 
       const { data, error } = await q;
       if (error) throw error;
-      return data as unknown as AIChange[];
+
+      const rows = (data ?? []) as any[];
+
+      // The team_member FK embed is gone (changes live in ai_events.payload now);
+      // resolve names/avatars in one follow-up query and merge client-side.
+      const memberIds = [...new Set(rows.map(r => r.payload?.team_member_id).filter(Boolean))];
+      let memberMap: Record<string, { name: string; avatar_url: string | null }> = {};
+      if (memberIds.length > 0) {
+        const { data: members } = await supabase
+          .from('users')
+          .select('id, name, avatar_url')
+          .in('id', memberIds as string[]);
+        memberMap = Object.fromEntries(
+          (members ?? []).map((m: any) => [m.id, { name: m.name, avatar_url: m.avatar_url }]),
+        );
+      }
+
+      return rows.map((r): AIChange => {
+        const p = r.payload ?? {};
+        return {
+          id: r.id,
+          conversation_id: p.conversation_id ?? null,
+          user_id: r.user_id,
+          team_member_id: p.team_member_id ?? null,
+          mode: p.mode,
+          target_table: p.target_table,
+          target_id: p.target_id,
+          operation: p.operation,
+          old_values: p.old_values ?? null,
+          new_values: p.new_values,
+          description: p.description,
+          ai_reasoning: p.ai_reasoning ?? null,
+          status: p.status,
+          undone_at: p.undone_at ?? null,
+          undone_by: p.undone_by ?? null,
+          batch_id: r.parent_id ?? null,
+          batch_order: p.batch_order ?? 0,
+          created_at: r.created_at,
+          model_used: p.model_used ?? null,
+          team_member: p.team_member_id ? (memberMap[p.team_member_id] ?? null) : null,
+        };
+      });
     },
   });
 
@@ -93,18 +135,31 @@ export const useAIChanges = (filters?: UseAIChangesFilters) => {
     queryKey: ['ai-agent-batches', filters],
     queryFn: async () => {
       let q = supabase
-        .from('ai_agent_batches' as any)
-        .select('*')
+        .from('ai_events' as any)
+        .select('id, user_id, parent_id, created_at, payload')
+        .eq('event_type', 'agent_batch')
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (filters?.mode) {
-        q = q.eq('mode', filters.mode);
+        q = q.eq('payload->>mode', filters.mode);
       }
 
       const { data, error } = await q;
       if (error) throw error;
-      return data as unknown as AIBatch[];
+      return (data ?? []).map((r: any): AIBatch => {
+        const p = r.payload ?? {};
+        return {
+          id: r.id,
+          conversation_id: r.parent_id ?? null,
+          user_id: r.user_id,
+          mode: p.mode,
+          prompt_summary: p.prompt_summary ?? null,
+          total_changes: p.total_changes ?? 0,
+          status: p.status,
+          created_at: r.created_at,
+        };
+      });
     },
   });
 
