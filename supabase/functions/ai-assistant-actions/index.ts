@@ -31,13 +31,17 @@ Deno.serve(async (req) => {
       let batch: { id: string } | null = null;
       try {
         const { data } = await serviceClient
-          .from('ai_agent_batches')
+          .from('ai_events')
           .insert({
-            conversation_id: conversationId,
+            event_type: 'agent_batch',
             user_id: authUserId,
-            mode,
-            prompt_summary: `${actionType}: ${params?.label || ''}`,
-            total_changes: 1,
+            parent_id: conversationId,
+            payload: {
+              mode,
+              prompt_summary: `${actionType}: ${params?.label || ''}`,
+              total_changes: 1,
+              status: 'applied',
+            },
           })
           .select('id')
           .single();
@@ -126,9 +130,10 @@ Deno.serve(async (req) => {
       const { batchId } = body;
 
       const { data: batch } = await serviceClient
-        .from('ai_agent_batches')
+        .from('ai_events')
         .select('user_id')
         .eq('id', batchId)
+        .eq('event_type', 'agent_batch')
         .single();
 
       if (!isOwner && batch?.user_id !== authUserId) {
@@ -138,12 +143,15 @@ Deno.serve(async (req) => {
         );
       }
 
-      const { data: changes } = await serviceClient
-        .from('ai_agent_changes')
-        .select('id')
-        .eq('batch_id', batchId)
-        .in('status', ['applied', 'redone'])
-        .order('batch_order', { ascending: false });
+      const { data: changeRows } = await serviceClient
+        .from('ai_events')
+        .select('id, payload')
+        .eq('parent_id', batchId)
+        .eq('event_type', 'agent_change');
+
+      const changes = (changeRows || [])
+        .filter((c: any) => ['applied', 'redone'].includes(c.payload?.status))
+        .sort((a: any, b: any) => (b.payload?.batch_order ?? 0) - (a.payload?.batch_order ?? 0));
 
       let undone = 0;
       for (const change of (changes || [])) {
@@ -156,10 +164,20 @@ Deno.serve(async (req) => {
       }
 
       // Update batch status
+      const { data: batchEvent } = await serviceClient
+        .from('ai_events')
+        .select('payload')
+        .eq('id', batchId)
+        .single();
+
       await serviceClient
-        .from('ai_agent_batches')
+        .from('ai_events')
         .update({
-          status: undone === (changes?.length || 0) ? 'fully_undone' : 'partially_undone',
+          payload: {
+            ...(batchEvent?.payload ?? {}),
+            status: undone === (changes?.length || 0) ? 'fully_undone' : 'partially_undone',
+          },
+          updated_at: new Date().toISOString(),
         })
         .eq('id', batchId);
 
