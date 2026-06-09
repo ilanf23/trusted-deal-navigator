@@ -912,7 +912,7 @@ const Companies = () => {
                         {renderColHeader({
                           reactKey: 'company',
                           className: 'sticky top-0 z-30 group/hdr',
-                          style: { left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
+                          style: { left: 0, borderLeft: 'none', boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
                           children: (
                             <>
                               <div className="shrink-0 mr-1" title="Select all" onClick={(e) => e.stopPropagation()}>
@@ -944,7 +944,7 @@ const Companies = () => {
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
                         <tr key={i} className="bg-white dark:bg-card">
-                          <td className="px-4 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.company, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                          <td className="px-4 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.company, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-5 w-5 rounded shrink-0" />
                               <Skeleton className="h-7 w-7 rounded-md shrink-0" />
@@ -1017,7 +1017,7 @@ const Companies = () => {
                             }`}
                           >
                             {/* Company + Checkbox (sticky) */}
-                            <td className={`pl-2 pr-1.5 py-1.5 overflow-hidden whitespace-nowrap sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                            <td className={`pl-2 pr-1.5 py-1.5 overflow-hidden whitespace-nowrap sticky left-0 z-[5] transition-colors ${stickyBg} ${isDetailSelected ? 'border-l-[3px] border-l-[#3b2778]' : ''}`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                               <div className="flex items-center gap-2">
                                 <div className="shrink-0" title="Select" onClick={(e) => e.stopPropagation()}>
                                   <Checkbox

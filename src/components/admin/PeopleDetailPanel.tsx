@@ -944,7 +944,8 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
       const { data } = await supabase
         .from('tasks')
         .select('*')
-        .eq('lead_id', person.id)
+        .eq('entity_id', person.id)
+        .eq('entity_type', 'people')
         .order('created_at', { ascending: false });
       return (data || []) as LeadTask[];
     },
@@ -1141,6 +1142,7 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
         onClose={() => { setTaskDialogOpen(false); setEditingTask(null); }}
         leadId={person.id}
         leadName={person.name}
+        entityType="people"
         teamMembers={teamMembers}
         currentUserName={teamMember?.name ?? null}
         onSaved={() => {

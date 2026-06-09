@@ -2913,6 +2913,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           due_date: string | null
+          entity_id: string | null
           entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_hours: number | null
           group_name: string | null
@@ -2936,6 +2937,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          entity_id?: string | null
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_hours?: number | null
           group_name?: string | null
@@ -2959,6 +2961,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          entity_id?: string | null
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           estimated_hours?: number | null
           group_name?: string | null

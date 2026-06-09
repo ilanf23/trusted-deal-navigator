@@ -105,7 +105,7 @@ const CLXAssistantHistory = ({
           </div>
         </div>
 
-        <ScrollArea className="flex-1 px-2 pb-3 pt-1">
+        <ScrollArea className="flex-1 px-2 pb-3 pt-1 [&_[data-radix-scroll-area-viewport]>div]:!block">
           {isLoading ? (
             <div className="flex h-24 items-center justify-center">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

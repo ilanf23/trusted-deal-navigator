@@ -69,7 +69,12 @@ const DraggableTh = ({
   return (
     <th
       className={cn(
-        'px-4 py-1.5 text-left whitespace-nowrap group/col bg-[#eee6f6] hover:bg-[#d8cce8] transition-colors hover:z-20',
+        // `!` (important) is required: the global `.admin-portal th` rule in
+        // index.css sets a semi-transparent background at higher specificity
+        // (0,1,1) than a plain Tailwind bg utility (0,1,0). Without !important
+        // the header stays see-through, so sticky leading columns can't cover
+        // the columns scrolling beneath them.
+        'px-4 py-1.5 text-left whitespace-nowrap group/col !bg-[#eee6f6] hover:!bg-[#d8cce8] transition-colors hover:z-20',
         className,
       )}
       style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, border: '1px solid #c8bdd6', ...style }}

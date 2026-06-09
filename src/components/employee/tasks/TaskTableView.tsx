@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Task, statusConfig, statusPickerOptions, priorityConfig, taskTypeConfig } from './types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import DraggableTh from '@/components/admin/DraggableTh';
 import DraggableColumnsContext from '@/components/admin/DraggableColumnsContext';
 import { makeColumnDragOverlay, type ColumnHeaderDef } from '@/components/admin/columnDragOverlay';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
+import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
 import { Trash2, Plus, Building2, Calendar, Mail, Phone, User, CheckSquare, ArrowUpRight, Tag, Clock, FileSearch } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
@@ -81,18 +82,27 @@ export const TaskTableView = ({
   const [sortField, setSortField] = useState<SortField>('due_date');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
-    task: 260,
-    type: 100,
-    customer: 180,
-    dueDate: 140,
-    status: 120,
-    priority: 110,
+  // Column widths auto-fit to the longest value in each column (measured from
+  // the visible tasks), floored at per-column minimums that keep the header
+  // labels from clipping. User drag-resizes win and persist to localStorage.
+  // Mirrors the pattern used by Projects/Underwriting/etc.
+  const { columnWidths, handleColumnResize } = useAutoFitColumns({
+    minWidths: { task: 260, type: 120, customer: 200, dueDate: 150, status: 140, priority: 150 },
+    autoFitConfig: {
+      task:     { getText: (t: Task) => t.title ?? '', extraPx: 56 },
+      type:     { getText: (t: Task) => (taskTypeConfig[t.task_type || 'internal'] || taskTypeConfig.internal).label, extraPx: 48 },
+      customer: { getText: (t: Task) => {
+        const name = t.lead?.name ?? '';
+        const company = t.lead?.company_name ?? '';
+        return name.length >= company.length ? name : company;
+      }, extraPx: 36 },
+      dueDate:  { getText: (t: Task) => (t.due_date ? format(parseISO(t.due_date), 'MMM d, yyyy') : ''), extraPx: 8 },
+      status:   { getText: (t: Task) => (statusConfig[t.status || 'todo']?.label ?? ''), extraPx: 40 },
+      priority: { getText: (t: Task) => (priorityConfig[t.priority || 'medium']?.label ?? ''), extraPx: 64 },
+    },
+    data: tasks,
+    storageKey: 'tasks-col-widths-v2',
   });
-
-  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setColumnWidths(prev => ({ ...prev, [columnId]: newWidth }));
-  }, []);
 
   const { orderedKeys: orderedColumnKeys, reorderableKeys: reorderableColumnKeys, handleDragEnd: handleColumnReorder } = useColumnOrder({
     tableId: 'tasks-table',
@@ -283,7 +293,7 @@ export const TaskTableView = ({
                 reactKey: 'task',
                 colKey: 'task',
                 className: 'sticky top-0 z-30 group/hdr',
-                style: { left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
+                style: { left: 0, borderLeft: 'none', boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
                 children: (
                   <>
                     <div className="shrink-0" title="Select all" onClick={(e) => e.stopPropagation()}>
@@ -360,7 +370,7 @@ export const TaskTableView = ({
                        whether or not the task has a description. */}
                   <td
                     className={`pl-4 pr-6 py-3 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`}
-                    style={{ width: columnWidths.task, height: 56, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}
+                    style={{ width: columnWidths.task, height: 56, border: '1px solid #c8bdd6', borderLeft: 'none', boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }}
                   >
                     <div className="flex items-center gap-4">
                       <div className="shrink-0" title="Complete" onClick={(e) => e.stopPropagation()}>

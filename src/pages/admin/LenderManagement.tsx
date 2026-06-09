@@ -880,7 +880,7 @@ const LenderManagement = () => {
                         {renderColHeader({
                           reactKey: 'deal',
                           className: 'sticky top-0 z-30 group/hdr',
-                          style: { left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
+                          style: { left: 0, borderLeft: 'none', boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
                           children: (
                             <>
                               <div className="shrink-0">

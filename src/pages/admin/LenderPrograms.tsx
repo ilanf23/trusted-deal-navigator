@@ -1270,7 +1270,7 @@ const LenderPrograms = () => {
                         colKey: 'lender_name',
                         locked: true,
                         className: 'sticky top-0 z-30 group/hdr',
-                        style: { left: 0, borderLeft: 'none', boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
+                        style: { left: 0, borderLeft: 'none', boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
                         children: (
                           <>
                             <div className="shrink-0 mr-1" title="Select all" onClick={(e) => e.stopPropagation()}>
@@ -1362,7 +1362,7 @@ const LenderPrograms = () => {
                               width: columnWidths.lender_name,
                               border: '1px solid #c8bdd6',
                               borderLeft: 'none',
-                              boxShadow: 'inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)',
+                              boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)',
                             }}
                             onClick={(e) => handleCellClick(e, row.id, 'lender_name')}
                           >

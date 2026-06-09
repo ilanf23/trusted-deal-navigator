@@ -84,10 +84,21 @@ export const TaskWorkspace = ({
   const setIsNewTaskDialogOpen = useCallback((v: boolean) => { setIsNewTaskDialogOpenLocal(v); setPageState('tasks-workspace', { isNewTaskDialogOpen: v }); }, [setPageState]);
 
   useEffect(() => {
-    if (persisted.selectedTaskId && tasks.length > 0 && !selectedTask) {
-      const found = tasks.find(t => t.id === persisted.selectedTaskId);
-      if (found) setSelectedTask(found);
+    if (tasks.length === 0) return;
+    // Restore a persisted open task on first load.
+    if (!selectedTask) {
+      if (persisted.selectedTaskId) {
+        const found = tasks.find(t => t.id === persisted.selectedTaskId);
+        if (found) setSelectedTask(found);
+      }
+      return;
     }
+    // Keep the open detail dialog in sync with the latest data. Without this,
+    // selectedTask stays a stale snapshot, so edits made in the dialog (e.g.
+    // changing the due date) save to the DB but the dialog keeps showing the
+    // old value — appearing as if the change didn't take.
+    const fresh = tasks.find(t => t.id === selectedTask.id);
+    if (fresh && fresh !== selectedTask) setSelectedTask(fresh);
   }, [tasks, persisted.selectedTaskId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSetSelectedTask = useCallback((task: Task | null) => {

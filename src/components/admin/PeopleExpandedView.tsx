@@ -27,6 +27,7 @@ import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
+import { PersonCallHistorySection } from '@/components/admin/shared/PersonCallHistorySection';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
@@ -1143,6 +1144,15 @@ function CustomizeContactTypesPanel({
 // ── Main Component ──
 // ══════════════════════════════════════════════════
 
+// Opportunity contacts live on the deal record, not in `people`. Map a deal's
+// pipeline to its expanded-view route so we can redirect when this people route
+// is reached with a deal id. Mirrors ROUTE_FOR in PipelineSelectField.tsx.
+const DEAL_ROUTE_FOR: Record<string, (id: string) => string> = {
+  potential: (id) => `/admin/pipeline/potential/expanded-view/${id}`,
+  underwriting: (id) => `/admin/pipeline/underwriting/expanded-view/${id}`,
+  lender_management: (id) => `/admin/pipeline/lender-management/expanded-view/${id}`,
+};
+
 export default function PeopleExpandedView() {
   const { personId } = useParams<{ personId: string }>();
   const navigate = useNavigate();
@@ -1266,19 +1276,47 @@ export default function PeopleExpandedView() {
   const gmail = useGmailConnection({ userKey: 'people-expanded' });
 
   // ── Queries (defined before callbacks that reference query results) ──
-  const { data: person, isLoading } = useQuery({
+  const { data: person, isLoading, isError } = useQuery({
     queryKey: ['person-expanded', personId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('people')
         .select('*')
         .eq('id', personId!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
-      return data as Person;
+      return (data as Person) ?? null;
     },
     enabled: !!personId,
   });
+
+  // This route only resolves People rows, but several call sites (activity feed,
+  // search, opportunity contact links) navigate here with an opportunity/deal id.
+  // A deal's contact lives on the deal itself, not in `people`, so the person
+  // query finds nothing. When that happens, check whether the id is a deal and
+  // redirect to that deal's pipeline expanded view instead of a blank screen.
+  const { data: dealFallback, isLoading: dealFallbackLoading } = useQuery({
+    queryKey: ['person-deal-fallback', personId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, pipeline')
+        .eq('id', personId!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as { id: string; pipeline: string } | null) ?? null;
+    },
+    enabled: !!personId && !isLoading && !isError && !person,
+  });
+
+  const dealRedirectPath =
+    dealFallback && DEAL_ROUTE_FOR[dealFallback.pipeline]
+      ? DEAL_ROUTE_FOR[dealFallback.pipeline](dealFallback.id)
+      : null;
+
+  useEffect(() => {
+    if (dealRedirectPath) navigate(dealRedirectPath, { replace: true });
+  }, [dealRedirectPath, navigate]);
 
   const { data: activities = [] } = useQuery({
     queryKey: ['person-activities', personId],
@@ -1310,7 +1348,8 @@ export default function PeopleExpandedView() {
       const { data } = await supabase
         .from('tasks')
         .select('*')
-        .eq('lead_id', personId!)
+        .eq('entity_id', personId!)
+        .eq('entity_type', 'people')
         .order('created_at', { ascending: false });
       return (data ?? []) as LeadTask[];
     },
@@ -1469,7 +1508,8 @@ export default function PeopleExpandedView() {
   const handleSaveTask = useCallback(async () => {
     if (!personId || !newTaskTitle.trim()) return;
     const { error } = await supabase.from('tasks').insert({
-      lead_id: personId,
+      entity_id: personId,
+      entity_type: 'people',
       title: newTaskTitle.trim(),
       status: 'todo',
       task_type: 'to_do',
@@ -1806,10 +1846,37 @@ export default function PeopleExpandedView() {
     onError: () => toast.error('Failed to update address'),
   });
 
-  if (isLoading || !person) {
+  // Still loading the person, or resolving/redirecting a deal id that landed on
+  // this route → show the loading placeholder.
+  if (isLoading || (!person && (dealFallbackLoading || dealRedirectPath))) {
     return (
       <div className="flex items-center justify-center h-full">
         <Skeleton className="h-12 w-64" />
+      </div>
+    );
+  }
+
+  // No person, and the id isn't a redirectable deal either → real not-found
+  // state instead of an endless skeleton (this was the "blank screen" bug).
+  if (!person) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
+        <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+          <User className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground">
+            {isError ? "Couldn't load this contact" : 'Contact not found'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+            {isError
+              ? 'Something went wrong fetching this record. Please try again.'
+              : 'This person may have been deleted, or the link pointed somewhere that no longer exists.'}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="mt-1">
+          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Go back
+        </Button>
       </div>
     );
   }
@@ -3023,6 +3090,15 @@ export default function PeopleExpandedView() {
               </div>
             </Collapsible>
 
+            {/* Calls — every call linked to this person by lead_id or phone match */}
+            {personId && (
+              <PersonCallHistorySection
+                personId={personId}
+                phoneNumbers={[person?.phone, ...personPhones.map((p) => p.phone_number)]}
+                teamMembers={teamMembers}
+              />
+            )}
+
           </div>
         </div>
       </div>
@@ -3057,6 +3133,7 @@ export default function PeopleExpandedView() {
         }}
         leadId={personId}
         leadName={person?.name ?? ''}
+        entityType="people"
         teamMembers={teamMembers}
         currentUserName={teamMember?.name ?? null}
         initialTitle={editingTask ? undefined : newTaskTitle}
