@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { syncAppointmentToGoogle, deleteAppointmentFromGoogle } from '@/lib/calendarSync';
 import { toast } from 'sonner';
 import {
   startOfDay,
@@ -222,7 +223,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
       lead_id?: string | null;
     }) => {
       if (!teamMember?.id) throw new Error('User not loaded');
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('appointments')
         .insert({
           title: appt.title,
@@ -232,12 +233,19 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
           description: appt.description ?? null,
           lead_id: appt.lead_id ?? null,
           user_id: teamMember.id,
-        });
+        })
+        .select('id')
+        .single();
       if (error) throw error;
+      return data.id as string;
     },
-    onSuccess: () => {
+    onSuccess: (appointmentId) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       toast.success('Appointment added');
+      // Best-effort push to Google Calendar, then refresh to reflect synced state.
+      syncAppointmentToGoogle(appointmentId).then(() =>
+        queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      );
     },
     onError: () => toast.error('Failed to add appointment'),
   });
@@ -260,10 +268,16 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
         .eq('id', id)
         .eq('user_id', teamMember.id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (appointmentId) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       toast.success('Appointment updated');
+      // Best-effort push of the edit to Google (syncAppointment PUTs when the
+      // row already has a google_event_id, otherwise creates it).
+      syncAppointmentToGoogle(appointmentId).then(() =>
+        queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      );
     },
     onError: () => toast.error('Failed to update appointment'),
   });
@@ -286,12 +300,21 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
   const deleteAppointment = useMutation({
     mutationFn: async (id: string) => {
       if (!teamMember?.id) throw new Error('User not loaded');
+      // Capture the Google event id before the row is gone so we can remove it
+      // from Google Calendar too.
+      const { data: existing } = await supabase
+        .from('appointments')
+        .select('google_event_id')
+        .eq('id', id)
+        .eq('user_id', teamMember.id)
+        .single();
       const { error } = await supabase
         .from('appointments')
         .delete()
         .eq('id', id)
         .eq('user_id', teamMember.id);
       if (error) throw error;
+      await deleteAppointmentFromGoogle(existing?.google_event_id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });

@@ -208,17 +208,20 @@ export function CalendarView() {
     const api = calendarRef.current?.getApi();
     if (api) api.unselect();
 
-    const isAllDay = info.allDay;
-    const start = info.start;
-    const end = info.end;
-
-    const rect = (info.jsEvent?.target as HTMLElement)?.getBoundingClientRect?.();
-    const position = rect
-      ? { top: rect.top + rect.height, left: rect.left }
-      : { top: window.innerHeight / 2 - 100, left: window.innerWidth / 2 - 150 };
-
-    setQuickEvent({ start, end, allDay: isAllDay, position });
-  }, []);
+    // Open the centered event dialog rather than an anchored popover — the
+    // popover's click-derived position could land behind the sidebar / top-left.
+    // For an all-day month click, default to a 9–10am slot on that day instead
+    // of the midnight-to-midnight range FullCalendar reports; week/day drag
+    // selections already carry the exact times the user picked, so keep those.
+    let start = info.start;
+    let end = info.end;
+    if (info.allDay) {
+      start = new Date(info.start);
+      start.setHours(9, 0, 0, 0);
+      end = new Date(start.getTime() + 60 * 60000);
+    }
+    openDialogForCreate(start, end);
+  }, [openDialogForCreate]);
 
   const handleQuickSave = useCallback(
     (title: string, start: Date, end: Date) => {

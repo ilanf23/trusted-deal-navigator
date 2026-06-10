@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { syncAppointmentToGoogle } from '@/lib/calendarSync';
 import { useCrmMutations } from '@/hooks/usePipelineMutations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -763,14 +764,16 @@ export default function LeadRelatedSidebar({
     const dateStr = format(eventDate, 'yyyy-MM-dd');
     const startTime = `${dateStr}T${eventTime}:00`;
     const endTime = `${dateStr}T${eventEndTime}:00`;
-    const { error } = await supabase.from('appointments').insert({
+    const { data: created, error } = await supabase.from('appointments').insert({
       lead_id: leadId,
       title: eventTitle.trim(),
       description: eventDescription.trim() || null,
       start_time: startTime,
       end_time: endTime,
       appointment_type: eventType,
-    });
+      user_id: teamMember?.id ?? null,
+      user_name: teamMember?.name ?? null,
+    }).select('id').single();
     setEventSaving(false);
     if (error) {
       toast.error('Failed to create event');
@@ -785,6 +788,12 @@ export default function LeadRelatedSidebar({
     setEventType('meeting');
     setEventDescription('');
     queryClient.invalidateQueries({ queryKey: appointmentsKey });
+    // Best-effort push to Google Calendar.
+    if (created) {
+      syncAppointmentToGoogle(created.id).then(() =>
+        queryClient.invalidateQueries({ queryKey: appointmentsKey })
+      );
+    }
   }, [leadId, eventTitle, eventDate, eventTime, eventEndTime, eventType, eventDescription, queryClient, appointmentsKey]);
 
   const handleDeleteEvent = useCallback(async (eventId: string) => {
@@ -1507,6 +1516,7 @@ export default function LeadRelatedSidebar({
               entityType={entityType}
               teamMembers={teamMembers}
               fallbackPhone={lead.phone ?? null}
+              phoneNumbers={[lead.phone]}
             />
 
             {/* Calendar Events */}

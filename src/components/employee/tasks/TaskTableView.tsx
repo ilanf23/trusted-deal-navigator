@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Task, statusConfig, statusPickerOptions, priorityConfig, taskTypeConfig } from './types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import DraggableColumnsContext from '@/components/admin/DraggableColumnsContext'
 import { makeColumnDragOverlay, type ColumnHeaderDef } from '@/components/admin/columnDragOverlay';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { useAutoFitColumns } from '@/hooks/useAutoFitColumns';
-import { Trash2, Plus, Building2, Calendar, Mail, Phone, User, CheckSquare, ArrowUpRight, Tag, Clock, FileSearch } from 'lucide-react';
+import { Trash2, Plus, Building2, Calendar, Mail, Phone, User, CheckSquare, ArrowUpRight, Tag, Clock, FileSearch, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, parseISO } from 'date-fns';
 
 type TaskColumnKey = 'type' | 'customer' | 'dueDate' | 'status' | 'priority';
@@ -66,6 +67,21 @@ const COLUMN_SORT_OPTIONS: Record<string, { label: string; field: SortField; dir
   ],
 };
 
+type PageSizeOption = 25 | 50 | 100 | 'all';
+const PAGE_SIZE_OPTIONS: PageSizeOption[] = [25, 50, 100, 'all'];
+const PAGE_SIZE_STORAGE_KEY = 'tasks-page-size';
+
+// Per-user page-size preference, persisted to localStorage (default 50).
+const readSavedPageSize = (): PageSizeOption => {
+  try {
+    const raw = localStorage.getItem(PAGE_SIZE_STORAGE_KEY);
+    if (raw === 'all') return 'all';
+    const n = Number(raw);
+    if (n === 25 || n === 50 || n === 100) return n;
+  } catch { /* private mode / quota — fall through to default */ }
+  return 50;
+};
+
 export const TaskTableView = ({
   tasks,
   onUpdateTask,
@@ -81,6 +97,15 @@ export const TaskTableView = ({
   const [colMenuOpen, setColMenuOpen] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('due_date');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const [pageSize, setPageSizeState] = useState<PageSizeOption>(() => readSavedPageSize());
+  const [page, setPage] = useState(0);
+
+  const setPageSize = (size: PageSizeOption) => {
+    setPageSizeState(size);
+    setPage(0);
+    try { localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(size)); } catch { /* non-fatal */ }
+  };
 
   // Column widths auto-fit to the longest value in each column (measured from
   // the visible tasks), floored at per-column minimums that keep the header
@@ -132,6 +157,19 @@ export const TaskTableView = ({
       default: return 0;
     }
   });
+
+  // ── Pagination ──
+  const totalCount = sortedTasks.length;
+  const pageCount = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalCount / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageStart = pageSize === 'all' ? 0 : safePage * pageSize;
+  const pageEnd = pageSize === 'all' ? totalCount : Math.min(pageStart + pageSize, totalCount);
+  const pagedTasks = pageSize === 'all' ? sortedTasks : sortedTasks.slice(pageStart, pageEnd);
+
+  // Clamp the page if the (filtered) task count shrinks below the current page.
+  useEffect(() => {
+    if (page > pageCount - 1) setPage(pageCount - 1);
+  }, [page, pageCount]);
 
   const renderPriorityIndicator = (priority: string | null) => {
     const config = priorityConfig[priority || 'medium'];
@@ -343,7 +381,7 @@ export const TaskTableView = ({
               </td>
             </tr>
           ) : (
-            sortedTasks.map((task) => {
+            pagedTasks.map((task) => {
               const isBulkSelected = selectedTasks.has(task.id);
               const isFading = fadingTasks.has(task.id);
 
@@ -518,6 +556,49 @@ export const TaskTableView = ({
             Add task
           </button>
         )}
+      </div>
+
+      {/* Pagination footer */}
+      <div className="flex items-center justify-between gap-4 px-4 py-2.5 border-t text-[13px] text-[#5f6368] dark:text-muted-foreground" style={{ borderColor: '#c8bdd6' }}>
+        <div className="flex items-center gap-2">
+          <span>Rows per page</span>
+          <Select value={String(pageSize)} onValueChange={(v) => setPageSize(v === 'all' ? 'all' : Number(v) as PageSizeOption)}>
+            <SelectTrigger className="h-8 w-[84px] rounded-lg text-[13px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((opt) => (
+                <SelectItem key={String(opt)} value={String(opt)}>{opt === 'all' ? 'All' : opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="tabular-nums">
+            {totalCount === 0 ? '0' : `${pageStart + 1}–${pageEnd}`} of {totalCount}
+          </span>
+          {pageSize !== 'all' && pageCount > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(safePage - 1)}
+                disabled={safePage <= 0}
+                className="h-8 w-8 flex items-center justify-center rounded-lg border border-[#c8bdd6] text-[#3b2778] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#f5f0fa] dark:hover:bg-muted transition-colors"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="px-1 tabular-nums">{safePage + 1} / {pageCount}</span>
+              <button
+                onClick={() => setPage(safePage + 1)}
+                disabled={safePage >= pageCount - 1}
+                className="h-8 w-8 flex items-center justify-center rounded-lg border border-[#c8bdd6] text-[#3b2778] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#f5f0fa] dark:hover:bg-muted transition-colors"
+                aria-label="Next page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

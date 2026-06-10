@@ -115,6 +115,27 @@ async function fetchFromGoogle(
   }
 }
 
+async function deleteFromGoogle(
+  accessToken: string,
+  calendarId: string | null,
+  googleEventId: string
+): Promise<boolean> {
+  const calId = calendarId || 'primary';
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(googleEventId)}`,
+      { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    // 200/204 = deleted; 404/410 = already gone → treat as success (idempotent).
+    if (response.ok || response.status === 404 || response.status === 410) return true;
+    console.error('Google Calendar delete error:', await response.text());
+    return false;
+  } catch (err) {
+    console.error('Error deleting from Google Calendar:', err);
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -129,7 +150,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json();
-    const { action, appointmentId } = body;
+    const { action, appointmentId, googleEventId } = body;
 
     // Handle scheduled sync (called by cron job without user auth)
     if (action === 'scheduledSync') {
@@ -423,6 +444,20 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ success: true, imported, updated }),
         { headers: corsHeaders }
+      );
+    }
+
+    if (action === 'deleteFromGoogle') {
+      if (!googleEventId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing googleEventId' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+      const ok = await deleteFromGoogle(accessToken, connection.calendar_id, googleEventId);
+      return new Response(
+        JSON.stringify({ success: ok }),
+        { status: ok ? 200 : 500, headers: corsHeaders }
       );
     }
 

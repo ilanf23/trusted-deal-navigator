@@ -9,6 +9,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
 import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
+import { EntityCallHistorySection } from '@/components/admin/shared/EntityCallHistorySection';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -1522,6 +1523,22 @@ export default function CompanyExpandedView() {
                 onAddOpenChange={setAddFilesOpen}
               />
             </RelatedSection>
+
+            {/* Calls — every call across this company's phones + its contacts/deals */}
+            <EntityCallHistorySection
+              scopeKey={`company-${company.id}`}
+              leadIds={[
+                ...relatedPeople.map((p) => p.id),
+                ...relatedDeals.map((d) => d.id),
+              ]}
+              phoneNumbers={[
+                company.phone,
+                company.direct_phone,
+                company.fax_phone,
+                ...relatedPeople.map((p) => p.phone),
+              ]}
+              teamMembers={teamMembers}
+            />
           </div>
         </div>
       </div>

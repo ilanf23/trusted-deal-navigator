@@ -4,11 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCall } from '@/contexts/CallContext';
 import {
   Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed,
-  Play, FileText, Clock, ChevronDown, RefreshCw, Loader2, AlertCircle,
+  Play, FileText, Clock, ChevronDown, ChevronRight, RefreshCw, Loader2, AlertCircle,
 } from 'lucide-react';
 import { CallRecordingPlayer } from './CallRecordingPlayer';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -16,13 +17,17 @@ import {
 import { toast } from 'sonner';
 
 /**
- * Person-scoped call history for the People expanded view.
+ * Generic, self-contained "Calls" section used by the People, Company, and (via
+ * a thin wrapper) deal expanded views.
  *
- * Unlike LeadCallHistorySection (scoped to a single deal via lead_id), this
- * collects EVERY call tied to the person — by the lead_id link AND by matching
- * any of the person's phone numbers (people.phone + entity_phones) against the
- * communications row's phone_number. That way a call placed/received on any of
- * the contact's numbers shows up here with its recording + transcript.
+ * It surfaces every call related to an entity by matching on TWO things:
+ *   - lead_id  — calls explicitly linked to any of the supplied `leadIds`
+ *                (e.g. the person id, or all of a company's people + deals).
+ *   - phone    — calls whose communications.phone_number matches any of the
+ *                supplied `phoneNumbers` (matched on the last 10 digits).
+ *
+ * Each row opens a dialog with the recording player + AI transcript (with
+ * processing / failed / no-recording states) plus recover / retry / redial.
  */
 
 interface CommunicationRow {
@@ -66,12 +71,15 @@ function detailState(c: CommunicationRow): CallDetailState {
   return { kind: 'no-recording', hasCallSid: !!c.call_sid };
 }
 
-interface PersonCallHistorySectionProps {
-  personId: string;
-  /** All of the person's phone numbers (people.phone + entity_phones). Used to
-   *  match calls whose communications.phone_number is one of these numbers. */
-  phoneNumbers: Array<string | null | undefined>;
+interface EntityCallHistorySectionProps {
+  /** ids to match against communications.lead_id (person ids, deal ids, …). */
+  leadIds?: Array<string | null | undefined>;
+  /** phone numbers to match against communications.phone_number (any format). */
+  phoneNumbers?: Array<string | null | undefined>;
   teamMembers: Array<{ id: string; name: string }>;
+  /** Stable key fragment so the query cache is unique per host view. */
+  scopeKey: string;
+  defaultOpen?: boolean;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -92,38 +100,47 @@ function directionIcon(direction: string, status: string | null) {
   return <PhoneOutgoing className="h-3.5 w-3.5 text-emerald-600" />;
 }
 
-export function PersonCallHistorySection({
-  personId,
-  phoneNumbers,
+export function EntityCallHistorySection({
+  leadIds = [],
+  phoneNumbers = [],
   teamMembers,
-}: PersonCallHistorySectionProps) {
+  scopeKey,
+  defaultOpen = true,
+}: EntityCallHistorySectionProps) {
   const { makeOutboundCall } = useCall();
   const queryClient = useQueryClient();
   const [activeCall, setActiveCall] = useState<CommunicationRow | null>(null);
+  const [open, setOpen] = useState(defaultOpen);
   const [busyAction, setBusyAction] = useState<null | 'recover' | 'retry'>(null);
 
-  // Normalize the person's numbers to their last 10 digits for matching.
-  const last10s = useMemo(() => {
-    return Array.from(
-      new Set(
-        phoneNumbers
-          .map((p) => (p ?? '').replace(/\D/g, '').slice(-10))
-          .filter((d) => d.length === 10),
-      ),
-    );
-  }, [phoneNumbers]);
+  const cleanLeadIds = useMemo(
+    () => Array.from(new Set((leadIds.filter(Boolean) as string[]))),
+    [leadIds],
+  );
 
-  const queryKey = ['person-call-history', personId, last10s.join(',')];
+  const last10s = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          phoneNumbers
+            .map((p) => (p ?? '').replace(/\D/g, '').slice(-10))
+            .filter((d) => d.length === 10),
+        ),
+      ),
+    [phoneNumbers],
+  );
+
+  const queryKey = ['entity-call-history', scopeKey, cleanLeadIds.join(','), last10s.join(',')];
+  const hasMatchers = cleanLeadIds.length > 0 || last10s.length > 0;
 
   const { data: calls = [], isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
-      // Match calls linked to the person (lead_id) OR placed/received on any of
-      // the person's phone numbers.
-      const orParts = [
-        `lead_id.eq.${personId}`,
-        ...last10s.map((d) => `phone_number.ilike.%${d}%`),
-      ];
+      const orParts: string[] = [];
+      if (cleanLeadIds.length > 0) orParts.push(`lead_id.in.(${cleanLeadIds.join(',')})`);
+      for (const d of last10s) orParts.push(`phone_number.ilike.%${d}%`);
+      if (orParts.length === 0) return [];
+
       const { data, error } = await supabase
         .from('communications')
         .select(
@@ -136,10 +153,8 @@ export function PersonCallHistorySection({
       if (error) throw error;
       return (data ?? []) as CommunicationRow[];
     },
-    enabled: !!personId,
+    enabled: hasMatchers,
     staleTime: 30_000,
-    // Poll only while a transcript is mid-flight so the row flips to ready
-    // without a manual refresh.
     refetchInterval: (query) => {
       const rows = (query.state.data ?? []) as CommunicationRow[];
       const pending = rows.some(
@@ -149,11 +164,10 @@ export function PersonCallHistorySection({
     },
   });
 
-  // Live-update the open call the instant Whisper finishes.
   useEffect(() => {
     if (!activeCall?.id) return;
     const channel = supabase
-      .channel(`person-comm-${activeCall.id}`)
+      .channel(`entity-comm-${activeCall.id}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'communications', filter: `id=eq.${activeCall.id}` },
@@ -168,7 +182,7 @@ export function PersonCallHistorySection({
       void supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCall?.id, personId]);
+  }, [activeCall?.id, scopeKey]);
 
   const invalidateAll = () => {
     void queryClient.invalidateQueries({ queryKey });
@@ -190,11 +204,9 @@ export function PersonCallHistorySection({
       const wasUpdated = results.some(
         (r) => r.action === 'updated' || r.action === 'updated-and-transcribed',
       );
-      if (wasUpdated) {
-        toast.success('Recording recovered');
-      } else {
-        toast.message('No recording found in Twilio for this call');
-      }
+      toast[wasUpdated ? 'success' : 'message'](
+        wasUpdated ? 'Recording recovered' : 'No recording found in Twilio for this call',
+      );
       invalidateAll();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Recovery failed');
@@ -239,90 +251,94 @@ export function PersonCallHistorySection({
   const handleRedial = (phone: string | null) => {
     const target = phone ?? last10s[0] ?? '';
     if (!target) return;
-    void makeOutboundCall(target, personId, undefined);
+    void makeOutboundCall(target, cleanLeadIds[0], undefined);
   };
 
   const activeCallMember = activeCall?.user_id ? teamMemberMap[activeCall.user_id] ?? '—' : '—';
 
   return (
-    <Collapsible defaultOpen>
-      <div className="border-t border-border">
-        <CollapsibleTrigger className="flex items-center w-full px-3 md:px-3.5 xl:px-5 py-3 hover:bg-muted/30 transition-colors">
-          <span className="text-sm font-medium text-foreground">Calls ({calls.length})</span>
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1.5" />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
-          <div className="space-y-1.5">
-            {isLoading && <p className="text-xs text-muted-foreground">Loading calls…</p>}
-            {!isLoading && calls.length === 0 && (
-              <p className="text-xs text-muted-foreground">No calls logged for this contact</p>
-            )}
-            {calls.map((c) => {
-              const member = c.user_id ? teamMemberMap[c.user_id] ?? '—' : '—';
-              const hasDetail = !!(c.recording_url || c.transcript);
-              const state = detailState(c);
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setActiveCall(c)}
-                  className="w-full text-left rounded-lg border border-border bg-card/60 hover:bg-muted/60 px-2 py-1.5 text-xs transition-colors cursor-pointer"
-                  title={hasDetail ? 'View transcript & recording' : 'View call details'}
-                >
-                  <div className="flex items-center gap-2">
-                    {directionIcon(c.direction, c.status)}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">
-                        {c.phone_number ?? 'Unknown number'}
-                        {(c.status === 'missed' || c.status === 'no-answer') && (
-                          <span className="ml-1.5 text-[10px] text-red-500 font-semibold">MISSED</span>
-                        )}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {format(parseISO(c.created_at), 'MMM d, yyyy · h:mm a')} ·{' '}
-                        <Clock className="inline h-2.5 w-2.5 -mt-0.5" /> {formatDuration(c.duration_seconds)} · {member}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {state.kind === 'transcript-ready' && (
-                        <FileText className="h-3.5 w-3.5 text-violet-600" />
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 hover:bg-muted/50 px-4 rounded-lg transition-colors">
+        {open ? (
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+        )}
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+          <Phone className="h-3.5 w-3.5 text-rose-500" /> Calls
+        </span>
+        <Badge
+          variant="secondary"
+          className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1 bg-muted text-muted-foreground"
+        >
+          {calls.length}
+        </Badge>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-4 pb-2">
+        <div className="space-y-1.5 py-1">
+          {isLoading && <p className="text-xs text-muted-foreground">Loading calls…</p>}
+          {!isLoading && calls.length === 0 && (
+            <p className="text-xs text-muted-foreground">No calls logged</p>
+          )}
+          {calls.map((c) => {
+            const member = c.user_id ? teamMemberMap[c.user_id] ?? '—' : '—';
+            const hasDetail = !!(c.recording_url || c.transcript);
+            const state = detailState(c);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setActiveCall(c)}
+                className="w-full text-left rounded-lg border border-border bg-card/60 hover:bg-muted/60 px-2 py-1.5 text-xs transition-colors cursor-pointer"
+                title={hasDetail ? 'View transcript & recording' : 'View call details'}
+              >
+                <div className="flex items-center gap-2">
+                  {directionIcon(c.direction, c.status)}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate">
+                      {c.phone_number ?? 'Unknown number'}
+                      {(c.status === 'missed' || c.status === 'no-answer') && (
+                        <span className="ml-1.5 text-[10px] text-red-500 font-semibold">MISSED</span>
                       )}
-                      {state.kind === 'transcript-processing' && (
-                        <Loader2 className="h-3.5 w-3.5 text-sky-600 animate-spin" />
-                      )}
-                      <Button
-                        asChild
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        title="Redial"
-                      >
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => {
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {format(parseISO(c.created_at), 'MMM d, yyyy · h:mm a')} ·{' '}
+                      <Clock className="inline h-2.5 w-2.5 -mt-0.5" /> {formatDuration(c.duration_seconds)} · {member}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {state.kind === 'transcript-ready' && (
+                      <FileText className="h-3.5 w-3.5 text-violet-600" />
+                    )}
+                    {state.kind === 'transcript-processing' && (
+                      <Loader2 className="h-3.5 w-3.5 text-sky-600 animate-spin" />
+                    )}
+                    <Button asChild variant="ghost" size="icon" className="h-6 w-6" title="Redial">
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRedial(c.phone_number);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
                             e.stopPropagation();
                             handleRedial(c.phone_number);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleRedial(c.phone_number);
-                            }
-                          }}
-                        >
-                          <Phone className="h-3 w-3" />
-                        </span>
-                      </Button>
-                    </div>
+                          }
+                        }}
+                      >
+                        <Phone className="h-3 w-3" />
+                      </span>
+                    </Button>
                   </div>
-                </button>
-              );
-            })}
-          </div>
-        </CollapsibleContent>
-      </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </CollapsibleContent>
 
       <Dialog open={!!activeCall} onOpenChange={(o) => !o && setActiveCall(null)}>
         <DialogContent className="max-w-lg">

@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
+import { syncAppointmentToGoogle } from '@/lib/calendarSync';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -27,7 +28,7 @@ import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
-import { PersonCallHistorySection } from '@/components/admin/shared/PersonCallHistorySection';
+import { EntityCallHistorySection } from '@/components/admin/shared/EntityCallHistorySection';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
@@ -1595,17 +1596,25 @@ export default function PeopleExpandedView() {
 
   const handleSaveEvent = useCallback(async () => {
     if (!newEventTitle.trim() || !newEventDate || !personId) return;
+    // Require a loaded team member so the appointment is owned by its creator.
+    // The main calendar filters by user_id, so a null owner makes the event
+    // invisible there (it would only show on this profile, filtered by lead_id).
+    if (!teamMember?.id) {
+      toast.error('Your profile is still loading — try again in a moment.');
+      return;
+    }
     setSavingEvent(true);
     const startTime = `${newEventDate}T${newEventTime}:00`;
     const endTime = `${newEventDate}T${newEventEndTime}:00`;
-    const { error } = await supabase.from('appointments').insert({
+    const { data: created, error } = await supabase.from('appointments').insert({
       title: newEventTitle.trim(),
       start_time: startTime,
       end_time: endTime,
       lead_id: personId,
       appointment_type: newEventType,
-      user_name: teamMember?.name ?? null,
-    });
+      user_id: teamMember.id,
+      user_name: teamMember.name ?? null,
+    }).select('id').single();
     setSavingEvent(false);
     if (error) {
       toast.error('Failed to create event');
@@ -1618,6 +1627,15 @@ export default function PeopleExpandedView() {
     setNewEventEndTime('10:00');
     setShowAddEvent(false);
     queryClient.invalidateQueries({ queryKey: ['person-appointments', personId] });
+    // Also refresh the main calendar, which reads from the ['appointments'] key,
+    // so a profile-created event appears there without a manual reload.
+    queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    // Best-effort push to Google Calendar.
+    if (created) {
+      syncAppointmentToGoogle(created.id).then(() =>
+        queryClient.invalidateQueries({ queryKey: ['person-appointments', personId] })
+      );
+    }
   }, [newEventTitle, newEventDate, newEventTime, newEventEndTime, newEventType, personId, teamMember, queryClient]);
 
   // Link an existing project to this person. Because `entity_projects` rows
@@ -3092,8 +3110,9 @@ export default function PeopleExpandedView() {
 
             {/* Calls — every call linked to this person by lead_id or phone match */}
             {personId && (
-              <PersonCallHistorySection
-                personId={personId}
+              <EntityCallHistorySection
+                scopeKey={`person-${personId}`}
+                leadIds={[personId]}
                 phoneNumbers={[person?.phone, ...personPhones.map((p) => p.phone_number)]}
                 teamMembers={teamMembers}
               />

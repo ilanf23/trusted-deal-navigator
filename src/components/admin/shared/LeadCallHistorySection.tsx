@@ -80,6 +80,10 @@ interface LeadCallHistorySectionProps {
   /** Optional: a phone number to use when "redial" is clicked with no
    *  phone on the row (falls back to the deal's primary phone). */
   fallbackPhone?: string | null;
+  /** Optional: also surface calls whose phone_number matches any of these
+   *  (matched on the last 10 digits), not just calls linked by lead_id.
+   *  Lets a deal show inbound calls that were attributed to the contact. */
+  phoneNumbers?: Array<string | null | undefined>;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -105,6 +109,7 @@ export function LeadCallHistorySection({
   entityType,
   teamMembers,
   fallbackPhone,
+  phoneNumbers = [],
 }: LeadCallHistorySectionProps) {
   const { makeOutboundCall } = useCall();
   const queryClient = useQueryClient();
@@ -112,16 +117,34 @@ export function LeadCallHistorySection({
   const [open, setOpen] = useState(true);
   const [busyAction, setBusyAction] = useState<null | 'recover' | 'retry'>(null);
 
+  const last10s = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          phoneNumbers
+            .map((p) => (p ?? '').replace(/\D/g, '').slice(-10))
+            .filter((d) => d.length === 10),
+        ),
+      ),
+    [phoneNumbers],
+  );
+
   const { data: calls = [], isLoading } = useQuery({
-    queryKey: ['lead-call-history', entityType, leadId],
+    queryKey: ['lead-call-history', entityType, leadId, last10s.join(',')],
     queryFn: async () => {
+      // Match calls linked to this deal (lead_id) OR placed/received on any of
+      // the deal contact's phone numbers.
+      const orParts = [
+        `lead_id.eq.${leadId}`,
+        ...last10s.map((d) => `phone_number.ilike.%${d}%`),
+      ];
       const { data, error } = await supabase
         .from('communications')
         .select(
           'id, communication_type, direction, status, phone_number, duration_seconds, recording_url, recording_status, transcript, transcription_status, transcription_error, created_at, user_id, content, call_sid',
         )
-        .eq('lead_id', leadId)
         .eq('communication_type', 'call')
+        .or(orParts.join(','))
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
