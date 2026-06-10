@@ -38,7 +38,7 @@ export interface PipelineRecordsSectionProps {
   getRecordRoute?: (pipelineName: string, recordId: string) => string;
   /** Form prefill applied once when the Add Opportunity dialog opens. */
   prefill?: DialogPrefill;
-  /** Rows inserted into entity_contacts after the new deal is created. */
+  /** Rows inserted into deal_contacts after the new deal is created. */
   linkContacts?: LinkContact[];
   /** Owner options for the dialog's Owner picker. */
   ownerOptions: { value: string; label: string }[];

@@ -182,7 +182,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
           *,
           entity_emails(email, email_type),
           lead_phones(id, phone_number, phone_type),
-          entity_contacts(id, name, title, email, phone, is_primary),
+          deal_contacts(id, name, title, email, phone, is_primary),
           lead_responses(*)
         `);
       return data || [];
@@ -311,7 +311,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
         .from('entity_emails')
         .select('email');
       const { data: entityContacts } = await supabase
-        .from('entity_contacts')
+        .from('deal_contacts')
         .select('email')
         .not('email', 'is', null);
       const allEmailsSet = new Set<string>();

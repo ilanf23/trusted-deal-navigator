@@ -56,7 +56,7 @@ export interface AddOpportunityDialogProps {
   allowPipelineSwitch?: boolean;
   /** Form fields to seed once the dialog opens (name/email/phone/company etc.). */
   prefill?: Partial<NewOpportunityForm>;
-  /** Rows to insert into entity_contacts after the deal is created, linking it to people. */
+  /** Rows to insert into deal_contacts after the deal is created, linking it to people. */
   linkContacts?: LinkContact[];
 }
 
@@ -383,19 +383,18 @@ export function AddOpportunityDialog({
 
       const createdLead = created as { id: string; name: string } | null;
 
-      // Link contacts to the new deal (entity_contacts is the canonical join table —
-      // entity_type matches the pipeline the deal landed in).
+      // Link contacts to the new deal (deal_contacts holds contact snapshots per deal).
       if (createdLead && selectedContacts.length) {
         const rows = selectedContacts.map((c) => ({
-          entity_id: createdLead.id,
-          entity_type: activeTable,
+          deal_id: createdLead.id,
+          entity_id: createdLead.id, // legacy NOT NULL column — mirrors deal_id until dropped
           name: c.name,
           email: c.email ?? null,
           phone: c.phone ?? null,
           title: c.title ?? null,
           is_primary: c.is_primary ?? false,
         }));
-        const { error: linkErr } = await supabase.from('entity_contacts').insert(rows);
+        const { error: linkErr } = await supabase.from('deal_contacts').insert(rows);
         if (linkErr) {
           console.error('Failed to link contacts to new opportunity', linkErr);
           toast.error('Opportunity created, but linking contacts failed');

@@ -736,10 +736,9 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
     queryKey: ['lead-related', 'contacts', lead.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_contacts')
+        .from('deal_contacts')
         .select('id, name, title, email, phone, is_primary')
-        .eq('entity_id', lead.id)
-        .eq('entity_type', 'deal')
+        .eq('deal_id', lead.id)
         .order('is_primary', { ascending: false });
       return data || [];
     },

@@ -454,7 +454,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-contacts', lead?.id],
     queryFn: async () => {
       if (!lead) return [];
-      const { data } = await supabase.from('entity_contacts').select('*').eq('entity_id', lead.id).order('is_primary', { ascending: false });
+      const { data } = await supabase.from('deal_contacts').select('*').eq('deal_id', lead.id).order('is_primary', { ascending: false });
       return (data || []) as LeadContact[];
     },
     enabled: !!lead && open,
@@ -833,9 +833,9 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const addLeadContact = useMutation({
     mutationFn: async (contact: { name: string; title?: string; email?: string; phone?: string; is_primary?: boolean }) => {
       if (!lead) return;
-      const { error } = await supabase.from('entity_contacts').insert({
-        entity_id: lead.id,
-        entity_type: 'deal',
+      const { error } = await supabase.from('deal_contacts').insert({
+        deal_id: lead.id,
+        entity_id: lead.id, // legacy NOT NULL column — mirrors deal_id until dropped
         name: contact.name,
         title: contact.title || null,
         email: contact.email || null,
@@ -858,7 +858,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
   const deleteLeadContact = useMutation({
     mutationFn: async (contactId: string) => {
-      const { error } = await supabase.from('entity_contacts').delete().eq('id', contactId);
+      const { error } = await supabase.from('deal_contacts').delete().eq('id', contactId);
       if (error) throw error;
     },
     onSuccess: () => {

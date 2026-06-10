@@ -63,7 +63,7 @@ interface PipelineDetailPanelProps {
   onExpand?: () => void;
   onStageChange?: (leadId: string, newStatus: string) => void;
   onLeadUpdate?: (updatedLead: Lead) => void;
-  /** Which deal pipeline this lead belongs to. Drives entity_contacts filtering and the Add Opportunity default. Defaults to 'potential'. */
+  /** Which deal pipeline this lead belongs to. Drives deal_contacts filtering and the Add Opportunity default. Defaults to 'potential'. */
   tableName?: CrmTable;
 }
 
@@ -678,10 +678,9 @@ function RelatedTabContent({
     queryKey: ['pipeline-related', 'contacts', lead.id, tableName],
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_contacts')
+        .from('deal_contacts')
         .select('id, name, title, email, phone, is_primary')
-        .eq('entity_id', lead.id)
-        .eq('entity_type', 'deal')
+        .eq('deal_id', lead.id)
         .order('is_primary', { ascending: false });
       return data || [];
     },

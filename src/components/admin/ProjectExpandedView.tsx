@@ -229,10 +229,9 @@ export default function ProjectExpandedView() {
     queryKey: ['lead-contacts', project?.entity_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_contacts')
+        .from('deal_contacts')
         .select('*')
-        .eq('entity_id', project!.entity_id)
-        .eq('entity_type', 'deal');
+        .eq('deal_id', project!.entity_id);
       return data ?? [];
     },
     enabled: !!project?.entity_id,

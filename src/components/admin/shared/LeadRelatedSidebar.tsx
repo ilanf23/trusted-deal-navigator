@@ -412,8 +412,8 @@ export default function LeadRelatedSidebar({
   const { data: contacts = [] } = useQuery<LeadContact[]>({
     queryKey: contactsKey,
     queryFn: async () => {
-      const { data } = await supabase.from('entity_contacts').select('*')
-        .eq('entity_id', leadId).eq('entity_type', 'deal');
+      const { data } = await supabase.from('deal_contacts').select('*')
+        .eq('deal_id', leadId);
       return (data ?? []) as LeadContact[];
     },
     enabled: !!leadId,
@@ -649,9 +649,9 @@ export default function LeadRelatedSidebar({
   }) => {
     if (!leadId) return;
     setSavingContact(true);
-    const { error } = await supabase.from('entity_contacts').insert({
-      entity_id: leadId,
-      entity_type: 'deal',
+    const { error } = await supabase.from('deal_contacts').insert({
+      deal_id: leadId,
+      entity_id: leadId, // legacy NOT NULL column — mirrors deal_id until dropped
       name: person.name,
       title: person.title || null,
       email: person.email || null,
@@ -669,7 +669,7 @@ export default function LeadRelatedSidebar({
 
   const updateContactMutation = useMutation({
     mutationFn: async ({ contactId, name, title }: { contactId: string; name: string; title: string }) => {
-      const { error } = await supabase.from('entity_contacts').update({ name, title: title || null }).eq('id', contactId);
+      const { error } = await supabase.from('deal_contacts').update({ name, title: title || null }).eq('id', contactId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -681,7 +681,7 @@ export default function LeadRelatedSidebar({
 
   const deleteContactMutation = useMutation({
     mutationFn: async (contactId: string) => {
-      const { error } = await supabase.from('entity_contacts').delete().eq('id', contactId);
+      const { error } = await supabase.from('deal_contacts').delete().eq('id', contactId);
       if (error) throw error;
     },
     onSuccess: () => {

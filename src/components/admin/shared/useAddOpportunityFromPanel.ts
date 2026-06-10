@@ -6,7 +6,7 @@ import type {
 } from '@/components/admin/AddOpportunityDialog';
 import type { CrmTable } from '@/hooks/usePipelineMutations';
 
-/** Subset of an `entity_contacts` row that the dialog needs to recreate the link on the new deal. */
+/** Subset of a `deal_contacts` row that the dialog needs to recreate the link on the new deal. */
 export type SourceContact = {
   name: string;
   email?: string | null;
@@ -19,7 +19,7 @@ export type SourceContact = {
  * Wires the "Add Opportunity from a deal's Related tab" flow used by
  * UnderwritingDetailPanel and PipelineDetailPanel. The panel already has the
  * source deal's contacts in hand — pass them in and we'll forward to the
- * dialog so the new deal gets the same `entity_contacts` rows.
+ * dialog so the new deal gets the same `deal_contacts` rows.
  */
 export function useAddOpportunityFromPanel(args: {
   defaultPipeline: CrmTable;
