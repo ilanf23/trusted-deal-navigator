@@ -539,7 +539,7 @@ export function ExpandedLeftColumn({
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 opacity-0 group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100 transition-opacity"
+                    className="shrink-0 inline-flex items-center gap-1 h-7 pl-2 pr-2.5 rounded-full border border-[#c8bdd6] bg-white text-xs font-medium text-[#3b2778] hover:bg-[#eee6f6] data-[state=open]:bg-[#eee6f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b2778]/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     aria-label="Change primary contact"
                     title="Change primary contact"
                     disabled={setPrimaryContact.isPending}
@@ -549,6 +549,7 @@ export function ExpandedLeftColumn({
                     ) : (
                       <ChevronsUpDown className="h-3.5 w-3.5" />
                     )}
+                    Change
                   </button>
                 </PopoverTrigger>
                 <PopoverContent side="bottom" align="end" className="w-72 p-1">
