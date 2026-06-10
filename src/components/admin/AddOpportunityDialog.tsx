@@ -387,7 +387,6 @@ export function AddOpportunityDialog({
       if (createdLead && selectedContacts.length) {
         const rows = selectedContacts.map((c) => ({
           deal_id: createdLead.id,
-          entity_id: createdLead.id, // legacy NOT NULL column — mirrors deal_id until dropped
           name: c.name,
           email: c.email ?? null,
           phone: c.phone ?? null,

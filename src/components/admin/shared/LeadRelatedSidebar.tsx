@@ -651,7 +651,6 @@ export default function LeadRelatedSidebar({
     setSavingContact(true);
     const { error } = await supabase.from('deal_contacts').insert({
       deal_id: leadId,
-      entity_id: leadId, // legacy NOT NULL column — mirrors deal_id until dropped
       name: person.name,
       title: person.title || null,
       email: person.email || null,

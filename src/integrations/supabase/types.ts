@@ -705,7 +705,7 @@ export type Database = {
           created_at: string
           deal_id: string
           email: string | null
-          entity_id: string
+          entity_id: string | null
           entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
           id: string
           is_primary: boolean | null
@@ -719,7 +719,7 @@ export type Database = {
           created_at?: string
           deal_id: string
           email?: string | null
-          entity_id: string
+          entity_id?: string | null
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           is_primary?: boolean | null
@@ -733,7 +733,7 @@ export type Database = {
           created_at?: string
           deal_id?: string
           email?: string | null
-          entity_id?: string
+          entity_id?: string | null
           entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
           id?: string
           is_primary?: boolean | null

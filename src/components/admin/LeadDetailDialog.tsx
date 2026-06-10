@@ -835,7 +835,6 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       if (!lead) return;
       const { error } = await supabase.from('deal_contacts').insert({
         deal_id: lead.id,
-        entity_id: lead.id, // legacy NOT NULL column — mirrors deal_id until dropped
         name: contact.name,
         title: contact.title || null,
         email: contact.email || null,
