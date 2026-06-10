@@ -3175,10 +3175,6 @@ export type Database = {
         Returns: boolean
       }
       is_team_owner: { Args: never; Returns: boolean }
-      move_deal_between_pipelines: {
-        Args: { p_deal_id: string; p_source: string; p_target: string }
-        Returns: undefined
-      }
       run_read_sql: { Args: { p_query: string }; Returns: Json }
     }
     Enums: {
