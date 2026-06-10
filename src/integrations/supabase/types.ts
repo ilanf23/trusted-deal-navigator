@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       active_calls: {
@@ -181,241 +156,43 @@ export type Database = {
           },
         ]
       }
-      ai_agent_batches: {
-        Row: {
-          conversation_id: string | null
-          created_at: string | null
-          id: string
-          mode: string
-          prompt_summary: string | null
-          status: string
-          total_changes: number | null
-          user_id: string
-        }
-        Insert: {
-          conversation_id?: string | null
-          created_at?: string | null
-          id?: string
-          mode: string
-          prompt_summary?: string | null
-          status?: string
-          total_changes?: number | null
-          user_id: string
-        }
-        Update: {
-          conversation_id?: string | null
-          created_at?: string | null
-          id?: string
-          mode?: string
-          prompt_summary?: string | null
-          status?: string
-          total_changes?: number | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_agent_batches_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "ai_conversations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ai_agent_changes: {
-        Row: {
-          ai_reasoning: string | null
-          batch_id: string | null
-          batch_order: number | null
-          conversation_id: string | null
-          created_at: string | null
-          description: string
-          id: string
-          mode: string
-          model_used: string | null
-          new_values: Json
-          old_values: Json | null
-          operation: string
-          status: string
-          target_id: string
-          target_table: string
-          team_member_id: string | null
-          undone_at: string | null
-          undone_by: string | null
-          user_id: string
-        }
-        Insert: {
-          ai_reasoning?: string | null
-          batch_id?: string | null
-          batch_order?: number | null
-          conversation_id?: string | null
-          created_at?: string | null
-          description: string
-          id?: string
-          mode: string
-          model_used?: string | null
-          new_values: Json
-          old_values?: Json | null
-          operation: string
-          status?: string
-          target_id: string
-          target_table: string
-          team_member_id?: string | null
-          undone_at?: string | null
-          undone_by?: string | null
-          user_id: string
-        }
-        Update: {
-          ai_reasoning?: string | null
-          batch_id?: string | null
-          batch_order?: number | null
-          conversation_id?: string | null
-          created_at?: string | null
-          description?: string
-          id?: string
-          mode?: string
-          model_used?: string | null
-          new_values?: Json
-          old_values?: Json | null
-          operation?: string
-          status?: string
-          target_id?: string
-          target_table?: string
-          team_member_id?: string | null
-          undone_at?: string | null
-          undone_by?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_agent_changes_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "ai_agent_batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_agent_changes_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "ai_conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_agent_changes_team_member_id_fkey"
-            columns: ["team_member_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ai_audit_log: {
-        Row: {
-          conversation_id: string | null
-          error_message: string | null
-          function_name: string
-          id: string
-          mode: string | null
-          occurred_at: string
-          record_ids: string[]
-          scope: Json
-          success: boolean
-          tool: string
-          user_id: string
-        }
-        Insert: {
-          conversation_id?: string | null
-          error_message?: string | null
-          function_name: string
-          id?: string
-          mode?: string | null
-          occurred_at?: string
-          record_ids?: string[]
-          scope?: Json
-          success: boolean
-          tool: string
-          user_id: string
-        }
-        Update: {
-          conversation_id?: string | null
-          error_message?: string | null
-          function_name?: string
-          id?: string
-          mode?: string | null
-          occurred_at?: string
-          record_ids?: string[]
-          scope?: Json
-          success?: boolean
-          tool?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      ai_conversation_messages: {
-        Row: {
-          content: string
-          conversation_id: string
-          created_at: string
-          id: string
-          message_type: string | null
-          metadata: Json | null
-          role: string
-        }
-        Insert: {
-          content: string
-          conversation_id: string
-          created_at?: string
-          id?: string
-          message_type?: string | null
-          metadata?: Json | null
-          role: string
-        }
-        Update: {
-          content?: string
-          conversation_id?: string
-          created_at?: string
-          id?: string
-          message_type?: string | null
-          metadata?: Json | null
-          role?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_conversation_messages_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "ai_conversations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ai_conversations: {
+      ai_events: {
         Row: {
           created_at: string
+          event_type: Database["public"]["Enums"]["ai_event_type"]
           id: string
-          mode: string | null
-          title: string | null
+          parent_id: string | null
+          payload: Json
           updated_at: string
           user_id: string | null
         }
         Insert: {
           created_at?: string
+          event_type: Database["public"]["Enums"]["ai_event_type"]
           id?: string
-          mode?: string | null
-          title?: string | null
+          parent_id?: string | null
+          payload?: Json
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           created_at?: string
+          event_type?: Database["public"]["Enums"]["ai_event_type"]
           id?: string
-          mode?: string | null
-          title?: string | null
+          parent_id?: string | null
+          payload?: Json
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_events_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointments: {
         Row: {
@@ -493,6 +270,7 @@ export type Database = {
           priority: string | null
           resolved_at: string | null
           screenshot_url: string | null
+          solution: string | null
           status: string | null
           submitted_by: string | null
           submitted_by_email: string | null
@@ -509,6 +287,7 @@ export type Database = {
           priority?: string | null
           resolved_at?: string | null
           screenshot_url?: string | null
+          solution?: string | null
           status?: string | null
           submitted_by?: string | null
           submitted_by_email?: string | null
@@ -525,6 +304,7 @@ export type Database = {
           priority?: string | null
           resolved_at?: string | null
           screenshot_url?: string | null
+          solution?: string | null
           status?: string | null
           submitted_by?: string | null
           submitted_by_email?: string | null
@@ -624,6 +404,7 @@ export type Database = {
           recording_url: string | null
           status: string | null
           transcript: string | null
+          transcription_attempts: number
           transcription_error: string | null
           transcription_status: string | null
           transcription_updated_at: string | null
@@ -645,6 +426,7 @@ export type Database = {
           recording_url?: string | null
           status?: string | null
           transcript?: string | null
+          transcription_attempts?: number
           transcription_error?: string | null
           transcription_status?: string | null
           transcription_updated_at?: string | null
@@ -666,6 +448,7 @@ export type Database = {
           recording_url?: string | null
           status?: string | null
           transcript?: string | null
+          transcription_attempts?: number
           transcription_error?: string | null
           transcription_status?: string | null
           transcription_updated_at?: string | null
@@ -690,6 +473,7 @@ export type Database = {
           copper_company_id: string | null
           created_at: string
           description: string | null
+          entity_id: string
           id: string
           last_activity_at: string | null
           notes: string | null
@@ -708,6 +492,7 @@ export type Database = {
           copper_company_id?: string | null
           created_at?: string
           description?: string | null
+          entity_id: string
           id?: string
           last_activity_at?: string | null
           notes?: string | null
@@ -726,6 +511,7 @@ export type Database = {
           copper_company_id?: string | null
           created_at?: string
           description?: string | null
+          entity_id?: string
           id?: string
           last_activity_at?: string | null
           notes?: string | null
@@ -742,6 +528,13 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companies_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
             referencedColumns: ["id"]
           },
         ]
@@ -906,6 +699,59 @@ export type Database = {
           metric_value?: string
         }
         Relationships: []
+      }
+      deal_contacts: {
+        Row: {
+          created_at: string
+          deal_id: string
+          email: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          id: string
+          is_primary: boolean | null
+          name: string
+          notes: string | null
+          phone: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          email?: string | null
+          entity_id: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          is_primary?: boolean | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          email?: string | null
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          id?: string
+          is_primary?: boolean | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_contacts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deal_lender_programs: {
         Row: {
@@ -1090,6 +936,7 @@ export type Database = {
           deal_value: number | null
           description: string | null
           email: string | null
+          entity_id: string
           fee_percent: number | null
           flagged_for_weekly: boolean
           history: string | null
@@ -1172,6 +1019,7 @@ export type Database = {
           deal_value?: number | null
           description?: string | null
           email?: string | null
+          entity_id: string
           fee_percent?: number | null
           flagged_for_weekly?: boolean
           history?: string | null
@@ -1254,6 +1102,7 @@ export type Database = {
           deal_value?: number | null
           description?: string | null
           email?: string | null
+          entity_id?: string
           fee_percent?: number | null
           flagged_for_weekly?: boolean
           history?: string | null
@@ -1321,6 +1170,13 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
             referencedColumns: ["id"]
           },
           {
@@ -1564,6 +1420,33 @@ export type Database = {
           },
         ]
       }
+      entities: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          kind: Database["public"]["Enums"]["entity_kind"]
+          source_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["entity_kind"]
+          source_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["entity_kind"]
+          source_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       entity_addresses: {
         Row: {
           address_line_1: string | null
@@ -1607,49 +1490,15 @@ export type Database = {
           state?: string | null
           zip_code?: string | null
         }
-        Relationships: []
-      }
-      entity_contacts: {
-        Row: {
-          created_at: string
-          email: string | null
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
-          id: string
-          is_primary: boolean | null
-          name: string
-          notes: string | null
-          phone: string | null
-          title: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email?: string | null
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          is_primary?: boolean | null
-          name: string
-          notes?: string | null
-          phone?: string | null
-          title?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string | null
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
-          id?: string
-          is_primary?: boolean | null
-          name?: string
-          notes?: string | null
-          phone?: string | null
-          title?: string | null
-          updated_at?: string
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "entity_addresses_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       entity_emails: {
         Row: {
@@ -1679,7 +1528,15 @@ export type Database = {
           id?: string
           is_primary?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "entity_emails_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       entity_files: {
         Row: {
@@ -1721,7 +1578,15 @@ export type Database = {
           source_system?: string
           uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "entity_files_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       entity_followers: {
         Row: {
@@ -1747,6 +1612,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "entity_followers_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "entity_followers_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -1754,6 +1626,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      entity_orphans: {
+        Row: {
+          id: string
+          original_entity_id: string
+          original_entity_type: string | null
+          payload: Json
+          quarantined_at: string
+          reason: string
+          source_id: string
+          source_table: string
+        }
+        Insert: {
+          id?: string
+          original_entity_id: string
+          original_entity_type?: string | null
+          payload: Json
+          quarantined_at?: string
+          reason: string
+          source_id: string
+          source_table: string
+        }
+        Update: {
+          id?: string
+          original_entity_id?: string
+          original_entity_type?: string | null
+          payload?: Json
+          quarantined_at?: string
+          reason?: string
+          source_id?: string
+          source_table?: string
+        }
+        Relationships: []
       }
       entity_phones: {
         Row: {
@@ -1783,7 +1688,15 @@ export type Database = {
           phone_number?: string
           phone_type?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "entity_phones_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       entity_projects: {
         Row: {
@@ -1850,6 +1763,13 @@ export type Database = {
           waiting_on?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "entity_projects_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "entity_projects_owner_fkey"
             columns: ["owner"]
@@ -2033,6 +1953,7 @@ export type Database = {
           created_at: string
           description: string | null
           email: string | null
+          entity_id: string
           id: string
           interest_range: string | null
           last_contact: string | null
@@ -2059,6 +1980,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
+          entity_id: string
           id?: string
           interest_range?: string | null
           last_contact?: string | null
@@ -2085,6 +2007,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
+          entity_id?: string
           id?: string
           interest_range?: string | null
           last_contact?: string | null
@@ -2105,7 +2028,15 @@ export type Database = {
           term?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lender_programs_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -2268,6 +2199,7 @@ export type Database = {
           created_at: string
           description: string | null
           email: string | null
+          entity_id: string
           history: string | null
           id: string
           known_as: string | null
@@ -2299,6 +2231,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
+          entity_id: string
           history?: string | null
           id?: string
           known_as?: string | null
@@ -2330,6 +2263,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
+          entity_id?: string
           history?: string | null
           id?: string
           known_as?: string | null
@@ -2362,6 +2296,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
             referencedColumns: ["id"]
           },
         ]
@@ -3234,13 +3175,25 @@ export type Database = {
         Returns: boolean
       }
       is_team_owner: { Args: never; Returns: boolean }
+      move_deal_between_pipelines: {
+        Args: { p_deal_id: string; p_source: string; p_target: string }
+        Returns: undefined
+      }
+      run_read_sql: { Args: { p_query: string }; Returns: Json }
     }
     Enums: {
+      ai_event_type:
+        | "conversation"
+        | "message"
+        | "audit"
+        | "agent_batch"
+        | "agent_change"
       app_role: "admin" | "client" | "partner" | "super_admin"
       deal_outcome: "open" | "won" | "lost" | "abandoned"
       deal_outcome_enum: "open" | "won" | "lost" | "abandoned"
       deal_pipeline: "potential" | "underwriting" | "lender_management"
       deal_priority: "low" | "medium" | "high"
+      entity_kind: "people" | "companies" | "deal" | "lender_programs"
       entity_type_enum:
         | "pipeline"
         | "underwriting"
@@ -3249,6 +3202,7 @@ export type Database = {
         | "companies"
         | "potential"
         | "deal"
+        | "lender_programs"
       invoice_status:
         | "draft"
         | "sent"
@@ -3291,6 +3245,12 @@ export type Database = {
         | "formula"
         | "assigned_to"
         | "contact"
+      transcription_status:
+        | "not_applicable"
+        | "pending"
+        | "processing"
+        | "completed"
+        | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3416,16 +3376,21 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
+      ai_event_type: [
+        "conversation",
+        "message",
+        "audit",
+        "agent_batch",
+        "agent_change",
+      ],
       app_role: ["admin", "client", "partner", "super_admin"],
       deal_outcome: ["open", "won", "lost", "abandoned"],
       deal_outcome_enum: ["open", "won", "lost", "abandoned"],
       deal_pipeline: ["potential", "underwriting", "lender_management"],
       deal_priority: ["low", "medium", "high"],
+      entity_kind: ["people", "companies", "deal", "lender_programs"],
       entity_type_enum: [
         "pipeline",
         "underwriting",
@@ -3434,6 +3399,7 @@ export const Constants = {
         "companies",
         "potential",
         "deal",
+        "lender_programs",
       ],
       invoice_status: [
         "draft",
@@ -3479,6 +3445,13 @@ export const Constants = {
         "formula",
         "assigned_to",
         "contact",
+      ],
+      transcription_status: [
+        "not_applicable",
+        "pending",
+        "processing",
+        "completed",
+        "failed",
       ],
     },
   },
