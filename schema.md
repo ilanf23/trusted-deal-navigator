@@ -18,7 +18,7 @@
 | call_flow_id      | uuid                     | No          | Yes      | -              |
 | webhook_timestamp | timestamp with time zone | No          | Yes      | -              |
 | frontend_ack_at   | timestamp with time zone | No          | Yes      | -              |
-| entity_type       | USER-DEFINED             | No          | Yes      | -              |
+| related_type       | USER-DEFINED             | No          | Yes      | -              |
 | user_id           | uuid                     | No          | Yes      | users          |
 
 ## Table: `activities`
@@ -26,13 +26,13 @@
 | Column Name        | Data Type                | Primary Key | Nullable | Foreign Key To |
 | ------------------ | ------------------------ | ----------- | -------- | -------------- |
 | id                 | uuid                     | Yes         | No       | -              |
-| entity_id          | uuid                     | No          | No       | -              |
+| related_id          | uuid                     | No          | No       | -              |
 | activity_type      | text                     | No          | No       | -              |
 | title              | text                     | No          | Yes      | -              |
 | content            | text                     | No          | Yes      | -              |
 | created_by         | text                     | No          | Yes      | -              |
 | created_at         | timestamp with time zone | No          | No       | -              |
-| entity_type        | USER-DEFINED             | No          | Yes      | -              |
+| related_type        | USER-DEFINED             | No          | Yes      | -              |
 | copper_activity_id | text                     | No          | Yes      | -              |
 | source_system      | text                     | No          | No       | -              |
 
@@ -46,7 +46,7 @@
 | content     | text                     | No          | No       | -              |
 | created_by  | text                     | No          | Yes      | -              |
 | created_at  | timestamp with time zone | No          | No       | -              |
-| entity_type | USER-DEFINED             | No          | Yes      | -              |
+| related_type | USER-DEFINED             | No          | Yes      | -              |
 
 ## Table: `ai_events`
 
@@ -79,7 +79,7 @@
 | sync_status        | text                     | No          | Yes      | -              |
 | user_name          | text                     | No          | Yes      | -              |
 | user_id            | uuid                     | No          | Yes      | users          |
-| entity_type        | USER-DEFINED             | No          | Yes      | -              |
+| related_type        | USER-DEFINED             | No          | Yes      | -              |
 
 ## Table: `bug_reports`
 
@@ -123,7 +123,7 @@
 | user_session_active      | boolean                  | No          | Yes      | -              |
 | metadata                 | jsonb                    | No          | Yes      | -              |
 | created_at               | timestamp with time zone | No          | No       | -              |
-| entity_type              | USER-DEFINED             | No          | Yes      | -              |
+| related_type              | USER-DEFINED             | No          | Yes      | -              |
 
 ## Table: `communications`
 
@@ -143,7 +143,7 @@
 | recording_sid            | text                     | No          | Yes      | -              |
 | call_sid                 | text                     | No          | Yes      | -              |
 | user_id                  | uuid                     | No          | Yes      | users          |
-| entity_type              | USER-DEFINED             | No          | Yes      | -              |
+| related_type              | USER-DEFINED             | No          | Yes      | -              |
 | recording_status         | text                     | No          | Yes      | -              |
 | transcription_status     | text                     | No          | Yes      | -              |
 | transcription_error      | text                     | No          | Yes      | -              |
@@ -170,7 +170,7 @@
 | updated_at        | timestamp with time zone | No          | No       | -              |
 | copper_company_id | text                     | No          | Yes      | -              |
 | source_system     | text                     | No          | No       | -              |
-| entity_id         | uuid                     | No          | No       | entities       |
+| related_id         | uuid                     | No          | No       | related       |
 
 ## Table: `company_people`
 
@@ -233,7 +233,7 @@
 | Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
 | ----------- | ------------------------ | ----------- | -------- | -------------- |
 | id          | uuid                     | Yes         | No       | -              |
-| entity_id   | uuid                     | No          | Yes      | -              |
+| related_id   | uuid                     | No          | Yes      | -              |
 | name        | text                     | No          | No       | -              |
 | title       | text                     | No          | Yes      | -              |
 | email       | text                     | No          | Yes      | -              |
@@ -242,7 +242,7 @@
 | notes       | text                     | No          | Yes      | -              |
 | created_at  | timestamp with time zone | No          | No       | -              |
 | updated_at  | timestamp with time zone | No          | No       | -              |
-| entity_type | USER-DEFINED             | No          | Yes      | -              |
+| related_type | USER-DEFINED             | No          | Yes      | -              |
 | deal_id     | uuid                     | No          | No       | deals          |
 
 ## Table: `deal_lender_programs`
@@ -250,13 +250,13 @@
 | Column Name | Data Type                | Primary Key | Nullable | Foreign Key To  |
 | ----------- | ------------------------ | ----------- | -------- | --------------- |
 | id          | uuid                     | Yes         | No       | -               |
-| entity_id   | uuid                     | No          | No       | -               |
+| related_id   | uuid                     | No          | No       | -               |
 | program_id  | uuid                     | No          | No       | lender_programs |
 | notes       | text                     | No          | Yes      | -               |
 | status      | text                     | No          | Yes      | -               |
 | created_at  | timestamp with time zone | No          | No       | -               |
 | updated_at  | timestamp with time zone | No          | No       | -               |
-| entity_type | USER-DEFINED             | No          | Yes      | -               |
+| related_type | USER-DEFINED             | No          | Yes      | -               |
 
 ## Table: `deal_milestones`
 
@@ -272,7 +272,7 @@
 | position       | integer                  | No          | No       | -              |
 | created_at     | timestamp with time zone | No          | No       | -              |
 | updated_at     | timestamp with time zone | No          | No       | -              |
-| entity_type    | USER-DEFINED             | No          | Yes      | -              |
+| related_type    | USER-DEFINED             | No          | Yes      | -              |
 
 ## Table: `deal_people`
 
@@ -297,7 +297,7 @@
 | resolved_by | text                     | No          | Yes      | -              |
 | created_at  | timestamp with time zone | No          | No       | -              |
 | updated_at  | timestamp with time zone | No          | No       | -              |
-| entity_type | USER-DEFINED             | No          | Yes      | -              |
+| related_type | USER-DEFINED             | No          | Yes      | -              |
 
 ## Table: `deals`
 
@@ -383,7 +383,7 @@
 | interactions_count                   | integer                  | No          | No       | -               |
 | stage_changed_at                     | timestamp with time zone | No          | Yes      | -               |
 | pipeline                             | USER-DEFINED             | No          | No       | -               |
-| entity_id                            | uuid                     | No          | No       | entities        |
+| related_id                            | uuid                     | No          | No       | related        |
 
 ## Table: `dropbox_connections`
 
@@ -425,7 +425,7 @@
 | synced_at            | timestamp with time zone | No          | Yes      | -              |
 | created_at           | timestamp with time zone | No          | Yes      | -              |
 | updated_at           | timestamp with time zone | No          | Yes      | -              |
-| entity_type          | USER-DEFINED             | No          | Yes      | -              |
+| related_type          | USER-DEFINED             | No          | Yes      | -              |
 | user_id              | uuid                     | No          | No       | -              |
 
 ## Table: `email_templates`
@@ -458,9 +458,9 @@
 | last_outbound_date | timestamp with time zone | No          | Yes      | -              |
 | created_at         | timestamp with time zone | No          | Yes      | -              |
 | updated_at         | timestamp with time zone | No          | Yes      | -              |
-| entity_type        | USER-DEFINED             | No          | Yes      | -              |
+| related_type        | USER-DEFINED             | No          | Yes      | -              |
 
-## Table: `entities`
+## Table: `related`
 
 | Column Name  | Data Type                | Primary Key | Nullable | Foreign Key To |
 | ------------ | ------------------------ | ----------- | -------- | -------------- |
@@ -471,12 +471,12 @@
 | created_at   | timestamp with time zone | No          | No       | -              |
 | updated_at   | timestamp with time zone | No          | No       | -              |
 
-## Table: `entity_addresses`
+## Table: `related_addresses`
 
 | Column Name    | Data Type                | Primary Key | Nullable | Foreign Key To |
 | -------------- | ------------------------ | ----------- | -------- | -------------- |
 | id             | uuid                     | Yes         | No       | -              |
-| entity_id      | uuid                     | No          | No       | entities       |
+| related_id      | uuid                     | No          | No       | related       |
 | address_type   | text                     | No          | Yes      | -              |
 | address_line_1 | text                     | No          | Yes      | -              |
 | address_line_2 | text                     | No          | Yes      | -              |
@@ -486,77 +486,77 @@
 | country        | text                     | No          | Yes      | -              |
 | is_primary     | boolean                  | No          | Yes      | -              |
 | created_at     | timestamp with time zone | No          | No       | -              |
-| entity_type    | USER-DEFINED             | No          | Yes      | -              |
+| related_type    | USER-DEFINED             | No          | Yes      | -              |
 
-## Table: `entity_emails`
+## Table: `related_emails`
 
 | Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
 | ----------- | ------------------------ | ----------- | -------- | -------------- |
 | id          | uuid                     | Yes         | No       | -              |
-| entity_id   | uuid                     | No          | No       | entities       |
+| related_id   | uuid                     | No          | No       | related       |
 | email       | text                     | No          | No       | -              |
 | email_type  | text                     | No          | Yes      | -              |
 | is_primary  | boolean                  | No          | Yes      | -              |
 | created_at  | timestamp with time zone | No          | No       | -              |
-| entity_type | USER-DEFINED             | No          | Yes      | -              |
+| related_type | USER-DEFINED             | No          | Yes      | -              |
 
-## Table: `entity_files`
+## Table: `related_files`
 
 | Column Name    | Data Type                | Primary Key | Nullable | Foreign Key To |
 | -------------- | ------------------------ | ----------- | -------- | -------------- |
 | id             | uuid                     | Yes         | No       | -              |
-| entity_id      | uuid                     | No          | No       | entities       |
+| related_id      | uuid                     | No          | No       | related       |
 | file_name      | text                     | No          | No       | -              |
 | file_url       | text                     | No          | No       | -              |
 | file_type      | text                     | No          | Yes      | -              |
 | file_size      | bigint                   | No          | Yes      | -              |
 | uploaded_by    | text                     | No          | Yes      | -              |
 | created_at     | timestamp with time zone | No          | No       | -              |
-| entity_type    | USER-DEFINED             | No          | Yes      | -              |
+| related_type    | USER-DEFINED             | No          | Yes      | -              |
 | copper_file_id | text                     | No          | Yes      | -              |
 | source_system  | text                     | No          | No       | -              |
 
-## Table: `entity_followers`
+## Table: `related_followers`
 
 | Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
 | ----------- | ------------------------ | ----------- | -------- | -------------- |
 | id          | uuid                     | Yes         | No       | -              |
-| entity_id   | uuid                     | No          | No       | entities       |
+| related_id   | uuid                     | No          | No       | related       |
 | user_id     | uuid                     | No          | No       | users          |
 | created_at  | timestamp with time zone | No          | Yes      | -              |
-| entity_type | USER-DEFINED             | No          | Yes      | -              |
+| related_type | USER-DEFINED             | No          | Yes      | -              |
 
-## Table: `entity_orphans`
+## Table: `related_orphans`
 
 | Column Name          | Data Type                | Primary Key | Nullable | Foreign Key To |
 | -------------------- | ------------------------ | ----------- | -------- | -------------- |
 | id                   | uuid                     | Yes         | No       | -              |
 | source_table         | text                     | No          | No       | -              |
 | source_id            | uuid                     | No          | No       | -              |
-| original_entity_type | text                     | No          | Yes      | -              |
-| original_entity_id   | uuid                     | No          | No       | -              |
+| original_related_type | text                     | No          | Yes      | -              |
+| original_related_id   | uuid                     | No          | No       | -              |
 | payload              | jsonb                    | No          | No       | -              |
 | reason               | text                     | No          | No       | -              |
 | quarantined_at       | timestamp with time zone | No          | No       | -              |
 
-## Table: `entity_phones`
+## Table: `related_phones`
 
 | Column Name  | Data Type                | Primary Key | Nullable | Foreign Key To |
 | ------------ | ------------------------ | ----------- | -------- | -------------- |
 | id           | uuid                     | Yes         | No       | -              |
-| entity_id    | uuid                     | No          | No       | entities       |
+| related_id    | uuid                     | No          | No       | related       |
 | phone_number | text                     | No          | No       | -              |
 | phone_type   | text                     | No          | Yes      | -              |
 | is_primary   | boolean                  | No          | Yes      | -              |
 | created_at   | timestamp with time zone | No          | No       | -              |
-| entity_type  | USER-DEFINED             | No          | Yes      | -              |
+| related_type  | USER-DEFINED             | No          | Yes      | -              |
 
-## Table: `entity_projects`
+## Table: `related_projects`
 
 | Column Name        | Data Type                | Primary Key | Nullable | Foreign Key To |
 | ------------------ | ------------------------ | ----------- | -------- | -------------- |
 | id                 | uuid                     | Yes         | No       | -              |
-| entity_id          | uuid                     | No          | No       | entities       |
+| related_id          | uuid                     | No          | No       | related       |
 | name               | text                     | No          | No       | -              |
 | status             | text                     | No          | Yes      | -              |
 | project_stage      | text                     | No          | Yes      | -              |
@@ -573,7 +573,7 @@
 | created_by         | text                     | No          | Yes      | -              |
 | created_at         | timestamp with time zone | No          | No       | -              |
 | updated_at         | timestamp with time zone | No          | No       | -              |
-| entity_type        | USER-DEFINED             | No          | Yes      | -              |
+| related_type        | USER-DEFINED             | No          | Yes      | -              |
 
 ## Table: `feed_reactions`
 
@@ -664,7 +664,7 @@
 | loan_types       | text                     | No          | Yes      | -              |
 | states           | text                     | No          | Yes      | -              |
 | loan_size_text   | text                     | No          | Yes      | -              |
-| entity_id        | uuid                     | No          | No       | entities       |
+| related_id        | uuid                     | No          | No       | related       |
 
 ## Table: `messages`
 
@@ -714,7 +714,7 @@
 | created_at        | timestamp with time zone | No          | No       | -              |
 | updated_at        | timestamp with time zone | No          | No       | -              |
 | cc_emails         | text                     | No          | Yes      | -              |
-| entity_type       | USER-DEFINED             | No          | Yes      | -              |
+| related_type       | USER-DEFINED             | No          | Yes      | -              |
 
 ## Table: `people`
 
@@ -749,7 +749,7 @@
 | source_system      | text                     | No          | No       | -              |
 | clx_file_name      | text                     | No          | Yes      | -              |
 | bank_relationships | text                     | No          | Yes      | -              |
-| entity_id          | uuid                     | No          | No       | entities       |
+| related_id          | uuid                     | No          | No       | related       |
 
 ## Table: `pipeline_shares`
 
@@ -796,11 +796,11 @@
 | Column Name | Data Type                | Primary Key | Nullable | Foreign Key To  |
 | ----------- | ------------------------ | ----------- | -------- | --------------- |
 | id          | uuid                     | Yes         | No       | -               |
-| project_id  | uuid                     | No          | No       | entity_projects |
+| project_id  | uuid                     | No          | No       | related_projects |
 | lead_id     | uuid                     | No          | No       | -               |
 | role        | text                     | No          | Yes      | -               |
 | created_at  | timestamp with time zone | No          | No       | -               |
-| entity_type | USER-DEFINED             | No          | Yes      | -               |
+| related_type | USER-DEFINED             | No          | Yes      | -               |
 
 ## Table: `rate_limits`
 
@@ -844,7 +844,7 @@
 | occupancy_use         | text                     | No          | Yes      | -              |
 | owner_occupied_pct    | numeric                  | No          | Yes      | -              |
 | seeking_to_improve    | text                     | No          | Yes      | -              |
-| entity_type           | USER-DEFINED             | No          | Yes      | -              |
+| related_type           | USER-DEFINED             | No          | Yes      | -              |
 
 ## Table: `ratewatch_questionnaire_responses`
 
@@ -880,7 +880,7 @@
 | additional_notes      | text                     | No          | Yes      | -              |
 | submitted_at          | timestamp with time zone | No          | No       | -              |
 | created_at            | timestamp with time zone | No          | No       | -              |
-| entity_type           | USER-DEFINED             | No          | Yes      | -              |
+| related_type           | USER-DEFINED             | No          | Yes      | -              |
 
 ## Table: `revenue_targets`
 
@@ -947,10 +947,10 @@
 | user_id         | uuid                     | No          | Yes      | users          |
 | completed_at    | timestamp with time zone | No          | Yes      | -              |
 | created_by      | text                     | No          | Yes      | -              |
-| entity_type     | USER-DEFINED             | No          | Yes      | -              |
+| related_type     | USER-DEFINED             | No          | Yes      | -              |
 | copper_task_id  | text                     | No          | Yes      | -              |
 | source_system   | text                     | No          | No       | -              |
-| entity_id       | uuid                     | No          | Yes      | -              |
+| related_id       | uuid                     | No          | Yes      | -              |
 
 ## Table: `users`
 
