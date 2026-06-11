@@ -488,17 +488,18 @@
 | created_at     | timestamp with time zone | No          | No       | -              |
 | related_type    | USER-DEFINED             | No          | Yes      | -              |
 
-## Table: `related_emails`
+## Table: `related_contact_points`
 
-| Column Name | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ----------- | ------------------------ | ----------- | -------- | -------------- |
-| id          | uuid                     | Yes         | No       | -              |
-| related_id   | uuid                     | No          | No       | related       |
-| email       | text                     | No          | No       | -              |
-| email_type  | text                     | No          | Yes      | -              |
-| is_primary  | boolean                  | No          | Yes      | -              |
-| created_at  | timestamp with time zone | No          | No       | -              |
+| Column Name  | Data Type                | Primary Key | Nullable | Foreign Key To |
+| ------------ | ------------------------ | ----------- | -------- | -------------- |
+| id           | uuid                     | Yes         | No       | -              |
+| related_id   | uuid                     | No          | No       | related        |
 | related_type | USER-DEFINED             | No          | Yes      | -              |
+| kind         | text                     | No          | No       | -              |
+| value        | text                     | No          | No       | -              |
+| label        | text                     | No          | Yes      | -              |
+| is_primary   | boolean                  | No          | Yes      | -              |
+| created_at   | timestamp with time zone | No          | No       | -              |
 
 ## Table: `related_files`
 
@@ -525,31 +526,6 @@
 | user_id     | uuid                     | No          | No       | users          |
 | created_at  | timestamp with time zone | No          | Yes      | -              |
 | related_type | USER-DEFINED             | No          | Yes      | -              |
-
-## Table: `related_orphans`
-
-| Column Name          | Data Type                | Primary Key | Nullable | Foreign Key To |
-| -------------------- | ------------------------ | ----------- | -------- | -------------- |
-| id                   | uuid                     | Yes         | No       | -              |
-| source_table         | text                     | No          | No       | -              |
-| source_id            | uuid                     | No          | No       | -              |
-| original_related_type | text                     | No          | Yes      | -              |
-| original_related_id   | uuid                     | No          | No       | -              |
-| payload              | jsonb                    | No          | No       | -              |
-| reason               | text                     | No          | No       | -              |
-| quarantined_at       | timestamp with time zone | No          | No       | -              |
-
-## Table: `related_phones`
-
-| Column Name  | Data Type                | Primary Key | Nullable | Foreign Key To |
-| ------------ | ------------------------ | ----------- | -------- | -------------- |
-| id           | uuid                     | Yes         | No       | -              |
-| related_id    | uuid                     | No          | No       | related       |
-| phone_number | text                     | No          | No       | -              |
-| phone_type   | text                     | No          | Yes      | -              |
-| is_primary   | boolean                  | No          | Yes      | -              |
-| created_at   | timestamp with time zone | No          | No       | -              |
-| related_type  | USER-DEFINED             | No          | Yes      | -              |
 
 ## Table: `related_projects`
 
