@@ -64,6 +64,7 @@ interface LeadContact {
 
 interface RelatedPersonLite {
   id: string;
+  entity_id: string;
   name: string;
   title: string | null;
   email: string | null;
@@ -188,15 +189,15 @@ async function searchRelatedPeopleByCompany(
   let res;
   switch (entityType) {
     case 'potential':
-      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'potential')
+      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'potential')
         .eq('company_name', companyName).order('name').limit(20);
       break;
     case 'underwriting':
-      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'underwriting')
+      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'underwriting')
         .eq('company_name', companyName).order('name').limit(20);
       break;
     case 'lender_management':
-      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'lender_management')
+      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'lender_management')
         .eq('company_name', companyName).order('name').limit(20);
       break;
   }
@@ -210,15 +211,15 @@ async function searchRelatedPeopleByDomain(
   let res;
   switch (entityType) {
     case 'potential':
-      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'potential')
+      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'potential')
         .ilike('email', `%@${domain}`).limit(20);
       break;
     case 'underwriting':
-      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'underwriting')
+      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'underwriting')
         .ilike('email', `%@${domain}`).limit(20);
       break;
     case 'lender_management':
-      res = await supabase.from('deals').select('id, name, title, email, phone, company_name').eq('pipeline', 'lender_management')
+      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'lender_management')
         .ilike('email', `%@${domain}`).limit(20);
       break;
   }
@@ -536,7 +537,7 @@ export default function LeadRelatedSidebar({
       if (!q) return [];
       const [peopleRes, leadsRes] = await Promise.all([
         supabase.from('people')
-          .select('id, name, title, email, phone, company_name')
+          .select('id, entity_id, name, title, email, phone, company_name')
           .ilike('name', `%${q}%`)
           .order('name', { ascending: true })
           .limit(20),

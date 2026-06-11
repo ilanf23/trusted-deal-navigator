@@ -176,16 +176,21 @@ export function useGmailLogic(config?: CRMGmailConfig) {
   const { data: allLeads = [] } = useQuery({
     queryKey: ['gmail-all-leads'],
     queryFn: async () => {
+      // entity_emails hangs off the canonical entities row (people.entity_id),
+      // so the embed goes through entities. deal_contacts belongs to deals,
+      // not people, so it cannot be embedded here.
       const { data } = await supabase
         .from('people')
         .select(`
           *,
-          entity_emails(email, email_type),
+          entities!people_entity_id_fkey(entity_emails(email, email_type)),
           lead_phones(id, phone_number, phone_type),
-          deal_contacts(id, name, title, email, phone, is_primary),
           lead_responses(*)
         `);
-      return data || [];
+      return (data || []).map((p: any) => ({
+        ...p,
+        entity_emails: (p as any).entities?.entity_emails ?? [],
+      }));
     },
   });
 
