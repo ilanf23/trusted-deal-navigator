@@ -407,19 +407,28 @@ Deno.serve(async (req) => {
         const orClause = missing
           .map((p) => `phone_number.ilike.%${p}`)
           .join(',');
+        // entity_phones.entity_id now points at the canonical entities table;
+        // the actual people.id lives in entities.source_id, so embed entities
+        // via the FK and resolve through source_id.
         const { data: ephones, error: ephonesErr } = await supabase
           .from('entity_phones')
-          .select('entity_id, entity_type, phone_number')
+          .select('entity_id, entity_type, phone_number, entities!inner(kind, source_id)')
           .eq('entity_type', 'people')
           .or(orClause);
         if (ephonesErr) {
           console.error('[twilio-call-history] entity_phones lookup failed:', ephonesErr.message);
         } else if (ephones && ephones.length > 0) {
+          // With !inner the embed types as an object, but handle array shape
+          // defensively in case the client returns one.
+          const sourceIdOf = (e: { entities?: { source_id: string | null } | Array<{ source_id: string | null }> | null }): string | null => {
+            const ent = Array.isArray(e.entities) ? e.entities[0] : e.entities;
+            return ent?.source_id ?? null;
+          };
           const personIds = Array.from(
             new Set(
-              (ephones as Array<{ entity_id: string }>)
-                .map((e) => e.entity_id)
-                .filter((id): id is string => !!id),
+              (ephones as Array<{ entities?: { source_id: string | null } | Array<{ source_id: string | null }> | null }>)
+                .map(sourceIdOf)
+                .filter((id): id is string => typeof id === 'string' && id.length > 0),
             ),
           );
           const personById = new Map<string, { id: string; name: string; company_name: string | null }>();
@@ -436,11 +445,12 @@ Deno.serve(async (req) => {
               }
             }
           }
-          for (const e of ephones as Array<{ entity_id: string; phone_number: string }>) {
+          for (const e of ephones as Array<{ phone_number: string; entities?: { source_id: string | null } | Array<{ source_id: string | null }> | null }>) {
             const key = lastTen(e.phone_number);
             if (key.length !== 10) continue;
             if (contactByLastTen.has(key)) continue;
-            const person = personById.get(e.entity_id);
+            const sourceId = sourceIdOf(e);
+            const person = sourceId ? personById.get(sourceId) : undefined;
             if (person) contactByLastTen.set(key, person);
           }
         }

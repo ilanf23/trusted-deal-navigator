@@ -270,12 +270,15 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
   }).length;
   const completedTasks = tasks.filter((t) => t.is_completed).length;
 
-  // 7. Files attached to the lead
+  // 7. Files attached to the lead. entity_files.entity_id now points at the
+  // canonical entities table, so filter through the embedded entities row on
+  // source_id (the original deal record id).
   const { data: filesRaw } = await supabase
     .from("entity_files")
-    .select("id, file_name, file_type")
-    .eq("entity_id", leadId)
+    .select("id, file_name, file_type, entities!inner(kind, source_id)")
     .eq("entity_type", "deal")
+    .eq("entities.kind", "deal")
+    .eq("entities.source_id", leadId)
     .limit(100);
   const files: Array<{ id: string; file_name: string; file_type: string | null }> = filesRaw ?? [];
 

@@ -333,6 +333,8 @@ Deno.serve(async (req) => {
         // Two-pass caller lookup:
         //   1. entity_phones — polymorphic, multi-number table. Preferred
         //      because a contact can have several numbers (mobile/work/home).
+        //      entity_id now points at the canonical entities table, so we
+        //      embed entities and read source_id (the actual people.id).
         //   2. people.phone — direct column fallback, for contacts created
         //      from the People UI without an entity_phones row. people is the
         //      source of truth for caller identity per product spec, so a
@@ -340,13 +342,18 @@ Deno.serve(async (req) => {
         // First match wins; we don't need to disambiguate.
         const { data: phoneMatch } = await sb
           .from('entity_phones')
-          .select('entity_id, entity_type')
+          .select('entity_id, entities!inner(kind, source_id)')
           .ilike('phone_number', `%${normalized}`)
           .eq('entity_type', 'people')
           .limit(1)
           .maybeSingle();
-        if (phoneMatch) {
-          resolvedLeadId = phoneMatch.entity_id;
+        // With !inner the embed types as an object, but handle array shape
+        // defensively in case the client returns one.
+        const matchedEntity = Array.isArray(phoneMatch?.entities)
+          ? phoneMatch?.entities[0]
+          : phoneMatch?.entities;
+        if (matchedEntity?.source_id) {
+          resolvedLeadId = matchedEntity.source_id;
         } else {
           const { data: peopleMatch } = await sb
             .from('people')
