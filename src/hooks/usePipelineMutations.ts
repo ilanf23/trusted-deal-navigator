@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { EntityType } from '@/integrations/supabase/types';
+import type { RelatedType } from '@/integrations/supabase/types';
 
 export type CrmTable = 'potential' | 'underwriting' | 'lender_management';
 
@@ -43,7 +43,7 @@ export async function moveDealBetweenPipelines(
 }
 
 // Every deal — regardless of pipeline — uses a single polymorphic discriminator.
-const ENTITY_TYPE_MAP: Record<CrmTable, EntityType> = {
+const ENTITY_TYPE_MAP: Record<CrmTable, RelatedType> = {
   potential: 'deal',
   underwriting: 'deal',
   lender_management: 'deal',
@@ -95,8 +95,8 @@ export const useCrmMutations = (table: CrmTable) => {
       if (dealId && oldStageName && newStageName) {
         try {
           const { error: activityError } = await supabase.from('activities').insert({
-            entity_id: dealId,
-            entity_type: ENTITY_TYPE_MAP[table],
+            related_id: dealId,
+            related_type: ENTITY_TYPE_MAP[table],
             activity_type: 'stage_change',
             title: `Moved from ${oldStageName} to ${newStageName}`,
             content: JSON.stringify({ from: oldStageName, to: newStageName }),
@@ -283,29 +283,29 @@ export const useCrmMutations = (table: CrmTable) => {
       // and the user will see a soft warning so they can re-add manually.
       let satelliteWarning = false;
       try {
-        const entityTypeValue = ENTITY_TYPE_MAP[table];
-        // entity_* child tables key off the canonical entities.id (deals carry
-        // it in entity_id; the insert trigger populates it on the new row).
-        const sourceEntityId = sourceRow.entity_id as string | undefined;
-        const newEntityId = (newDeal as { entity_id?: string }).entity_id;
-        if (!sourceEntityId || !newEntityId) throw new Error('Missing entity_id on source or new deal');
+        const relatedTypeValue = ENTITY_TYPE_MAP[table];
+        // related_* child tables key off the canonical related.id (deals carry
+        // it in related_id; the insert trigger populates it on the new row).
+        const sourceEntityId = sourceRow.related_id as string | undefined;
+        const newEntityId = (newDeal as { related_id?: string }).related_id;
+        if (!sourceEntityId || !newEntityId) throw new Error('Missing related_id on source or new deal');
 
         const [emailsRes, phonesRes, addressesRes] = await Promise.all([
           supabase
-            .from('entity_emails')
+            .from('related_emails')
             .select('email, email_type, is_primary')
-            .eq('entity_id', sourceEntityId)
-            .eq('entity_type', entityTypeValue),
+            .eq('related_id', sourceEntityId)
+            .eq('related_type', relatedTypeValue),
           supabase
-            .from('entity_phones')
+            .from('related_phones')
             .select('phone_number, phone_type, is_primary')
-            .eq('entity_id', sourceEntityId)
-            .eq('entity_type', entityTypeValue),
+            .eq('related_id', sourceEntityId)
+            .eq('related_type', relatedTypeValue),
           supabase
-            .from('entity_addresses')
+            .from('related_addresses')
             .select('address_line_1, address_line_2, address_type, city, state, zip_code, country, is_primary')
-            .eq('entity_id', sourceEntityId)
-            .eq('entity_type', entityTypeValue),
+            .eq('related_id', sourceEntityId)
+            .eq('related_type', relatedTypeValue),
         ]);
 
         if (emailsRes.error) throw emailsRes.error;
@@ -313,20 +313,20 @@ export const useCrmMutations = (table: CrmTable) => {
         if (addressesRes.error) throw addressesRes.error;
 
         if (emailsRes.data && emailsRes.data.length > 0) {
-          const { error } = await supabase.from('entity_emails').insert(
-            emailsRes.data.map((e) => ({ ...e, entity_id: newEntityId, entity_type: entityTypeValue })),
+          const { error } = await supabase.from('related_emails').insert(
+            emailsRes.data.map((e) => ({ ...e, related_id: newEntityId, related_type: relatedTypeValue })),
           );
           if (error) throw error;
         }
         if (phonesRes.data && phonesRes.data.length > 0) {
-          const { error } = await supabase.from('entity_phones').insert(
-            phonesRes.data.map((p) => ({ ...p, entity_id: newEntityId, entity_type: entityTypeValue })),
+          const { error } = await supabase.from('related_phones').insert(
+            phonesRes.data.map((p) => ({ ...p, related_id: newEntityId, related_type: relatedTypeValue })),
           );
           if (error) throw error;
         }
         if (addressesRes.data && addressesRes.data.length > 0) {
-          const { error } = await supabase.from('entity_addresses').insert(
-            addressesRes.data.map((a) => ({ ...a, entity_id: newEntityId, entity_type: entityTypeValue })),
+          const { error } = await supabase.from('related_addresses').insert(
+            addressesRes.data.map((a) => ({ ...a, related_id: newEntityId, related_type: relatedTypeValue })),
           );
           if (error) throw error;
         }

@@ -520,7 +520,7 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead: _onViewLead 
   const isSms = activity.type === 'sms';
   const isNote = activity.type === 'note';
   const typeLabel = getTypeLabel(activity.type);
-  const entityLabel = getEntityLabel(activity);
+  const relatedLabel = getEntityLabel(activity);
   const recipientInitial = activity.leadName?.charAt(0)?.toUpperCase() || '?';
   const typeIconInfo = getTypeIcon(activity.type, activity.direction, activity.subType);
   const TypeIcon = typeIconInfo.icon;
@@ -530,7 +530,7 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead: _onViewLead 
     ? formatDistanceToNow(activity.rawDate, { addSuffix: true })
     : activity.time;
 
-  const actionLabel = `${typeLabel}${entityLabel ? ` to ${entityLabel}` : ''}`;
+  const actionLabel = `${typeLabel}${relatedLabel ? ` to ${relatedLabel}` : ''}`;
 
   return (
     <div

@@ -1,4 +1,4 @@
-export type EntityType =
+export type RelatedType =
   | 'pipeline'
   | 'underwriting'
   | 'lender_management'
@@ -10,10 +10,10 @@ export type EntityType =
 
 export type FileSourceSystem = 'native' | 'dropbox' | 'google_sheets';
 
-export interface EntityFile {
+export interface RelatedFile {
   id: string;
-  entity_id: string;
-  entity_type: EntityType | null;
+  related_id: string;
+  related_type: RelatedType | null;
   file_name: string;
   file_url: string;
   file_type: string | null;

@@ -57,7 +57,7 @@ interface CallHistoryRow {
   user_id: string | null;
   pipeline: { name: string; company_name: string | null } | null;
   // Matched CRM contact resolved by the customer-side phone number against
-  // public.people (direct people.phone match first, entity_phones polymorphic
+  // public.people (direct people.phone match first, related_phones polymorphic
   // table second). Null when nothing matches — the UI falls back to the
   // pipeline name, then to the raw phone, then to "Unknown caller".
   contact: { id: string; name: string; company_name: string | null } | null;
@@ -351,12 +351,12 @@ Deno.serve(async (req) => {
     // place depending on how the contact was created:
     //   1. people.phone — direct column; populated when a contact was created
     //      from the People UI with a single phone field.
-    //   2. entity_phones — polymorphic, multi-number table; populated when a
+    //   2. related_phones — polymorphic, multi-number table; populated when a
     //      contact has multiple numbers (mobile/work/home) and from imports.
     // Both are matched on the LAST 10 DIGITS to ignore +1, parens, dashes,
     // spaces. people.phone wins ties — contacts created directly in the People
-    // UI should display "as themselves" even if a stale entity_phones row
-    // points the same number at another entity.
+    // UI should display "as themselves" even if a stale related_phones row
+    // points the same number at another related.
     const lastTen = (raw: string): string => raw.replace(/\D/g, '').slice(-10);
 
     const callerPhones = Array.from(
@@ -394,9 +394,9 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Path 2: entity_phones for any phone we still haven't resolved. Only
-      // pull rows whose entity_type points at the people table (enum value is
-      // 'people', not 'person'). Skipping the other entity_type values
+      // Path 2: related_phones for any phone we still haven't resolved. Only
+      // pull rows whose related_type points at the people table (enum value is
+      // 'people', not 'person'). Skipping the other related_type values
       // (companies, potential, underwriting, lender_management, pipeline)
       // ensures we don't resolve a call to a company name or a deal name —
       // the user explicitly wanted people to be the source of truth.
@@ -407,26 +407,26 @@ Deno.serve(async (req) => {
         const orClause = missing
           .map((p) => `phone_number.ilike.%${p}`)
           .join(',');
-        // entity_phones.entity_id now points at the canonical entities table;
-        // the actual people.id lives in entities.source_id, so embed entities
+        // related_phones.related_id now points at the canonical related table;
+        // the actual people.id lives in related.source_id, so embed related
         // via the FK and resolve through source_id.
         const { data: ephones, error: ephonesErr } = await supabase
-          .from('entity_phones')
-          .select('entity_id, entity_type, phone_number, entities!inner(kind, source_id)')
-          .eq('entity_type', 'people')
+          .from('related_phones')
+          .select('related_id, related_type, phone_number, related!inner(kind, source_id)')
+          .eq('related_type', 'people')
           .or(orClause);
         if (ephonesErr) {
-          console.error('[twilio-call-history] entity_phones lookup failed:', ephonesErr.message);
+          console.error('[twilio-call-history] related_phones lookup failed:', ephonesErr.message);
         } else if (ephones && ephones.length > 0) {
           // With !inner the embed types as an object, but handle array shape
           // defensively in case the client returns one.
-          const sourceIdOf = (e: { entities?: { source_id: string | null } | Array<{ source_id: string | null }> | null }): string | null => {
-            const ent = Array.isArray(e.entities) ? e.entities[0] : e.entities;
+          const sourceIdOf = (e: { related?: { source_id: string | null } | Array<{ source_id: string | null }> | null }): string | null => {
+            const ent = Array.isArray(e.related) ? e.related[0] : e.related;
             return ent?.source_id ?? null;
           };
           const personIds = Array.from(
             new Set(
-              (ephones as Array<{ entities?: { source_id: string | null } | Array<{ source_id: string | null }> | null }>)
+              (ephones as Array<{ related?: { source_id: string | null } | Array<{ source_id: string | null }> | null }>)
                 .map(sourceIdOf)
                 .filter((id): id is string => typeof id === 'string' && id.length > 0),
             ),
@@ -445,7 +445,7 @@ Deno.serve(async (req) => {
               }
             }
           }
-          for (const e of ephones as Array<{ phone_number: string; entities?: { source_id: string | null } | Array<{ source_id: string | null }> | null }>) {
+          for (const e of ephones as Array<{ phone_number: string; related?: { source_id: string | null } | Array<{ source_id: string | null }> | null }>) {
             const key = lastTen(e.phone_number);
             if (key.length !== 10) continue;
             if (contactByLastTen.has(key)) continue;

@@ -471,7 +471,7 @@ const LenderManagement = () => {
     [leads]
   );
 
-  // Opportunities the current user is following — real entity_followers query.
+  // Opportunities the current user is following — real related_followers query.
   // Shared query key with the expanded-view toolbar so toggling follow
   // invalidates this automatically.
   const { teamMember: currentTeamMember } = useTeamMember();
@@ -479,11 +479,11 @@ const LenderManagement = () => {
     queryKey: ['followed-deals', 'lender_management', currentTeamMember?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_followers')
-        .select('entity_id')
-        .eq('entity_type', 'deal')
+        .from('related_followers')
+        .select('related_id')
+        .eq('related_type', 'deal')
         .eq('user_id', currentTeamMember!.id);
-      return (data ?? []).map((r) => r.entity_id);
+      return (data ?? []).map((r) => r.related_id);
     },
     enabled: !!currentTeamMember?.id,
   });
@@ -497,7 +497,7 @@ const LenderManagement = () => {
     }
     counts['my_open'] = leads.length;
     counts['open'] = leads.length;
-    counts['following'] = leads.filter((l) => followedLeadIds.has(l.entity_id)).length;
+    counts['following'] = leads.filter((l) => followedLeadIds.has(l.related_id)).length;
     counts['won'] = leads.filter(l => l.status === 'won' as any).length;
     counts['closed_2025'] = leads.filter(l => fakeClosedYear(l.id) === 2025).length;
     counts['closed_2026'] = leads.filter(l => fakeClosedYear(l.id) === 2026).length;
@@ -515,7 +515,7 @@ const LenderManagement = () => {
       } else if (activeFilter === 'won') {
         result = result.filter((l) => l.status === ('won' as LeadStatus));
       } else if (activeFilter === 'following') {
-        result = result.filter((l) => followedLeadIds.has(l.entity_id));
+        result = result.filter((l) => followedLeadIds.has(l.related_id));
       } else if (activeFilter === 'closed_2025') {
         result = result.filter((l) => fakeClosedYear(l.id) === 2025);
       } else if (activeFilter === 'closed_2026') {

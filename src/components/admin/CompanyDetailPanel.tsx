@@ -16,7 +16,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { formatPhoneNumber } from './InlineEditableFields';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { PipelineRecordsSection, type PipelineRecord } from './shared/PipelineRecordsSection';
-import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
+import { RelatedFilesSection } from '@/components/admin/files/RelatedFilesSection';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -26,7 +26,7 @@ import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fn
 // ── Company type ──
 interface Company {
   id: string;
-  entity_id: string;
+  related_id: string;
   company_name: string;
   contact_name: string | null;
   phone: string | null;
@@ -658,10 +658,10 @@ function RelatedTabContent({ company, contactTypeConfig }: { company: Company; c
           </span>
         </CollapsibleTrigger>
         <CollapsibleContent className="pl-6 pb-2">
-          <EntityFilesSection
-            entityId={company.entity_id}
-            entityType="companies"
-            entityName={company.company_name}
+          <RelatedFilesSection
+            relatedId={company.related_id}
+            relatedType="companies"
+            relatedName={company.company_name}
             companyName={company.company_name}
           />
         </CollapsibleContent>

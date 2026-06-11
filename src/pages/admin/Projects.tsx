@@ -80,7 +80,7 @@ const Projects = () => {
   const navigate = useNavigate();
   const { teamMember } = useTeamMember();
   usePageDatabases([
-    { table: 'entity_projects', access: 'readwrite', usage: 'Project records — listed, inline-edited, bulk-deleted from this page.', via: 'useQuery + direct supabase.from in Projects.tsx' },
+    { table: 'related_projects', access: 'readwrite', usage: 'Project records — listed, inline-edited, bulk-deleted from this page.', via: 'useQuery + direct supabase.from in Projects.tsx' },
     { table: 'users', access: 'read', usage: 'Assignable owners + team-member avatars on each project row.', via: 'src/hooks/useAssignableUsers.ts, src/hooks/useTeamMember.ts' },
   ]);
   const queryClient = useQueryClient();
@@ -148,7 +148,7 @@ const Projects = () => {
     queryKey: ['all-projects'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('entity_projects')
+        .from('related_projects')
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -156,21 +156,21 @@ const Projects = () => {
     },
   });
 
-  // Fetch lead names for "Related To". entity_projects.entity_id stores the
-  // canonical entities.id, so owning deals are matched via deals.entity_id and
+  // Fetch lead names for "Related To". related_projects.related_id stores the
+  // canonical related.id, so owning deals are matched via deals.related_id and
   // the map is keyed by that canonical id.
-  const leadIds = useMemo(() => [...new Set(rawProjects.map(p => p.entity_id))], [rawProjects]);
+  const leadIds = useMemo(() => [...new Set(rawProjects.map(p => p.related_id))], [rawProjects]);
   const { data: leadMap = {} } = useQuery({
     queryKey: ['project-lead-names', leadIds],
     queryFn: async () => {
       if (leadIds.length === 0) return {};
       const { data } = await supabase
         .from('deals')
-        .select('id, entity_id, name, opportunity_name, company_name')
+        .select('id, related_id, name, opportunity_name, company_name')
         .eq('pipeline', 'potential')
-        .in('entity_id', leadIds);
+        .in('related_id', leadIds);
       const map: Record<string, { name: string; opportunity_name: string | null; company_name: string | null }> = {};
-      for (const l of data ?? []) map[l.entity_id] = l;
+      for (const l of data ?? []) map[l.related_id] = l;
       return map;
     },
     enabled: leadIds.length > 0,
@@ -190,14 +190,14 @@ const Projects = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('project_people')
-        .select('project_id, entity_id, role');
+        .select('project_id, related_id, role');
       if (error) throw error;
       return data ?? [];
     },
   });
 
   // Fetch lead names for linked people
-  const linkedLeadIds = useMemo(() => [...new Set(projectPeopleRaw.map(pp => pp.entity_id))], [projectPeopleRaw]);
+  const linkedLeadIds = useMemo(() => [...new Set(projectPeopleRaw.map(pp => pp.related_id))], [projectPeopleRaw]);
   const { data: linkedLeadMap = {} } = useQuery({
     queryKey: ['linked-lead-names', linkedLeadIds],
     queryFn: async () => {
@@ -218,7 +218,7 @@ const Projects = () => {
   const projectPeopleMap = useMemo(() => {
     const m: Record<string, string[]> = {};
     for (const pp of projectPeopleRaw) {
-      const name = linkedLeadMap[pp.entity_id];
+      const name = linkedLeadMap[pp.related_id];
       if (!name) continue;
       if (!m[pp.project_id]) m[pp.project_id] = [];
       m[pp.project_id].push(name);
@@ -229,7 +229,7 @@ const Projects = () => {
   // Build display string for "Related To"
   const getRelatedTo = (p: LeadProject) => {
     if (p.related_to) return p.related_to;
-    const lead = leadMap[p.entity_id];
+    const lead = leadMap[p.related_id];
     if (!lead) return null;
     const parts = [lead.opportunity_name, lead.company_name, lead.name].filter(Boolean);
     return parts[0] || null;
@@ -243,8 +243,8 @@ const Projects = () => {
       const q = searchTerm.toLowerCase();
       result = result.filter(p =>
         p.name.toLowerCase().includes(q) ||
-        (leadMap[p.entity_id]?.name ?? '').toLowerCase().includes(q) ||
-        (leadMap[p.entity_id]?.company_name ?? '').toLowerCase().includes(q) ||
+        (leadMap[p.related_id]?.name ?? '').toLowerCase().includes(q) ||
+        (leadMap[p.related_id]?.company_name ?? '').toLowerCase().includes(q) ||
         (p.clx_file_name ?? '').toLowerCase().includes(q) ||
         (teamMemberMap[p.owner ?? ''] ?? '').toLowerCase().includes(q) ||
         (getRelatedTo(p) ?? '').toLowerCase().includes(q) ||
@@ -316,10 +316,10 @@ const Projects = () => {
     mutationFn: async (projectIds: string[]) => {
       // Capture projects before deleting for undo
       const { data: deletedProjects } = await supabase
-        .from('entity_projects')
+        .from('related_projects')
         .select('*')
         .in('id', projectIds);
-      const { error } = await supabase.from('entity_projects').delete().in('id', projectIds);
+      const { error } = await supabase.from('related_projects').delete().in('id', projectIds);
       if (error) throw error;
       return { ids: projectIds, deletedProjects: deletedProjects ?? [] };
     },
@@ -333,7 +333,7 @@ const Projects = () => {
         registerUndo({
           label: `Deleted ${ids.length} project(s)`,
           execute: async () => {
-            const { error: e } = await supabase.from('entity_projects').insert(deletedProjects);
+            const { error: e } = await supabase.from('related_projects').insert(deletedProjects);
             if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['all-projects'] });
           },
@@ -351,14 +351,14 @@ const Projects = () => {
     const ids = Array.from(selectedIds);
     // Capture previous owners for undo
     const { data: prevProjects } = await supabase
-      .from('entity_projects')
+      .from('related_projects')
       .select('id, owner')
       .in('id', ids);
     const previousOwners = (prevProjects ?? []).map(p => ({ id: p.id, owner: p.owner }));
 
     try {
       const { error } = await supabase
-        .from('entity_projects')
+        .from('related_projects')
         .update({ owner: ownerId, updated_at: new Date().toISOString() })
         .in('id', ids);
       if (error) {
@@ -373,7 +373,7 @@ const Projects = () => {
         label: `Assigned ${ids.length} project(s) to ${ownerName}`,
         execute: async () => {
           for (const prev of previousOwners) {
-            const { error: e } = await supabase.from('entity_projects').update({ owner: prev.owner }).eq('id', prev.id);
+            const { error: e } = await supabase.from('related_projects').update({ owner: prev.owner }).eq('id', prev.id);
             if (e) throw e;
           }
           queryClient.invalidateQueries({ queryKey: ['all-projects'] });
@@ -387,7 +387,7 @@ const Projects = () => {
   const bulkAddTagsMutation = useMutation({
     mutationFn: async ({ projectIds, tags }: { projectIds: string[]; tags: string[] }) => {
       const { data: currentProjects, error: fetchError } = await supabase
-        .from('entity_projects')
+        .from('related_projects')
         .select('id, tags')
         .in('id', projectIds);
       if (fetchError) throw fetchError;
@@ -396,7 +396,7 @@ const Projects = () => {
       for (const proj of (currentProjects || [])) {
         const existing: string[] = (proj.tags as string[]) || [];
         const merged = Array.from(new Set([...existing, ...tags]));
-        const { error } = await supabase.from('entity_projects').update({ tags: merged }).eq('id', proj.id);
+        const { error } = await supabase.from('related_projects').update({ tags: merged }).eq('id', proj.id);
         if (error) throw error;
       }
       return { count: projectIds.length, tags, previousTags };
@@ -411,7 +411,7 @@ const Projects = () => {
         label: `Added ${result.tags.length} tag(s) to ${result.count} project(s)`,
         execute: async () => {
           for (const prev of result.previousTags) {
-            const { error: e } = await supabase.from('entity_projects').update({ tags: prev.tags }).eq('id', prev.id);
+            const { error: e } = await supabase.from('related_projects').update({ tags: prev.tags }).eq('id', prev.id);
             if (e) throw e;
           }
           queryClient.invalidateQueries({ queryKey: ['all-projects'] });

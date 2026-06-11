@@ -75,7 +75,7 @@ export type LeadCallHistoryEntity = 'potential' | 'underwriting' | 'lender_manag
 
 interface LeadCallHistorySectionProps {
   leadId: string;
-  entityType: LeadCallHistoryEntity;
+  relatedType: LeadCallHistoryEntity;
   teamMembers: Array<{ id: string; name: string }>;
   /** Optional: a phone number to use when "redial" is clicked with no
    *  phone on the row (falls back to the deal's primary phone). */
@@ -106,7 +106,7 @@ function directionIcon(direction: string, status: string | null) {
 
 export function LeadCallHistorySection({
   leadId,
-  entityType,
+  relatedType,
   teamMembers,
   fallbackPhone,
   phoneNumbers = [],
@@ -130,7 +130,7 @@ export function LeadCallHistorySection({
   );
 
   const { data: calls = [], isLoading } = useQuery({
-    queryKey: ['lead-call-history', entityType, leadId, last10s.join(',')],
+    queryKey: ['lead-call-history', relatedType, leadId, last10s.join(',')],
     queryFn: async () => {
       // Match calls linked to this deal (lead_id) OR placed/received on any of
       // the deal contact's phone numbers.
@@ -177,7 +177,7 @@ export function LeadCallHistorySection({
         (payload) => {
           const updated = payload.new as unknown as CommunicationRow;
           setActiveCall((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
-          void queryClient.invalidateQueries({ queryKey: ['lead-call-history', entityType, leadId] });
+          void queryClient.invalidateQueries({ queryKey: ['lead-call-history', relatedType, leadId] });
           void queryClient.invalidateQueries({ queryKey: ['call-history'] });
         },
       )
@@ -185,10 +185,10 @@ export function LeadCallHistorySection({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [activeCall?.id, entityType, leadId, queryClient]);
+  }, [activeCall?.id, relatedType, leadId, queryClient]);
 
   const invalidateAll = () => {
-    void queryClient.invalidateQueries({ queryKey: ['lead-call-history', entityType, leadId] });
+    void queryClient.invalidateQueries({ queryKey: ['lead-call-history', relatedType, leadId] });
     void queryClient.invalidateQueries({ queryKey: ['call-history'] });
   };
 

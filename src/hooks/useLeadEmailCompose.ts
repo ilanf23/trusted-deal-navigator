@@ -138,8 +138,8 @@ export function useLeadEmailCompose({ leadId, tableName, onSent }: UseLeadEmailC
           const activityEntityType =
             tableName === 'lender_programs' ? 'lender_programs' : 'deal';
           await supabase.from('activities').insert({
-            entity_id: leadId,
-            entity_type: activityEntityType,
+            related_id: leadId,
+            related_type: activityEntityType,
             activity_type: 'email',
             title: subject,
             content: plainBody,

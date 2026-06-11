@@ -65,28 +65,28 @@ export const useCompanies = () => {
       // Polymorphic lookups (no FK) — fetched in parallel
       const [phonesRes, emailsRes, dealsRes] = await Promise.all([
         supabase
-          .from('entity_phones')
-          .select('entity_id, phone_number, is_primary')
-          .eq('entity_type', 'companies'),
+          .from('related_phones')
+          .select('related_id, phone_number, is_primary')
+          .eq('related_type', 'companies'),
         supabase
-          .from('entity_emails')
-          .select('entity_id, email, is_primary')
-          .eq('entity_type', 'companies'),
+          .from('related_emails')
+          .select('related_id, email, is_primary')
+          .eq('related_type', 'companies'),
         supabase.from('deals').select('company_name').eq('pipeline', 'potential'),
       ]);
 
       const phoneByCompany = new Map<string, { phone_number: string; is_primary: boolean | null }[]>();
       (phonesRes.data ?? []).forEach((r: any) => {
-        const arr = phoneByCompany.get(r.entity_id) ?? [];
+        const arr = phoneByCompany.get(r.related_id) ?? [];
         arr.push({ phone_number: r.phone_number, is_primary: r.is_primary });
-        phoneByCompany.set(r.entity_id, arr);
+        phoneByCompany.set(r.related_id, arr);
       });
 
       const emailByCompany = new Map<string, { email: string; is_primary: boolean | null }[]>();
       (emailsRes.data ?? []).forEach((r: any) => {
-        const arr = emailByCompany.get(r.entity_id) ?? [];
+        const arr = emailByCompany.get(r.related_id) ?? [];
         arr.push({ email: r.email, is_primary: r.is_primary });
-        emailByCompany.set(r.entity_id, arr);
+        emailByCompany.set(r.related_id, arr);
       });
 
       const dealCountByName = new Map<string, number>();
@@ -96,10 +96,10 @@ export const useCompanies = () => {
       });
 
       return (companies ?? []).map((c: any) => {
-        // entity_phones/entity_emails maps are keyed by the canonical
-        // entities.id, which is the company row's entity_id (not its own id).
-        const phones = phoneByCompany.get(c.entity_id) ?? [];
-        const emails = emailByCompany.get(c.entity_id) ?? [];
+        // related_phones/related_emails maps are keyed by the canonical
+        // related.id, which is the company row's related_id (not its own id).
+        const phones = phoneByCompany.get(c.related_id) ?? [];
+        const emails = emailByCompany.get(c.related_id) ?? [];
         const primaryPhone =
           phones.find((p) => p.is_primary)?.phone_number ?? phones[0]?.phone_number ?? null;
         const primaryEmail =

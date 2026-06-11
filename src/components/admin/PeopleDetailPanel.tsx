@@ -20,7 +20,7 @@ import { useInlineSave as useSharedInlineSave } from './shared/useInlineSave';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
 import { PipelineRecordsSection, type PipelineRecord } from './shared/PipelineRecordsSection';
-import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
+import { RelatedFilesSection } from '@/components/admin/files/RelatedFilesSection';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -39,7 +39,7 @@ function getPipelineLeadRoute(pipelineName: string, leadId: string): string {
 // ── Person type ──
 interface Person {
   id: string;
-  entity_id: string;
+  related_id: string;
   name: string;
   title: string | null;
   company_name: string | null;
@@ -60,13 +60,13 @@ interface Person {
 }
 
 interface PersonEmail {
-  id: string; entity_id: string; email: string; email_type: string; is_primary: boolean;
+  id: string; related_id: string; email: string; email_type: string; is_primary: boolean;
 }
 interface PersonPhone {
-  id: string; entity_id: string; phone_number: string; phone_type: string; is_primary: boolean;
+  id: string; related_id: string; phone_number: string; phone_type: string; is_primary: boolean;
 }
 interface PersonAddress {
-  id: string; entity_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean;
+  id: string; related_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean;
 }
 
 interface ContactTypeConfigEntry {
@@ -682,8 +682,8 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
       const { data } = await supabase
         .from('activities')
         .select('id, activity_type, title, content, created_at, created_by')
-        .eq('entity_id', person.id)
-        .eq('entity_type', 'people')
+        .eq('related_id', person.id)
+        .eq('related_type', 'people')
         .order('created_at', { ascending: false });
       return data || [];
     },
@@ -709,8 +709,8 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
     if (!noteContent.trim()) return;
     setSavingNote(true);
     const { error } = await supabase.from('activities').insert({
-      entity_id: person.id,
-      entity_type: 'people',
+      related_id: person.id,
+      related_type: 'people',
       activity_type: activityTab === 'log' ? activityType : 'note',
       title: activityTab === 'log' ? activityType.replace(/_/g, ' ') : 'Note',
       content: noteContent.trim(),
@@ -945,8 +945,8 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
       const { data } = await supabase
         .from('tasks')
         .select('*')
-        .eq('entity_id', person.id)
-        .eq('entity_type', 'people')
+        .eq('related_id', person.id)
+        .eq('related_type', 'people')
         .order('created_at', { ascending: false });
       return (data || []) as LeadTask[];
     },
@@ -954,18 +954,18 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
 
   const { data: teamMembers = [] } = useAssignableUsers();
 
-  // ── Pipeline records — people are standalone entities, no longer in pipelines directly ──
+  // ── Pipeline records — people are standalone related records, no longer in pipelines directly ──
   const pipelineRecords: PipelineRecord[] = [];
 
-  // ── Person files query (shares cache with EntityFilesSection) ──
+  // ── Person files query (shares cache with RelatedFilesSection) ──
   const { data: personFiles = [] } = useQuery({
-    queryKey: ['entity-files', 'people', person.entity_id],
+    queryKey: ['related-files', 'people', person.related_id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('entity_files')
-        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', person.entity_id)
-        .eq('entity_type', 'people')
+        .from('related_files')
+        .select('id, related_id, related_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('related_id', person.related_id)
+        .eq('related_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -1116,10 +1116,10 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
 
       {/* ── Files ── */}
       <RelatedSection label="Files" count={personFiles.length} onAdd={() => setAddFilesOpen(true)}>
-        <EntityFilesSection
-          entityId={person.entity_id}
-          entityType="people"
-          entityName={person.name}
+        <RelatedFilesSection
+          relatedId={person.related_id}
+          relatedType="people"
+          relatedName={person.name}
           companyName={person.company_name ?? undefined}
           hideHeader
           addOpen={addFilesOpen}
@@ -1143,7 +1143,7 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
         onClose={() => { setTaskDialogOpen(false); setEditingTask(null); }}
         leadId={person.id}
         leadName={person.name}
-        entityType="people"
+        relatedType="people"
         teamMembers={teamMembers}
         currentUserName={teamMember?.name ?? null}
         onSaved={() => {
@@ -1189,7 +1189,7 @@ export default function PeopleDetailPanel({
   const { data: personEmails = [] } = useQuery({
     queryKey: ['person-emails', person.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', person.entity_id).eq('entity_type', 'people');
+      const { data } = await supabase.from('related_emails').select('*').eq('related_id', person.related_id).eq('related_type', 'people');
       return (data || []) as PersonEmail[];
     },
   });
@@ -1197,7 +1197,7 @@ export default function PeopleDetailPanel({
   const { data: personPhones = [] } = useQuery({
     queryKey: ['person-phones', person.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', person.entity_id).eq('entity_type', 'people');
+      const { data } = await supabase.from('related_phones').select('*').eq('related_id', person.related_id).eq('related_type', 'people');
       return (data || []) as PersonPhone[];
     },
   });
@@ -1205,7 +1205,7 @@ export default function PeopleDetailPanel({
   const { data: personAddresses = [] } = useQuery({
     queryKey: ['person-addresses', person.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', person.entity_id).eq('entity_type', 'people');
+      const { data } = await supabase.from('related_addresses').select('*').eq('related_id', person.related_id).eq('related_type', 'people');
       return (data || []) as PersonAddress[];
     },
   });
@@ -1213,7 +1213,7 @@ export default function PeopleDetailPanel({
   // ── Satellite mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: person.entity_id, entity_type: 'people', email, email_type: newEmailType });
+      const { error } = await supabase.from('related_emails').insert({ related_id: person.related_id, related_type: 'people', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); setNewEmail(''); setShowAddEmail(false); toast.success('Email added'); },
@@ -1222,7 +1222,7 @@ export default function PeopleDetailPanel({
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('entity_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('related_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); toast.success('Email removed'); },
@@ -1231,7 +1231,7 @@ export default function PeopleDetailPanel({
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: person.entity_id, entity_type: 'people', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('related_phones').insert({ related_id: person.related_id, related_type: 'people', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); setNewPhone(''); setShowAddPhone(false); toast.success('Phone added'); },
@@ -1240,7 +1240,7 @@ export default function PeopleDetailPanel({
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('entity_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('related_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); toast.success('Phone removed'); },
@@ -1249,9 +1249,9 @@ export default function PeopleDetailPanel({
 
   const addAddressMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('entity_addresses').insert({
-        entity_id: person.entity_id,
-        entity_type: 'people',
+      const { error } = await supabase.from('related_addresses').insert({
+        related_id: person.related_id,
+        related_type: 'people',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -1271,7 +1271,7 @@ export default function PeopleDetailPanel({
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('entity_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('related_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', person.id] }); toast.success('Address removed'); },
@@ -1280,7 +1280,7 @@ export default function PeopleDetailPanel({
 
   const updateEmailMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: { email?: string; email_type?: string } }) => {
-      const { error } = await supabase.from('entity_emails').update(data).eq('id', id);
+      const { error } = await supabase.from('related_emails').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); toast.success('Email updated'); },
@@ -1289,7 +1289,7 @@ export default function PeopleDetailPanel({
 
   const updatePhoneMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: { phone_number?: string; phone_type?: string } }) => {
-      const { error } = await supabase.from('entity_phones').update(data).eq('id', id);
+      const { error } = await supabase.from('related_phones').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); toast.success('Phone updated'); },
@@ -1298,7 +1298,7 @@ export default function PeopleDetailPanel({
 
   const updateAddressMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<PersonAddress> }) => {
-      const { error } = await supabase.from('entity_addresses').update(data).eq('id', id);
+      const { error } = await supabase.from('related_addresses').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', person.id] }); toast.success('Address updated'); },

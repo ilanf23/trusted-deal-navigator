@@ -27,9 +27,9 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
-import { requireEntityId } from '@/lib/entityRefs';
-import { EntityCallHistorySection } from '@/components/admin/shared/EntityCallHistorySection';
+import { RelatedFilesSection } from '@/components/admin/files/RelatedFilesSection';
+import { requireEntityId } from '@/lib/relatedRefs';
+import { RelatedCallHistorySection } from '@/components/admin/shared/RelatedCallHistorySection';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
@@ -66,7 +66,7 @@ function getFileIcon(fileType: string | null): string {
 // ── Person type ──
 interface Person {
   id: string;
-  entity_id: string;
+  related_id: string;
   name: string;
   title: string | null;
   company_name: string | null;
@@ -105,7 +105,7 @@ interface Person {
 
 interface PersonEmail {
   id: string;
-  entity_id: string;
+  related_id: string;
   email: string;
   email_type: string;
   is_primary: boolean;
@@ -113,7 +113,7 @@ interface PersonEmail {
 
 interface PersonPhone {
   id: string;
-  entity_id: string;
+  related_id: string;
   phone_number: string;
   phone_type: string;
   is_primary: boolean;
@@ -121,7 +121,7 @@ interface PersonPhone {
 
 interface PersonAddress {
   id: string;
-  entity_id: string;
+  related_id: string;
   address_type: string;
   address_line_1: string | null;
   address_line_2: string | null;
@@ -1354,8 +1354,8 @@ export default function PeopleExpandedView() {
       const { data, error } = await supabase
         .from('activities')
         .select('*')
-        .eq('entity_id', personId!)
-        .eq('entity_type', 'people')
+        .eq('related_id', personId!)
+        .eq('related_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -1378,8 +1378,8 @@ export default function PeopleExpandedView() {
       const { data } = await supabase
         .from('tasks')
         .select('*')
-        .eq('entity_id', personId!)
-        .eq('entity_type', 'people')
+        .eq('related_id', personId!)
+        .eq('related_type', 'people')
         .order('created_at', { ascending: false });
       return (data ?? []) as LeadTask[];
     },
@@ -1403,14 +1403,14 @@ export default function PeopleExpandedView() {
   });
 
   // Satellite table queries
-  // Child entity_* tables are keyed by the canonical entities.id, which lives
-  // on the fetched person row (person.entity_id) — not the person's own id.
-  const personEntityId = person?.entity_id ?? null;
+  // Child related_* tables are keyed by the canonical related.id, which lives
+  // on the fetched person row (person.related_id) — not the person's own id.
+  const personEntityId = person?.related_id ?? null;
 
   const { data: personEmails = [] } = useQuery({
     queryKey: ['person-emails', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', personEntityId!).eq('entity_type', 'people');
+      const { data } = await supabase.from('related_emails').select('*').eq('related_id', personEntityId!).eq('related_type', 'people');
       return (data || []) as PersonEmail[];
     },
     enabled: !!personEntityId,
@@ -1419,7 +1419,7 @@ export default function PeopleExpandedView() {
   const { data: personPhones = [] } = useQuery({
     queryKey: ['person-phones', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', personEntityId!).eq('entity_type', 'people');
+      const { data } = await supabase.from('related_phones').select('*').eq('related_id', personEntityId!).eq('related_type', 'people');
       return (data || []) as PersonPhone[];
     },
     enabled: !!personEntityId,
@@ -1428,7 +1428,7 @@ export default function PeopleExpandedView() {
   const { data: personAddresses = [] } = useQuery({
     queryKey: ['person-addresses', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', personEntityId!).eq('entity_type', 'people');
+      const { data } = await supabase.from('related_addresses').select('*').eq('related_id', personEntityId!).eq('related_type', 'people');
       return (data || []) as PersonAddress[];
     },
     enabled: !!personEntityId,
@@ -1467,8 +1467,8 @@ export default function PeopleExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
     // Log an activity for the type change
     await supabase.from('activities').insert({
-      entity_id: personId,
-      entity_type: 'people',
+      related_id: personId,
+      related_type: 'people',
       activity_type: 'type_change',
       title: 'Contact type changed',
       content: JSON.stringify({ from: previousType, to: newType }),
@@ -1495,8 +1495,8 @@ export default function PeopleExpandedView() {
     }
     setSavingActivity(true);
     const { error } = await supabase.from('activities').insert({
-      entity_id: personId,
-      entity_type: 'people',
+      related_id: personId,
+      related_type: 'people',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -1537,8 +1537,8 @@ export default function PeopleExpandedView() {
       // Log as activity
       if (personId) {
         await supabase.from('activities').insert({
-          entity_id: personId,
-          entity_type: 'people',
+          related_id: personId,
+          related_type: 'people',
           activity_type: 'email',
           title: `Email: ${emailSubject || '(No Subject)'}`,
           content: emailBody,
@@ -1558,8 +1558,8 @@ export default function PeopleExpandedView() {
   const handleSaveTask = useCallback(async () => {
     if (!personId || !newTaskTitle.trim()) return;
     const { error } = await supabase.from('tasks').insert({
-      entity_id: personId,
-      entity_type: 'people',
+      related_id: personId,
+      related_type: 'people',
       title: newTaskTitle.trim(),
       status: 'todo',
       task_type: 'to_do',
@@ -1619,15 +1619,15 @@ export default function PeopleExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['person-activity-comments', personId] });
   }, [personId, commentTexts, teamMember, queryClient]);
 
-  // ── Person files query (shares cache with EntityFilesSection) ──
+  // ── Person files query (shares cache with RelatedFilesSection) ──
   const { data: personFiles = [] } = useQuery({
-    queryKey: ['entity-files', 'people', personEntityId],
+    queryKey: ['related-files', 'people', personEntityId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('entity_files')
-        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', personEntityId!)
-        .eq('entity_type', 'people')
+        .from('related_files')
+        .select('id, related_id, related_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('related_id', personEntityId!)
+        .eq('related_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -1705,16 +1705,16 @@ export default function PeopleExpandedView() {
     }
   }, [newEventTitle, newEventDate, newEventTime, newEventEndTime, newEventType, personId, teamMember, queryClient]);
 
-  // Link an existing project to this person. Because `entity_projects` rows
-  // are per-entity, we insert a new row with the suggested project's name and
+  // Link an existing project to this person. Because `related_projects` rows
+  // are per-related-record, we insert a new row with the suggested project's name and
   // stage for this person.
   const handleLinkExistingProject = useCallback(async (suggestion: { name: string; status: string | null; project_stage: string | null }) => {
     if (!personId || !personEntityId) return;
     setSavingProject(true);
     try {
-      const { error } = await supabase.from('entity_projects').insert({
-        entity_id: personEntityId,
-        entity_type: 'people',
+      const { error } = await supabase.from('related_projects').insert({
+        related_id: personEntityId,
+        related_type: 'people',
         name: suggestion.name,
         status: suggestion.status ?? 'open',
         project_stage: suggestion.project_stage ?? 'open',
@@ -1782,10 +1782,10 @@ export default function PeopleExpandedView() {
     queryKey: ['person-projects', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('entity_projects')
+        .from('related_projects')
         .select('*')
-        .eq('entity_id', personEntityId!)
-        .eq('entity_type', 'people')
+        .eq('related_id', personEntityId!)
+        .eq('related_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as LeadProject[];
@@ -1793,7 +1793,7 @@ export default function PeopleExpandedView() {
     enabled: !!personEntityId,
   });
 
-  // Project name suggestions across all entities, excluding projects already
+  // Project name suggestions across all related records, excluding projects already
   // linked to this person. Powers the Add Project autocomplete.
   const { data: projectSuggestions = [] } = useQuery<Array<{ id: string; name: string; status: string | null; project_stage: string | null }>>({
     queryKey: ['person-project-search', personId, newProjectName],
@@ -1801,7 +1801,7 @@ export default function PeopleExpandedView() {
       const q = newProjectName.trim();
       if (!q) return [];
       const { data } = await supabase
-        .from('entity_projects')
+        .from('related_projects')
         .select('id, name, status, project_stage')
         .ilike('name', `%${q}%`)
         .limit(20);
@@ -1839,7 +1839,7 @@ export default function PeopleExpandedView() {
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: requireEntityId(person ?? {}, 'Person'), entity_type: 'people', email, email_type: newEmailType });
+      const { error } = await supabase.from('related_emails').insert({ related_id: requireEntityId(person ?? {}, 'Person'), related_type: 'people', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); setNewEmail(''); setShowAddEmail(false); toast.success('Email added'); },
@@ -1848,7 +1848,7 @@ export default function PeopleExpandedView() {
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('entity_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('related_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); toast.success('Email removed'); },
@@ -1857,7 +1857,7 @@ export default function PeopleExpandedView() {
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: requireEntityId(person ?? {}, 'Person'), entity_type: 'people', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('related_phones').insert({ related_id: requireEntityId(person ?? {}, 'Person'), related_type: 'people', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); setNewPhone(''); setShowAddPhone(false); toast.success('Phone added'); },
@@ -1866,7 +1866,7 @@ export default function PeopleExpandedView() {
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('entity_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('related_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); toast.success('Phone removed'); },
@@ -1875,9 +1875,9 @@ export default function PeopleExpandedView() {
 
   const addAddressMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('entity_addresses').insert({
-        entity_id: requireEntityId(person ?? {}, 'Person'),
-        entity_type: 'people',
+      const { error } = await supabase.from('related_addresses').insert({
+        related_id: requireEntityId(person ?? {}, 'Person'),
+        related_type: 'people',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -1897,7 +1897,7 @@ export default function PeopleExpandedView() {
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('entity_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('related_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', personId] }); toast.success('Address removed'); },
@@ -1906,7 +1906,7 @@ export default function PeopleExpandedView() {
 
   const updateEmailMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: { email?: string; email_type?: string } }) => {
-      const { error } = await supabase.from('entity_emails').update(data).eq('id', id);
+      const { error } = await supabase.from('related_emails').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); toast.success('Email updated'); },
@@ -1915,7 +1915,7 @@ export default function PeopleExpandedView() {
 
   const updatePhoneMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: { phone_number?: string; phone_type?: string } }) => {
-      const { error } = await supabase.from('entity_phones').update(data).eq('id', id);
+      const { error } = await supabase.from('related_phones').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); toast.success('Phone updated'); },
@@ -1924,7 +1924,7 @@ export default function PeopleExpandedView() {
 
   const updateAddressMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<PersonAddress> }) => {
-      const { error } = await supabase.from('entity_addresses').update(data).eq('id', id);
+      const { error } = await supabase.from('related_addresses').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', personId] }); toast.success('Address updated'); },
@@ -3205,10 +3205,10 @@ export default function PeopleExpandedView() {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
                   {personEntityId && (
-                    <EntityFilesSection
-                      entityId={personEntityId}
-                      entityType="people"
-                      entityName={person?.name}
+                    <RelatedFilesSection
+                      relatedId={personEntityId}
+                      relatedType="people"
+                      relatedName={person?.name}
                       companyName={person?.company_name ?? undefined}
                     />
                   )}
@@ -3218,7 +3218,7 @@ export default function PeopleExpandedView() {
 
             {/* Calls — every call linked to this person by lead_id or phone match */}
             {personId && (
-              <EntityCallHistorySection
+              <RelatedCallHistorySection
                 scopeKey={`person-${personId}`}
                 leadIds={[personId]}
                 phoneNumbers={[person?.phone, ...personPhones.map((p) => p.phone_number)]}
@@ -3260,7 +3260,7 @@ export default function PeopleExpandedView() {
         }}
         leadId={personId}
         leadName={person?.name ?? ''}
-        entityType="people"
+        relatedType="people"
         teamMembers={teamMembers}
         currentUserName={teamMember?.name ?? null}
         initialTitle={editingTask ? undefined : newTaskTitle}

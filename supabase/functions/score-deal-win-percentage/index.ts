@@ -188,7 +188,7 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
       "id, communication_type, direction, duration_seconds, transcript, created_at",
     )
     .eq("lead_id", leadId)
-    .eq("entity_type", "deal")
+    .eq("related_type", "deal")
     .order("created_at", { ascending: false })
     .limit(50);
   const comms: Array<{
@@ -222,7 +222,7 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
     .from("outbound_emails")
     .select("id, subject, body_plain, sent_at, created_at")
     .eq("lead_id", leadId)
-    .eq("entity_type", "deal")
+    .eq("related_type", "deal")
     .order("created_at", { ascending: false })
     .limit(20);
   const emails: Array<{
@@ -244,8 +244,8 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
   const { count: activitiesLast30 } = await supabase
     .from("activities")
     .select("id", { count: "exact", head: true })
-    .eq("entity_id", leadId)
-    .eq("entity_type", "deal")
+    .eq("related_id", leadId)
+    .eq("related_type", "deal")
     .gte("created_at", thirtyDaysAgoIso);
 
   // 6. Tasks
@@ -270,15 +270,15 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
   }).length;
   const completedTasks = tasks.filter((t) => t.is_completed).length;
 
-  // 7. Files attached to the lead. entity_files.entity_id now points at the
-  // canonical entities table, so filter through the embedded entities row on
+  // 7. Files attached to the lead. related_files.related_id now points at the
+  // canonical related table, so filter through the embedded related row on
   // source_id (the original deal record id).
   const { data: filesRaw } = await supabase
-    .from("entity_files")
-    .select("id, file_name, file_type, entities!inner(kind, source_id)")
-    .eq("entity_type", "deal")
-    .eq("entities.kind", "deal")
-    .eq("entities.source_id", leadId)
+    .from("related_files")
+    .select("id, file_name, file_type, related!inner(kind, source_id)")
+    .eq("related_type", "deal")
+    .eq("related.kind", "deal")
+    .eq("related.source_id", leadId)
     .limit(100);
   const files: Array<{ id: string; file_name: string; file_type: string | null }> = filesRaw ?? [];
 

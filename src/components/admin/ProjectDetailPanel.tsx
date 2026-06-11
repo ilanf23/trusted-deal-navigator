@@ -24,7 +24,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { toast } from 'sonner';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
+import { RelatedFilesSection } from '@/components/admin/files/RelatedFilesSection';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 import type { LeadProject } from './ProjectDetailDialog';
 
@@ -85,16 +85,16 @@ export default function ProjectDetailPanel({
   const [activityDropdownOpen, setActivityDropdownOpen] = useState(false);
   const [expandedThreads, setExpandedThreads] = useState<Record<string, boolean>>({});
 
-  // Fetch lead info for context. `project.entity_id` is the canonical
-  // entities.id of the owning record, so the deal is resolved via the deals
-  // table's own entity_id column (deals.entity_id = project.entity_id).
+  // Fetch lead info for context. `project.related_id` is the canonical
+  // related.id of the owning record, so the deal is resolved via the deals
+  // table's own related_id column (deals.related_id = project.related_id).
   const { data: lead } = useQuery({
-    queryKey: ['project-lead', project.entity_id],
+    queryKey: ['project-lead', project.related_id],
     queryFn: async () => {
-      const { data } = await supabase.from('deals').select('id, name, company_name, opportunity_name, email, last_activity_at').eq('pipeline', 'potential').eq('entity_id', project.entity_id).maybeSingle();
+      const { data } = await supabase.from('deals').select('id, name, company_name, opportunity_name, email, last_activity_at').eq('pipeline', 'potential').eq('related_id', project.related_id).maybeSingle();
       return data;
     },
-    enabled: !!project.entity_id,
+    enabled: !!project.related_id,
   });
 
   // Owning deal's record id — needed for tables that still key off deal ids
@@ -103,7 +103,7 @@ export default function ProjectDetailPanel({
 
   // Interaction count
   const { data: interactionCount = 0 } = useQuery({
-    queryKey: ['project-panel-interactions', project.entity_id],
+    queryKey: ['project-panel-interactions', project.related_id],
     queryFn: async () => {
       const { count } = await supabase
         .from('communications')
@@ -116,12 +116,12 @@ export default function ProjectDetailPanel({
 
   // Lead emails for gmail search
   const { data: leadEmails = [] } = useQuery({
-    queryKey: ['project-panel-lead-emails', project.entity_id],
+    queryKey: ['project-panel-lead-emails', project.related_id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('email').eq('entity_id', project.entity_id);
+      const { data } = await supabase.from('related_emails').select('email').eq('related_id', project.related_id);
       return (data || []) as { email: string }[];
     },
-    enabled: !!project.entity_id,
+    enabled: !!project.related_id,
   });
 
   const leadEmailAddresses = useMemo(() => {
@@ -138,12 +138,12 @@ export default function ProjectDetailPanel({
       const status = await getGoogleIntegrationStatus('gmail');
       return status.connected ? status : null;
     },
-    enabled: !!project.entity_id,
+    enabled: !!project.related_id,
   });
 
   // Gmail emails
   const { data: gmailEmails = [], isLoading: gmailEmailsLoading } = useQuery({
-    queryKey: ['project-panel-gmail-emails', project.entity_id, leadEmailAddresses],
+    queryKey: ['project-panel-gmail-emails', project.related_id, leadEmailAddresses],
     queryFn: async () => {
       if (!gmailConnection || leadEmailAddresses.length === 0) return [];
       const { data: { session } } = await supabase.auth.getSession();
@@ -162,7 +162,7 @@ export default function ProjectDetailPanel({
         isRead: !msg.isUnread,
       }));
     },
-    enabled: !!gmailConnection && leadEmailAddresses.length > 0 && !!project.entity_id,
+    enabled: !!gmailConnection && leadEmailAddresses.length > 0 && !!project.related_id,
   });
 
   // Group gmail emails into threads
@@ -194,14 +194,14 @@ export default function ProjectDetailPanel({
     );
   }, [gmailEmails]);
 
-  // Activities — `activities.entity_id` still stores deal record ids.
+  // Activities — `activities.related_id` still stores deal record ids.
   const { data: activities = [] } = useQuery({
-    queryKey: ['project-panel-activities', project.entity_id],
+    queryKey: ['project-panel-activities', project.related_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('activities')
         .select('*')
-        .eq('entity_id', ownerDealId!)
+        .eq('related_id', ownerDealId!)
         .order('created_at', { ascending: false });
       return data ?? [];
     },
@@ -210,7 +210,7 @@ export default function ProjectDetailPanel({
 
   // Tasks
   const { data: tasks = [] } = useQuery({
-    queryKey: ['project-panel-tasks', project.entity_id],
+    queryKey: ['project-panel-tasks', project.related_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('tasks')
@@ -224,7 +224,7 @@ export default function ProjectDetailPanel({
 
   // Contacts
   const { data: contacts = [] } = useQuery({
-    queryKey: ['project-panel-contacts', project.entity_id],
+    queryKey: ['project-panel-contacts', project.related_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('deal_contacts')
@@ -237,31 +237,31 @@ export default function ProjectDetailPanel({
 
   // Files
   const { data: files = [] } = useQuery({
-    queryKey: ['project-panel-files', project.entity_id],
+    queryKey: ['project-panel-files', project.related_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_files')
+        .from('related_files')
         .select('id, file_name, file_type, file_size, created_at')
-        .eq('entity_id', project.entity_id)
+        .eq('related_id', project.related_id)
         .order('created_at', { ascending: false });
       return data ?? [];
     },
-    enabled: !!project.entity_id,
+    enabled: !!project.related_id,
   });
 
   // Pipeline info
   const { data: pipelineInfo } = useQuery({
-    queryKey: ['project-panel-pipeline', project.entity_id],
+    queryKey: ['project-panel-pipeline', project.related_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('deals')
         .select('pipeline_id, pipelines:pipeline_id(name)')
         .eq('pipeline', 'potential')
-        .eq('entity_id', project.entity_id)
+        .eq('related_id', project.related_id)
         .maybeSingle();
       return data as { pipeline_id: string; pipelines: { name: string } | null } | null;
     },
-    enabled: !!project.entity_id,
+    enabled: !!project.related_id,
   });
 
   // Linked people
@@ -326,24 +326,24 @@ export default function ProjectDetailPanel({
   // Follow
   const teamMemberId = teamMember?.id;
   const { data: isFollowing = false } = useQuery({
-    queryKey: ['project-follow', project.entity_id, teamMemberId],
+    queryKey: ['project-follow', project.related_id, teamMemberId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_followers').select('id')
-        .eq('entity_id', project.entity_id).eq('user_id', teamMemberId!).maybeSingle();
+      const { data } = await supabase.from('related_followers').select('id')
+        .eq('related_id', project.related_id).eq('user_id', teamMemberId!).maybeSingle();
       return !!data;
     },
-    enabled: !!project.entity_id && !!teamMemberId,
+    enabled: !!project.related_id && !!teamMemberId,
   });
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
       if (isFollowing) {
-        await supabase.from('entity_followers').delete().eq('entity_id', project.entity_id).eq('user_id', teamMemberId!);
+        await supabase.from('related_followers').delete().eq('related_id', project.related_id).eq('user_id', teamMemberId!);
       } else {
-        await supabase.from('entity_followers').insert({ entity_id: project.entity_id, user_id: teamMemberId! });
+        await supabase.from('related_followers').insert({ related_id: project.related_id, user_id: teamMemberId! });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-follow', project.entity_id, teamMemberId] });
+      queryClient.invalidateQueries({ queryKey: ['project-follow', project.related_id, teamMemberId] });
       toast.success(isFollowing ? 'Unfollowed' : 'Following');
     },
   });
@@ -352,7 +352,7 @@ export default function ProjectDetailPanel({
 
   const saveField = useCallback(async (field: string, value: unknown) => {
     const { error } = await supabase
-      .from('entity_projects')
+      .from('related_projects')
       .update({ [field]: value, updated_at: new Date().toISOString() })
       .eq('id', project.id);
     if (error) { toast.error('Failed to save'); return; }
@@ -368,8 +368,8 @@ export default function ProjectDetailPanel({
     if (!content || isHtmlEmpty(content)) { toast.error('Please enter some content'); return; }
     setSavingActivity(true);
     const { error } = await supabase.from('activities').insert({
-      entity_id: ownerDealId,
-      entity_type: 'deal',
+      related_id: ownerDealId,
+      related_type: 'deal',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -379,8 +379,8 @@ export default function ProjectDetailPanel({
     await supabase.from('deals').update({ last_activity_at: new Date().toISOString() }).eq('id', ownerDealId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote(''); else setNoteContent('');
-    queryClient.invalidateQueries({ queryKey: ['project-panel-activities', project.entity_id] });
-  }, [ownerDealId, project.entity_id, activityTab, activityType, activityNote, noteContent, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ['project-panel-activities', project.related_id] });
+  }, [ownerDealId, project.related_id, activityTab, activityType, activityNote, noteContent, queryClient]);
 
   // Merge activities + email threads into timeline
   const timelineItems = useMemo(() => {
@@ -839,10 +839,10 @@ export default function ProjectDetailPanel({
               <label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 mb-2">
                 <FileText className="h-4 w-4" /> Files
               </label>
-              <EntityFilesSection
-                entityId={project.entity_id}
-                entityType="deal"
-                entityName={project.name}
+              <RelatedFilesSection
+                relatedId={project.related_id}
+                relatedType="deal"
+                relatedName={project.name}
               />
             </div>
 

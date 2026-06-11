@@ -437,7 +437,7 @@ const Underwriting = () => {
     enabled: leads.length > 0,
   });
 
-  // Opportunities the current user is following — real entity_followers query.
+  // Opportunities the current user is following — real related_followers query.
   // Shared query key with the expanded-view toolbar so toggling follow
   // invalidates this automatically.
   const { teamMember: currentTeamMember } = useTeamMember();
@@ -445,11 +445,11 @@ const Underwriting = () => {
     queryKey: ['followed-deals', 'underwriting', currentTeamMember?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_followers')
-        .select('entity_id')
-        .eq('entity_type', 'deal')
+        .from('related_followers')
+        .select('related_id')
+        .eq('related_type', 'deal')
         .eq('user_id', currentTeamMember!.id);
-      return (data ?? []).map((r) => r.entity_id);
+      return (data ?? []).map((r) => r.related_id);
     },
     enabled: !!currentTeamMember?.id,
   });
@@ -462,7 +462,7 @@ const Underwriting = () => {
     }
     counts['my_open'] = leads.length;
     counts['open'] = leads.length;
-    counts['following'] = leads.filter((l) => followedLeadIds.has(l.entity_id)).length;
+    counts['following'] = leads.filter((l) => followedLeadIds.has(l.related_id)).length;
     counts['won'] = leads.filter(l => l.status === 'won' as any).length;
     counts['lost'] = leads.filter(l => l.status === 'lost' as any).length;
     counts['brad_incoming'] = leads.filter(l => (l.assigned_to ?? '').toLowerCase().includes('brad') || teamMemberMap[l.assigned_to ?? '']?.toLowerCase().includes('brad')).length;
@@ -532,7 +532,7 @@ const Underwriting = () => {
       } else if (activeFilter === 'onboarding_2026') {
         result = result.filter((l) => l.cohort_year === 2026);
       } else if (activeFilter === 'following') {
-        result = result.filter((l) => followedLeadIds.has(l.entity_id));
+        result = result.filter((l) => followedLeadIds.has(l.related_id));
       }
       // 'my_open', 'open' show all for now
     }

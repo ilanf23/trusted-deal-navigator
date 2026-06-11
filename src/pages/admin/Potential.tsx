@@ -443,17 +443,17 @@ const Pipeline = () => {
   }, [leads, teamMembers, leadOwnerOverrides]);
 
   // Real set of opportunities the current user is following, keyed off the
-  // `entity_followers` table. The toolbar's Follow button in the expanded view
+  // `related_followers` table. The toolbar's Follow button in the expanded view
   // invalidates this query key on toggle so the filter count stays in sync.
   const { data: followedLeadIdsArray = [] } = useQuery({
     queryKey: ['followed-deals', 'potential', currentTeamMember?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_followers')
-        .select('entity_id')
-        .eq('entity_type', 'deal')
+        .from('related_followers')
+        .select('related_id')
+        .eq('related_type', 'deal')
         .eq('user_id', currentTeamMember!.id);
-      return (data ?? []).map((r) => r.entity_id);
+      return (data ?? []).map((r) => r.related_id);
     },
     enabled: !!currentTeamMember?.id,
   });
@@ -537,7 +537,7 @@ const Pipeline = () => {
     const myId = currentTeamMember?.id;
     counts['my_open'] = leads.filter(l => leadOwnerMap[l.id] === myId && !CLOSED_STATUSES.includes(l.status)).length;
     counts['open'] = leads.filter(l => !CLOSED_STATUSES.includes(l.status)).length;
-    counts['following'] = leads.filter(l => followedLeadIds.has(l.entity_id)).length;
+    counts['following'] = leads.filter(l => followedLeadIds.has(l.related_id)).length;
     counts['won'] = leads.filter(l => l.status === 'won' as any).length;
     counts['lost'] = leads.filter(l => l.status === 'lost' as any || l.status === 'funded' as any).length;
     return counts;
@@ -556,7 +556,7 @@ const Pipeline = () => {
       } else if (activeFilter === 'open') {
         result = result.filter((l) => !CLOSED_STATUSES.includes(l.status));
       } else if (activeFilter === 'following') {
-        result = result.filter((l) => followedLeadIds.has(l.entity_id));
+        result = result.filter((l) => followedLeadIds.has(l.related_id));
       } else if (activeFilter === 'won') {
         result = result.filter((l) => l.status === ('won' as LeadStatus));
       } else if (activeFilter === 'lost') {
@@ -792,10 +792,10 @@ const Pipeline = () => {
         registerUndo({
           label: `Removed ${ids.length} lead(s) from pipeline`,
           execute: async () => {
-            // The deal's entities row was removed on delete, so strip the stale
-            // entity_id and let the insert trigger mint a fresh one (the Insert
-            // type still lists entity_id as required, hence the cast).
-            const restoreRows = deletedRecords.map(({ entity_id: _entityId, ...rest }) => rest);
+            // The deal's related row was removed on delete, so strip the stale
+            // related_id and let the insert trigger mint a fresh one (the Insert
+            // type still lists related_id as required, hence the cast).
+            const restoreRows = deletedRecords.map(({ related_id: _entityId, ...rest }) => rest);
             const { error: e } = await supabase
               .from('deals')
               .insert(restoreRows as Database['public']['Tables']['deals']['Insert'][]);

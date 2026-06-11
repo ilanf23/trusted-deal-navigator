@@ -246,7 +246,7 @@ const Questionnaire = () => {
       const { error: insertError } = await supabase
         .from('deal_responses')
         .insert({
-          entity_id: leadId,
+          related_id: leadId,
           first_name: formData.first_name,
           last_name: formData.last_name,
           email: formData.email,

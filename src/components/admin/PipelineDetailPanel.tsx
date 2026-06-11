@@ -7,7 +7,7 @@ import {
   FolderOpen, AtSign, MapPin, Trash2,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
-import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
+import { RelatedFilesSection } from '@/components/admin/files/RelatedFilesSection';
 import { HtmlContent } from '@/components/ui/html-content';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,9 +47,9 @@ interface TeamMember {
   avatar_url: string | null;
 }
 
-interface EntityEmail { id: string; entity_id: string; entity_type: string; email: string; email_type: string; is_primary: boolean; }
-interface EntityPhone { id: string; entity_id: string; entity_type: string; phone_number: string; phone_type: string; is_primary: boolean; }
-interface EntityAddress { id: string; entity_id: string; entity_type: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean; }
+interface RelatedEmail { id: string; related_id: string; related_type: string; email: string; email_type: string; is_primary: boolean; }
+interface RelatedPhone { id: string; related_id: string; related_type: string; phone_number: string; phone_type: string; is_primary: boolean; }
+interface RelatedAddress { id: string; related_id: string; related_type: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean; }
 
 interface PipelineDetailPanelProps {
   lead: Lead;
@@ -394,7 +394,7 @@ function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: s
 }
 
 // ── Contact Email Row ──
-function ContactEmailRow({ entry, onDelete }: { entry: EntityEmail; onDelete: (id: string) => void }) {
+function ContactEmailRow({ entry, onDelete }: { entry: RelatedEmail; onDelete: (id: string) => void }) {
   const navigate = useNavigate();
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
@@ -416,7 +416,7 @@ function ContactEmailRow({ entry, onDelete }: { entry: EntityEmail; onDelete: (i
 }
 
 // ── Contact Phone Row ──
-function ContactPhoneRow({ entry, onDelete, onCall }: { entry: EntityPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
+function ContactPhoneRow({ entry, onDelete, onCall }: { entry: RelatedPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -437,7 +437,7 @@ function ContactPhoneRow({ entry, onDelete, onCall }: { entry: EntityPhone; onDe
 }
 
 // ── Address Block ──
-function AddressBlock({ entry, onDelete }: { entry: EntityAddress; onDelete: (id: string) => void }) {
+function AddressBlock({ entry, onDelete }: { entry: RelatedAddress; onDelete: (id: string) => void }) {
   const parts = [entry.address_line_1, entry.address_line_2].filter(Boolean);
   const cityLine = [entry.city, entry.state, entry.zip_code].filter(Boolean).join(', ');
   return (
@@ -513,8 +513,8 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
       const { data, error } = await supabase
         .from('activities')
         .select('id, activity_type, title, content, created_at')
-        .eq('entity_id', lead.id)
-        .eq('entity_type', 'deal')
+        .eq('related_id', lead.id)
+        .eq('related_type', 'deal')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -723,15 +723,15 @@ function RelatedTabContent({
     },
   });
 
-  // Shares cache with EntityFilesSection — same query key, same select shape.
+  // Shares cache with RelatedFilesSection — same query key, same select shape.
   const { data: files = [] } = useQuery({
-    queryKey: ['entity-files', 'deal', lead.entity_id],
+    queryKey: ['related-files', 'deal', lead.related_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_files')
-        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', lead.entity_id)
-        .eq('entity_type', 'deal')
+        .from('related_files')
+        .select('id, related_id, related_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('related_id', lead.related_id)
+        .eq('related_type', 'deal')
         .order('created_at', { ascending: false });
       return data || [];
     },
@@ -894,10 +894,10 @@ function RelatedTabContent({
         iconColor="text-orange-500"
         onAdd={() => setAddFilesOpen(true)}
       >
-        <EntityFilesSection
-          entityId={lead.entity_id}
-          entityType="deal"
-          entityName={lead.name}
+        <RelatedFilesSection
+          relatedId={lead.related_id}
+          relatedType="deal"
+          relatedName={lead.name}
           companyName={lead.company_name}
           hideHeader
           addOpen={addFilesOpen}
@@ -987,28 +987,28 @@ export default function PipelineDetailPanel({
 
   // ── Satellite table queries ──
   const { data: leadEmails = [] } = useQuery({
-    queryKey: ['entity-emails', 'pipeline', lead?.id],
+    queryKey: ['related-emails', 'pipeline', lead?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', lead.entity_id).eq('entity_type', 'deal');
-      return (data || []) as EntityEmail[];
+      const { data } = await supabase.from('related_emails').select('*').eq('related_id', lead.related_id).eq('related_type', 'deal');
+      return (data || []) as RelatedEmail[];
     },
     enabled: !!lead,
   });
 
   const { data: leadPhones = [] } = useQuery({
-    queryKey: ['entity-phones', 'pipeline', lead?.id],
+    queryKey: ['related-phones', 'pipeline', lead?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', lead.entity_id).eq('entity_type', 'deal');
-      return (data || []) as EntityPhone[];
+      const { data } = await supabase.from('related_phones').select('*').eq('related_id', lead.related_id).eq('related_type', 'deal');
+      return (data || []) as RelatedPhone[];
     },
     enabled: !!lead,
   });
 
   const { data: leadAddresses = [] } = useQuery({
-    queryKey: ['entity-addresses', 'pipeline', lead?.id],
+    queryKey: ['related-addresses', 'pipeline', lead?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', lead.entity_id).eq('entity_type', 'deal');
-      return (data || []) as EntityAddress[];
+      const { data } = await supabase.from('related_addresses').select('*').eq('related_id', lead.related_id).eq('related_type', 'deal');
+      return (data || []) as RelatedAddress[];
     },
     enabled: !!lead,
   });
@@ -1016,11 +1016,11 @@ export default function PipelineDetailPanel({
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: lead.entity_id, entity_type: 'deal', email, email_type: newEmailType });
+      const { error } = await supabase.from('related_emails').insert({ related_id: lead.related_id, related_type: 'deal', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entity-emails', 'pipeline', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['related-emails', 'pipeline', lead?.id] });
       setNewEmail('');
       setShowAddEmail(false);
       toast.success('Email added');
@@ -1030,22 +1030,22 @@ export default function PipelineDetailPanel({
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('entity_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('related_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entity-emails', 'pipeline', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['related-emails', 'pipeline', lead?.id] });
       toast.success('Email removed');
     },
   });
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: lead.entity_id, entity_type: 'deal', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('related_phones').insert({ related_id: lead.related_id, related_type: 'deal', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entity-phones', 'pipeline', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['related-phones', 'pipeline', lead?.id] });
       setNewPhone('');
       setShowAddPhone(false);
       toast.success('Phone added');
@@ -1055,11 +1055,11 @@ export default function PipelineDetailPanel({
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('entity_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('related_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entity-phones', 'pipeline', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['related-phones', 'pipeline', lead?.id] });
       toast.success('Phone removed');
     },
   });
@@ -1067,9 +1067,9 @@ export default function PipelineDetailPanel({
   const addAddressMutation = useMutation({
     mutationFn: async () => {
       if (!newAddressLine1.trim()) return;
-      const { error } = await supabase.from('entity_addresses').insert({
-        entity_id: lead.entity_id,
-        entity_type: 'deal',
+      const { error } = await supabase.from('related_addresses').insert({
+        related_id: lead.related_id,
+        related_type: 'deal',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -1079,7 +1079,7 @@ export default function PipelineDetailPanel({
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entity-addresses', 'pipeline', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['related-addresses', 'pipeline', lead?.id] });
       setNewAddressLine1('');
       setNewAddressCity('');
       setNewAddressState('');
@@ -1092,11 +1092,11 @@ export default function PipelineDetailPanel({
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('entity_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('related_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entity-addresses', 'pipeline', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['related-addresses', 'pipeline', lead?.id] });
       toast.success('Address removed');
     },
   });

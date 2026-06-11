@@ -34,8 +34,8 @@ import { useEffect, useState } from 'react';
 // ── Satellite record types (still imported by parent expanded views) ──
 export interface LeadEmail {
   id: string;
-  entity_id: string;
-  entity_type: string;
+  related_id: string;
+  related_type: string;
   email: string;
   email_type: string;
   is_primary: boolean;
@@ -43,8 +43,8 @@ export interface LeadEmail {
 
 export interface LeadPhone {
   id: string;
-  entity_id: string;
-  entity_type: string;
+  related_id: string;
+  related_type: string;
   phone_number: string;
   phone_type: string;
   is_primary: boolean;
@@ -52,8 +52,8 @@ export interface LeadPhone {
 
 export interface LeadAddress {
   id: string;
-  entity_id: string;
-  entity_type: string;
+  related_id: string;
+  related_type: string;
   address_type: string;
   address_line_1: string | null;
   address_line_2: string | null;
@@ -67,8 +67,8 @@ export interface LeadAddress {
 // Intersection of fields the left column reads from `potential`, `underwriting`, `lender_management`.
 export interface ExpandedLeftColumnLead {
   id: string;
-  /** Canonical entities.id — entity_* child tables (followers, etc.) key off this. */
-  entity_id: string;
+  /** Canonical related.id — related_* child tables (followers, etc.) key off this. */
+  related_id: string;
   name: string;
   opportunity_name?: string | null;
   title?: string | null;
@@ -189,42 +189,42 @@ export function ExpandedLeftColumn({
     tableName === 'potential' ? lead.id : undefined,
   );
 
-  // ── Follow state (entity_followers) ──
-  // The same entity table/id pattern used by the expanded-view parents, but
+  // ── Follow state (related_followers) ──
+  // The same related table/id pattern used by the expanded-view parents, but
   // inlined here so the toolbar is self-contained and doesn't need extra props.
   const queryClient = useQueryClient();
   const { teamMember } = useTeamMember();
   const teamMemberId = teamMember?.id ?? null;
-  const followQueryKey = ['entity-follow', tableName, lead.id, teamMemberId] as const;
+  const followQueryKey = ['related-follow', tableName, lead.id, teamMemberId] as const;
   const { data: isFollowing = false } = useQuery({
     queryKey: followQueryKey,
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_followers')
+        .from('related_followers')
         .select('id')
-        .eq('entity_id', lead.entity_id)
-        .eq('entity_type', 'deal')
+        .eq('related_id', lead.related_id)
+        .eq('related_type', 'deal')
         .eq('user_id', teamMemberId!)
         .maybeSingle();
       return !!data;
     },
-    enabled: !!lead.entity_id && !!teamMemberId,
+    enabled: !!lead.related_id && !!teamMemberId,
   });
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
       if (!teamMemberId) throw new Error('No team member');
       if (isFollowing) {
         const { error } = await supabase
-          .from('entity_followers')
+          .from('related_followers')
           .delete()
-          .eq('entity_id', lead.entity_id)
-          .eq('entity_type', 'deal')
+          .eq('related_id', lead.related_id)
+          .eq('related_type', 'deal')
           .eq('user_id', teamMemberId);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('entity_followers')
-          .insert({ entity_id: lead.entity_id, entity_type: 'deal', user_id: teamMemberId });
+          .from('related_followers')
+          .insert({ related_id: lead.related_id, related_type: 'deal', user_id: teamMemberId });
         if (error) throw error;
       }
     },
@@ -280,8 +280,8 @@ export function ExpandedLeftColumn({
     if (payload.notes) {
       const noteTitle = payload.outcome === 'won' ? 'Win notes' : 'Loss notes';
       await supabase.from('activities').insert({
-        entity_id: lead.id,
-        entity_type: 'deal',
+        related_id: lead.id,
+        related_type: 'deal',
         activity_type: 'note',
         title: noteTitle,
         content: `${payload.reason} — ${payload.notes}`,

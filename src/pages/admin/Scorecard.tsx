@@ -348,7 +348,7 @@ const Scorecard = () => {
     queryFn: async () => {
       let query = supabase
         .from('activities')
-        .select('id, entity_id, activity_type, title, content, created_at')
+        .select('id, related_id, activity_type, title, content, created_at')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
       if (repFilter === 'me' && currentUserMember?.id) {
@@ -442,7 +442,7 @@ const Scorecard = () => {
       : (communications || []);
 
     const scopedActivities = repFilter === 'me'
-      ? (leadActivities || []).filter(a => userLeadIds.has(a.entity_id))
+      ? (leadActivities || []).filter(a => userLeadIds.has(a.related_id))
       : (leadActivities || []);
 
     const scopedTasks = repFilter === 'me'
@@ -510,7 +510,7 @@ const Scorecard = () => {
     ).length;
 
     const recentMovements = stageChanges.slice(0, 10).map((activity) => {
-      const lead = allLeads.find((l) => l.id === activity.entity_id);
+      const lead = allLeads.find((l) => l.id === activity.related_id);
       return {
         id: activity.id,
         leadName: lead?.name || 'Unknown',

@@ -23,12 +23,12 @@ import { cn } from '@/lib/utils';
 import { AddFileDialog } from './AddFileDialog';
 import { SheetViewerDialog } from './SheetViewerDialog';
 import { DropboxViewerDialog } from './DropboxViewerDialog';
-import type { EntityFile, EntityType, FileSourceSystem } from './types';
+import type { RelatedFile, RelatedType, FileSourceSystem } from './types';
 
-interface EntityFilesSectionProps {
-  entityId: string;
-  entityType: EntityType;
-  entityName?: string;
+interface RelatedFilesSectionProps {
+  relatedId: string;
+  relatedType: RelatedType;
+  relatedName?: string;
   companyName?: string;
   /** Hide the internal "X files" + "Add file" header row (parent provides one). */
   hideHeader?: boolean;
@@ -71,60 +71,60 @@ function sourceMeta(source: string): { icon: typeof Cloud; label: string; classN
   }
 }
 
-export function EntityFilesSection({
-  entityId,
-  entityType,
-  entityName,
+export function RelatedFilesSection({
+  relatedId,
+  relatedType,
+  relatedName,
   companyName,
   hideHeader = false,
   addOpen: addOpenProp,
   onAddOpenChange,
-}: EntityFilesSectionProps) {
+}: RelatedFilesSectionProps) {
   const queryClient = useQueryClient();
   const [addOpenInternal, setAddOpenInternal] = useState(false);
   const addOpen = addOpenProp ?? addOpenInternal;
   const setAddOpen = onAddOpenChange ?? setAddOpenInternal;
-  const [previewFile, setPreviewFile] = useState<EntityFile | null>(null);
+  const [previewFile, setPreviewFile] = useState<RelatedFile | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<EntityFile | null>(null);
-  const [sheetView, setSheetView] = useState<EntityFile | null>(null);
-  const [dropboxView, setDropboxView] = useState<EntityFile | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RelatedFile | null>(null);
+  const [sheetView, setSheetView] = useState<RelatedFile | null>(null);
+  const [dropboxView, setDropboxView] = useState<RelatedFile | null>(null);
 
   const { data: files = [], isLoading } = useQuery({
-    queryKey: ['entity-files', entityType, entityId],
+    queryKey: ['related-files', relatedType, relatedId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('entity_files')
-        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', entityId)
-        .eq('entity_type', entityType)
+        .from('related_files')
+        .select('id, related_id, related_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('related_id', relatedId)
+        .eq('related_type', relatedType)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as EntityFile[];
+      return (data || []) as RelatedFile[];
     },
-    enabled: !!entityId,
+    enabled: !!relatedId,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (file: EntityFile) => {
+    mutationFn: async (file: RelatedFile) => {
       if (file.source_system === 'native') {
         const { error: storageError } = await supabase.storage
           .from('lead-files')
           .remove([file.file_url]);
         if (storageError) console.error('Storage delete error:', storageError);
       }
-      const { error } = await supabase.from('entity_files').delete().eq('id', file.id);
+      const { error } = await supabase.from('related_files').delete().eq('id', file.id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success('File removed');
-      queryClient.invalidateQueries({ queryKey: ['entity-files', entityType, entityId] });
+      queryClient.invalidateQueries({ queryKey: ['related-files', relatedType, relatedId] });
       setDeleteTarget(null);
     },
     onError: () => toast.error('Failed to remove file'),
   });
 
-  const handleDownload = useCallback(async (file: EntityFile) => {
+  const handleDownload = useCallback(async (file: RelatedFile) => {
     if (file.source_system !== 'native') return;
     const { data, error } = await supabase.storage
       .from('lead-files')
@@ -142,7 +142,7 @@ export function EntityFilesSection({
     document.body.removeChild(a);
   }, []);
 
-  const handleOpen = useCallback(async (file: EntityFile) => {
+  const handleOpen = useCallback(async (file: RelatedFile) => {
     if (file.source_system === 'google_sheets') {
       setSheetView(file);
       return;
@@ -276,9 +276,9 @@ export function EntityFilesSection({
       <AddFileDialog
         open={addOpen}
         onOpenChange={setAddOpen}
-        entityId={entityId}
-        entityType={entityType}
-        entityName={entityName}
+        relatedId={relatedId}
+        relatedType={relatedType}
+        relatedName={relatedName}
         companyName={companyName}
       />
 

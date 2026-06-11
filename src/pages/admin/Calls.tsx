@@ -476,7 +476,7 @@ const Calls = () => {
       const { data, error } = await supabase
         .from('deal_responses')
         .select('*')
-        .eq('entity_id', matchedLead.id)
+        .eq('related_id', matchedLead.id)
         .order('submitted_at', { ascending: false })
         .limit(1)
         .single();

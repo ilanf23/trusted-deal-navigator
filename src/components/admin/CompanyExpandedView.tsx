@@ -8,8 +8,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
-import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
-import { EntityCallHistorySection } from '@/components/admin/shared/EntityCallHistorySection';
+import { RelatedFilesSection } from '@/components/admin/files/RelatedFilesSection';
+import { RelatedCallHistorySection } from '@/components/admin/shared/RelatedCallHistorySection';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,7 +44,7 @@ import {
 
 interface Company {
   id: string;
-  entity_id: string;
+  related_id: string;
   company_name: string;
   contact_name: string | null;
   phone: string | null;
@@ -647,8 +647,8 @@ export default function CompanyExpandedView() {
     }
     setSavingActivity(true);
     const { error } = await supabase.from('activities').insert({
-      entity_id: companyId,
-      entity_type: 'companies',
+      related_id: companyId,
+      related_type: 'companies',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -723,7 +723,7 @@ export default function CompanyExpandedView() {
       const row = companyRow as any;
       return {
         id: row.id,
-        entity_id: row.entity_id,
+        related_id: row.related_id,
         company_name: row.company_name || row.name,
         contact_name: row.name,
         phone: row.phone ?? null,
@@ -792,17 +792,17 @@ export default function CompanyExpandedView() {
     enabled: !!company?.company_name,
   });
 
-  // File count — shares cache with EntityFilesSection. entity_files is keyed
-  // by the canonical entities.id (company.entity_id), not the company's own id.
-  const companyEntityId = company?.entity_id ?? null;
+  // File count — shares cache with RelatedFilesSection. related_files is keyed
+  // by the canonical related.id (company.related_id), not the company's own id.
+  const companyEntityId = company?.related_id ?? null;
   const { data: companyFiles = [] } = useQuery({
-    queryKey: ['entity-files', 'companies', companyEntityId],
+    queryKey: ['related-files', 'companies', companyEntityId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('entity_files')
-        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', companyEntityId!)
-        .eq('entity_type', 'companies')
+        .from('related_files')
+        .select('id, related_id, related_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('related_id', companyEntityId!)
+        .eq('related_type', 'companies')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -817,8 +817,8 @@ export default function CompanyExpandedView() {
       const { data, error } = await supabase
         .from('activities')
         .select('*')
-        .eq('entity_id', companyId!)
-        .eq('entity_type', 'companies')
+        .eq('related_id', companyId!)
+        .eq('related_type', 'companies')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -1517,10 +1517,10 @@ export default function CompanyExpandedView() {
               count={companyFiles.length}
               onAdd={() => setAddFilesOpen(true)}
             >
-              <EntityFilesSection
-                entityId={company.entity_id}
-                entityType="companies"
-                entityName={company.company_name}
+              <RelatedFilesSection
+                relatedId={company.related_id}
+                relatedType="companies"
+                relatedName={company.company_name}
                 companyName={company.company_name}
                 hideHeader
                 addOpen={addFilesOpen}
@@ -1529,7 +1529,7 @@ export default function CompanyExpandedView() {
             </RelatedSection>
 
             {/* Calls — every call across this company's phones + its contacts/deals */}
-            <EntityCallHistorySection
+            <RelatedCallHistorySection
               scopeKey={`company-${company.id}`}
               leadIds={[
                 ...relatedPeople.map((p) => p.id),

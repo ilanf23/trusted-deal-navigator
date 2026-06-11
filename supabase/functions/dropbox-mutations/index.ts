@@ -196,21 +196,21 @@ async function handleCreateFolder(accessToken: string, body: any) {
 }
 
 async function handleUploadToLeadFolder(accessToken: string, body: any, supabase: any, userId: string) {
-  const entityId = body.entityId || body.leadId;
-  const entityName = body.entityName || body.leadName;
-  const entityType = body.entityType || 'potential';
+  const relatedId = body.relatedId || body.leadId;
+  const relatedName = body.relatedName || body.leadName;
+  const relatedType = body.relatedType || 'potential';
   const { companyName, fileName, content } = body;
 
-  if (!entityName || !entityId || !fileName || !content) {
-    throw new Error('Missing required fields: entityName, entityId, fileName, content');
+  if (!relatedName || !relatedId || !fileName || !content) {
+    throw new Error('Missing required fields: relatedName, relatedId, fileName, content');
   }
 
   const sanitizedCompany = companyName ? sanitizeDropboxPath(companyName) : '';
-  const sanitizedEntity = sanitizeDropboxPath(entityName);
+  const sanitizedEntity = sanitizeDropboxPath(relatedName);
   const folderName = sanitizedCompany
     ? `${sanitizedCompany} - ${sanitizedEntity}`
     : sanitizedEntity;
-  const rootFolder = ENTITY_FOLDER_ROOTS[entityType] || 'Records';
+  const rootFolder = ENTITY_FOLDER_ROOTS[relatedType] || 'Records';
   const folderPath = `/${rootFolder}/${folderName}`;
 
   // Create folder (ignore conflict if it already exists)
@@ -286,8 +286,8 @@ async function handleUploadToLeadFolder(accessToken: string, body: any, supabase
         content_hash: metadata.content_hash,
         modified_at: metadata.server_modified,
         synced_at: new Date().toISOString(),
-        ...(entityType === 'potential' || entityType === 'underwriting' || entityType === 'lender_management' || body.leadId
-          ? { lead_id: entityId, lead_name: entityName }
+        ...(relatedType === 'potential' || relatedType === 'underwriting' || relatedType === 'lender_management' || body.leadId
+          ? { lead_id: relatedId, lead_name: relatedName }
           : {}),
       },
       { onConflict: 'user_id,dropbox_id' }

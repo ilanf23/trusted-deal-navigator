@@ -97,7 +97,7 @@ export const useFeedData = () => {
         // Activities (logged activities from all pipelines)
         supabase
           .from('activities')
-          .select('id, activity_type, content, title, created_at, created_by, entity_id')
+          .select('id, activity_type, content, title, created_at, created_by, related_id')
           .order('created_at', { ascending: false })
           .limit(200),
         // Outbound emails (Gmail sent emails linked to leads)
@@ -115,13 +115,13 @@ export const useFeedData = () => {
       const leadMap = new Map((leads || []).map(l => [l.id, { name: l.name, company: l.company_name, status: l.status, assignedTo: l.assigned_to, phone: l.phone }]));
       // Note: 'leads' above is actually 'pipeline' (deals) data
 
-      // Track activities entity IDs to deduplicate against lead.notes
+      // Track activities related IDs to deduplicate against lead.notes
       const activityEntityIds = new Set<string>();
 
       // ── 1. Activities (from activities table — all pipelines) ──
       for (const la of (leadActivities || [])) {
-        activityEntityIds.add(la.entity_id);
-        const leadInfo = leadMap.get(la.entity_id);
+        activityEntityIds.add(la.related_id);
+        const leadInfo = leadMap.get(la.related_id);
         const creatorInfo = la.created_by ? teamMap.get(la.created_by) : null;
         const actorName = creatorInfo?.name || 'Team';
 
@@ -143,7 +143,7 @@ export const useFeedData = () => {
           actorAvatarUrl: creatorInfo?.avatarUrl || null,
           leadName: leadInfo?.name || 'Unknown',
           leadCompany: leadInfo?.company || null,
-          leadId: la.entity_id,
+          leadId: la.related_id,
           content: la.content || la.title || `${la.activity_type} logged`,
           time: formatTime(la.created_at),
           rawDate: new Date(la.created_at),
@@ -201,7 +201,7 @@ export const useFeedData = () => {
         'Lender Approval - Next Steps',
         'Re: Debt Service Coverage Analysis',
         'Closing Date Confirmation',
-        'Re: Borrower Entity Formation Docs',
+        'Re: Borrower Related Formation Docs',
         'Personal Guarantee Discussion',
         'Re: Loan Covenant Compliance',
       ];

@@ -17,14 +17,14 @@ import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDropboxConnection } from '@/hooks/useDropboxConnection';
-import type { EntityType } from './types';
+import type { RelatedType } from './types';
 
 interface AddFileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  entityId: string;
-  entityType: EntityType;
-  entityName?: string;
+  relatedId: string;
+  relatedType: RelatedType;
+  relatedName?: string;
   companyName?: string;
   onAdded?: () => void;
 }
@@ -47,9 +47,9 @@ interface SheetEntry {
 export function AddFileDialog({
   open,
   onOpenChange,
-  entityId,
-  entityType,
-  entityName,
+  relatedId,
+  relatedType,
+  relatedName,
   companyName,
   onAdded,
 }: AddFileDialogProps) {
@@ -71,9 +71,9 @@ export function AddFileDialog({
   const [savingLink, setSavingLink] = useState<string | null>(null);
 
   const invalidateFiles = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['entity-files', entityType, entityId] });
+    queryClient.invalidateQueries({ queryKey: ['related-files', relatedType, relatedId] });
     onAdded?.();
-  }, [queryClient, entityId, entityType, onAdded]);
+  }, [queryClient, relatedId, relatedType, onAdded]);
 
   // ── Dropbox connection + listing ─────────────────────────────────────────
   const { data: dropboxStatus } = useQuery({
@@ -139,7 +139,7 @@ export function AddFileDialog({
     try {
       for (const file of filesToUpload) {
         const safeName = sanitizeFileName(file.name);
-        const filePath = `${entityId}/${crypto.randomUUID()}_${safeName}`;
+        const filePath = `${relatedId}/${crypto.randomUUID()}_${safeName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('lead-files')
@@ -153,9 +153,9 @@ export function AddFileDialog({
           continue;
         }
 
-        const { error: dbError } = await supabase.from('entity_files').insert({
-          entity_id: entityId,
-          entity_type: entityType,
+        const { error: dbError } = await supabase.from('related_files').insert({
+          related_id: relatedId,
+          related_type: relatedType,
           file_name: file.name,
           file_url: filePath,
           file_type: file.type || null,
@@ -171,11 +171,11 @@ export function AddFileDialog({
         }
 
         successCount++;
-        if (entityName && dropboxConnected) {
+        if (relatedName && dropboxConnected) {
           syncPromises.push(syncToDropbox(file, {
-            entityId,
-            entityName,
-            entityType,
+            relatedId,
+            relatedName,
+            relatedType,
             companyName: companyName || '',
           }));
         }
@@ -206,7 +206,7 @@ export function AddFileDialog({
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [entityId, entityType, entityName, companyName, dropboxConnected, syncToDropbox, invalidateFiles, queryClient, teamMember, onOpenChange]);
+  }, [relatedId, relatedType, relatedName, companyName, dropboxConnected, syncToDropbox, invalidateFiles, queryClient, teamMember, onOpenChange]);
 
   // ── Save Dropbox file as link reference ──────────────────────────────────
   const saveDropboxLink = useCallback(async (entry: DropboxFileEntry) => {
@@ -216,9 +216,9 @@ export function AddFileDialog({
       return;
     }
     setSavingLink(entry.id);
-    const { error } = await supabase.from('entity_files').insert({
-      entity_id: entityId,
-      entity_type: entityType,
+    const { error } = await supabase.from('related_files').insert({
+      related_id: relatedId,
+      related_type: relatedType,
       file_name: entry.name,
       file_url: path,
       file_type: 'dropbox',
@@ -234,14 +234,14 @@ export function AddFileDialog({
     toast.success(`Linked “${entry.name}” from Dropbox`);
     invalidateFiles();
     onOpenChange(false);
-  }, [entityId, entityType, invalidateFiles, onOpenChange, teamMember]);
+  }, [relatedId, relatedType, invalidateFiles, onOpenChange, teamMember]);
 
   // ── Save Google Sheet as link reference ──────────────────────────────────
   const saveSheetLink = useCallback(async (entry: SheetEntry) => {
     setSavingLink(entry.id);
-    const { error } = await supabase.from('entity_files').insert({
-      entity_id: entityId,
-      entity_type: entityType,
+    const { error } = await supabase.from('related_files').insert({
+      related_id: relatedId,
+      related_type: relatedType,
       file_name: entry.name,
       file_url: entry.id,
       file_type: 'google_sheets',
@@ -257,7 +257,7 @@ export function AddFileDialog({
     toast.success(`Linked “${entry.name}” from Sheets`);
     invalidateFiles();
     onOpenChange(false);
-  }, [entityId, entityType, invalidateFiles, onOpenChange, teamMember]);
+  }, [relatedId, relatedType, invalidateFiles, onOpenChange, teamMember]);
 
   const filteredDropbox = dropboxSearch
     ? dropboxFiles.filter((f) => f.name.toLowerCase().includes(dropboxSearch.toLowerCase()))

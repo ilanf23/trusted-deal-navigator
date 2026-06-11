@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 import { PeopleTaskDetailDialog, type LeadTask } from '@/components/admin/PeopleTaskDetailDialog';
 import ProjectDetailDialog, { type LeadProject } from '@/components/admin/ProjectDetailDialog';
 import { LeadCallHistorySection } from '@/components/admin/shared/LeadCallHistorySection';
-import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
+import { RelatedFilesSection } from '@/components/admin/files/RelatedFilesSection';
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -31,8 +31,8 @@ export type LeadEntityType = 'potential' | 'underwriting' | 'lender_management';
 
 export interface LeadRelatedSidebarLead {
   id: string;
-  /** Canonical entities.id — entity_* child tables (projects, files) key off this. */
-  entity_id: string;
+  /** Canonical related.id — related_* child tables (projects, files) key off this. */
+  related_id: string;
   name?: string | null;
   opportunity_name?: string | null;
   company_name: string | null;
@@ -64,7 +64,7 @@ interface LeadContact {
 
 interface RelatedPersonLite {
   id: string;
-  entity_id: string;
+  related_id: string;
   name: string;
   title: string | null;
   email: string | null;
@@ -90,10 +90,10 @@ interface CompanySearchResult {
 }
 
 export interface LeadRelatedSidebarProps {
-  entityType: LeadEntityType;
+  relatedType: LeadEntityType;
   leadId: string;
   lead: LeadRelatedSidebarLead;
-  /** Entity emails from parent query — used to compute related-people via shared domains. */
+  /** Related emails from parent query — used to compute related-people via shared domains. */
   leadEmails?: LeadEmailLite[];
   stageCfg?: LeadRelatedSidebarStageCfg | null;
   teamMembers: Array<{ id: string; name: string }>;
@@ -121,14 +121,14 @@ function formatShortDate(dateStr: string | null): string {
 
 // ─── Polymorphic Supabase helpers ───────────────────────────────────────
 // Supabase's .from() type inference breaks with dynamic string unions,
-// so each entity type is dispatched through a switch for type safety.
+// so each related type is dispatched through a switch for type safety.
 
 async function updateLeadCompany(
-  entityType: LeadEntityType,
+  relatedType: LeadEntityType,
   leadId: string,
   companyName: string | null,
 ): Promise<{ error: unknown }> {
-  switch (entityType) {
+  switch (relatedType) {
     case 'potential':
       return supabase.from('deals').update({ company_name: companyName }).eq('id', leadId);
     case 'underwriting':
@@ -139,11 +139,11 @@ async function updateLeadCompany(
 }
 
 async function searchLeadsByName(
-  entityType: LeadEntityType,
+  relatedType: LeadEntityType,
   query: string,
 ): Promise<Array<{ id: string; name: string | null; title: string | null; email: string | null; company_name: string | null }>> {
   let res;
-  switch (entityType) {
+  switch (relatedType) {
     case 'potential':
       res = await supabase.from('deals').select('id, name, title, email, company_name').eq('pipeline', 'potential')
         .ilike('name', `%${query}%`).order('name', { ascending: true }).limit(20);
@@ -161,11 +161,11 @@ async function searchLeadsByName(
 }
 
 async function searchLeadsByCompany(
-  entityType: LeadEntityType,
+  relatedType: LeadEntityType,
   query: string,
 ): Promise<Array<{ id: string; company_name: string | null }>> {
   let res;
-  switch (entityType) {
+  switch (relatedType) {
     case 'potential':
       res = await supabase.from('deals').select('id, company_name').eq('pipeline', 'potential')
         .ilike('company_name', `%${query}%`).not('company_name', 'is', null).limit(20);
@@ -183,21 +183,21 @@ async function searchLeadsByCompany(
 }
 
 async function searchRelatedPeopleByCompany(
-  entityType: LeadEntityType,
+  relatedType: LeadEntityType,
   companyName: string,
 ): Promise<RelatedPersonLite[]> {
   let res;
-  switch (entityType) {
+  switch (relatedType) {
     case 'potential':
-      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'potential')
+      res = await supabase.from('deals').select('id, related_id, name, title, email, phone, company_name').eq('pipeline', 'potential')
         .eq('company_name', companyName).order('name').limit(20);
       break;
     case 'underwriting':
-      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'underwriting')
+      res = await supabase.from('deals').select('id, related_id, name, title, email, phone, company_name').eq('pipeline', 'underwriting')
         .eq('company_name', companyName).order('name').limit(20);
       break;
     case 'lender_management':
-      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'lender_management')
+      res = await supabase.from('deals').select('id, related_id, name, title, email, phone, company_name').eq('pipeline', 'lender_management')
         .eq('company_name', companyName).order('name').limit(20);
       break;
   }
@@ -205,21 +205,21 @@ async function searchRelatedPeopleByCompany(
 }
 
 async function searchRelatedPeopleByDomain(
-  entityType: LeadEntityType,
+  relatedType: LeadEntityType,
   domain: string,
 ): Promise<RelatedPersonLite[]> {
   let res;
-  switch (entityType) {
+  switch (relatedType) {
     case 'potential':
-      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'potential')
+      res = await supabase.from('deals').select('id, related_id, name, title, email, phone, company_name').eq('pipeline', 'potential')
         .ilike('email', `%@${domain}`).limit(20);
       break;
     case 'underwriting':
-      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'underwriting')
+      res = await supabase.from('deals').select('id, related_id, name, title, email, phone, company_name').eq('pipeline', 'underwriting')
         .ilike('email', `%@${domain}`).limit(20);
       break;
     case 'lender_management':
-      res = await supabase.from('deals').select('id, entity_id, name, title, email, phone, company_name').eq('pipeline', 'lender_management')
+      res = await supabase.from('deals').select('id, related_id, name, title, email, phone, company_name').eq('pipeline', 'lender_management')
         .ilike('email', `%@${domain}`).limit(20);
       break;
   }
@@ -227,11 +227,11 @@ async function searchRelatedPeopleByDomain(
 }
 
 async function lookupPersonByName(
-  entityType: LeadEntityType,
+  relatedType: LeadEntityType,
   name: string,
 ): Promise<RelatedPersonLite | null> {
   let res;
-  switch (entityType) {
+  switch (relatedType) {
     case 'potential':
       res = await supabase.from('deals').select('*').eq('pipeline', 'potential').ilike('name', name).limit(1).maybeSingle();
       break;
@@ -246,11 +246,11 @@ async function lookupPersonByName(
 }
 
 async function fetchSourceStageId(
-  entityType: LeadEntityType,
+  relatedType: LeadEntityType,
   leadId: string,
 ): Promise<string | null> {
   let res;
-  switch (entityType) {
+  switch (relatedType) {
     case 'potential':
       res = await supabase.from('deals').select('stage_id').eq('pipeline', 'potential').eq('id', leadId).single();
       break;
@@ -326,7 +326,7 @@ function RelatedSection({
 // ─── Main Component ──────────────────────────────────────────────────────
 
 export default function LeadRelatedSidebar({
-  entityType,
+  relatedType,
   leadId,
   lead,
   leadEmails = [],
@@ -343,7 +343,7 @@ export default function LeadRelatedSidebar({
   const location = useLocation();
   const queryClient = useQueryClient();
   const { teamMember } = useTeamMember();
-  const crmMutations = useCrmMutations(entityType);
+  const crmMutations = useCrmMutations(relatedType);
 
   // ─── State ─────────────────────────────────────────────────────────────
 
@@ -404,15 +404,15 @@ export default function LeadRelatedSidebar({
   const [eventSaving, setEventSaving] = useState(false);
   const [eventDatePickerOpen, setEventDatePickerOpen] = useState(false);
 
-  // Canonical entities.id for this deal — entity_* child tables key off this,
+  // Canonical related.id for this deal — related_* child tables key off this,
   // not the deal row's own id.
-  const leadEntityId = lead.entity_id;
+  const leadEntityId = lead.related_id;
 
   // ─── Canonical polymorphic query keys ──────────────────────────────────
-  const contactsKey = ['lead-related', entityType, leadId, 'contacts'] as const;
+  const contactsKey = ['lead-related', relatedType, leadId, 'contacts'] as const;
   const tasksKey = ['person-tasks', leadId] as const; // kept for compat with existing task consumers
-  const projectsKey = ['lead-related', entityType, leadId, 'projects'] as const;
-  const appointmentsKey = ['lead-related', entityType, leadId, 'appointments'] as const;
+  const projectsKey = ['lead-related', relatedType, leadId, 'projects'] as const;
+  const appointmentsKey = ['lead-related', relatedType, leadId, 'appointments'] as const;
 
   // ─── Queries ───────────────────────────────────────────────────────────
 
@@ -439,23 +439,23 @@ export default function LeadRelatedSidebar({
   const { data: projects = [] } = useQuery<LeadProject[]>({
     queryKey: projectsKey,
     queryFn: async () => {
-      const { data } = await supabase.from('entity_projects').select('*')
-        .eq('entity_id', leadEntityId).eq('entity_type', 'deal').order('created_at', { ascending: false });
+      const { data } = await supabase.from('related_projects').select('*')
+        .eq('related_id', leadEntityId).eq('related_type', 'deal').order('created_at', { ascending: false });
       return (data ?? []) as LeadProject[];
     },
     enabled: !!leadEntityId,
   });
 
-  // Project name suggestions pulled from all entities in `entity_projects`.
+  // Project name suggestions pulled from all related in `related_projects`.
   // Deduped by name and filtered to exclude projects already linked to this
-  // entity. Powers the autocomplete on the Add Project input.
+  // related. Powers the autocomplete on the Add Project input.
   const { data: projectSuggestions = [] } = useQuery<Array<{ id: string; name: string; status: string | null; project_stage: string | null }>>({
     queryKey: ['lead-related', 'project-search', newProjectName, leadId],
     queryFn: async () => {
       const q = newProjectName.trim();
       if (!q) return [];
       const { data } = await supabase
-        .from('entity_projects')
+        .from('related_projects')
         .select('id, name, status, project_stage')
         .ilike('name', `%${q}%`)
         .limit(20);
@@ -485,16 +485,16 @@ export default function LeadRelatedSidebar({
     enabled: !!leadId,
   });
 
-  // File count — shares the React Query cache with EntityFilesSection (same key
-  // + select shape), so mounting EntityFilesSection below does not double-fetch.
+  // File count — shares the React Query cache with RelatedFilesSection (same key
+  // + select shape), so mounting RelatedFilesSection below does not double-fetch.
   const { data: leadFiles = [] } = useQuery({
-    queryKey: ['entity-files', 'deal', leadEntityId],
+    queryKey: ['related-files', 'deal', leadEntityId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('entity_files')
-        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', leadEntityId)
-        .eq('entity_type', 'deal')
+        .from('related_files')
+        .select('id, related_id, related_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('related_id', leadEntityId)
+        .eq('related_type', 'deal')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -502,13 +502,13 @@ export default function LeadRelatedSidebar({
     enabled: !!leadEntityId,
   });
 
-  // Related people from same entity table — matched by company_name or business email domain
+  // Related people from same related table — matched by company_name or business email domain
   const { data: relatedPeople = [] } = useQuery<RelatedPersonLite[]>({
-    queryKey: ['lead-related', entityType, 'related-people', lead.company_name, lead.email, leadEmails.map(e => e.id).join(',')],
+    queryKey: ['lead-related', relatedType, 'related-people', lead.company_name, lead.email, leadEmails.map(e => e.id).join(',')],
     queryFn: async () => {
       const results: RelatedPersonLite[] = [];
       if (lead.company_name) {
-        results.push(...await searchRelatedPeopleByCompany(entityType, lead.company_name));
+        results.push(...await searchRelatedPeopleByCompany(relatedType, lead.company_name));
       }
       const allEmails = [lead.email, ...leadEmails.map(e => e.email)].filter(Boolean) as string[];
       const domains = new Set<string>();
@@ -517,7 +517,7 @@ export default function LeadRelatedSidebar({
         if (domain && !COMMON_DOMAINS.includes(domain)) domains.add(domain);
       }
       for (const domain of domains) {
-        results.push(...await searchRelatedPeopleByDomain(entityType, domain));
+        results.push(...await searchRelatedPeopleByDomain(relatedType, domain));
       }
       const seen = new Set<string>();
       return results.filter((p) => {
@@ -529,19 +529,19 @@ export default function LeadRelatedSidebar({
     enabled: !!lead,
   });
 
-  // People search — queries master `people` + entity table in parallel
+  // People search — queries master `people` + related table in parallel
   const { data: peopleSearchResults = [] } = useQuery<PeopleSearchResult[]>({
-    queryKey: ['lead-related', entityType, 'people-search', contactSearchQuery],
+    queryKey: ['lead-related', relatedType, 'people-search', contactSearchQuery],
     queryFn: async () => {
       const q = contactSearchQuery.trim();
       if (!q) return [];
       const [peopleRes, leadsRes] = await Promise.all([
         supabase.from('people')
-          .select('id, entity_id, name, title, email, phone, company_name')
+          .select('id, related_id, name, title, email, phone, company_name')
           .ilike('name', `%${q}%`)
           .order('name', { ascending: true })
           .limit(20),
-        searchLeadsByName(entityType, q),
+        searchLeadsByName(relatedType, q),
       ]);
       const merged = new Map<string, PeopleSearchResult>();
       (peopleRes.data || []).forEach((p) => {
@@ -580,9 +580,9 @@ export default function LeadRelatedSidebar({
     enabled: addingContact && contactSearchQuery.trim().length > 0,
   });
 
-  // Company search — queries `companies` + entity table + `people` in parallel
+  // Company search — queries `companies` + related table + `people` in parallel
   const { data: companiesSearchResults = [] } = useQuery<CompanySearchResult[]>({
-    queryKey: ['lead-related', entityType, 'companies-search', companySearchQuery],
+    queryKey: ['lead-related', relatedType, 'companies-search', companySearchQuery],
     queryFn: async () => {
       const q = companySearchQuery.trim();
       if (!q) return [];
@@ -592,7 +592,7 @@ export default function LeadRelatedSidebar({
           .ilike('company_name', `%${q}%`)
           .order('company_name', { ascending: true })
           .limit(20),
-        searchLeadsByCompany(entityType, q),
+        searchLeadsByCompany(relatedType, q),
         supabase.from('people')
           .select('id, company_name')
           .ilike('company_name', `%${q}%`)
@@ -671,7 +671,7 @@ export default function LeadRelatedSidebar({
     setContactSearchQuery('');
     setAddingContact(false);
     queryClient.invalidateQueries({ queryKey: contactsKey });
-  }, [leadId, entityType, queryClient, contactsKey]);
+  }, [leadId, relatedType, queryClient, contactsKey]);
 
   const updateContactMutation = useMutation({
     mutationFn: async ({ contactId, name, title }: { contactId: string; name: string; title: string }) => {
@@ -717,18 +717,18 @@ export default function LeadRelatedSidebar({
 
   const handleOpenPersonPanel = useCallback(async (personName: string) => {
     if (!onPersonSelect) return;
-    const person = await lookupPersonByName(entityType, personName);
+    const person = await lookupPersonByName(relatedType, personName);
     if (person) {
       onPersonSelect(person as unknown as RelatedPersonLite & Record<string, unknown>);
     } else {
       toast.info('No matching person record found');
     }
-  }, [entityType, onPersonSelect]);
+  }, [relatedType, onPersonSelect]);
 
   const handleLinkCompany = useCallback(async (companyName: string) => {
     if (!leadId || !companyName.trim()) return;
     setSavingCompany(true);
-    const { error } = await updateLeadCompany(entityType, leadId, companyName.trim());
+    const { error } = await updateLeadCompany(relatedType, leadId, companyName.trim());
     setSavingCompany(false);
     if (error) {
       toast.error('Failed to update company');
@@ -738,12 +738,12 @@ export default function LeadRelatedSidebar({
     setCompanySearchQuery('');
     setAddingCompany(false);
     invalidateParentLead();
-  }, [leadId, entityType, invalidateParentLead]);
+  }, [leadId, relatedType, invalidateParentLead]);
 
   const handleRemoveCompany = useCallback(async () => {
     if (!leadId) return;
     setSavingCompany(true);
-    const { error } = await updateLeadCompany(entityType, leadId, null);
+    const { error } = await updateLeadCompany(relatedType, leadId, null);
     setSavingCompany(false);
     if (error) {
       toast.error('Failed to remove company');
@@ -751,7 +751,7 @@ export default function LeadRelatedSidebar({
     }
     toast.success('Company removed');
     invalidateParentLead();
-  }, [leadId, entityType, invalidateParentLead]);
+  }, [leadId, relatedType, invalidateParentLead]);
 
   const toggleTaskCompletion = useCallback(async (task: LeadTask) => {
     const isCompleting = !task.completed_at;
@@ -819,7 +819,7 @@ export default function LeadRelatedSidebar({
     if (!leadId) return;
     setDupLoadingStages(true);
     try {
-      const sourceStageId = await fetchSourceStageId(entityType, leadId);
+      const sourceStageId = await fetchSourceStageId(relatedType, leadId);
       if (!sourceStageId) {
         toast.error('This opportunity has no stage assigned');
         return;
@@ -856,7 +856,7 @@ export default function LeadRelatedSidebar({
     } finally {
       setDupLoadingStages(false);
     }
-  }, [entityType, leadId]);
+  }, [relatedType, leadId]);
 
   const handleDuplicateSubmit = useCallback(async () => {
     if (!leadId || !dupStageId) return;
@@ -902,16 +902,16 @@ export default function LeadRelatedSidebar({
     navigate,
   ]);
 
-  // Link an existing project to this entity. Because `entity_projects` rows are
-  // per-entity (one row = one project scoped to one entity), "linking" inserts
-  // a new row carrying the suggested project's name and stage for this entity.
+  // Link an existing project to this related. Because `related_projects` rows are
+  // per-related (one row = one project scoped to one related record), "linking" inserts
+  // a new row carrying the suggested project's name and stage for this related record.
   const handleLinkExistingProject = useCallback(async (suggestion: { name: string; status: string | null; project_stage: string | null }) => {
     if (!leadEntityId) return;
     setSavingProject(true);
     try {
-      const { error } = await supabase.from('entity_projects').insert({
-        entity_id: leadEntityId,
-        entity_type: 'deal',
+      const { error } = await supabase.from('related_projects').insert({
+        related_id: leadEntityId,
+        related_type: 'deal',
         name: suggestion.name,
         status: suggestion.status ?? 'open',
         project_stage: suggestion.project_stage ?? 'open',
@@ -928,17 +928,17 @@ export default function LeadRelatedSidebar({
     } finally {
       setSavingProject(false);
     }
-  }, [leadEntityId, entityType, currentUserName, queryClient, projectsKey]);
+  }, [leadEntityId, relatedType, currentUserName, queryClient, projectsKey]);
 
   /**
-   * Delete a project from `entity_projects`. Each row in that table represents
-   * a project scoped to a single entity, so removing the row deletes the
+   * Delete a project from `related_projects`. Each row in that table represents
+   * a project scoped to a single related record, so removing the row deletes the
    * project itself — not just a link. Uses a native confirm dialog because the
    * sidebar has no undo and projects can carry their own tasks/files.
    */
   const handleDeleteProject = useCallback(async (projectId: string, projectName: string) => {
     if (!window.confirm(`Delete project "${projectName}"? This cannot be undone.`)) return;
-    const { error } = await supabase.from('entity_projects').delete().eq('id', projectId);
+    const { error } = await supabase.from('related_projects').delete().eq('id', projectId);
     if (error) {
       toast.error('Failed to delete project');
       return;
@@ -1498,17 +1498,17 @@ export default function LeadRelatedSidebar({
             </RelatedSection>
 
             {/* Files — header lives on RelatedSection; body delegates to the shared
-                EntityFilesSection which opens AddFileDialog (Computer/Dropbox/Sheets). */}
+                RelatedFilesSection which opens AddFileDialog (Computer/Dropbox/Sheets). */}
             <RelatedSection
               icon={<FileText className="h-3.5 w-3.5" />}
               label="Files"
               count={leadFiles.length}
               onAdd={() => setAddFilesOpen(true)}
             >
-              <EntityFilesSection
-                entityId={leadEntityId}
-                entityType="deal"
-                entityName={lead.opportunity_name ?? lead.name ?? undefined}
+              <RelatedFilesSection
+                relatedId={leadEntityId}
+                relatedType="deal"
+                relatedName={lead.opportunity_name ?? lead.name ?? undefined}
                 companyName={lead.company_name ?? undefined}
                 hideHeader
                 addOpen={addFilesOpen}
@@ -1519,7 +1519,7 @@ export default function LeadRelatedSidebar({
             {/* Call History */}
             <LeadCallHistorySection
               leadId={leadId}
-              entityType={entityType}
+              relatedType={relatedType}
               teamMembers={teamMembers}
               fallbackPhone={lead.phone ?? null}
               phoneNumbers={[lead.phone]}

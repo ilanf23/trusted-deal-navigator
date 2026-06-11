@@ -18,7 +18,7 @@ import { CalendarIcon, User, Trash2, FolderOpen, X, ChevronDown } from 'lucide-r
 
 export interface LeadProject {
   id: string;
-  entity_id: string;
+  related_id: string;
   name: string;
   status: string | null;
   project_stage: string | null;
@@ -106,22 +106,22 @@ export default function ProjectDetailDialog({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showLeadPicker, setShowLeadPicker] = useState(false);
 
-  // Fetch all leads for the "Related To" picker. entity_id is included because
-  // entity_projects rows key off the canonical entities.id, not the deal id.
+  // Fetch all leads for the "Related To" picker. related_id is included because
+  // related_projects rows key off the canonical related.id, not the deal id.
   const { data: allLeads = [] } = useQuery({
     queryKey: ['all-leads-for-project-picker'],
     queryFn: async () => {
-      const { data } = await supabase.from('deals').select('id, entity_id, name, company_name').eq('pipeline', 'potential').order('name').limit(500);
-      return (data ?? []) as { id: string; entity_id: string; name: string; company_name: string | null }[];
+      const { data } = await supabase.from('deals').select('id, related_id, name, company_name').eq('pipeline', 'potential').order('name').limit(500);
+      return (data ?? []) as { id: string; related_id: string; name: string; company_name: string | null }[];
     },
     enabled: open,
   });
 
   const selectedLeadName = useMemo(() => {
     if (relatedToId) {
-      // relatedToId may be a canonical entities.id (picker / edit mode) or a
+      // relatedToId may be a canonical related.id (picker / edit mode) or a
       // bare record id (leadId prop default) — match either.
-      const found = allLeads.find(l => l.entity_id === relatedToId || l.id === relatedToId);
+      const found = allLeads.find(l => l.related_id === relatedToId || l.id === relatedToId);
       if (found) return [found.name, found.company_name].filter(Boolean).join(' - ');
     }
     if (leadName) return leadName;
@@ -144,7 +144,7 @@ export default function ProjectDetailDialog({
       setClxFileName(project.clx_file_name || '');
       setBankRelationships(project.bank_relationships || '');
       setWaitingOn(project.waiting_on || '');
-      setRelatedToId(project.entity_id || '');
+      setRelatedToId(project.related_id || '');
     } else {
       setName(initialName || ''); setStatus('open'); setProjectStage('open');
       setPriority(''); setOwner(''); setDueDate(new Date());
@@ -166,21 +166,21 @@ export default function ProjectDetailDialog({
     mutationFn: async () => {
       const resolvedLeadId = relatedToId || leadId;
       if (!resolvedLeadId) throw new Error('A Related To lead is required');
-      // entity_projects.entity_id must be the canonical entities.id. The picker
+      // related_projects.related_id must be the canonical related.id. The picker
       // and edit mode already supply it, but a bare `leadId` prop may be a
-      // deal/person record id — resolve it through the entities table.
+      // deal/person record id — resolve it through the related table.
       let resolvedEntityId: string | null = null;
-      const { data: byId } = await supabase.from('entities').select('id').eq('id', resolvedLeadId).maybeSingle();
+      const { data: byId } = await supabase.from('related').select('id').eq('id', resolvedLeadId).maybeSingle();
       if (byId) {
         resolvedEntityId = byId.id;
       } else {
-        const { data: bySource } = await supabase.from('entities').select('id').eq('source_id', resolvedLeadId).limit(1).maybeSingle();
+        const { data: bySource } = await supabase.from('related').select('id').eq('source_id', resolvedLeadId).limit(1).maybeSingle();
         resolvedEntityId = bySource?.id ?? null;
       }
       if (!resolvedEntityId) throw new Error('A Related To lead is required');
-      const { data, error } = await supabase.from('entity_projects').insert({
-        entity_id: resolvedEntityId,
-        entity_type: 'deal',
+      const { data, error } = await supabase.from('related_projects').insert({
+        related_id: resolvedEntityId,
+        related_type: 'deal',
         name: name.trim(),
         status,
         project_stage: projectStage,
@@ -206,7 +206,7 @@ export default function ProjectDetailDialog({
         registerUndo({
           label: `Created project "${name.trim()}"`,
           execute: async () => {
-            const { error: e } = await supabase.from('entity_projects').delete().eq('id', data.id);
+            const { error: e } = await supabase.from('related_projects').delete().eq('id', data.id);
             if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
             queryClient.invalidateQueries({ queryKey: ['all-projects'] });
@@ -226,7 +226,7 @@ export default function ProjectDetailDialog({
         previousValues[key] = project[key as keyof LeadProject];
       }
       const { error } = await supabase
-        .from('entity_projects')
+        .from('related_projects')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', project.id);
       if (error) throw error;
@@ -240,7 +240,7 @@ export default function ProjectDetailDialog({
           label: `Updated project ${fieldNames}`,
           execute: async () => {
             const { error: e } = await supabase
-              .from('entity_projects')
+              .from('related_projects')
               .update({ ...result.previousValues, updated_at: new Date().toISOString() })
               .eq('id', result.projectId);
             if (e) throw e;
@@ -258,11 +258,11 @@ export default function ProjectDetailDialog({
       if (!project) return;
       // Capture full record for undo re-insert
       const { data: fullRecord } = await supabase
-        .from('entity_projects')
+        .from('related_projects')
         .select('*')
         .eq('id', project.id)
         .single();
-      const { error } = await supabase.from('entity_projects').delete().eq('id', project.id);
+      const { error } = await supabase.from('related_projects').delete().eq('id', project.id);
       if (error) throw error;
       return fullRecord;
     },
@@ -275,7 +275,7 @@ export default function ProjectDetailDialog({
           label: `Deleted project "${deletedProject.name}"`,
           execute: async () => {
             const { id, ...rest } = deletedProject;
-            const { error: e } = await supabase.from('entity_projects').insert({ id, ...rest });
+            const { error: e } = await supabase.from('related_projects').insert({ id, ...rest });
             if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
             queryClient.invalidateQueries({ queryKey: ['all-projects'] });
@@ -416,7 +416,7 @@ export default function ProjectDetailDialog({
                         {allLeads.map(l => (
                           <CommandItem
                             key={l.id}
-                            onSelect={() => { setRelatedToId(l.entity_id); setShowLeadPicker(false); }}
+                            onSelect={() => { setRelatedToId(l.related_id); setShowLeadPicker(false); }}
                             className="text-sm cursor-pointer"
                           >
                             <span>{l.name}</span>

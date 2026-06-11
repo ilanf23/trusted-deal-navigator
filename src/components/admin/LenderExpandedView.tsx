@@ -26,7 +26,7 @@ import {
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
-import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
+import { RelatedFilesSection } from '@/components/admin/files/RelatedFilesSection';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useCall } from '@/contexts/CallContext';
@@ -171,20 +171,20 @@ export default function LenderExpandedView() {
     enabled: !!lenderId,
   });
 
-  // Canonical entities.id for this lender program — entity_* child tables
+  // Canonical related.id for this lender program — related_* child tables
   // (files, followers) key off this, not the lender_programs row's own id.
-  const lenderEntityId = lender?.entity_id;
+  const lenderEntityId = lender?.related_id;
 
   // ── Files ──
   const [addFilesOpen, setAddFilesOpen] = useState(false);
   const { data: lenderFiles = [] } = useQuery({
-    queryKey: ['entity-files', 'lender_programs', lenderEntityId],
+    queryKey: ['related-files', 'lender_programs', lenderEntityId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('entity_files')
-        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', lenderEntityId!)
-        .eq('entity_type', 'lender_programs')
+        .from('related_files')
+        .select('id, related_id, related_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('related_id', lenderEntityId!)
+        .eq('related_type', 'lender_programs')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -198,15 +198,15 @@ export default function LenderExpandedView() {
   }, [lenderId, queryClient]);
 
   // ── Follow state ──
-  const followQueryKey = ['entity-follow', ENTITY_TYPE, lenderId, teamMemberId] as const;
+  const followQueryKey = ['related-follow', ENTITY_TYPE, lenderId, teamMemberId] as const;
   const { data: isFollowing = false } = useQuery({
     queryKey: followQueryKey,
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_followers')
+        .from('related_followers')
         .select('id')
-        .eq('entity_id', lenderEntityId!)
-        .eq('entity_type', ENTITY_TYPE)
+        .eq('related_id', lenderEntityId!)
+        .eq('related_type', ENTITY_TYPE)
         .eq('user_id', teamMemberId!)
         .maybeSingle();
       return !!data;
@@ -218,16 +218,16 @@ export default function LenderExpandedView() {
       if (!teamMemberId || !lenderEntityId) throw new Error('Missing user or lender');
       if (isFollowing) {
         const { error } = await supabase
-          .from('entity_followers')
+          .from('related_followers')
           .delete()
-          .eq('entity_id', lenderEntityId)
-          .eq('entity_type', ENTITY_TYPE)
+          .eq('related_id', lenderEntityId)
+          .eq('related_type', ENTITY_TYPE)
           .eq('user_id', teamMemberId);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('entity_followers')
-          .insert({ entity_id: lenderEntityId, entity_type: ENTITY_TYPE, user_id: teamMemberId });
+          .from('related_followers')
+          .insert({ related_id: lenderEntityId, related_type: ENTITY_TYPE, user_id: teamMemberId });
         if (error) throw error;
       }
     },
@@ -248,8 +248,8 @@ export default function LenderExpandedView() {
       const { data, error } = await supabase
         .from('activities')
         .select('*')
-        .eq('entity_id', lenderId!)
-        .eq('entity_type', ENTITY_TYPE)
+        .eq('related_id', lenderId!)
+        .eq('related_type', ENTITY_TYPE)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -425,8 +425,8 @@ export default function LenderExpandedView() {
     }
     setSavingActivity(true);
     const { error } = await supabase.from('activities').insert({
-      entity_id: lenderId,
-      entity_type: ENTITY_TYPE,
+      related_id: lenderId,
+      related_type: ENTITY_TYPE,
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -1161,10 +1161,10 @@ export default function LenderExpandedView() {
                 onAdd={() => setAddFilesOpen(true)}
               >
                 {lenderEntityId && (
-                  <EntityFilesSection
-                    entityId={lenderEntityId}
-                    entityType="lender_programs"
-                    entityName={lender?.lender_name ?? undefined}
+                  <RelatedFilesSection
+                    relatedId={lenderEntityId}
+                    relatedType="lender_programs"
+                    relatedName={lender?.lender_name ?? undefined}
                     hideHeader
                     addOpen={addFilesOpen}
                     onAddOpenChange={setAddFilesOpen}

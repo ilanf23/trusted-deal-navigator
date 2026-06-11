@@ -22,7 +22,7 @@ export type Database = {
           created_at: string
           direction: string
           ended_at: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           from_number: string
           frontend_ack_at: string | null
           id: string
@@ -40,7 +40,7 @@ export type Database = {
           created_at?: string
           direction?: string
           ended_at?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           from_number: string
           frontend_ack_at?: string | null
           id?: string
@@ -58,7 +58,7 @@ export type Database = {
           created_at?: string
           direction?: string
           ended_at?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           from_number?: string
           frontend_ack_at?: string | null
           id?: string
@@ -86,8 +86,8 @@ export type Database = {
           copper_activity_id: string | null
           created_at: string
           created_by: string | null
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           source_system: string
           title: string | null
@@ -98,8 +98,8 @@ export type Database = {
           copper_activity_id?: string | null
           created_at?: string
           created_by?: string | null
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           source_system?: string
           title?: string | null
@@ -110,8 +110,8 @@ export type Database = {
           copper_activity_id?: string | null
           created_at?: string
           created_by?: string | null
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           source_system?: string
           title?: string | null
@@ -124,7 +124,7 @@ export type Database = {
           content: string
           created_at: string
           created_by: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           lead_id: string
         }
@@ -133,7 +133,7 @@ export type Database = {
           content: string
           created_at?: string
           created_by?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           lead_id: string
         }
@@ -142,7 +142,7 @@ export type Database = {
           content?: string
           created_at?: string
           created_by?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           lead_id?: string
         }
@@ -200,7 +200,7 @@ export type Database = {
           created_at: string
           description: string | null
           end_time: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           google_calendar_id: string | null
           google_event_id: string | null
           id: string
@@ -218,7 +218,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_time?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           google_calendar_id?: string | null
           google_event_id?: string | null
           id?: string
@@ -236,7 +236,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_time?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           google_calendar_id?: string | null
           google_event_id?: string | null
           id?: string
@@ -328,7 +328,7 @@ export type Database = {
           created_at: string
           db_inserted: boolean | null
           device_ready: boolean | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           event_type: string
           from_number: string | null
           frontend_acknowledged_at: string | null
@@ -349,7 +349,7 @@ export type Database = {
           created_at?: string
           db_inserted?: boolean | null
           device_ready?: boolean | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           event_type: string
           from_number?: string | null
           frontend_acknowledged_at?: string | null
@@ -370,7 +370,7 @@ export type Database = {
           created_at?: string
           db_inserted?: boolean | null
           device_ready?: boolean | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           event_type?: string
           from_number?: string | null
           frontend_acknowledged_at?: string | null
@@ -395,7 +395,7 @@ export type Database = {
           created_at: string
           direction: string
           duration_seconds: number | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           lead_id: string | null
           phone_number: string | null
@@ -417,7 +417,7 @@ export type Database = {
           created_at?: string
           direction: string
           duration_seconds?: number | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           lead_id?: string | null
           phone_number?: string | null
@@ -439,7 +439,7 @@ export type Database = {
           created_at?: string
           direction?: string
           duration_seconds?: number | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           lead_id?: string | null
           phone_number?: string | null
@@ -473,7 +473,7 @@ export type Database = {
           copper_company_id: string | null
           created_at: string
           description: string | null
-          entity_id: string
+          related_id: string
           id: string
           last_activity_at: string | null
           notes: string | null
@@ -492,7 +492,7 @@ export type Database = {
           copper_company_id?: string | null
           created_at?: string
           description?: string | null
-          entity_id: string
+          related_id: string
           id?: string
           last_activity_at?: string | null
           notes?: string | null
@@ -511,7 +511,7 @@ export type Database = {
           copper_company_id?: string | null
           created_at?: string
           description?: string | null
-          entity_id?: string
+          related_id?: string
           id?: string
           last_activity_at?: string | null
           notes?: string | null
@@ -532,9 +532,9 @@ export type Database = {
           },
           {
             foreignKeyName: "companies_entity_id_fkey"
-            columns: ["entity_id"]
+            columns: ["related_id"]
             isOneToOne: false
-            referencedRelation: "entities"
+            referencedRelation: "related"
             referencedColumns: ["id"]
           },
         ]
@@ -705,8 +705,8 @@ export type Database = {
           created_at: string
           deal_id: string
           email: string | null
-          entity_id: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           is_primary: boolean | null
           name: string
@@ -719,8 +719,8 @@ export type Database = {
           created_at?: string
           deal_id: string
           email?: string | null
-          entity_id?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_primary?: boolean | null
           name: string
@@ -733,8 +733,8 @@ export type Database = {
           created_at?: string
           deal_id?: string
           email?: string | null
-          entity_id?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_primary?: boolean | null
           name?: string
@@ -756,8 +756,8 @@ export type Database = {
       deal_lender_programs: {
         Row: {
           created_at: string
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           notes: string | null
           program_id: string
@@ -766,8 +766,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           notes?: string | null
           program_id: string
@@ -776,8 +776,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           notes?: string | null
           program_id?: string
@@ -800,7 +800,7 @@ export type Database = {
           completed_at: string | null
           completed_by: string | null
           created_at: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           lead_id: string
           milestone_name: string
@@ -813,7 +813,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           lead_id: string
           milestone_name: string
@@ -826,7 +826,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           lead_id?: string
           milestone_name?: string
@@ -880,7 +880,7 @@ export type Database = {
           created_at: string
           description: string | null
           due_date: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           lead_id: string
           owner: string
@@ -892,7 +892,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           lead_id: string
           owner: string
@@ -904,7 +904,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           lead_id?: string
           owner?: string
@@ -936,7 +936,7 @@ export type Database = {
           deal_value: number | null
           description: string | null
           email: string | null
-          entity_id: string
+          related_id: string
           fee_percent: number | null
           flagged_for_weekly: boolean
           history: string | null
@@ -1019,7 +1019,7 @@ export type Database = {
           deal_value?: number | null
           description?: string | null
           email?: string | null
-          entity_id: string
+          related_id: string
           fee_percent?: number | null
           flagged_for_weekly?: boolean
           history?: string | null
@@ -1102,7 +1102,7 @@ export type Database = {
           deal_value?: number | null
           description?: string | null
           email?: string | null
-          entity_id?: string
+          related_id?: string
           fee_percent?: number | null
           flagged_for_weekly?: boolean
           history?: string | null
@@ -1174,9 +1174,9 @@ export type Database = {
           },
           {
             foreignKeyName: "deals_entity_id_fkey"
-            columns: ["entity_id"]
+            columns: ["related_id"]
             isOneToOne: false
-            referencedRelation: "entities"
+            referencedRelation: "related"
             referencedColumns: ["id"]
           },
           {
@@ -1241,7 +1241,7 @@ export type Database = {
           dropbox_path: string
           dropbox_path_display: string
           dropbox_rev: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           extracted_at: string | null
           extracted_text: string | null
           extraction_error: string | null
@@ -1264,7 +1264,7 @@ export type Database = {
           dropbox_path: string
           dropbox_path_display: string
           dropbox_rev?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           extracted_at?: string | null
           extracted_text?: string | null
           extraction_error?: string | null
@@ -1287,7 +1287,7 @@ export type Database = {
           dropbox_path?: string
           dropbox_path_display?: string
           dropbox_rev?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           extracted_at?: string | null
           extracted_text?: string | null
           extraction_error?: string | null
@@ -1358,7 +1358,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           created_at: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           is_triaged: boolean | null
           last_message_date: string | null
@@ -1374,7 +1374,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           created_at?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_triaged?: boolean | null
           last_message_date?: string | null
@@ -1390,7 +1390,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           created_at?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_triaged?: boolean | null
           last_message_date?: string | null
@@ -1420,12 +1420,12 @@ export type Database = {
           },
         ]
       }
-      entities: {
+      related: {
         Row: {
           created_at: string
           display_name: string | null
           id: string
-          kind: Database["public"]["Enums"]["entity_kind"]
+          kind: Database["public"]["Enums"]["related_kind"]
           source_id: string
           updated_at: string
         }
@@ -1433,7 +1433,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
-          kind: Database["public"]["Enums"]["entity_kind"]
+          kind: Database["public"]["Enums"]["related_kind"]
           source_id: string
           updated_at?: string
         }
@@ -1441,13 +1441,13 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
-          kind?: Database["public"]["Enums"]["entity_kind"]
+          kind?: Database["public"]["Enums"]["related_kind"]
           source_id?: string
           updated_at?: string
         }
         Relationships: []
       }
-      entity_addresses: {
+      related_addresses: {
         Row: {
           address_line_1: string | null
           address_line_2: string | null
@@ -1455,8 +1455,8 @@ export type Database = {
           city: string | null
           country: string | null
           created_at: string
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           is_primary: boolean | null
           state: string | null
@@ -1469,8 +1469,8 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_primary?: boolean | null
           state?: string | null
@@ -1483,8 +1483,8 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_primary?: boolean | null
           state?: string | null
@@ -1492,21 +1492,21 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "entity_addresses_entity_id_fkey"
-            columns: ["entity_id"]
+            foreignKeyName: "related_addresses_entity_id_fkey"
+            columns: ["related_id"]
             isOneToOne: false
-            referencedRelation: "entities"
+            referencedRelation: "related"
             referencedColumns: ["id"]
           },
         ]
       }
-      entity_emails: {
+      related_emails: {
         Row: {
           created_at: string
           email: string
           email_type: string | null
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           is_primary: boolean | null
         }
@@ -1514,8 +1514,8 @@ export type Database = {
           created_at?: string
           email: string
           email_type?: string | null
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_primary?: boolean | null
         }
@@ -1523,27 +1523,27 @@ export type Database = {
           created_at?: string
           email?: string
           email_type?: string | null
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_primary?: boolean | null
         }
         Relationships: [
           {
-            foreignKeyName: "entity_emails_entity_id_fkey"
-            columns: ["entity_id"]
+            foreignKeyName: "related_emails_entity_id_fkey"
+            columns: ["related_id"]
             isOneToOne: false
-            referencedRelation: "entities"
+            referencedRelation: "related"
             referencedColumns: ["id"]
           },
         ]
       }
-      entity_files: {
+      related_files: {
         Row: {
           copper_file_id: string | null
           created_at: string
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           file_name: string
           file_size: number | null
           file_type: string | null
@@ -1555,8 +1555,8 @@ export type Database = {
         Insert: {
           copper_file_id?: string | null
           created_at?: string
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           file_name: string
           file_size?: number | null
           file_type?: string | null
@@ -1568,8 +1568,8 @@ export type Database = {
         Update: {
           copper_file_id?: string | null
           created_at?: string
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           file_name?: string
           file_size?: number | null
           file_type?: string | null
@@ -1580,46 +1580,46 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "entity_files_entity_id_fkey"
-            columns: ["entity_id"]
+            foreignKeyName: "related_files_entity_id_fkey"
+            columns: ["related_id"]
             isOneToOne: false
-            referencedRelation: "entities"
+            referencedRelation: "related"
             referencedColumns: ["id"]
           },
         ]
       }
-      entity_followers: {
+      related_followers: {
         Row: {
           created_at: string | null
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           user_id: string
         }
         Insert: {
           created_at?: string | null
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           user_id: string
         }
         Update: {
           created_at?: string | null
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "entity_followers_entity_id_fkey"
-            columns: ["entity_id"]
+            foreignKeyName: "related_followers_entity_id_fkey"
+            columns: ["related_id"]
             isOneToOne: false
-            referencedRelation: "entities"
+            referencedRelation: "related"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "entity_followers_user_id_fkey"
+            foreignKeyName: "related_followers_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1627,7 +1627,7 @@ export type Database = {
           },
         ]
       }
-      entity_orphans: {
+      related_orphans: {
         Row: {
           id: string
           original_entity_id: string
@@ -1660,11 +1660,11 @@ export type Database = {
         }
         Relationships: []
       }
-      entity_phones: {
+      related_phones: {
         Row: {
           created_at: string
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           is_primary: boolean | null
           phone_number: string
@@ -1672,8 +1672,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_primary?: boolean | null
           phone_number: string
@@ -1681,8 +1681,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_primary?: boolean | null
           phone_number?: string
@@ -1690,15 +1690,15 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "entity_phones_entity_id_fkey"
-            columns: ["entity_id"]
+            foreignKeyName: "related_phones_entity_id_fkey"
+            columns: ["related_id"]
             isOneToOne: false
-            referencedRelation: "entities"
+            referencedRelation: "related"
             referencedColumns: ["id"]
           },
         ]
       }
-      entity_projects: {
+      related_projects: {
         Row: {
           bank_relationships: string | null
           clx_file_name: string | null
@@ -1706,8 +1706,8 @@ export type Database = {
           created_by: string | null
           description: string | null
           due_date: string | null
-          entity_id: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           name: string
           owner: string | null
@@ -1727,8 +1727,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
-          entity_id: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           name: string
           owner?: string | null
@@ -1748,8 +1748,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
-          entity_id?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           name?: string
           owner?: string | null
@@ -1764,14 +1764,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "entity_projects_entity_id_fkey"
-            columns: ["entity_id"]
+            foreignKeyName: "related_projects_entity_id_fkey"
+            columns: ["related_id"]
             isOneToOne: false
-            referencedRelation: "entities"
+            referencedRelation: "related"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "entity_projects_owner_fkey"
+            foreignKeyName: "related_projects_owner_fkey"
             columns: ["owner"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1953,7 +1953,7 @@ export type Database = {
           created_at: string
           description: string | null
           email: string | null
-          entity_id: string
+          related_id: string
           id: string
           interest_range: string | null
           last_contact: string | null
@@ -1980,7 +1980,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
-          entity_id: string
+          related_id: string
           id?: string
           interest_range?: string | null
           last_contact?: string | null
@@ -2007,7 +2007,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
-          entity_id?: string
+          related_id?: string
           id?: string
           interest_range?: string | null
           last_contact?: string | null
@@ -2031,9 +2031,9 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "lender_programs_entity_id_fkey"
-            columns: ["entity_id"]
+            columns: ["related_id"]
             isOneToOne: false
-            referencedRelation: "entities"
+            referencedRelation: "related"
             referencedColumns: ["id"]
           },
         ]
@@ -2123,7 +2123,7 @@ export type Database = {
           body_plain: string
           cc_emails: string | null
           created_at: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           error: string | null
           flow_id: string
           gmail_message_id: string | null
@@ -2145,7 +2145,7 @@ export type Database = {
           body_plain?: string
           cc_emails?: string | null
           created_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           error?: string | null
           flow_id: string
           gmail_message_id?: string | null
@@ -2167,7 +2167,7 @@ export type Database = {
           body_plain?: string
           cc_emails?: string | null
           created_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           error?: string | null
           flow_id?: string
           gmail_message_id?: string | null
@@ -2199,7 +2199,7 @@ export type Database = {
           created_at: string
           description: string | null
           email: string | null
-          entity_id: string
+          related_id: string
           history: string | null
           id: string
           known_as: string | null
@@ -2231,7 +2231,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
-          entity_id: string
+          related_id: string
           history?: string | null
           id?: string
           known_as?: string | null
@@ -2263,7 +2263,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
-          entity_id?: string
+          related_id?: string
           history?: string | null
           id?: string
           known_as?: string | null
@@ -2300,9 +2300,9 @@ export type Database = {
           },
           {
             foreignKeyName: "people_entity_id_fkey"
-            columns: ["entity_id"]
+            columns: ["related_id"]
             isOneToOne: false
-            referencedRelation: "entities"
+            referencedRelation: "related"
             referencedColumns: ["id"]
           },
         ]
@@ -2450,7 +2450,7 @@ export type Database = {
       project_people: {
         Row: {
           created_at: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           lead_id: string
           project_id: string
@@ -2458,7 +2458,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           lead_id: string
           project_id: string
@@ -2466,7 +2466,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           lead_id?: string
           project_id?: string
@@ -2477,7 +2477,7 @@ export type Database = {
             foreignKeyName: "project_people_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "entity_projects"
+            referencedRelation: "related_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2515,7 +2515,7 @@ export type Database = {
           created_at: string
           current_rate: number
           enrolled_at: string
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           estimated_cf: number | null
           id: string
           initial_review: string | null
@@ -2546,7 +2546,7 @@ export type Database = {
           created_at?: string
           current_rate: number
           enrolled_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           estimated_cf?: number | null
           id?: string
           initial_review?: string | null
@@ -2577,7 +2577,7 @@ export type Database = {
           created_at?: string
           current_rate?: number
           enrolled_at?: string
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           estimated_cf?: number | null
           id?: string
           initial_review?: string | null
@@ -2622,7 +2622,7 @@ export type Database = {
           current_lender: string | null
           current_rate: number | null
           email: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           estimated_cash_flow: number | null
           first_name: string | null
           id: string
@@ -2655,7 +2655,7 @@ export type Database = {
           current_lender?: string | null
           current_rate?: number | null
           email?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           estimated_cash_flow?: number | null
           first_name?: string | null
           id?: string
@@ -2688,7 +2688,7 @@ export type Database = {
           current_lender?: string | null
           current_rate?: number | null
           email?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           estimated_cash_flow?: number | null
           first_name?: string | null
           id?: string
@@ -2854,8 +2854,8 @@ export type Database = {
           created_by: string | null
           description: string | null
           due_date: string | null
-          entity_id: string | null
-          entity_type: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id: string | null
+          related_type: Database["public"]["Enums"]["related_type_enum"] | null
           estimated_hours: number | null
           group_name: string | null
           id: string
@@ -2878,8 +2878,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
-          entity_id?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           estimated_hours?: number | null
           group_name?: string | null
           id?: string
@@ -2902,8 +2902,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
-          entity_id?: string | null
-          entity_type?: Database["public"]["Enums"]["entity_type_enum"] | null
+          related_id?: string | null
+          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           estimated_hours?: number | null
           group_name?: string | null
           id?: string
@@ -3189,8 +3189,8 @@ export type Database = {
       deal_outcome_enum: "open" | "won" | "lost" | "abandoned"
       deal_pipeline: "potential" | "underwriting" | "lender_management"
       deal_priority: "low" | "medium" | "high"
-      entity_kind: "people" | "companies" | "deal" | "lender_programs"
-      entity_type_enum:
+      related_kind: "people" | "companies" | "deal" | "lender_programs"
+      related_type_enum:
         | "pipeline"
         | "underwriting"
         | "lender_management"
@@ -3386,8 +3386,8 @@ export const Constants = {
       deal_outcome_enum: ["open", "won", "lost", "abandoned"],
       deal_pipeline: ["potential", "underwriting", "lender_management"],
       deal_priority: ["low", "medium", "high"],
-      entity_kind: ["people", "companies", "deal", "lender_programs"],
-      entity_type_enum: [
+      related_kind: ["people", "companies", "deal", "lender_programs"],
+      related_type_enum: [
         "pipeline",
         "underwriting",
         "lender_management",

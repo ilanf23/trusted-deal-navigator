@@ -334,8 +334,8 @@ export default function LenderManagementExpandedView() {
     }
     setSavingActivity(true);
     const { error } = await supabase.from('activities').insert({
-      entity_id: leadId,
-      entity_type: 'deal',
+      related_id: leadId,
+      related_type: 'deal',
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -389,9 +389,9 @@ export default function LenderManagementExpandedView() {
     enabled: !!leadId,
   });
 
-  // Canonical entities.id for this deal — entity_* child tables key off this,
+  // Canonical related.id for this deal — related_* child tables key off this,
   // not the deal row's own id.
-  const dealEntityId = lead?.entity_id;
+  const dealEntityId = lead?.related_id;
 
   const { data: teamMembers = [] } = useAssignableUsers();
 
@@ -461,8 +461,8 @@ export default function LenderManagementExpandedView() {
       const { data, error } = await supabase
         .from('activities')
         .select('*')
-        .eq('entity_id', leadId!)
-        .eq('entity_type', 'deal')
+        .eq('related_id', leadId!)
+        .eq('related_type', 'deal')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -493,7 +493,7 @@ export default function LenderManagementExpandedView() {
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['lm-lead-emails', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', dealEntityId!).eq('entity_type', 'deal');
+      const { data } = await supabase.from('related_emails').select('*').eq('related_id', dealEntityId!).eq('related_type', 'deal');
       return (data || []) as LeadEmail[];
     },
     enabled: !!dealEntityId,
@@ -502,7 +502,7 @@ export default function LenderManagementExpandedView() {
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['lm-lead-phones', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', dealEntityId!).eq('entity_type', 'deal');
+      const { data } = await supabase.from('related_phones').select('*').eq('related_id', dealEntityId!).eq('related_type', 'deal');
       return (data || []) as LeadPhone[];
     },
     enabled: !!dealEntityId,
@@ -511,7 +511,7 @@ export default function LenderManagementExpandedView() {
   const { data: leadAddresses = [] } = useQuery({
     queryKey: ['lm-lead-addresses', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', dealEntityId!).eq('entity_type', 'deal');
+      const { data } = await supabase.from('related_addresses').select('*').eq('related_id', dealEntityId!).eq('related_type', 'deal');
       return (data || []) as LeadAddress[];
     },
     enabled: !!dealEntityId,
@@ -645,7 +645,7 @@ export default function LenderManagementExpandedView() {
   const addEmailMutation = useMutation({
     mutationFn: async ({ email, type }: { email: string; type: string }) => {
       if (!dealEntityId) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: dealEntityId, entity_type: 'deal', email, email_type: type });
+      const { error } = await supabase.from('related_emails').insert({ related_id: dealEntityId, related_type: 'deal', email, email_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -656,7 +656,7 @@ export default function LenderManagementExpandedView() {
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('entity_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('related_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -668,7 +668,7 @@ export default function LenderManagementExpandedView() {
   const addPhoneMutation = useMutation({
     mutationFn: async ({ phone, type }: { phone: string; type: string }) => {
       if (!dealEntityId) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: dealEntityId, entity_type: 'deal', phone_number: phone, phone_type: type });
+      const { error } = await supabase.from('related_phones').insert({ related_id: dealEntityId, related_type: 'deal', phone_number: phone, phone_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -679,7 +679,7 @@ export default function LenderManagementExpandedView() {
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('entity_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('related_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -691,9 +691,9 @@ export default function LenderManagementExpandedView() {
   const addAddressMutation = useMutation({
     mutationFn: async ({ line1, city, state, zip, type }: { line1: string; city: string; state: string; zip: string; type: string }) => {
       if (!dealEntityId || !line1) return;
-      const { error } = await supabase.from('entity_addresses').insert({
-        entity_id: dealEntityId,
-        entity_type: 'deal',
+      const { error } = await supabase.from('related_addresses').insert({
+        related_id: dealEntityId,
+        related_type: 'deal',
         address_line_1: line1,
         city: city || null,
         state: state || null,
@@ -710,7 +710,7 @@ export default function LenderManagementExpandedView() {
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('entity_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('related_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1249,11 +1249,11 @@ export default function LenderManagementExpandedView() {
           />
         ) : (
           <LeadRelatedSidebar
-            entityType="lender_management"
+            relatedType="lender_management"
             leadId={leadId!}
             lead={{
               id: lead.id,
-              entity_id: lead.entity_id,
+              related_id: lead.related_id,
               name: lead.name,
               email: lead.email,
               phone: lead.phone,

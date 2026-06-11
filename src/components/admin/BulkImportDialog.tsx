@@ -247,7 +247,7 @@ export default function BulkImportDialog({ open, onOpenChange }: BulkImportDialo
       } else {
         totalDone += insertedLeads.length;
 
-        // People are standalone entities — no pipeline insert needed
+        // People are standalone related records — no pipeline insert needed
       }
 
       setImportProgress({ done: totalDone, total: records.length, errors: totalErrors });

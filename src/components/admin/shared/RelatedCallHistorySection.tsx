@@ -20,7 +20,7 @@ import { toast } from 'sonner';
  * Generic, self-contained "Calls" section used by the People, Company, and (via
  * a thin wrapper) deal expanded views.
  *
- * It surfaces every call related to an entity by matching on TWO things:
+ * It surfaces every call related to a related record by matching on TWO things:
  *   - lead_id  — calls explicitly linked to any of the supplied `leadIds`
  *                (e.g. the person id, or all of a company's people + deals).
  *   - phone    — calls whose communications.phone_number matches any of the
@@ -71,7 +71,7 @@ function detailState(c: CommunicationRow): CallDetailState {
   return { kind: 'no-recording', hasCallSid: !!c.call_sid };
 }
 
-interface EntityCallHistorySectionProps {
+interface RelatedCallHistorySectionProps {
   /** ids to match against communications.lead_id (person ids, deal ids, …). */
   leadIds?: Array<string | null | undefined>;
   /** phone numbers to match against communications.phone_number (any format). */
@@ -100,13 +100,13 @@ function directionIcon(direction: string, status: string | null) {
   return <PhoneOutgoing className="h-3.5 w-3.5 text-emerald-600" />;
 }
 
-export function EntityCallHistorySection({
+export function RelatedCallHistorySection({
   leadIds = [],
   phoneNumbers = [],
   teamMembers,
   scopeKey,
   defaultOpen = true,
-}: EntityCallHistorySectionProps) {
+}: RelatedCallHistorySectionProps) {
   const { makeOutboundCall } = useCall();
   const queryClient = useQueryClient();
   const [activeCall, setActiveCall] = useState<CommunicationRow | null>(null);
@@ -130,7 +130,7 @@ export function EntityCallHistorySection({
     [phoneNumbers],
   );
 
-  const queryKey = ['entity-call-history', scopeKey, cleanLeadIds.join(','), last10s.join(',')];
+  const queryKey = ['related-call-history', scopeKey, cleanLeadIds.join(','), last10s.join(',')];
   const hasMatchers = cleanLeadIds.length > 0 || last10s.length > 0;
 
   const { data: calls = [], isLoading } = useQuery({
@@ -167,7 +167,7 @@ export function EntityCallHistorySection({
   useEffect(() => {
     if (!activeCall?.id) return;
     const channel = supabase
-      .channel(`entity-comm-${activeCall.id}`)
+      .channel(`related-comm-${activeCall.id}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'communications', filter: `id=eq.${activeCall.id}` },

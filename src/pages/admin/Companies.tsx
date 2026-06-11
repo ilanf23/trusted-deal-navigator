@@ -51,7 +51,7 @@ import { cn } from '@/lib/utils';
 
 interface Company {
   id: string;
-  entity_id: string;
+  related_id: string;
   company_name: string;
   phone: string | null;
   contact_name: string | null;
@@ -487,11 +487,11 @@ const Companies = () => {
     queryKey: ['followed-companies', currentTeamMember?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_followers')
-        .select('entity_id')
-        .eq('entity_type', 'companies')
+        .from('related_followers')
+        .select('related_id')
+        .eq('related_type', 'companies')
         .eq('user_id', currentTeamMember!.id);
-      return (data ?? []).map((r) => r.entity_id);
+      return (data ?? []).map((r) => r.related_id);
     },
     enabled: !!currentTeamMember?.id,
   });
@@ -503,7 +503,7 @@ const Companies = () => {
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = { all: companies.length };
     const myId = currentTeamMember?.id;
-    counts['following'] = companies.filter((c) => followedCompanyIds.has(c.entity_id)).length;
+    counts['following'] = companies.filter((c) => followedCompanyIds.has(c.related_id)).length;
     counts['current_customers'] = companies.filter((c) => c.contact_type === 'Client').length;
     counts['my_companies'] = myId
       ? companies.filter((c) => c.assigned_to === myId).length
@@ -518,7 +518,7 @@ const Companies = () => {
     if (activeFilter !== 'all') {
       const myId = currentTeamMember?.id;
       if (activeFilter === 'following') {
-        result = result.filter((c) => followedCompanyIds.has(c.entity_id));
+        result = result.filter((c) => followedCompanyIds.has(c.related_id));
       } else if (activeFilter === 'current_customers') {
         result = result.filter((c) => c.contact_type === 'Client');
       } else if (activeFilter === 'my_companies') {
@@ -538,7 +538,7 @@ const Companies = () => {
               if (!filterTags.some((ft) => companyTags.includes(ft))) return false;
             }
             if (v.source.length > 0 && !v.source.includes(c.source ?? '')) return false;
-            if (v.followed && !followedCompanyIds.has(c.entity_id)) return false;
+            if (v.followed && !followedCompanyIds.has(c.related_id)) return false;
             if (v.dateAddedFrom && new Date(c.created_at) < v.dateAddedFrom) return false;
             if (v.dateAddedTo && new Date(c.created_at) > v.dateAddedTo) return false;
             if (v.lastContactedMin.trim()) {

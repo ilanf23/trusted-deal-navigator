@@ -331,27 +331,27 @@ Deno.serve(async (req) => {
       if (fromNumber) {
         const normalized = fromNumber.replace(/\D/g, '').slice(-10);
         // Two-pass caller lookup:
-        //   1. entity_phones — polymorphic, multi-number table. Preferred
+        //   1. related_phones — polymorphic, multi-number table. Preferred
         //      because a contact can have several numbers (mobile/work/home).
-        //      entity_id now points at the canonical entities table, so we
-        //      embed entities and read source_id (the actual people.id).
+        //      related_id now points at the canonical related table, so we
+        //      embed related and read source_id (the actual people.id).
         //   2. people.phone — direct column fallback, for contacts created
-        //      from the People UI without an entity_phones row. people is the
+        //      from the People UI without an related_phones row. people is the
         //      source of truth for caller identity per product spec, so a
         //      direct match still resolves to a "real" caller.
         // First match wins; we don't need to disambiguate.
         const { data: phoneMatch } = await sb
-          .from('entity_phones')
-          .select('entity_id, entities!inner(kind, source_id)')
+          .from('related_phones')
+          .select('related_id, related!inner(kind, source_id)')
           .ilike('phone_number', `%${normalized}`)
-          .eq('entity_type', 'people')
+          .eq('related_type', 'people')
           .limit(1)
           .maybeSingle();
         // With !inner the embed types as an object, but handle array shape
         // defensively in case the client returns one.
-        const matchedEntity = Array.isArray(phoneMatch?.entities)
-          ? phoneMatch?.entities[0]
-          : phoneMatch?.entities;
+        const matchedEntity = Array.isArray(phoneMatch?.related)
+          ? phoneMatch?.related[0]
+          : phoneMatch?.related;
         if (matchedEntity?.source_id) {
           resolvedLeadId = matchedEntity.source_id;
         } else {

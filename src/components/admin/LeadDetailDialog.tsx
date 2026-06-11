@@ -33,7 +33,7 @@ import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { FormattedPhoneInput } from '@/components/admin/FormattedPhoneInput';
-import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
+import { RelatedFilesSection } from '@/components/admin/files/RelatedFilesSection';
 import { LeadDealSheetTab } from '@/components/admin/LeadDealSheetTab';
 import { useSavedTaskFilters, findFilterById } from '@/hooks/useSavedTaskFilters';
 import { applyTaskFilter } from '@/components/employee/tasks/savedFilters/applyTaskFilter';
@@ -107,7 +107,7 @@ interface Lead {
 
 interface LeadPhone {
   id: string;
-  entity_id: string;
+  related_id: string;
   phone_number: string;
   phone_type: string;
   is_primary: boolean;
@@ -115,7 +115,7 @@ interface LeadPhone {
 
 interface LeadEmail {
   id: string;
-  entity_id: string;
+  related_id: string;
   email: string;
   email_type: string;
   is_primary: boolean;
@@ -123,7 +123,7 @@ interface LeadEmail {
 
 interface LeadAddress {
   id: string;
-  entity_id: string;
+  related_id: string;
   address_type: string;
   address_line_1: string | null;
   address_line_2: string | null;
@@ -136,7 +136,7 @@ interface LeadAddress {
 
 interface LeadContact {
   id: string;
-  entity_id: string;
+  related_id: string;
   name: string;
   title: string | null;
   email: string | null;
@@ -148,7 +148,7 @@ interface LeadContact {
 
 interface LeadActivity {
   id: string;
-  entity_id: string;
+  related_id: string;
   activity_type: string;
   title: string | null;
   content: string | null;
@@ -239,7 +239,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       const { data } = await supabase
         .from('deal_responses')
         .select('loan_type, loan_amount, business_type, address_line_1, city, state, zip_code, collateral_description, purpose_of_loan, funding_amount')
-        .eq('entity_id', lead!.id)
+        .eq('related_id', lead!.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -421,15 +421,15 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: !!lead && open,
   });
 
-  // Canonical entities.id for this deal — entity_* child tables key off this,
+  // Canonical related.id for this deal — related_* child tables key off this,
   // not the deal row's own id. Fetched separately because the `lead` prop is a
-  // narrowed shape that doesn't carry entity_id.
+  // narrowed shape that doesn't carry related_id.
   const { data: leadEntityId = null } = useQuery({
-    queryKey: ['lead-entity-id', lead?.id],
+    queryKey: ['lead-related-id', lead?.id],
     queryFn: async () => {
       if (!lead) return null;
-      const { data } = await supabase.from('deals').select('entity_id').eq('id', lead.id).maybeSingle();
-      return data?.entity_id ?? null;
+      const { data } = await supabase.from('deals').select('related_id').eq('id', lead.id).maybeSingle();
+      return data?.related_id ?? null;
     },
     enabled: !!lead && open,
   });
@@ -438,7 +438,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-phones', lead?.id],
     queryFn: async () => {
       if (!leadEntityId) return [];
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadEntityId);
+      const { data } = await supabase.from('related_phones').select('*').eq('related_id', leadEntityId);
       return (data || []) as LeadPhone[];
     },
     enabled: !!lead && !!leadEntityId && open,
@@ -448,7 +448,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-emails', lead?.id],
     queryFn: async () => {
       if (!leadEntityId) return [];
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadEntityId);
+      const { data } = await supabase.from('related_emails').select('*').eq('related_id', leadEntityId);
       return (data || []) as LeadEmail[];
     },
     enabled: !!lead && !!leadEntityId && open,
@@ -458,7 +458,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-addresses', lead?.id],
     queryFn: async () => {
       if (!leadEntityId) return [];
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadEntityId);
+      const { data } = await supabase.from('related_addresses').select('*').eq('related_id', leadEntityId);
       return (data || []) as LeadAddress[];
     },
     enabled: !!lead && !!leadEntityId && open,
@@ -478,7 +478,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-activities', lead?.id],
     queryFn: async () => {
       if (!lead) return [];
-      const { data } = await supabase.from('activities').select('*').eq('entity_id', lead.id).order('created_at', { ascending: false });
+      const { data } = await supabase.from('activities').select('*').eq('related_id', lead.id).order('created_at', { ascending: false });
       return (data || []) as LeadActivity[];
     },
     enabled: !!lead && open,
@@ -550,7 +550,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       const { data } = await supabase
         .from('deal_lender_programs')
         .select('id, status, notes, program_id, lender_programs!lead_lender_programs_program_id_fkey(lender_name, program_name)')
-        .eq('entity_id', lead!.id)
+        .eq('related_id', lead!.id)
         .order('created_at', { ascending: false });
       return (data || []).map((item: any) => ({
         lenderName: item.lender_programs?.lender_name || 'Unknown Lender',
@@ -754,7 +754,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const addContactEmail = useMutation({
     mutationFn: async (email: string) => {
       if (!lead || !leadEntityId) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadEntityId, entity_type: 'deal', email, email_type: newEmailType });
+      const { error } = await supabase.from('related_emails').insert({ related_id: leadEntityId, related_type: 'deal', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -768,7 +768,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const addContactPhone = useMutation({
     mutationFn: async (phone: string) => {
       if (!lead || !leadEntityId) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadEntityId, entity_type: 'deal', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('related_phones').insert({ related_id: leadEntityId, related_type: 'deal', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -781,7 +781,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
   const deletePhone = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('entity_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('related_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -792,7 +792,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
   const deleteEmail = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('entity_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('related_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -804,9 +804,9 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const addContactAddress = useMutation({
     mutationFn: async () => {
       if (!lead || !leadEntityId || !newAddressLine1.trim()) return;
-      const { error } = await supabase.from('entity_addresses').insert({
-        entity_id: leadEntityId,
-        entity_type: 'deal',
+      const { error } = await supabase.from('related_addresses').insert({
+        related_id: leadEntityId,
+        related_type: 'deal',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -829,7 +829,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
   const deleteAddress = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('entity_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('related_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -912,13 +912,13 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     },
   });
 
-  // Update phone in entity_phones table
+  // Update phone in related_phones table
   const updatePhone = useMutation({
     mutationFn: async ({ id, phone_number, phone_type }: { id: string; phone_number?: string; phone_type?: string }) => {
       const updates: { phone_number?: string; phone_type?: string } = {};
       if (phone_number !== undefined) updates.phone_number = phone_number;
       if (phone_type !== undefined) updates.phone_type = phone_type;
-      const { error } = await supabase.from('entity_phones').update(updates).eq('id', id);
+      const { error } = await supabase.from('related_phones').update(updates).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -927,13 +927,13 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     },
   });
 
-  // Update email in entity_emails table
+  // Update email in related_emails table
   const updateEmail = useMutation({
     mutationFn: async ({ id, email, email_type }: { id: string; email?: string; email_type?: string }) => {
       const updates: { email?: string; email_type?: string } = {};
       if (email !== undefined) updates.email = email;
       if (email_type !== undefined) updates.email_type = email_type;
-      const { error } = await supabase.from('entity_emails').update(updates).eq('id', id);
+      const { error } = await supabase.from('related_emails').update(updates).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -962,8 +962,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     mutationFn: async (comment: string) => {
       if (!lead) return;
       const { error } = await supabase.from('activities').insert({
-        entity_id: lead.id,
-        entity_type: 'deal',
+        related_id: lead.id,
+        related_type: 'deal',
         activity_type: 'comment',
         title: 'Comment added',
         content: comment,
@@ -1027,8 +1027,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     mutationFn: async ({ title, date }: { title: string; date: string }) => {
       if (!lead) return;
       const { error } = await supabase.from('activities').insert({
-        entity_id: lead.id,
-        entity_type: 'deal',
+        related_id: lead.id,
+        related_type: 'deal',
         activity_type: 'meeting',
         title: title || 'Scheduled meeting',
         content: `Meeting scheduled for ${date}`,
@@ -1882,10 +1882,10 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
                   {/* Files Tab */}
                   <TabsContent value="files" className="m-0 p-4">
-                    <EntityFilesSection
-                      entityId={leadEntityId ?? ''}
-                      entityType="deal"
-                      entityName={lead.name}
+                    <RelatedFilesSection
+                      relatedId={leadEntityId ?? ''}
+                      relatedType="deal"
+                      relatedName={lead.name}
                       companyName={lead.company_name}
                     />
                   </TabsContent>

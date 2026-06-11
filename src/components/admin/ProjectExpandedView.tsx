@@ -23,7 +23,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
+import { RelatedFilesSection } from '@/components/admin/files/RelatedFilesSection';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
@@ -170,7 +170,7 @@ export default function ProjectExpandedView() {
     queryKey: ['project-expanded', projectId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('entity_projects')
+        .from('related_projects')
         .select('*')
         .eq('id', projectId!)
         .single();
@@ -180,16 +180,16 @@ export default function ProjectExpandedView() {
     enabled: !!projectId,
   });
 
-  // `project.entity_id` is the canonical entities.id of the owning record, so
-  // the deal is resolved via the deals table's own entity_id column
-  // (deals.entity_id = project.entity_id).
+  // `project.related_id` is the canonical related.id of the owning record, so
+  // the deal is resolved via the deals table's own related_id column
+  // (deals.related_id = project.related_id).
   const { data: lead } = useQuery({
-    queryKey: ['project-lead', project?.entity_id],
+    queryKey: ['project-lead', project?.related_id],
     queryFn: async () => {
-      const { data } = await supabase.from('deals').select('*').eq('pipeline', 'potential').eq('entity_id', project!.entity_id).maybeSingle();
+      const { data } = await supabase.from('deals').select('*').eq('pipeline', 'potential').eq('related_id', project!.related_id).maybeSingle();
       return data;
     },
-    enabled: !!project?.entity_id,
+    enabled: !!project?.related_id,
   });
 
   // Owning deal's record id — needed for tables that still key off deal ids
@@ -203,14 +203,14 @@ export default function ProjectExpandedView() {
     return m;
   }, [teamMembers]);
 
-  // Activities for this lead — `activities.entity_id` still stores deal record ids.
+  // Activities for this lead — `activities.related_id` still stores deal record ids.
   const { data: activities = [] } = useQuery({
-    queryKey: ['lead-activities', project?.entity_id],
+    queryKey: ['lead-activities', project?.related_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('activities')
         .select('*')
-        .eq('entity_id', ownerDealId!)
+        .eq('related_id', ownerDealId!)
         .order('created_at', { ascending: false });
       return data ?? [];
     },
@@ -219,7 +219,7 @@ export default function ProjectExpandedView() {
 
   // Tasks for this lead (used in Board tab)
   const { data: tasks = [] } = useQuery({
-    queryKey: ['person-tasks', project?.entity_id],
+    queryKey: ['person-tasks', project?.related_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('tasks')
@@ -233,7 +233,7 @@ export default function ProjectExpandedView() {
 
   // Contacts for this lead (legacy)
   const { data: contacts = [] } = useQuery({
-    queryKey: ['lead-contacts', project?.entity_id],
+    queryKey: ['lead-contacts', project?.related_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('deal_contacts')
@@ -431,36 +431,36 @@ export default function ProjectExpandedView() {
     enabled: addingCompany && companySearchQuery.trim().length > 0,
   });
 
-  // Files for this lead (shares cache with EntityFilesSection)
+  // Files for this lead (shares cache with RelatedFilesSection)
   const { data: leadFiles = [] } = useQuery({
-    queryKey: ['entity-files', 'deal', project?.entity_id],
+    queryKey: ['related-files', 'deal', project?.related_id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('entity_files')
-        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', project!.entity_id)
-        .eq('entity_type', 'deal')
+        .from('related_files')
+        .select('id, related_id, related_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('related_id', project!.related_id)
+        .eq('related_type', 'deal')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
-    enabled: !!project?.entity_id,
+    enabled: !!project?.related_id,
   });
   const [addFilesOpen, setAddFilesOpen] = useState(false);
 
   // Pipeline info for this lead
   const { data: pipelineInfo } = useQuery({
-    queryKey: ['lead-pipeline-info', project?.entity_id],
+    queryKey: ['lead-pipeline-info', project?.related_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('deals')
         .select('pipeline_id, pipelines:pipeline_id(name)')
         .eq('pipeline', 'potential')
-        .eq('entity_id', project!.entity_id)
+        .eq('related_id', project!.related_id)
         .maybeSingle();
       return data as { pipeline_id: string; pipelines: { name: string } | null } | null;
     },
-    enabled: !!project?.entity_id,
+    enabled: !!project?.related_id,
   });
 
   // ── Stats ──
@@ -486,17 +486,17 @@ export default function ProjectExpandedView() {
   const saveField = useCallback(async (field: string, value: unknown) => {
     if (!projectId) return;
     // Capture previous value before update
-    const { data: prev } = await supabase.from('entity_projects').select(field).eq('id', projectId).single();
+    const { data: prev } = await supabase.from('related_projects').select(field).eq('id', projectId).single();
     const previousValue = prev ? (prev as Record<string, unknown>)[field] : null;
     const { error } = await supabase
-      .from('entity_projects')
+      .from('related_projects')
       .update({ [field]: value, updated_at: new Date().toISOString() })
       .eq('id', projectId);
     if (error) { toast.error('Failed to save'); return; }
     registerUndo({
       label: `Updated ${field}`,
       execute: async () => {
-        const { error: e } = await supabase.from('entity_projects').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', projectId);
+        const { error: e } = await supabase.from('related_projects').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', projectId);
         if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['project-expanded', projectId] });
         queryClient.invalidateQueries({ queryKey: ['all-projects'] });
@@ -512,8 +512,8 @@ export default function ProjectExpandedView() {
     if (!ownerDealId || !noteContent.trim()) return;
     setSavingNote(true);
     await supabase.from('activities').insert({
-      entity_id: ownerDealId,
-      entity_type: 'deal',
+      related_id: ownerDealId,
+      related_type: 'deal',
       activity_type: activityTab === 'note' ? 'note' : activityType,
       content: noteContent.trim(),
       title: activityTab === 'note' ? 'Note' : activityType.replace(/_/g, ' '),
@@ -521,9 +521,9 @@ export default function ProjectExpandedView() {
     });
     setSavingNote(false);
     setNoteContent('');
-    queryClient.invalidateQueries({ queryKey: ['lead-activities', project?.entity_id] });
+    queryClient.invalidateQueries({ queryKey: ['lead-activities', project?.related_id] });
     toast.success(activityTab === 'note' ? 'Note saved' : 'Activity logged');
-  }, [ownerDealId, project?.entity_id, noteContent, activityTab, activityType, teamMember, queryClient]);
+  }, [ownerDealId, project?.related_id, noteContent, activityTab, activityType, teamMember, queryClient]);
 
   // ── Board: add task ──
 
@@ -539,7 +539,7 @@ export default function ProjectExpandedView() {
     if (error) { toast.error('Failed to add task'); return; }
     setNewTaskTitle('');
     setAddingTaskCol(null);
-    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.related_id] });
     toast.success('Task added');
     if (created) {
       registerUndo({
@@ -547,11 +547,11 @@ export default function ProjectExpandedView() {
         execute: async () => {
           const { error: e } = await supabase.from('tasks').delete().eq('id', created.id);
           if (e) throw e;
-          queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
+          queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.related_id] });
         },
       });
     }
-  }, [ownerDealId, project?.entity_id, newTaskTitle, teamMember, queryClient, registerUndo]);
+  }, [ownerDealId, project?.related_id, newTaskTitle, teamMember, queryClient, registerUndo]);
 
   // ── Board: toggle task ──
 
@@ -576,11 +576,11 @@ export default function ProjectExpandedView() {
           updated_at: new Date().toISOString(),
         }).eq('id', task.id);
         if (e) throw e;
-        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
+        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.related_id] });
       },
     });
-    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
-  }, [project?.entity_id, queryClient, registerUndo]);
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.related_id] });
+  }, [project?.related_id, queryClient, registerUndo]);
 
   // ── Board: update task field ──
 
@@ -593,7 +593,7 @@ export default function ProjectExpandedView() {
       updated_at: new Date().toISOString(),
     }).eq('id', taskId);
     if (error) { toast.error('Failed to update task'); return; }
-    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.related_id] });
     // Keep selected task in sync
     setSelectedBoardTask(prev => prev?.id === taskId ? { ...prev, [field]: value } as ProjectTask : prev);
     registerUndo({
@@ -601,10 +601,10 @@ export default function ProjectExpandedView() {
       execute: async () => {
         const { error: e } = await supabase.from('tasks').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', taskId);
         if (e) throw e;
-        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
+        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.related_id] });
       },
     });
-  }, [project?.entity_id, queryClient, registerUndo]);
+  }, [project?.related_id, queryClient, registerUndo]);
 
   // ── Board task grouping ──
 
@@ -618,12 +618,12 @@ export default function ProjectExpandedView() {
   const ownerName = project?.owner ? teamMemberMap[project.owner] : null;
 
   const teamMemberId = teamMember?.id;
-  const leadId = project?.entity_id;
+  const leadId = project?.related_id;
   const { data: isFollowing = false } = useQuery({
     queryKey: ['lead-follow', leadId, teamMemberId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_followers').select('id')
-        .eq('entity_id', leadId!).eq('user_id', teamMemberId!).maybeSingle();
+      const { data } = await supabase.from('related_followers').select('id')
+        .eq('related_id', leadId!).eq('user_id', teamMemberId!).maybeSingle();
       return !!data;
     },
     enabled: !!leadId && !!teamMemberId,
@@ -631,9 +631,9 @@ export default function ProjectExpandedView() {
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
       if (isFollowing) {
-        await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('user_id', teamMemberId!);
+        await supabase.from('related_followers').delete().eq('related_id', leadId!).eq('user_id', teamMemberId!);
       } else {
-        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'deal', user_id: teamMemberId! });
+        await supabase.from('related_followers').insert({ related_id: leadId!, related_type: 'deal', user_id: teamMemberId! });
       }
     },
     onSuccess: () => {
@@ -645,14 +645,14 @@ export default function ProjectExpandedView() {
   const handleDeleteProject = useCallback(async () => {
     if (!projectId) return;
     // Capture full project record before deleting
-    const { data: projectData } = await supabase.from('entity_projects').select('*').eq('id', projectId).single();
-    const { error } = await supabase.from('entity_projects').delete().eq('id', projectId);
+    const { data: projectData } = await supabase.from('related_projects').select('*').eq('id', projectId).single();
+    const { error } = await supabase.from('related_projects').delete().eq('id', projectId);
     if (error) { toast.error('Failed to delete project'); return; }
     if (projectData) {
       registerUndo({
         label: `Deleted project "${projectData.name}"`,
         execute: async () => {
-          const { error: e } = await supabase.from('entity_projects').insert(projectData);
+          const { error: e } = await supabase.from('related_projects').insert(projectData);
           if (e) throw e;
           queryClient.invalidateQueries({ queryKey: ['all-projects'] });
         },
@@ -698,18 +698,18 @@ export default function ProjectExpandedView() {
     if (error) { toast.error('Failed to create task'); return; }
     toast.success('Task created');
     setNewSidebarTaskTitle(''); setAddingTask(false);
-    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.related_id] });
     if (created) {
       registerUndo({
         label: `Created task "${newSidebarTaskTitle.trim()}"`,
         execute: async () => {
           const { error: e } = await supabase.from('tasks').delete().eq('id', created.id);
           if (e) throw e;
-          queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
+          queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.related_id] });
         },
       });
     }
-  }, [ownerDealId, project?.entity_id, newSidebarTaskTitle, teamMember, queryClient, registerUndo]);
+  }, [ownerDealId, project?.related_id, newSidebarTaskTitle, teamMember, queryClient, registerUndo]);
 
   // ── Link company (Related sidebar) — used by search result clicks & Enter ──
   const handleLinkCompany = useCallback(async (companyName: string) => {
@@ -721,8 +721,8 @@ export default function ProjectExpandedView() {
     toast.success('Company linked');
     setCompanySearchQuery('');
     setAddingCompany(false);
-    queryClient.invalidateQueries({ queryKey: ['project-lead', project?.entity_id] });
-  }, [ownerDealId, project?.entity_id, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ['project-lead', project?.related_id] });
+  }, [ownerDealId, project?.related_id, queryClient]);
 
   // ── Remove company (Related sidebar) ──
   const handleRemoveCompany = useCallback(async () => {
@@ -732,8 +732,8 @@ export default function ProjectExpandedView() {
     setSavingCompany(false);
     if (error) { toast.error('Failed to remove company'); return; }
     toast.success('Company removed');
-    queryClient.invalidateQueries({ queryKey: ['project-lead', project?.entity_id] });
-  }, [ownerDealId, project?.entity_id, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ['project-lead', project?.related_id] });
+  }, [ownerDealId, project?.related_id, queryClient]);
 
   if (isLoading || !project) {
     return (
@@ -1025,7 +1025,7 @@ export default function ProjectExpandedView() {
                       className="h-8 text-xs text-destructive hover:text-destructive gap-1.5"
                       onClick={async () => {
                         await supabase.from('tasks').delete().eq('id', selectedBoardTask.id);
-                        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
+                        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.related_id] });
                         setSelectedBoardTask(null);
                         toast.success('Task deleted');
                       }}
@@ -1297,11 +1297,11 @@ export default function ProjectExpandedView() {
                   count={leadFiles.length}
                   onAdd={() => setAddFilesOpen(true)}
                 >
-                  {project?.entity_id && (
-                    <EntityFilesSection
-                      entityId={project.entity_id}
-                      entityType="deal"
-                      entityName={project?.name ?? lead?.name}
+                  {project?.related_id && (
+                    <RelatedFilesSection
+                      relatedId={project.related_id}
+                      relatedType="deal"
+                      relatedName={project?.name ?? lead?.name}
                       companyName={lead?.company_name ?? undefined}
                       hideHeader
                       addOpen={addFilesOpen}

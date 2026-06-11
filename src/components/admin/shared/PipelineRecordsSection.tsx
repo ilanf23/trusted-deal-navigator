@@ -28,7 +28,7 @@ export interface PipelineRecord {
 type DialogPrefill = React.ComponentProps<typeof AddOpportunityDialog>['prefill'];
 
 export interface PipelineRecordsSectionProps {
-  /** Pipeline records currently linked to this entity. Pass [] for the empty state. */
+  /** Pipeline records currently linked to this related. Pass [] for the empty state. */
   records: PipelineRecord[];
   /** Optional handler for the per-record remove (X) button. */
   onRemoveRecord?: (recordId: string) => void;

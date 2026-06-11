@@ -176,23 +176,23 @@ export function useGmailLogic(config?: CRMGmailConfig) {
   const { data: allLeads = [] } = useQuery({
     queryKey: ['gmail-all-leads'],
     queryFn: async () => {
-      // entity_emails hangs off the canonical entities row (people.entity_id),
-      // so the embed goes through entities. deal_contacts belongs to deals,
+      // related_emails hangs off the canonical related row (people.related_id),
+      // so the embed goes through related. deal_contacts belongs to deals,
       // not people, so it cannot be embedded here.
       const { data } = await supabase
         .from('people')
         .select(`
           *,
-          entities!people_entity_id_fkey(entity_emails(email, email_type)),
+          related!people_entity_id_fkey(related_emails(email, email_type)),
           lead_phones(id, phone_number, phone_type),
           lead_responses(*)
         `);
       type EmbeddedEntityEmails = {
-        entities?: { entity_emails?: { email: string; email_type: string | null }[] } | null;
+        related?: { related_emails?: { email: string; email_type: string | null }[] } | null;
       };
       return (data ?? []).map((p) => ({
         ...p,
-        entity_emails: (p as EmbeddedEntityEmails).entities?.entity_emails ?? [],
+        related_emails: (p as EmbeddedEntityEmails).related?.related_emails ?? [],
       }));
     },
   });
@@ -315,17 +315,17 @@ export function useGmailLogic(config?: CRMGmailConfig) {
         .from('people')
         .select('email')
         .not('email', 'is', null);
-      const { data: entityEmails } = await supabase
-        .from('entity_emails')
+      const { data: relatedEmails } = await supabase
+        .from('related_emails')
         .select('email');
-      const { data: entityContacts } = await supabase
+      const { data: relatedContacts } = await supabase
         .from('deal_contacts')
         .select('email')
         .not('email', 'is', null);
       const allEmailsSet = new Set<string>();
       people?.forEach(l => l.email && allEmailsSet.add(l.email.toLowerCase()));
-      entityEmails?.forEach(e => e.email && allEmailsSet.add(e.email.toLowerCase()));
-      entityContacts?.forEach(c => c.email && allEmailsSet.add(c.email.toLowerCase()));
+      relatedEmails?.forEach(e => e.email && allEmailsSet.add(e.email.toLowerCase()));
+      relatedContacts?.forEach(c => c.email && allEmailsSet.add(c.email.toLowerCase()));
       return Array.from(allEmailsSet);
     },
   });
@@ -415,7 +415,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
           if (!isExternal) return false;
           const lead = allLeads.find(l => {
             if (l.email?.toLowerCase() === senderEmail) return true;
-            if (l.entity_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
+            if (l.related_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
             return false;
           });
           if (!lead) return false;
@@ -476,7 +476,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
         externalCount++;
         const lead = allLeads.find(l => {
           if (l.email?.toLowerCase() === senderEmail) return true;
-          if (l.entity_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
+          if (l.related_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
           return false;
         });
         if (lead) {

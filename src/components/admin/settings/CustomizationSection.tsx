@@ -26,7 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface CustomField {
   id: string;
-  entity_type: string;
+  related_type: string;
   field_key: string;
   label: string;
   field_type: string;
@@ -80,12 +80,12 @@ const slugify = (s: string) =>
 const CustomFieldDialog = ({
   open,
   onOpenChange,
-  entityType,
+  relatedType,
   field,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  entityType: string;
+  relatedType: string;
   field: CustomField | null;
 }) => {
   const queryClient = useQueryClient();
@@ -97,7 +97,7 @@ const CustomFieldDialog = ({
   const save = useMutation({
     mutationFn: async () => {
       const payload = {
-        entity_type: entityType,
+        related_type: relatedType,
         field_key: fieldKey || slugify(label),
         label,
         field_type: fieldType,
@@ -185,8 +185,8 @@ const CustomFieldsTab = () => {
     queryFn: async (): Promise<CustomField[]> => {
       const { data, error } = await supabase
         .from('custom_fields')
-        .select('id, entity_type, field_key, label, field_type, required, position')
-        .order('entity_type')
+        .select('id, related_type, field_key, label, field_type, required, position')
+        .order('related_type')
         .order('position');
       if (error) throw error;
       return (data ?? []) as CustomField[];
@@ -205,7 +205,7 @@ const CustomFieldsTab = () => {
   });
 
   const grouped = (data ?? []).reduce<Record<string, CustomField[]>>((acc, f) => {
-    (acc[f.entity_type] ||= []).push(f);
+    (acc[f.related_type] ||= []).push(f);
     return acc;
   }, {});
 
@@ -276,7 +276,7 @@ const CustomFieldsTab = () => {
             setEditing(null);
           }
         }}
-        entityType={creating ?? editing?.entity_type ?? 'people'}
+        relatedType={creating ?? editing?.related_type ?? 'people'}
         field={editing}
       />
     </div>
@@ -458,7 +458,7 @@ const TagsTab = () => {
       <TagIcon className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
       <h3 className="text-sm font-semibold">Tag manager</h3>
       <p className="text-sm text-muted-foreground max-w-md mx-auto mt-1">
-        Cross-entity tag management is coming next. For now, tags are managed inline on each record.
+        Cross-record tag management is coming next. For now, tags are managed inline on each record.
       </p>
     </div>
   );

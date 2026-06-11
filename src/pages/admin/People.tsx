@@ -95,7 +95,7 @@ import { format, differenceInDays, parseISO } from 'date-fns';
 // ── Person type (from people table) ──
 interface Person {
   id: string;
-  entity_id: string;
+  related_id: string;
   name: string;
   title: string | null;
   company_name: string | null;
@@ -535,8 +535,8 @@ const People = () => {
       if (error) throw error;
       try {
         const { error: activityError } = await supabase.from('activities').insert({
-          entity_id: personId,
-          entity_type: 'people',
+          related_id: personId,
+          related_type: 'people',
           activity_type: 'type_change',
           title: `Changed from ${oldType} to ${newType}`,
           content: JSON.stringify({ from: oldType, to: newType }),
@@ -606,14 +606,14 @@ const People = () => {
         .single();
       if (error) throw error;
 
-      // Insert extra phone numbers into entity_phones — keyed by the canonical
-      // entities.id (auto-populated on the inserted row by a DB trigger).
+      // Insert extra phone numbers into related_phones — keyed by the canonical
+      // related.id (auto-populated on the inserted row by a DB trigger).
       const phonesToInsert = [
-        data.direct_phone ? { entity_id: person.entity_id, entity_type: 'people', phone_number: data.direct_phone, phone_type: 'direct' } : null,
-        data.fax_phone ? { entity_id: person.entity_id, entity_type: 'people', phone_number: data.fax_phone, phone_type: 'fax' } : null,
+        data.direct_phone ? { related_id: person.related_id, related_type: 'people', phone_number: data.direct_phone, phone_type: 'direct' } : null,
+        data.fax_phone ? { related_id: person.related_id, related_type: 'people', phone_number: data.fax_phone, phone_type: 'fax' } : null,
       ].filter(Boolean);
       if (phonesToInsert.length > 0) {
-        await supabase.from('entity_phones').insert(phonesToInsert);
+        await supabase.from('related_phones').insert(phonesToInsert);
       }
 
       return person as Person;
@@ -671,13 +671,13 @@ const People = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('activities')
-        .select('entity_id')
-        .eq('entity_type', 'people')
-        .in('entity_id', people.map((p) => p.id));
+        .select('related_id')
+        .eq('related_type', 'people')
+        .in('related_id', people.map((p) => p.id));
       if (error) return {} as Record<string, number>;
       const counts: Record<string, number> = {};
       for (const row of data) {
-        counts[row.entity_id] = (counts[row.entity_id] || 0) + 1;
+        counts[row.related_id] = (counts[row.related_id] || 0) + 1;
       }
       return counts;
     },
@@ -689,13 +689,13 @@ const People = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('activities')
-        .select('entity_id')
-        .eq('entity_type', 'people')
-        .in('entity_id', people.map((p) => p.id));
+        .select('related_id')
+        .eq('related_type', 'people')
+        .in('related_id', people.map((p) => p.id));
       if (error) return {} as Record<string, number>;
       const counts: Record<string, number> = {};
       for (const row of data) {
-        counts[row.entity_id] = (counts[row.entity_id] || 0) + 1;
+        counts[row.related_id] = (counts[row.related_id] || 0) + 1;
       }
       return counts;
     },
@@ -707,11 +707,11 @@ const People = () => {
     queryKey: ['followed-people', teamMember?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('entity_followers')
-        .select('entity_id')
-        .eq('entity_type', 'people')
+        .from('related_followers')
+        .select('related_id')
+        .eq('related_type', 'people')
         .eq('user_id', teamMember!.id);
-      return (data ?? []).map(r => r.entity_id);
+      return (data ?? []).map(r => r.related_id);
     },
     enabled: !!teamMember?.id,
   });
@@ -723,7 +723,7 @@ const People = () => {
       counts[opt.id] = people.filter((p) => p.contact_type === opt.id).length;
     }
     counts['my_contacts'] = people.filter(p => p.assigned_to === teamMember?.id).length;
-    counts['following'] = people.filter(p => followedLeadIds.includes(p.entity_id)).length;
+    counts['following'] = people.filter(p => followedLeadIds.includes(p.related_id)).length;
     return counts;
   }, [people, teamMember?.id, followedLeadIds, filterOptions]);
 
@@ -734,7 +734,7 @@ const People = () => {
       if (activeFilter === 'my_contacts') {
         result = result.filter((p) => p.assigned_to === teamMember?.id);
       } else if (activeFilter === 'following') {
-        result = result.filter((p) => followedLeadIds.includes(p.entity_id));
+        result = result.filter((p) => followedLeadIds.includes(p.related_id));
       } else {
         // Check if it's a custom filter with saved person IDs
         const customFilter = customFilters.find(cf => cf.id === activeFilter);

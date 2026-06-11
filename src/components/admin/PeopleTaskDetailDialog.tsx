@@ -110,8 +110,8 @@ interface PeopleTaskDetailDialogProps {
   onSaved: () => void;
   // What kind of record `leadId` points at. 'deal' (default) links via the
   // tasks.lead_id FK -> deals. 'people' links via the polymorphic
-  // entity_id/entity_type columns, because lead_id cannot reference a people row.
-  entityType?: 'deal' | 'people';
+  // related_id/related_type columns, because lead_id cannot reference a people row.
+  relatedType?: 'deal' | 'people';
 }
 
 export const PeopleTaskDetailDialog = ({
@@ -124,7 +124,7 @@ export const PeopleTaskDetailDialog = ({
   currentUserName,
   initialTitle,
   onSaved,
-  entityType = 'deal',
+  relatedType = 'deal',
 }: PeopleTaskDetailDialogProps) => {
   const queryClient = useQueryClient();
   const isEditMode = !!task;
@@ -173,10 +173,10 @@ export const PeopleTaskDetailDialog = ({
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      // People tasks link via entity_id/entity_type (lead_id is a FK to deals
+      // People tasks link via related_id/related_type (lead_id is a FK to deals
       // and cannot reference a people row); deal tasks keep using lead_id.
-      const link = entityType === 'people'
-        ? { entity_id: leadId, entity_type: 'people' as const }
+      const link = relatedType === 'people'
+        ? { related_id: leadId, related_type: 'people' as const }
         : { lead_id: leadId };
       const { error } = await supabase.from('tasks').insert({
         ...link,
