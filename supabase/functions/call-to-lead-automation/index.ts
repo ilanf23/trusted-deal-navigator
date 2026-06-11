@@ -231,7 +231,7 @@ ${transcript ? callSummary : 'No transcript available - call was not recorded or
       } else {
         console.log(`Creating Gmail draft for ${repName}...`);
 
-        const gmailCreds = await getValidGoogleAccessToken(supabase, repAuthUserId);
+        const gmailCreds = await getValidGoogleAccessToken(supabase, repAuthUserId, 'gmail');
 
         if (gmailCreds) {
           try {

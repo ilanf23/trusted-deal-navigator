@@ -1,6 +1,15 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { requireAdmin } from '../_shared/auth.ts';
+import {
+  createGoogleOAuthState,
+  getGoogleCapabilities,
+  getGoogleScopes,
+  GOOGLE_INTEGRATIONS,
+  hasGoogleIntegrationScopes,
+  isGoogleIntegration,
+  verifyGoogleOAuthState,
+} from '../_shared/googleOAuth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,16 +20,6 @@ const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')!;
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-const SCOPES = [
-  'https://www.googleapis.com/auth/calendar',
-  'https://www.googleapis.com/auth/calendar.events',
-  'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/drive.readonly',
-  'https://www.googleapis.com/auth/gmail.modify',
-  'https://www.googleapis.com/auth/userinfo.email',
-  'profile',
-].join(' ');
 
 const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
 
@@ -39,17 +38,37 @@ Deno.serve(async (req) => {
     if (!authResult.ok) return authResult.response;
 
     const userId = authResult.auth.authUserId;
-    const { action, code, redirectUri } = await req.json();
+    const { action, code, redirectUri, integration, state } = await req.json();
 
     if (action === 'getAuthUrl') {
+      const isLegacyRequest = integration === undefined;
+      if (!isLegacyRequest && !isGoogleIntegration(integration)) {
+        return new Response(
+          JSON.stringify({ error: 'A valid Google integration is required' }),
+          { status: 400, headers: jsonHeaders },
+        );
+      }
+      const requestedIntegration = isGoogleIntegration(integration)
+        ? integration
+        : 'gmail';
+      const requestedScopes = isLegacyRequest
+        ? [...new Set(GOOGLE_INTEGRATIONS.flatMap(getGoogleScopes))]
+        : getGoogleScopes(requestedIntegration);
+
+      const oauthState = await createGoogleOAuthState(
+        GOOGLE_CLIENT_SECRET,
+        userId,
+        requestedIntegration,
+      );
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
       authUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
       authUrl.searchParams.set('redirect_uri', redirectUri);
       authUrl.searchParams.set('response_type', 'code');
-      authUrl.searchParams.set('scope', SCOPES);
+      authUrl.searchParams.set('scope', requestedScopes.join(' '));
       authUrl.searchParams.set('access_type', 'offline');
+      authUrl.searchParams.set('include_granted_scopes', 'true');
       authUrl.searchParams.set('prompt', 'consent');
-      authUrl.searchParams.set('state', userId);
+      authUrl.searchParams.set('state', oauthState);
 
       return new Response(
         JSON.stringify({ authUrl: authUrl.toString() }),
@@ -58,6 +77,16 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'exchangeCode') {
+      const oauthState = typeof state === 'string'
+        ? await verifyGoogleOAuthState(GOOGLE_CLIENT_SECRET, state, userId)
+        : null;
+      if (!oauthState) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired OAuth state. Please reconnect.' }),
+          { status: 400, headers: jsonHeaders },
+        );
+      }
+
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -86,6 +115,19 @@ Deno.serve(async (req) => {
       const userInfo = await userInfoResponse.json();
 
       const tokenExpiry = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+      const { data: existingConnection } = await supabaseAdmin
+        .from('google_connections')
+        .select('refresh_token, scopes')
+        .eq('user_id', userId)
+        .maybeSingle();
+      const refreshToken = tokens.refresh_token || existingConnection?.refresh_token;
+      if (!refreshToken) {
+        return new Response(
+          JSON.stringify({ error: 'Google did not return a refresh token. Revoke access and reconnect.' }),
+          { status: 400, headers: jsonHeaders },
+        );
+      }
+      const grantedScopes = tokens.scope || getGoogleScopes(oauthState.integration).join(' ');
 
       const { error: upsertError } = await supabaseAdmin
         .from('google_connections')
@@ -93,11 +135,12 @@ Deno.serve(async (req) => {
           user_id: userId,
           email: userInfo.email,
           access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
+          refresh_token: refreshToken,
           token_expiry: tokenExpiry,
-          scopes: SCOPES,
+          scopes: grantedScopes,
           calendar_id: 'primary',
           needs_reauth: false,
+          updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
 
       if (upsertError) {
@@ -109,27 +152,54 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, email: userInfo.email }),
+        JSON.stringify({
+          success: true,
+          email: userInfo.email,
+          integration: oauthState.integration,
+          capabilities: getGoogleCapabilities(grantedScopes),
+        }),
         { headers: jsonHeaders },
       );
     }
 
     if (action === 'getStatus') {
+      const isLegacyRequest = integration === undefined;
+      if (!isLegacyRequest && !isGoogleIntegration(integration)) {
+        return new Response(
+          JSON.stringify({ error: 'A valid Google integration is required' }),
+          { status: 400, headers: jsonHeaders },
+        );
+      }
+
       const { data } = await supabaseAdmin
         .from('google_connections')
-        .select('email, calendar_id, needs_reauth')
+        .select('email, calendar_id, needs_reauth, scopes, created_at')
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (!data) {
+      const connected = !!data &&
+        !data.needs_reauth &&
+        (isLegacyRequest || hasGoogleIntegrationScopes(data.scopes, integration));
+      if (!connected) {
         return new Response(
-          JSON.stringify({ connected: false }),
+          JSON.stringify({
+            connected: false,
+            needsReauth: data?.needs_reauth ?? false,
+            capabilities: getGoogleCapabilities(data?.scopes),
+          }),
           { headers: jsonHeaders },
         );
       }
 
       return new Response(
-        JSON.stringify({ connected: true, email: data.email, calendarId: data.calendar_id, needsReauth: data.needs_reauth }),
+        JSON.stringify({
+          connected: true,
+          email: data.email,
+          calendarId: data.calendar_id,
+          connectedAt: data.created_at,
+          needsReauth: false,
+          capabilities: getGoogleCapabilities(data.scopes),
+        }),
         { headers: jsonHeaders },
       );
     }

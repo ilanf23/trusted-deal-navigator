@@ -78,7 +78,10 @@ const SplitViewPanel = ({ side, pageKey }: SplitViewPanelProps) => {
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ contain: 'strict' }}>
       <PageSelector side={side} />
-      <div className="flex-1 min-h-0 overflow-auto p-3 sm:p-4 relative" style={{ contain: 'paint' }}>
+      {/* Padding must match AdminLayout's content padding (p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10):
+          full-bleed pages (e.g. Potential/People) cancel it with matching negative margins,
+          and a smaller padding here would pull them past the pane edge and clip them. */}
+      <div className="flex-1 min-h-0 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 relative" style={{ contain: 'paint' }}>
         <AdminLayoutMountedContext.Provider value={true}>
           <PanelErrorBoundary pageKey={pageKey}>
             <Suspense fallback={<PanelSkeleton />}>

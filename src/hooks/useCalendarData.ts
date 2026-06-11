@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { syncAppointmentToGoogle, deleteAppointmentFromGoogle } from '@/lib/calendarSync';
 import { toast } from 'sonner';
+import { getGoogleIntegrationStatus } from '@/lib/googleAuth';
 import {
   startOfDay,
   endOfDay,
@@ -92,13 +93,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data, error } = await supabase.functions.invoke('google-auth', {
-        body: { action: 'getStatus' },
-      });
-
-      if (!error && data) {
-        setCalendarStatus(data);
-      }
+      setCalendarStatus(await getGoogleIntegrationStatus('calendar'));
     } catch (err) {
       console.error('Failed to check calendar status:', err);
     }
@@ -393,6 +388,7 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
         body: {
           action: 'getAuthUrl',
           redirectUri: callbackUrl,
+          integration: 'calendar',
         },
       });
 

@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
+import { getGoogleIntegrationStatus } from '@/lib/googleAuth';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -278,14 +279,8 @@ export default function LenderExpandedView() {
   const { data: gmailConnection } = useQuery({
     queryKey: ['gmail-connection-for-lender-program'],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return null;
-      const { data } = await supabase
-        .from('google_connections')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-      return data;
+      const status = await getGoogleIntegrationStatus('gmail');
+      return status.connected ? status : null;
     },
     enabled: !!lenderId,
   });

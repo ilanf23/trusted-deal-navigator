@@ -166,8 +166,6 @@ const Dashboard = () => {
 
   const firstName = teamMember?.name || 'Team';
   const evanId = teamMember?.id;
-  const memberSlug = teamMember?.name?.toLowerCase() || '';
-  const basePath = `/admin/${memberSlug}`;
 
   const { data: ytdFundedDeals, isLoading: ytdGoalLoading } = useQuery({
     queryKey: ['dashboard-ytd-funded'],
@@ -528,7 +526,7 @@ const Dashboard = () => {
               <CardHeader className="pb-2 px-4 pt-4">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold">Hot Deals</CardTitle>
-                  <Link to={`${basePath}/pipeline`}>
+                  <Link to="/admin/pipeline/potential">
                     <Badge variant="outline" className="text-[11px] cursor-pointer hover:bg-muted">Pipeline →</Badge>
                   </Link>
                 </div>
@@ -562,7 +560,7 @@ const Dashboard = () => {
               <CardHeader className="pb-2 px-4 pt-4">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold">Today's Schedule</CardTitle>
-                  <Link to={`${basePath}/calendar`}>
+                  <Link to="/admin/calendar">
                     <Badge variant="outline" className="text-[11px] cursor-pointer hover:bg-muted">Calendar →</Badge>
                   </Link>
                 </div>
@@ -686,11 +684,11 @@ const Dashboard = () => {
               <CardContent className="px-4 pb-3">
                 <div className="space-y-0.5">
                   {[
-                    { to: `${basePath}/pipeline`, label: 'Pipeline', icon: Kanban },
-                    { to: `${basePath}/calls`, label: 'Calls', icon: Phone },
-                    { to: `${basePath}/gmail`, label: 'Gmail', icon: Mail },
-                    { to: `${basePath}/calendar`, label: 'Calendar', icon: Calendar },
-                    { to: `${basePath}/lender-programs`, label: 'Lender Programs', icon: Building2 },
+                    { to: '/admin/pipeline/potential', label: 'Pipeline', icon: Kanban },
+                    { to: '/admin/calls', label: 'Calls', icon: Phone },
+                    { to: '/admin/gmail', label: 'Gmail', icon: Mail },
+                    { to: '/admin/calendar', label: 'Calendar', icon: Calendar },
+                    { to: '/admin/lender-programs', label: 'Lender Programs', icon: Building2 },
                   ].map((link) => (
                     <Link
                       key={link.to}

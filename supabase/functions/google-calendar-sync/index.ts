@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
 
       for (const connection of connections) {
         try {
-          const tokenResult = await getValidGoogleAccessToken(supabase, connection.user_id);
+          const tokenResult = await getValidGoogleAccessToken(supabase, connection.user_id, 'calendar');
           const accessToken = tokenResult?.accessToken ?? null;
           if (!accessToken) {
             console.error(`Failed to get token for user ${connection.user_id}`);
@@ -296,7 +296,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const tokenResult = await getValidGoogleAccessToken(supabase, userId);
+    const tokenResult = await getValidGoogleAccessToken(supabase, userId, 'calendar');
     const accessToken = tokenResult?.accessToken ?? null;
     if (!accessToken) {
       return new Response(

@@ -81,6 +81,9 @@ verify_jwt = false
 [functions.google-sheets-auth]
 verify_jwt = false
 
+[functions.google-auth]
+verify_jwt = true
+
 [functions.google-sheets-api]
 verify_jwt = false
 

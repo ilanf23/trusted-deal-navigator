@@ -599,7 +599,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const tokenResult = await getValidGoogleAccessToken(supabaseAdmin, userId);
+    const tokenResult = await getValidGoogleAccessToken(supabaseAdmin, userId, 'sheets');
     const accessToken = tokenResult?.accessToken ?? null;
     if (!accessToken) {
       return new Response(

@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'No Sheets connection for user' }), { status: 404, headers: corsHeaders });
     }
 
-    const tokenResult = await getValidGoogleAccessToken(admin, userId);
+    const tokenResult = await getValidGoogleAccessToken(admin, userId, 'sheets');
     const accessToken = tokenResult?.accessToken ?? null;
     if (!accessToken) {
       return new Response(JSON.stringify({ error: 'Could not refresh Google token' }), { status: 401, headers: corsHeaders });

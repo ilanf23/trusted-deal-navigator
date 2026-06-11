@@ -20,7 +20,12 @@ export const useTasksData = (teamMemberId?: string | null) => {
       }
       const { data, error } = await query;
       if (error) throw error;
-      return data as Task[];
+      // Legacy rows may carry status 'completed' (predates the canonical
+      // 'done' value and isn't in statusConfig). Normalize at the boundary so
+      // every consumer (views, filters, stats) sees the canonical vocabulary.
+      return (data as Task[]).map(t =>
+        t.status === 'completed' ? { ...t, status: 'done' } : t,
+      );
     },
     enabled: !!teamMemberId,
   });

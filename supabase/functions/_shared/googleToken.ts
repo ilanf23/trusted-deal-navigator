@@ -1,4 +1,8 @@
 import { type SupabaseClient } from './supabase.ts';
+import {
+  type GoogleIntegration,
+  hasGoogleIntegrationScopes,
+} from './googleOAuth.ts';
 
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID') || '';
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') || '';
@@ -6,15 +10,22 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') || '';
 export async function getValidGoogleAccessToken(
   supabase: SupabaseClient,
   userId: string,
+  integration?: GoogleIntegration,
 ): Promise<{ accessToken: string; email: string } | null> {
   try {
     const { data: connection, error } = await supabase
       .from('google_connections')
-      .select('id, access_token, email, refresh_token, token_expiry')
+      .select('id, access_token, email, refresh_token, token_expiry, scopes, needs_reauth')
       .eq('user_id', userId)
       .maybeSingle();
 
     if (error || !connection) return null;
+    if (
+      connection.needs_reauth ||
+      (integration && !hasGoogleIntegrationScopes(connection.scopes, integration))
+    ) {
+      return null;
+    }
 
     const expiry = new Date(connection.token_expiry);
     const now = new Date();

@@ -40,6 +40,8 @@ import { useGmailConnection } from '@/hooks/useGmailConnection';
 // usePipelines import removed — people are no longer connected to pipelines
 import { useInlineSave as useSharedInlineSave } from './shared/useInlineSave';
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
+import { AddOpportunityDialog } from './AddOpportunityDialog';
+import { PIPELINE_LABELS, type CrmTable } from '@/hooks/usePipelineMutations';
 import ProjectDetailDialog, { type LeadProject } from './ProjectDetailDialog';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { formatPhoneNumber } from './InlineEditableFields';
@@ -1156,6 +1158,22 @@ const DEAL_ROUTE_FOR: Record<string, (id: string) => string> = {
   lender_management: (id) => `/admin/pipeline/lender-management/expanded-view/${id}`,
 };
 
+// A deal linked to this person via the canonical deal_people join table.
+interface PersonDealLink {
+  id: string;
+  deal_id: string;
+  role: string | null;
+  deal: {
+    id: string;
+    name: string;
+    opportunity_name: string | null;
+    pipeline: string;
+    loan_stage: string | null;
+    deal_value: number | null;
+    deal_outcome: string;
+  } | null;
+}
+
 export default function PeopleExpandedView() {
   const { personId: routePersonId } = useParams<{ personId: string }>();
   // When rendered inside a split-view pane, this component mounts above the
@@ -1215,6 +1233,9 @@ export default function PeopleExpandedView() {
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
+
+  // Add Opportunity dialog state
+  const [addOpportunityOpen, setAddOpportunityOpen] = useState(false);
 
   // Multi-value contact form state
   const [showAddEmail, setShowAddEmail] = useState(false);
@@ -1361,6 +1382,22 @@ export default function PeopleExpandedView() {
         .eq('entity_type', 'people')
         .order('created_at', { ascending: false });
       return (data ?? []) as LeadTask[];
+    },
+    enabled: !!personId,
+  });
+
+  // Opportunities (deals) linked to this person via the canonical deal_people
+  // join table (deal_contacts only holds free-text snapshots per deal).
+  const { data: personDeals = [] } = useQuery({
+    queryKey: ['person-deals', personId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deal_people')
+        .select('id, deal_id, role, deal:deals(id, name, opportunity_name, pipeline, loan_stage, deal_value, deal_outcome)')
+        .eq('person_id', personId!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as PersonDealLink[];
     },
     enabled: !!personId,
   });
@@ -1529,7 +1566,7 @@ export default function PeopleExpandedView() {
       source: 'lead',
     });
     if (error) {
-      toast.error('Failed to create task');
+      toast.error(error.message ? `Failed to create task: ${error.message}` : 'Failed to create task');
       return;
     }
     toast.success('Task created');
@@ -1537,6 +1574,18 @@ export default function PeopleExpandedView() {
     setAddingTask(false);
     queryClient.invalidateQueries({ queryKey: ['person-tasks', personId] });
   }, [personId, newTaskTitle, queryClient]);
+
+  // ── Link a newly created opportunity to this person ──
+  const handleOpportunityCreated = useCallback(async (lead: { id: string; name: string }) => {
+    if (!personId) return;
+    const { error } = await supabase
+      .from('deal_people')
+      .insert({ deal_id: lead.id, person_id: personId });
+    if (error) {
+      toast.error(`Opportunity created, but linking it to this person failed: ${error.message}`);
+    }
+    queryClient.invalidateQueries({ queryKey: ['person-deals', personId] });
+  }, [personId, queryClient]);
 
   // ── Toggle task completion directly ──
   const toggleTaskCompletion = useCallback(async (task: LeadTask) => {
@@ -1616,8 +1665,14 @@ export default function PeopleExpandedView() {
       return;
     }
     setSavingEvent(true);
-    const startTime = `${newEventDate}T${newEventTime}:00`;
-    const endTime = `${newEventDate}T${newEventEndTime}:00`;
+    // Convert the local date+time inputs to UTC instants. `start_time` is a
+    // timestamptz column and the main calendar (EventDialog/useCalendarData)
+    // reads and writes real instants via toISOString(); sending a naive
+    // "YYYY-MM-DDTHH:mm:ss" string would be interpreted as UTC by Postgres,
+    // shifting the event to the wrong hour (or wrong day near midnight) on
+    // the calendar.
+    const startTime = new Date(`${newEventDate}T${newEventTime}:00`).toISOString();
+    const endTime = new Date(`${newEventDate}T${newEventEndTime}:00`).toISOString();
     const { data: created, error } = await supabase.from('appointments').insert({
       title: newEventTitle.trim(),
       start_time: startTime,
@@ -2872,7 +2927,48 @@ export default function PeopleExpandedView() {
               )}
             </div>
 
-            {/* Pipeline Records removed — people are no longer connected to pipelines */}
+            {/* Opportunities — deals linked to this person via deal_people */}
+            <Collapsible defaultOpen>
+              <div className="border-t border-border">
+                <CollapsibleTrigger className="flex items-center w-full px-3 md:px-3.5 xl:px-5 py-3 hover:bg-muted/30 transition-colors">
+                  <span className="text-sm font-medium text-foreground">Opportunities ({personDeals.length})</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1.5" />
+                  <button className="ml-2" onClick={(e) => { e.stopPropagation(); setAddOpportunityOpen(true); }} title="Add Opportunity">
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
+                  <div className="space-y-1">
+                    {personDeals.map((link) => {
+                      const deal = link.deal;
+                      if (!deal) return null;
+                      const route = DEAL_ROUTE_FOR[deal.pipeline]?.(deal.id);
+                      return (
+                        <button
+                          key={link.id}
+                          onClick={() => route && navigate(route)}
+                          className="flex items-center gap-2 text-sm p-2 rounded-lg hover:bg-muted/30 transition-colors w-full text-left group -mx-2"
+                        >
+                          <Briefcase className="h-3.5 w-3.5 text-[#3b2778] dark:text-purple-300 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground truncate">{deal.opportunity_name || deal.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {PIPELINE_LABELS[deal.pipeline as CrmTable] ?? deal.pipeline}
+                              {deal.loan_stage ? ` · ${deal.loan_stage}` : ''}
+                              {deal.deal_value ? ` · $${Number(deal.deal_value).toLocaleString()}` : ''}
+                            </p>
+                          </div>
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        </button>
+                      );
+                    })}
+                    {personDeals.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No opportunities</p>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
 
             {/* Tasks */}
             <Collapsible defaultOpen>
@@ -3171,6 +3267,33 @@ export default function PeopleExpandedView() {
         onSaved={() => {
           queryClient.invalidateQueries({ queryKey: ['person-tasks', personId] });
         }}
+      />
+    )}
+
+    {/* Add Opportunity Dialog */}
+    {personId && person && (
+      <AddOpportunityDialog
+        open={addOpportunityOpen}
+        onOpenChange={setAddOpportunityOpen}
+        tableName="potential"
+        allowPipelineSwitch
+        ownerOptions={teamMembers.map((m) => ({ value: m.id, label: m.name }))}
+        prefill={{
+          opportunity_name: person.name,
+          company_name: person.company_name ?? '',
+          phone: person.phone ?? '',
+          assigned_to: person.assigned_to ?? '',
+        }}
+        linkContacts={[
+          {
+            name: person.name,
+            email: person.email,
+            phone: person.phone,
+            title: person.title,
+            is_primary: true,
+          },
+        ]}
+        onCreated={handleOpportunityCreated}
       />
     )}
 

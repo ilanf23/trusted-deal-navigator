@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ stopped: false, reason: 'no active watch' }), { status: 200, headers: corsHeaders });
     }
 
-    const tokenResult = await getValidGoogleAccessToken(admin, userId);
+    const tokenResult = await getValidGoogleAccessToken(admin, userId, 'sheets');
     const accessToken = tokenResult?.accessToken ?? null;
     if (accessToken) {
       const res = await fetch('https://www.googleapis.com/drive/v3/channels/stop', {

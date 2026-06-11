@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import { getGoogleOAuthErrorMessage, type GoogleIntegration } from '@/lib/googleAuth';
 
 export default function GoogleCallback() {
   const navigate = useNavigate();
@@ -13,8 +14,15 @@ export default function GoogleCallback() {
     const handleCallback = async () => {
       const code = searchParams.get('code');
       const error = searchParams.get('error');
+      const errorDescription = searchParams.get('error_description');
+      const state = searchParams.get('state');
 
-      const notifyParent = (data: { type: string; email?: string; error?: string }) => {
+      const notifyParent = (data: {
+        type: string;
+        email?: string;
+        error?: string;
+        integration?: GoogleIntegration;
+      }) => {
         if (window.opener) {
           try {
             window.opener.postMessage(data, '*');
@@ -43,17 +51,18 @@ export default function GoogleCallback() {
       };
 
       if (error) {
+        const errorMessage = getGoogleOAuthErrorMessage(error, errorDescription);
         setStatus('error');
-        setMessage('Authorization was denied or failed');
-        notifyParent({ type: 'GOOGLE_AUTH_ERROR', error });
+        setMessage(errorMessage);
+        notifyParent({ type: 'GOOGLE_AUTH_ERROR', error: errorMessage });
         setTimeout(closeOrRedirect, 1500);
         return;
       }
 
-      if (!code) {
+      if (!code || !state) {
         setStatus('error');
-        setMessage('No authorization code received');
-        notifyParent({ type: 'GOOGLE_AUTH_ERROR', error: 'No code' });
+        setMessage('The Google authorization response was incomplete. Please reconnect.');
+        notifyParent({ type: 'GOOGLE_AUTH_ERROR', error: 'Missing code or state' });
         setTimeout(closeOrRedirect, 1500);
         return;
       }
@@ -61,24 +70,32 @@ export default function GoogleCallback() {
       try {
         const redirectUri = `${window.location.origin}${window.location.pathname}`;
         const { data, error: exchangeError } = await supabase.functions.invoke('google-auth', {
-          body: { action: 'exchangeCode', code, redirectUri },
+          body: { action: 'exchangeCode', code, redirectUri, state },
         });
 
-        if (exchangeError) throw exchangeError;
+        if (exchangeError) {
+          const context = await exchangeError.context?.json?.().catch(() => null);
+          throw new Error(context?.error || exchangeError.message);
+        }
 
         if (data.success) {
           setStatus('success');
           setMessage(`Connected: ${data.email}`);
-          notifyParent({ type: 'GOOGLE_CONNECTED', email: data.email });
+          notifyParent({
+            type: 'GOOGLE_CONNECTED',
+            email: data.email,
+            integration: data.integration,
+          });
           setTimeout(closeOrRedirect, 1000);
         } else {
           throw new Error(data.error || 'Failed to connect');
         }
       } catch (err) {
         console.error('OAuth callback error:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to connect Google account';
         setStatus('error');
-        setMessage('Failed to connect Google account');
-        notifyParent({ type: 'GOOGLE_AUTH_ERROR', error: String(err) });
+        setMessage(errorMessage);
+        notifyParent({ type: 'GOOGLE_AUTH_ERROR', error: errorMessage });
         setTimeout(closeOrRedirect, 1500);
       }
     };

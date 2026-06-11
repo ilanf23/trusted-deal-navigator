@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
+import { getGoogleIntegrationStatus } from '@/lib/googleAuth';
 import { Separator } from '@/components/ui/separator';
 import {
   X, Maximize2, CalendarDays, User, Copy, Check, Plus, Users, Trash2,
@@ -134,10 +135,8 @@ export default function ProjectDetailPanel({
   const { data: gmailConnection } = useQuery({
     queryKey: ['gmail-connection-for-project-panel'],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return null;
-      const { data } = await supabase.from('google_connections').select('*').eq('user_id', session.user.id).maybeSingle();
-      return data;
+      const status = await getGoogleIntegrationStatus('gmail');
+      return status.connected ? status : null;
     },
     enabled: !!project.entity_id,
   });

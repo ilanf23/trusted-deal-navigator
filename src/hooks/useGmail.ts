@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { gmailActionToFunction } from '@/lib/gmailRouter';
+import { getGoogleIntegrationStatus } from '@/lib/googleAuth';
 
 export interface GmailMessage {
   id: string;
@@ -67,10 +68,7 @@ export function useGmail() {
 
   const checkStatus = useCallback(async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('google-auth', {
-        body: { action: 'getStatus' },
-      });
-      if (error) throw error;
+      const data = await getGoogleIntegrationStatus('gmail');
       setStatus({
         connected: data.connected,
         email: data.email,
@@ -88,7 +86,7 @@ export function useGmail() {
       const prefix = window.location.pathname.startsWith('/superadmin') ? '/superadmin' : '/admin';
       const redirectUri = `${window.location.origin}${prefix}/google-callback`;
       const { data, error } = await supabase.functions.invoke('google-auth', {
-        body: { action: 'getAuthUrl', redirectUri },
+        body: { action: 'getAuthUrl', redirectUri, integration: 'gmail' },
       });
       if (error) throw error;
 

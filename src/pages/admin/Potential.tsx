@@ -266,6 +266,31 @@ const Pipeline = () => {
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // ── Narrow-container handling (e.g. a split-view pane) ──
+  // Measure the page root so the layout can adapt when rendered in a narrow
+  // container: the filter sidebar auto-collapses and the sticky first column
+  // un-sticks so horizontal scrolling can actually reveal the other columns.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [rootWidth, setRootWidth] = useState(0);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      setRootWidth(entries[0]?.contentRect.width ?? 0);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const isNarrowContainer = rootWidth > 0 && rootWidth < 768;
+  const wasNarrowRef = useRef(false);
+  useEffect(() => {
+    // Auto-collapse the filter sidebar when the container becomes narrow;
+    // the user can still re-open it manually.
+    if (isNarrowContainer && !wasNarrowRef.current) setSidebarOpen(false);
+    wasNarrowRef.current = isNarrowContainer;
+  }, [isNarrowContainer]);
   // Column sort menu state
   const [colMenuOpen, setColMenuOpen] = useState<string | null>(null);
 
@@ -642,6 +667,14 @@ const Pipeline = () => {
     storageKey: 'pipeline-col-widths-v4',
   });
 
+  // Un-stick the first column when it would cover (nearly) the entire
+  // horizontal scrollport — otherwise the remaining columns scroll
+  // underneath the opaque sticky cell and can never be seen.
+  // Sidebar widths: w-72 (288px) open, 72px collapsed.
+  const tableAreaWidth = rootWidth - (sidebarOpen ? 288 : 72);
+  const disableStickyFirstCol =
+    rootWidth > 0 && tableAreaWidth < (columnWidths.deal ?? 280) + 160;
+
   const { orderedKeys: orderedColumnKeys, reorderableKeys: reorderableColumnKeys, handleDragEnd: handleColumnReorder } = useColumnOrder({
     tableId: 'potential',
     defaultOrder: PIPELINE_REORDERABLE_COLUMNS,
@@ -979,7 +1012,7 @@ const Pipeline = () => {
 
   return (
     <EmployeeLayout>
-      <div className="system-font flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-background -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10">
+      <div ref={rootRef} className="system-font flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-background -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10">
 
         {/* Body: Sidebar + Table */}
         <div className="relative flex flex-1 min-h-0 overflow-y-hidden overflow-x-clip">
@@ -1129,8 +1162,10 @@ const Pipeline = () => {
                       <tr style={{ backgroundColor: '#eee6f6' }}>
                         {renderColHeader({
                           reactKey: 'deal',
-                          className: 'sticky top-0 z-30 group/hdr',
-                          style: { left: 0, borderLeft: 'none', boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
+                          className: disableStickyFirstCol ? 'sticky top-0 z-10 group/hdr' : 'sticky top-0 z-30 group/hdr',
+                          style: disableStickyFirstCol
+                            ? undefined
+                            : { left: 0, borderLeft: 'none', boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' },
                           children: (
                             <>
                               <div className="shrink-0">
@@ -1250,6 +1285,7 @@ const Pipeline = () => {
                             columnVisibility={columnVisibility}
                             columnWidths={columnWidths}
                             orderedKeys={orderedColumnKeys as PipelineColumnKey[]}
+                            disableStickyFirstCol={disableStickyFirstCol}
                             isDetailSelected={isDetailOpen}
                             isBulkSelected={isSelected}
                             rowPad={rowPad}

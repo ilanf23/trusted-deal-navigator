@@ -25,6 +25,12 @@ export interface PageEntry {
   icon: LucideIcon;
   component: React.LazyExoticComponent<ComponentType<any>>;
   section: 'Top' | 'CRM' | 'Workspace' | 'Tools';
+  /**
+   * Hidden entries are renderable in a pane (e.g. detail/expanded views the
+   * user was already on when split view activated) but are not offered in the
+   * PageSelector dropdown list.
+   */
+  hidden?: boolean;
 }
 
 const pages: PageEntry[] = [
@@ -78,6 +84,17 @@ const pages: PageEntry[] = [
     icon: Building2,
     component: lazy(() => import('@/pages/admin/Companies')),
     section: 'CRM',
+  },
+  // Hidden detail entry: keeps the person profile on screen when split view is
+  // activated from /contacts/people/expanded-view/:personId (otherwise the
+  // pane would fall back to the People list and "kick" the user off the person).
+  {
+    key: 'people-expanded',
+    label: 'Person Profile',
+    icon: User,
+    component: lazy(() => import('@/components/admin/PeopleExpandedView')),
+    section: 'CRM',
+    hidden: true,
   },
   {
     key: 'lender-programs',
@@ -152,7 +169,7 @@ export const pageRegistry = new Map<string, PageEntry>(
 
 export const pagesBySection = pages.reduce<Record<string, PageEntry[]>>(
   (acc, page) => {
-    (acc[page.section] ??= []).push(page);
+    if (!page.hidden) (acc[page.section] ??= []).push(page);
     return acc;
   },
   {}
@@ -167,6 +184,7 @@ export const allPages = pages;
 const pathToKeyMap: [string, string][] = [
   ['pipeline/feed', 'feed'],
   ['pipeline/underwriting', 'underwriting'],
+  ['contacts/people/expanded-view', 'people-expanded'],
   ['contacts/people', 'people'],
   ['contacts/companies', 'companies'],
   ['pipeline', 'pipeline'],

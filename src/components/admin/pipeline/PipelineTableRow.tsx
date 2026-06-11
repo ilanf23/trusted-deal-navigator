@@ -100,6 +100,12 @@ export interface PipelineTableRowProps {
    * to enable user-driven reordering.
    */
   orderedKeys?: PipelineColumnKey[];
+  /**
+   * Render the first column as a normal (non-sticky) cell. Pass true when the
+   * table is in a narrow container (e.g. a split-view pane) where a sticky
+   * first column would cover the whole scrollport and hide the other columns.
+   */
+  disableStickyFirstCol?: boolean;
   isDetailSelected: boolean;
   isBulkSelected: boolean;
   /** Tailwind padding class for vertical row padding, e.g., 'py-1.5' or 'py-0.5'. */
@@ -211,6 +217,7 @@ export function PipelineTableRow(props: PipelineTableRowProps) {
     columnVisibility,
     columnWidths,
     orderedKeys = PIPELINE_REORDERABLE_COLUMNS,
+    disableStickyFirstCol = false,
     isDetailSelected,
     isBulkSelected,
     rowPad = 'py-1.5',
@@ -240,10 +247,11 @@ export function PipelineTableRow(props: PipelineTableRowProps) {
 
   return (
     <tr key={leadId} onClick={onRowClick} className={rowClassName}>
-      {/* ── Deal / Opportunity + Checkbox (sticky) ── */}
+      {/* ── Deal / Opportunity + Checkbox (sticky unless disabled) ── */}
       <td
         className={cn(
-          'pl-2 pr-1.5 sticky left-0 z-[5] transition-colors',
+          'pl-2 pr-1.5 transition-colors',
+          !disableStickyFirstCol && 'sticky left-0 z-[5]',
           SINGLE_LINE_CELL,
           rowPad,
           stickyBg,
@@ -252,7 +260,9 @@ export function PipelineTableRow(props: PipelineTableRowProps) {
         style={{
           width: columnWidths[firstColumnKey],
           border: '1px solid #c8bdd6',
-          boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)',
+          ...(disableStickyFirstCol
+            ? null
+            : { boxShadow: 'inset -1px 0 0 #c8bdd6, inset 1px 0 0 #c8bdd6, 2px 0 4px -2px rgba(0,0,0,0.15)' }),
         }}
       >
         <div className="flex items-center gap-2">

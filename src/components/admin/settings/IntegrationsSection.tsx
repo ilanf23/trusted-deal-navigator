@@ -43,6 +43,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useDropboxConnection } from '@/hooks/useDropboxConnection';
+import { getGoogleIntegrationStatus } from '@/lib/googleAuth';
 import type { LucideIcon } from 'lucide-react';
 
 interface IntegrationCard {
@@ -88,11 +89,11 @@ const useConnectionStatuses = () => {
     queryFn: async () => {
       if (!user) return { gmail: false, dropbox: false };
       const [gm, dx] = await Promise.all([
-        supabase.from('google_connections').select('id').eq('user_id', user.id).maybeSingle(),
+        getGoogleIntegrationStatus('gmail'),
         supabase.from('dropbox_connections').select('id').eq('user_id', user.id).maybeSingle(),
       ]);
       return {
-        gmail: !!gm.data,
+        gmail: gm.connected,
         dropbox: !!dx.data,
       };
     },

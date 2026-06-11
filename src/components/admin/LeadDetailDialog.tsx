@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { isHtmlEmpty } from '@/lib/sanitize';
+import { getGoogleIntegrationStatus } from '@/lib/googleAuth';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -616,14 +617,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const { data: gmailConnection } = useQuery({
     queryKey: ['gmail-connection-for-lead'],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return null;
-      const { data } = await supabase
-        .from('google_connections')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-      return data;
+      const status = await getGoogleIntegrationStatus('gmail');
+      return status.connected ? status : null;
     },
     enabled: open,
   });

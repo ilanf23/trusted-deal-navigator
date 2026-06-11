@@ -55,7 +55,7 @@ export async function getValidAccessToken(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<string> {
-  const result = await getValidGoogleAccessToken(supabase, userId);
+  const result = await getValidGoogleAccessToken(supabase, userId, 'gmail');
   if (!result) throw new Error('Gmail not connected');
   return result.accessToken;
 }

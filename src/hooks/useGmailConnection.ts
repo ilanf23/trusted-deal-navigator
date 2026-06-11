@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { GmailEmail, getGmailCallbackUrl } from '@/components/gmail/gmailHelpers';
+import { getGoogleIntegrationStatus } from '@/lib/googleAuth';
 
 type FolderQuery = string; // Gmail search query string e.g. 'in:inbox'
 
@@ -108,13 +109,8 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
   } = useQuery({
     queryKey: [`${userKey}-gmail-connection`],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('google_connections')
-        .select('*')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
+      const status = await getGoogleIntegrationStatus('gmail');
+      return status.connected ? status : null;
     },
     enabled: !!user?.id,
   });
@@ -195,7 +191,7 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
 
       const callbackUrl = getGmailCallbackUrl(callbackPrefix);
       const { data, error: invokeError } = await supabase.functions.invoke('google-auth', {
-        body: { action: 'getAuthUrl', redirectUri: callbackUrl },
+        body: { action: 'getAuthUrl', redirectUri: callbackUrl, integration: 'gmail' },
       });
       if (invokeError) throw invokeError;
       if (!data?.authUrl) throw new Error('Missing auth URL');

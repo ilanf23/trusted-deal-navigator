@@ -186,7 +186,7 @@ export const TaskTableView = ({
   };
 
   const StatusPill = ({ task }: { task: Task }) => {
-    const config = statusConfig[task.status || 'todo'];
+    const config = statusConfig[task.status || 'todo'] || statusConfig.todo;
     return (
       <Popover>
         <PopoverTrigger asChild>

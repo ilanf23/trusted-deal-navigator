@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ArrowRightLeft, Maximize2 } from 'lucide-react';
-import { pagesBySection } from './pageRegistry';
+import { pagesBySection, pageRegistry } from './pageRegistry';
 import { useSplitView } from '@/contexts/SplitViewContext';
 
 interface PageSelectorProps {
@@ -25,6 +25,12 @@ const PageSelector = ({ side }: PageSelectorProps) => {
   const currentPage = side === 'left' ? leftPage : rightPage;
   const setPage = side === 'left' ? setLeftPage : setRightPage;
 
+  // Hidden registry entries (detail/expanded views) aren't listed in the
+  // sections below, but if one is currently active in this pane it needs a
+  // matching SelectItem so the trigger can display its label.
+  const currentEntry = currentPage ? pageRegistry.get(currentPage) : null;
+  const hiddenCurrentEntry = currentEntry?.hidden ? currentEntry : null;
+
   const handleExpand = () => {
     // Exit split view — the current browser route stays as-is
     exitSplitView();
@@ -37,6 +43,14 @@ const PageSelector = ({ side }: PageSelectorProps) => {
           <SelectValue placeholder="Select a page..." />
         </SelectTrigger>
         <SelectContent>
+          {hiddenCurrentEntry && (
+            <SelectItem value={hiddenCurrentEntry.key} className="text-xs">
+              <div className="flex items-center gap-1.5">
+                <hiddenCurrentEntry.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                {hiddenCurrentEntry.label}
+              </div>
+            </SelectItem>
+          )}
           {sectionOrder.map(section => {
             const items = pagesBySection[section];
             if (!items?.length) return null;

@@ -133,7 +133,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
         if (item.leadId) {
           return `/admin/gmail?compose=true&leadId=${item.leadId}&template=follow_up`;
         }
-        return '/admin/leads';
+        return '/admin/gmail';
 
       case 'close':
         // Close actions → pipeline view for deal progression
@@ -145,17 +145,14 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
         return '/admin/pipeline/potential';
 
       case 'follow_up':
-        // Tasks: use email with AI suggestions if lead exists, otherwise calls
-        if (item.leadId && item.taskId) {
-          return `/admin/gmail?compose=true&leadId=${item.leadId}&taskId=${item.taskId}`;
+        // Tasks: open the task in the tasks workspace
+        if (item.taskId) {
+          return `/admin/tasks?taskId=${item.taskId}`;
         }
-        if (item.leadId) {
-          return `/admin/gmail?compose=true&leadId=${item.leadId}`;
-        }
-        return '/admin/leads';
+        return '/admin/tasks';
 
       default:
-        return '/admin/leads';
+        return '/admin/tasks';
     }
   };
 
@@ -165,7 +162,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
       case 'call': return 'Call';
       case 'document': return 'Email';
       case 'close': return item.phone ? 'Call' : 'Pipeline';
-      case 'follow_up': return 'Email';
+      case 'follow_up': return 'Task';
       default: return 'Open';
     }
   };

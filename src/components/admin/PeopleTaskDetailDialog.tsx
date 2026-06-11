@@ -197,7 +197,8 @@ export const PeopleTaskDetailDialog = ({
       invalidate();
       onClose();
     },
-    onError: () => toast.error('Failed to create task'),
+    onError: (err: Error) =>
+      toast.error(err.message ? `Failed to create task: ${err.message}` : 'Failed to create task'),
   });
 
   const updateMutation = useMutation({
@@ -212,7 +213,8 @@ export const PeopleTaskDetailDialog = ({
     onSuccess: () => {
       invalidate();
     },
-    onError: () => toast.error('Failed to update task'),
+    onError: (err: Error) =>
+      toast.error(err.message ? `Failed to update task: ${err.message}` : 'Failed to update task'),
   });
 
   const deleteMutation = useMutation({

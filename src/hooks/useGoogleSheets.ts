@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getGoogleIntegrationStatus } from '@/lib/googleAuth';
 
 interface Spreadsheet {
   id: string;
@@ -29,13 +30,11 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
         return;
       }
 
-      const response = await supabase.functions.invoke('google-auth', {
-        body: { action: 'getStatus' }
-      });
+      const status = await getGoogleIntegrationStatus('sheets');
 
-      if (response.data?.connected) {
+      if (status.connected) {
         setIsConnected(true);
-        setConnectedEmail(response.data.email);
+        setConnectedEmail(status.email || null);
       } else {
         setIsConnected(false);
         setConnectedEmail(null);
@@ -65,7 +64,7 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
       const redirectUri = `${window.location.origin}${redirectPath || '/superadmin/google-callback'}`;
 
       const response = await supabase.functions.invoke('google-auth', {
-        body: { action: 'getAuthUrl', redirectUri }
+        body: { action: 'getAuthUrl', redirectUri, integration: 'sheets' }
       });
 
       if (response.error) {
@@ -79,10 +78,21 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
       // COOP blocks polling popup.closed once the popup navigates to accounts.google.com.
       const messageHandler = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
+        if (event.data?.integration && event.data.integration !== 'sheets') return;
+        if (event.data?.type === 'GOOGLE_AUTH_ERROR') {
+          cleanup();
+          toast.error(event.data.error || 'Failed to connect Google Sheets');
+          return;
+        }
         if (event.data?.type !== 'GOOGLE_CONNECTED') return;
-        window.removeEventListener('message', messageHandler);
+        cleanup();
         checkConnection();
       };
+      const cleanup = () => {
+        window.removeEventListener('message', messageHandler);
+        window.clearTimeout(timeout);
+      };
+      const timeout = window.setTimeout(cleanup, 5 * 60 * 1000);
       window.addEventListener('message', messageHandler);
 
     } catch (error) {
