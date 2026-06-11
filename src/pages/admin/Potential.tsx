@@ -512,7 +512,7 @@ const Pipeline = () => {
     const myId = currentTeamMember?.id;
     counts['my_open'] = leads.filter(l => leadOwnerMap[l.id] === myId && !CLOSED_STATUSES.includes(l.status)).length;
     counts['open'] = leads.filter(l => !CLOSED_STATUSES.includes(l.status)).length;
-    counts['following'] = leads.filter(l => followedLeadIds.has(l.id)).length;
+    counts['following'] = leads.filter(l => followedLeadIds.has(l.entity_id)).length;
     counts['won'] = leads.filter(l => l.status === 'won' as any).length;
     counts['lost'] = leads.filter(l => l.status === 'lost' as any || l.status === 'funded' as any).length;
     return counts;
@@ -531,7 +531,7 @@ const Pipeline = () => {
       } else if (activeFilter === 'open') {
         result = result.filter((l) => !CLOSED_STATUSES.includes(l.status));
       } else if (activeFilter === 'following') {
-        result = result.filter((l) => followedLeadIds.has(l.id));
+        result = result.filter((l) => followedLeadIds.has(l.entity_id));
       } else if (activeFilter === 'won') {
         result = result.filter((l) => l.status === ('won' as LeadStatus));
       } else if (activeFilter === 'lost') {
