@@ -183,7 +183,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
         .from('people')
         .select(`
           *,
-          related!people_entity_id_fkey(related_emails(email, email_type)),
+          related!people_related_id_fkey(related_emails(email, email_type)),
           lead_phones(id, phone_number, phone_type),
           lead_responses(*)
         `);

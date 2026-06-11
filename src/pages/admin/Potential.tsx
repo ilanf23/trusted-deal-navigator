@@ -795,7 +795,7 @@ const Pipeline = () => {
             // The deal's related row was removed on delete, so strip the stale
             // related_id and let the insert trigger mint a fresh one (the Insert
             // type still lists related_id as required, hence the cast).
-            const restoreRows = deletedRecords.map(({ related_id: _entityId, ...rest }) => rest);
+            const restoreRows = deletedRecords.map(({ related_id: _relatedId, ...rest }) => rest);
             const { error: e } = await supabase
               .from('deals')
               .insert(restoreRows as Database['public']['Tables']['deals']['Insert'][]);

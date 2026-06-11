@@ -952,7 +952,7 @@ const EmployeePipeline = () => {
             // as required, hence the cast).
             const { error: restoreError } = await supabase
               .from('deals')
-              .insert(deletedLeads.map(({ related_id: _entityId, ...lead }) => ({
+              .insert(deletedLeads.map(({ related_id: _relatedId, ...lead }) => ({
                 ...lead,
                 updated_at: new Date().toISOString(),
               })) as Database['public']['Tables']['deals']['Insert'][]);

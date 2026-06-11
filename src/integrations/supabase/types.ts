@@ -531,7 +531,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "companies_entity_id_fkey"
+            foreignKeyName: "companies_related_id_fkey"
             columns: ["related_id"]
             isOneToOne: false
             referencedRelation: "related"
@@ -1173,7 +1173,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "deals_entity_id_fkey"
+            foreignKeyName: "deals_related_id_fkey"
             columns: ["related_id"]
             isOneToOne: false
             referencedRelation: "related"
@@ -1492,7 +1492,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "related_addresses_entity_id_fkey"
+            foreignKeyName: "related_addresses_related_id_fkey"
             columns: ["related_id"]
             isOneToOne: false
             referencedRelation: "related"
@@ -1530,7 +1530,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "related_emails_entity_id_fkey"
+            foreignKeyName: "related_emails_related_id_fkey"
             columns: ["related_id"]
             isOneToOne: false
             referencedRelation: "related"
@@ -1580,7 +1580,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "related_files_entity_id_fkey"
+            foreignKeyName: "related_files_related_id_fkey"
             columns: ["related_id"]
             isOneToOne: false
             referencedRelation: "related"
@@ -1612,7 +1612,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "related_followers_entity_id_fkey"
+            foreignKeyName: "related_followers_related_id_fkey"
             columns: ["related_id"]
             isOneToOne: false
             referencedRelation: "related"
@@ -1630,8 +1630,8 @@ export type Database = {
       related_orphans: {
         Row: {
           id: string
-          original_entity_id: string
-          original_entity_type: string | null
+          original_related_id: string
+          original_related_type: string | null
           payload: Json
           quarantined_at: string
           reason: string
@@ -1640,8 +1640,8 @@ export type Database = {
         }
         Insert: {
           id?: string
-          original_entity_id: string
-          original_entity_type?: string | null
+          original_related_id: string
+          original_related_type?: string | null
           payload: Json
           quarantined_at?: string
           reason: string
@@ -1650,8 +1650,8 @@ export type Database = {
         }
         Update: {
           id?: string
-          original_entity_id?: string
-          original_entity_type?: string | null
+          original_related_id?: string
+          original_related_type?: string | null
           payload?: Json
           quarantined_at?: string
           reason?: string
@@ -1690,7 +1690,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "related_phones_entity_id_fkey"
+            foreignKeyName: "related_phones_related_id_fkey"
             columns: ["related_id"]
             isOneToOne: false
             referencedRelation: "related"
@@ -1764,7 +1764,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "related_projects_entity_id_fkey"
+            foreignKeyName: "related_projects_related_id_fkey"
             columns: ["related_id"]
             isOneToOne: false
             referencedRelation: "related"
@@ -2030,7 +2030,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "lender_programs_entity_id_fkey"
+            foreignKeyName: "lender_programs_related_id_fkey"
             columns: ["related_id"]
             isOneToOne: false
             referencedRelation: "related"
@@ -2299,7 +2299,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "people_entity_id_fkey"
+            foreignKeyName: "people_related_id_fkey"
             columns: ["related_id"]
             isOneToOne: false
             referencedRelation: "related"
