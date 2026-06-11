@@ -187,9 +187,12 @@ export function useGmailLogic(config?: CRMGmailConfig) {
           lead_phones(id, phone_number, phone_type),
           lead_responses(*)
         `);
-      return (data || []).map((p: any) => ({
+      type EmbeddedEntityEmails = {
+        entities?: { entity_emails?: { email: string; email_type: string | null }[] } | null;
+      };
+      return (data ?? []).map((p) => ({
         ...p,
-        entity_emails: (p as any).entities?.entity_emails ?? [],
+        entity_emails: (p as EmbeddedEntityEmails).entities?.entity_emails ?? [],
       }));
     },
   });
