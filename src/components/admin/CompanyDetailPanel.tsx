@@ -26,6 +26,7 @@ import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fn
 // ── Company type ──
 interface Company {
   id: string;
+  entity_id: string;
   company_name: string;
   contact_name: string | null;
   phone: string | null;
@@ -658,7 +659,7 @@ function RelatedTabContent({ company, contactTypeConfig }: { company: Company; c
         </CollapsibleTrigger>
         <CollapsibleContent className="pl-6 pb-2">
           <EntityFilesSection
-            entityId={company.id}
+            entityId={company.entity_id}
             entityType="companies"
             entityName={company.company_name}
             companyName={company.company_name}

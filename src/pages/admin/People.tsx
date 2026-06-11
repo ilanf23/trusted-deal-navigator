@@ -95,6 +95,7 @@ import { format, differenceInDays, parseISO } from 'date-fns';
 // ── Person type (from people table) ──
 interface Person {
   id: string;
+  entity_id: string;
   name: string;
   title: string | null;
   company_name: string | null;
@@ -605,10 +606,11 @@ const People = () => {
         .single();
       if (error) throw error;
 
-      // Insert extra phone numbers into entity_phones
+      // Insert extra phone numbers into entity_phones — keyed by the canonical
+      // entities.id (auto-populated on the inserted row by a DB trigger).
       const phonesToInsert = [
-        data.direct_phone ? { entity_id: person.id, entity_type: 'people', phone_number: data.direct_phone, phone_type: 'direct' } : null,
-        data.fax_phone ? { entity_id: person.id, entity_type: 'people', phone_number: data.fax_phone, phone_type: 'fax' } : null,
+        data.direct_phone ? { entity_id: person.entity_id, entity_type: 'people', phone_number: data.direct_phone, phone_type: 'direct' } : null,
+        data.fax_phone ? { entity_id: person.entity_id, entity_type: 'people', phone_number: data.fax_phone, phone_type: 'fax' } : null,
       ].filter(Boolean);
       if (phonesToInsert.length > 0) {
         await supabase.from('entity_phones').insert(phonesToInsert);
@@ -721,7 +723,7 @@ const People = () => {
       counts[opt.id] = people.filter((p) => p.contact_type === opt.id).length;
     }
     counts['my_contacts'] = people.filter(p => p.assigned_to === teamMember?.id).length;
-    counts['following'] = people.filter(p => followedLeadIds.includes(p.id)).length;
+    counts['following'] = people.filter(p => followedLeadIds.includes(p.entity_id)).length;
     return counts;
   }, [people, teamMember?.id, followedLeadIds, filterOptions]);
 
@@ -732,7 +734,7 @@ const People = () => {
       if (activeFilter === 'my_contacts') {
         result = result.filter((p) => p.assigned_to === teamMember?.id);
       } else if (activeFilter === 'following') {
-        result = result.filter((p) => followedLeadIds.includes(p.id));
+        result = result.filter((p) => followedLeadIds.includes(p.entity_id));
       } else {
         // Check if it's a custom filter with saved person IDs
         const customFilter = customFilters.find(cf => cf.id === activeFilter);

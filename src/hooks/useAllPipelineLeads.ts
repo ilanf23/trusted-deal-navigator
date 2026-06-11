@@ -96,8 +96,10 @@ export const useCompanies = () => {
       });
 
       return (companies ?? []).map((c: any) => {
-        const phones = phoneByCompany.get(c.id) ?? [];
-        const emails = emailByCompany.get(c.id) ?? [];
+        // entity_phones/entity_emails maps are keyed by the canonical
+        // entities.id, which is the company row's entity_id (not its own id).
+        const phones = phoneByCompany.get(c.entity_id) ?? [];
+        const emails = emailByCompany.get(c.entity_id) ?? [];
         const primaryPhone =
           phones.find((p) => p.is_primary)?.phone_number ?? phones[0]?.phone_number ?? null;
         const primaryEmail =

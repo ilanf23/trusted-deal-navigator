@@ -39,6 +39,7 @@ function getPipelineLeadRoute(pipelineName: string, leadId: string): string {
 // ── Person type ──
 interface Person {
   id: string;
+  entity_id: string;
   name: string;
   title: string | null;
   company_name: string | null;
@@ -958,12 +959,12 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
 
   // ── Person files query (shares cache with EntityFilesSection) ──
   const { data: personFiles = [] } = useQuery({
-    queryKey: ['entity-files', 'people', person.id],
+    queryKey: ['entity-files', 'people', person.entity_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('entity_files')
         .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', person.id)
+        .eq('entity_id', person.entity_id)
         .eq('entity_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -1116,7 +1117,7 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
       {/* ── Files ── */}
       <RelatedSection label="Files" count={personFiles.length} onAdd={() => setAddFilesOpen(true)}>
         <EntityFilesSection
-          entityId={person.id}
+          entityId={person.entity_id}
           entityType="people"
           entityName={person.name}
           companyName={person.company_name ?? undefined}
@@ -1188,7 +1189,7 @@ export default function PeopleDetailPanel({
   const { data: personEmails = [] } = useQuery({
     queryKey: ['person-emails', person.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', person.id).eq('entity_type', 'people');
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', person.entity_id).eq('entity_type', 'people');
       return (data || []) as PersonEmail[];
     },
   });
@@ -1196,7 +1197,7 @@ export default function PeopleDetailPanel({
   const { data: personPhones = [] } = useQuery({
     queryKey: ['person-phones', person.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', person.id).eq('entity_type', 'people');
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', person.entity_id).eq('entity_type', 'people');
       return (data || []) as PersonPhone[];
     },
   });
@@ -1204,7 +1205,7 @@ export default function PeopleDetailPanel({
   const { data: personAddresses = [] } = useQuery({
     queryKey: ['person-addresses', person.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', person.id).eq('entity_type', 'people');
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', person.entity_id).eq('entity_type', 'people');
       return (data || []) as PersonAddress[];
     },
   });
@@ -1212,7 +1213,7 @@ export default function PeopleDetailPanel({
   // ── Satellite mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: person.id, entity_type: 'people', email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: person.entity_id, entity_type: 'people', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); setNewEmail(''); setShowAddEmail(false); toast.success('Email added'); },
@@ -1230,7 +1231,7 @@ export default function PeopleDetailPanel({
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: person.id, entity_type: 'people', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: person.entity_id, entity_type: 'people', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); setNewPhone(''); setShowAddPhone(false); toast.success('Phone added'); },
@@ -1249,7 +1250,7 @@ export default function PeopleDetailPanel({
   const addAddressMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('entity_addresses').insert({
-        entity_id: person.id,
+        entity_id: person.entity_id,
         entity_type: 'people',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,

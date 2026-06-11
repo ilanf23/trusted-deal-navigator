@@ -44,6 +44,7 @@ import {
 
 interface Company {
   id: string;
+  entity_id: string;
   company_name: string;
   contact_name: string | null;
   phone: string | null;
@@ -722,6 +723,7 @@ export default function CompanyExpandedView() {
       const row = companyRow as any;
       return {
         id: row.id,
+        entity_id: row.entity_id,
         company_name: row.company_name || row.name,
         contact_name: row.name,
         phone: row.phone ?? null,
@@ -790,20 +792,22 @@ export default function CompanyExpandedView() {
     enabled: !!company?.company_name,
   });
 
-  // File count — shares cache with EntityFilesSection.
+  // File count — shares cache with EntityFilesSection. entity_files is keyed
+  // by the canonical entities.id (company.entity_id), not the company's own id.
+  const companyEntityId = company?.entity_id ?? null;
   const { data: companyFiles = [] } = useQuery({
-    queryKey: ['entity-files', 'companies', companyId],
+    queryKey: ['entity-files', 'companies', companyEntityId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('entity_files')
         .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', companyId!)
+        .eq('entity_id', companyEntityId!)
         .eq('entity_type', 'companies')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
-    enabled: !!companyId,
+    enabled: !!companyEntityId,
   });
 
   // Company activities
@@ -1514,7 +1518,7 @@ export default function CompanyExpandedView() {
               onAdd={() => setAddFilesOpen(true)}
             >
               <EntityFilesSection
-                entityId={company.id}
+                entityId={company.entity_id}
                 entityType="companies"
                 entityName={company.company_name}
                 companyName={company.company_name}

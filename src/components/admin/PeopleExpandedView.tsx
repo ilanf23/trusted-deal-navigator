@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { EntityFilesSection } from '@/components/admin/files/EntityFilesSection';
+import { requireEntityId } from '@/lib/entityRefs';
 import { EntityCallHistorySection } from '@/components/admin/shared/EntityCallHistorySection';
 import { useAssignableUsers } from '@/hooks/useAssignableUsers';
 import { useUndo } from '@/contexts/UndoContext';
@@ -63,6 +64,7 @@ function getFileIcon(fileType: string | null): string {
 // ── Person type ──
 interface Person {
   id: string;
+  entity_id: string;
   name: string;
   title: string | null;
   company_name: string | null;
@@ -1155,7 +1157,13 @@ const DEAL_ROUTE_FOR: Record<string, (id: string) => string> = {
 };
 
 export default function PeopleExpandedView() {
-  const { personId } = useParams<{ personId: string }>();
+  const { personId: routePersonId } = useParams<{ personId: string }>();
+  // When rendered inside a split-view pane, this component mounts above the
+  // leaf route context, so useParams() can't see :personId. The browser URL is
+  // unchanged in split view, so fall back to parsing the id from the pathname.
+  const { pathname } = useLocation();
+  const personId =
+    routePersonId ?? pathname.match(/\/contacts\/people\/expanded-view\/([^/?#]+)/)?.[1];
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { registerUndo, isUndoingRef } = useUndo();
@@ -1358,31 +1366,35 @@ export default function PeopleExpandedView() {
   });
 
   // Satellite table queries
+  // Child entity_* tables are keyed by the canonical entities.id, which lives
+  // on the fetched person row (person.entity_id) — not the person's own id.
+  const personEntityId = person?.entity_id ?? null;
+
   const { data: personEmails = [] } = useQuery({
     queryKey: ['person-emails', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', personId!).eq('entity_type', 'people');
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', personEntityId!).eq('entity_type', 'people');
       return (data || []) as PersonEmail[];
     },
-    enabled: !!personId,
+    enabled: !!personEntityId,
   });
 
   const { data: personPhones = [] } = useQuery({
     queryKey: ['person-phones', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', personId!).eq('entity_type', 'people');
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', personEntityId!).eq('entity_type', 'people');
       return (data || []) as PersonPhone[];
     },
-    enabled: !!personId,
+    enabled: !!personEntityId,
   });
 
   const { data: personAddresses = [] } = useQuery({
     queryKey: ['person-addresses', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', personId!).eq('entity_type', 'people');
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', personEntityId!).eq('entity_type', 'people');
       return (data || []) as PersonAddress[];
     },
-    enabled: !!personId,
+    enabled: !!personEntityId,
   });
 
   const { data: teamMembers = [] } = useAssignableUsers();
@@ -1560,18 +1572,18 @@ export default function PeopleExpandedView() {
 
   // ── Person files query (shares cache with EntityFilesSection) ──
   const { data: personFiles = [] } = useQuery({
-    queryKey: ['entity-files', 'people', personId],
+    queryKey: ['entity-files', 'people', personEntityId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('entity_files')
         .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', personId!)
+        .eq('entity_id', personEntityId!)
         .eq('entity_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
-    enabled: !!personId,
+    enabled: !!personEntityId,
   });
 
   // ── Calendar events query ──
@@ -1642,11 +1654,11 @@ export default function PeopleExpandedView() {
   // are per-entity, we insert a new row with the suggested project's name and
   // stage for this person.
   const handleLinkExistingProject = useCallback(async (suggestion: { name: string; status: string | null; project_stage: string | null }) => {
-    if (!personId) return;
+    if (!personId || !personEntityId) return;
     setSavingProject(true);
     try {
       const { error } = await supabase.from('entity_projects').insert({
-        entity_id: personId,
+        entity_id: personEntityId,
         entity_type: 'people',
         name: suggestion.name,
         status: suggestion.status ?? 'open',
@@ -1664,7 +1676,7 @@ export default function PeopleExpandedView() {
     } finally {
       setSavingProject(false);
     }
-  }, [personId, teamMember, queryClient]);
+  }, [personId, personEntityId, teamMember, queryClient]);
 
   const handleDeleteEvent = useCallback(async (eventId: string) => {
     // Capture event before deleting
@@ -1717,13 +1729,13 @@ export default function PeopleExpandedView() {
       const { data, error } = await supabase
         .from('entity_projects')
         .select('*')
-        .eq('entity_id', personId!)
+        .eq('entity_id', personEntityId!)
         .eq('entity_type', 'people')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as LeadProject[];
     },
-    enabled: !!personId,
+    enabled: !!personEntityId,
   });
 
   // Project name suggestions across all entities, excluding projects already
@@ -1772,7 +1784,7 @@ export default function PeopleExpandedView() {
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: personId!, entity_type: 'people', email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: requireEntityId(person ?? {}, 'Person'), entity_type: 'people', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); setNewEmail(''); setShowAddEmail(false); toast.success('Email added'); },
@@ -1790,7 +1802,7 @@ export default function PeopleExpandedView() {
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: personId!, entity_type: 'people', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: requireEntityId(person ?? {}, 'Person'), entity_type: 'people', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); setNewPhone(''); setShowAddPhone(false); toast.success('Phone added'); },
@@ -1809,7 +1821,7 @@ export default function PeopleExpandedView() {
   const addAddressMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('entity_addresses').insert({
-        entity_id: personId!,
+        entity_id: requireEntityId(person ?? {}, 'Person'),
         entity_type: 'people',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
@@ -3096,9 +3108,9 @@ export default function PeopleExpandedView() {
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1.5" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
-                  {personId && (
+                  {personEntityId && (
                     <EntityFilesSection
-                      entityId={personId}
+                      entityId={personEntityId}
                       entityType="people"
                       entityName={person?.name}
                       companyName={person?.company_name ?? undefined}
