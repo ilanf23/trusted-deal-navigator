@@ -84,15 +84,21 @@ export default function ProjectDetailPanel({
   const [activityDropdownOpen, setActivityDropdownOpen] = useState(false);
   const [expandedThreads, setExpandedThreads] = useState<Record<string, boolean>>({});
 
-  // Fetch lead info for context
+  // Fetch lead info for context. `project.entity_id` is the canonical
+  // entities.id of the owning record, so the deal is resolved via the deals
+  // table's own entity_id column (deals.entity_id = project.entity_id).
   const { data: lead } = useQuery({
     queryKey: ['project-lead', project.entity_id],
     queryFn: async () => {
-      const { data } = await supabase.from('deals').select('name, company_name, opportunity_name, email, last_activity_at').eq('pipeline', 'potential').eq('id', project.entity_id).single();
+      const { data } = await supabase.from('deals').select('id, name, company_name, opportunity_name, email, last_activity_at').eq('pipeline', 'potential').eq('entity_id', project.entity_id).maybeSingle();
       return data;
     },
     enabled: !!project.entity_id,
   });
+
+  // Owning deal's record id — needed for tables that still key off deal ids
+  // (communications, activities, tasks, deal_contacts).
+  const ownerDealId = lead?.id;
 
   // Interaction count
   const { data: interactionCount = 0 } = useQuery({
@@ -101,10 +107,10 @@ export default function ProjectDetailPanel({
       const { count } = await supabase
         .from('communications')
         .select('id', { count: 'exact', head: true })
-        .eq('lead_id', project.entity_id);
+        .eq('lead_id', ownerDealId!);
       return count ?? 0;
     },
-    enabled: !!project.entity_id,
+    enabled: !!ownerDealId,
   });
 
   // Lead emails for gmail search
@@ -189,18 +195,18 @@ export default function ProjectDetailPanel({
     );
   }, [gmailEmails]);
 
-  // Activities
+  // Activities — `activities.entity_id` still stores deal record ids.
   const { data: activities = [] } = useQuery({
     queryKey: ['project-panel-activities', project.entity_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('activities')
         .select('*')
-        .eq('entity_id', project.entity_id)
+        .eq('entity_id', ownerDealId!)
         .order('created_at', { ascending: false });
       return data ?? [];
     },
-    enabled: !!project.entity_id,
+    enabled: !!ownerDealId,
   });
 
   // Tasks
@@ -210,11 +216,11 @@ export default function ProjectDetailPanel({
       const { data } = await supabase
         .from('tasks')
         .select('*')
-        .eq('lead_id', project.entity_id)
+        .eq('lead_id', ownerDealId!)
         .order('created_at', { ascending: false });
       return data ?? [];
     },
-    enabled: !!project.entity_id,
+    enabled: !!ownerDealId,
   });
 
   // Contacts
@@ -224,10 +230,10 @@ export default function ProjectDetailPanel({
       const { data } = await supabase
         .from('deal_contacts')
         .select('*')
-        .eq('deal_id', project.entity_id);
+        .eq('deal_id', ownerDealId!);
       return data ?? [];
     },
-    enabled: !!project.entity_id,
+    enabled: !!ownerDealId,
   });
 
   // Files
@@ -252,8 +258,8 @@ export default function ProjectDetailPanel({
         .from('deals')
         .select('pipeline_id, pipelines:pipeline_id(name)')
         .eq('pipeline', 'potential')
-        .eq('id', project.entity_id)
-        .single();
+        .eq('entity_id', project.entity_id)
+        .maybeSingle();
       return data as { pipeline_id: string; pipelines: { name: string } | null } | null;
     },
     enabled: !!project.entity_id,
@@ -356,14 +362,14 @@ export default function ProjectDetailPanel({
 
   // ── Activity save ──
   const handleSaveActivity = useCallback(async () => {
-    if (!project.entity_id) return;
+    if (!ownerDealId) return;
     const rawContent = activityTab === 'log' ? activityNote : noteContent;
     const content = rawContent.trim();
     const type = activityTab === 'log' ? activityType : 'note';
     if (!content || isHtmlEmpty(content)) { toast.error('Please enter some content'); return; }
     setSavingActivity(true);
     const { error } = await supabase.from('activities').insert({
-      entity_id: project.entity_id,
+      entity_id: ownerDealId,
       entity_type: 'deal',
       activity_type: type,
       content,
@@ -371,11 +377,11 @@ export default function ProjectDetailPanel({
     });
     setSavingActivity(false);
     if (error) { toast.error('Failed to save activity'); return; }
-    await supabase.from('deals').update({ last_activity_at: new Date().toISOString() }).eq('id', project.entity_id);
+    await supabase.from('deals').update({ last_activity_at: new Date().toISOString() }).eq('id', ownerDealId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote(''); else setNoteContent('');
     queryClient.invalidateQueries({ queryKey: ['project-panel-activities', project.entity_id] });
-  }, [project.entity_id, activityTab, activityType, activityNote, noteContent, queryClient]);
+  }, [ownerDealId, project.entity_id, activityTab, activityType, activityNote, noteContent, queryClient]);
 
   // Merge activities + email threads into timeline
   const timelineItems = useMemo(() => {

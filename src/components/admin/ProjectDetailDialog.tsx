@@ -106,19 +106,22 @@ export default function ProjectDetailDialog({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showLeadPicker, setShowLeadPicker] = useState(false);
 
-  // Fetch all leads for the "Related To" picker
+  // Fetch all leads for the "Related To" picker. entity_id is included because
+  // entity_projects rows key off the canonical entities.id, not the deal id.
   const { data: allLeads = [] } = useQuery({
     queryKey: ['all-leads-for-project-picker'],
     queryFn: async () => {
-      const { data } = await supabase.from('deals').select('id, name, company_name').eq('pipeline', 'potential').order('name').limit(500);
-      return (data ?? []) as { id: string; name: string; company_name: string | null }[];
+      const { data } = await supabase.from('deals').select('id, entity_id, name, company_name').eq('pipeline', 'potential').order('name').limit(500);
+      return (data ?? []) as { id: string; entity_id: string; name: string; company_name: string | null }[];
     },
     enabled: open,
   });
 
   const selectedLeadName = useMemo(() => {
     if (relatedToId) {
-      const found = allLeads.find(l => l.id === relatedToId);
+      // relatedToId may be a canonical entities.id (picker / edit mode) or a
+      // bare record id (leadId prop default) — match either.
+      const found = allLeads.find(l => l.entity_id === relatedToId || l.id === relatedToId);
       if (found) return [found.name, found.company_name].filter(Boolean).join(' - ');
     }
     if (leadName) return leadName;
@@ -163,8 +166,20 @@ export default function ProjectDetailDialog({
     mutationFn: async () => {
       const resolvedLeadId = relatedToId || leadId;
       if (!resolvedLeadId) throw new Error('A Related To lead is required');
+      // entity_projects.entity_id must be the canonical entities.id. The picker
+      // and edit mode already supply it, but a bare `leadId` prop may be a
+      // deal/person record id — resolve it through the entities table.
+      let resolvedEntityId: string | null = null;
+      const { data: byId } = await supabase.from('entities').select('id').eq('id', resolvedLeadId).maybeSingle();
+      if (byId) {
+        resolvedEntityId = byId.id;
+      } else {
+        const { data: bySource } = await supabase.from('entities').select('id').eq('source_id', resolvedLeadId).limit(1).maybeSingle();
+        resolvedEntityId = bySource?.id ?? null;
+      }
+      if (!resolvedEntityId) throw new Error('A Related To lead is required');
       const { data, error } = await supabase.from('entity_projects').insert({
-        entity_id: resolvedLeadId,
+        entity_id: resolvedEntityId,
         entity_type: 'deal',
         name: name.trim(),
         status,
@@ -401,7 +416,7 @@ export default function ProjectDetailDialog({
                         {allLeads.map(l => (
                           <CommandItem
                             key={l.id}
-                            onSelect={() => { setRelatedToId(l.id); setShowLeadPicker(false); }}
+                            onSelect={() => { setRelatedToId(l.entity_id); setShowLeadPicker(false); }}
                             className="text-sm cursor-pointer"
                           >
                             <span>{l.name}</span>

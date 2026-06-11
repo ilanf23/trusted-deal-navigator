@@ -462,7 +462,7 @@ const Underwriting = () => {
     }
     counts['my_open'] = leads.length;
     counts['open'] = leads.length;
-    counts['following'] = leads.filter((l) => followedLeadIds.has(l.id)).length;
+    counts['following'] = leads.filter((l) => followedLeadIds.has(l.entity_id)).length;
     counts['won'] = leads.filter(l => l.status === 'won' as any).length;
     counts['lost'] = leads.filter(l => l.status === 'lost' as any).length;
     counts['brad_incoming'] = leads.filter(l => (l.assigned_to ?? '').toLowerCase().includes('brad') || teamMemberMap[l.assigned_to ?? '']?.toLowerCase().includes('brad')).length;
@@ -532,7 +532,7 @@ const Underwriting = () => {
       } else if (activeFilter === 'onboarding_2026') {
         result = result.filter((l) => l.cohort_year === 2026);
       } else if (activeFilter === 'following') {
-        result = result.filter((l) => followedLeadIds.has(l.id));
+        result = result.filter((l) => followedLeadIds.has(l.entity_id));
       }
       // 'my_open', 'open' show all for now
     }

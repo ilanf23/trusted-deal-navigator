@@ -269,6 +269,26 @@ export default function UnderwritingExpandedView() {
 
   const { teamMember } = useTeamMember();
 
+  // ── Lead query (hoisted above follow/delete so entity_id is available) ──
+  const { data: lead, isLoading } = useQuery({
+    queryKey: ['underwriting-expanded', leadId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('*')
+        .eq('pipeline', 'underwriting')
+        .eq('id', leadId!)
+        .single();
+      if (error) throw error;
+      return data as Lead;
+    },
+    enabled: !!leadId,
+  });
+
+  // Canonical entities.id for this deal — entity_* child tables key off this,
+  // not the deal row's own id.
+  const dealEntityId = lead?.entity_id;
+
   // ── Follow state ──
   const [followHovered, setFollowHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -277,17 +297,18 @@ export default function UnderwritingExpandedView() {
     queryKey: ['entity-follow', leadId, teamMemberId],
     queryFn: async () => {
       const { data } = await supabase.from('entity_followers').select('id')
-        .eq('entity_id', leadId!).eq('entity_type', 'deal').eq('user_id', teamMemberId!).maybeSingle();
+        .eq('entity_id', dealEntityId!).eq('entity_type', 'deal').eq('user_id', teamMemberId!).maybeSingle();
       return !!data;
     },
-    enabled: !!leadId && !!teamMemberId,
+    enabled: !!dealEntityId && !!teamMemberId,
   });
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
+      if (!dealEntityId) return;
       if (isFollowing) {
-        await supabase.from('entity_followers').delete().eq('entity_id', leadId!).eq('entity_type', 'deal').eq('user_id', teamMemberId!);
+        await supabase.from('entity_followers').delete().eq('entity_id', dealEntityId).eq('entity_type', 'deal').eq('user_id', teamMemberId!);
       } else {
-        await supabase.from('entity_followers').insert({ entity_id: leadId!, entity_type: 'deal', user_id: teamMemberId! });
+        await supabase.from('entity_followers').insert({ entity_id: dealEntityId, entity_type: 'deal', user_id: teamMemberId! });
       }
     },
     onSuccess: () => {
@@ -297,7 +318,9 @@ export default function UnderwritingExpandedView() {
   });
   const handleDeleteLead = useCallback(async () => {
     if (!leadId) return;
-    await supabase.from('entity_files').delete().eq('entity_id', leadId).eq('entity_type', 'deal');
+    if (dealEntityId) {
+      await supabase.from('entity_files').delete().eq('entity_id', dealEntityId).eq('entity_type', 'deal');
+    }
     await supabase.from('activities').delete().eq('entity_id', leadId).eq('entity_type', 'deal');
     await supabase.from('tasks').delete().eq('lead_id', leadId);
     const { error } = await supabase.from('deals').delete().eq('id', leadId);
@@ -305,7 +328,7 @@ export default function UnderwritingExpandedView() {
     toast.success('Deleted');
     queryClient.invalidateQueries({ queryKey: ['underwriting-deals'] });
     navigate(-1);
-  }, [leadId, queryClient, navigate]);
+  }, [leadId, dealEntityId, queryClient, navigate]);
 
   // Milestone inline add state (Related sidebar)
   const [addingMilestone, setAddingMilestone] = useState(false);
@@ -565,20 +588,7 @@ export default function UnderwritingExpandedView() {
   // and related-people / people-search / companies-search have all moved into <LeadRelatedSidebar>.
 
   // ── Queries ──
-  const { data: lead, isLoading } = useQuery({
-    queryKey: ['underwriting-expanded', leadId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('deals')
-        .select('*')
-        .eq('pipeline', 'underwriting')
-        .eq('id', leadId!)
-        .single();
-      if (error) throw error;
-      return data as Lead;
-    },
-    enabled: !!leadId,
-  });
+  // (lead query hoisted above the Follow state section so entity_id is in scope)
 
   // contacts / tasks / projects / appointments / files queries moved into <LeadRelatedSidebar>.
 
@@ -647,10 +657,10 @@ export default function UnderwritingExpandedView() {
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['underwriting-emails', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', dealEntityId!).eq('entity_type', 'deal');
       return (data || []) as LeadEmail[];
     },
-    enabled: !!leadId,
+    enabled: !!dealEntityId,
   });
 
   // related-people query moved into <LeadRelatedSidebar>.
@@ -814,26 +824,26 @@ export default function UnderwritingExpandedView() {
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['underwriting-phones', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', dealEntityId!).eq('entity_type', 'deal');
       return (data || []) as LeadPhone[];
     },
-    enabled: !!leadId,
+    enabled: !!dealEntityId,
   });
 
   const { data: leadAddresses = [] } = useQuery({
     queryKey: ['underwriting-addresses', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', dealEntityId!).eq('entity_type', 'deal');
       return (data || []) as LeadAddress[];
     },
-    enabled: !!leadId,
+    enabled: !!dealEntityId,
   });
 
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async ({ email, type }: { email: string; type: string }) => {
-      if (!leadId) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'deal', email, email_type: type });
+      if (!dealEntityId) return;
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: dealEntityId, entity_type: 'deal', email, email_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -855,8 +865,8 @@ export default function UnderwritingExpandedView() {
 
   const addPhoneMutation = useMutation({
     mutationFn: async ({ phone, type }: { phone: string; type: string }) => {
-      if (!leadId) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'deal', phone_number: phone, phone_type: type });
+      if (!dealEntityId) return;
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: dealEntityId, entity_type: 'deal', phone_number: phone, phone_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -878,9 +888,9 @@ export default function UnderwritingExpandedView() {
 
   const addAddressMutation = useMutation({
     mutationFn: async ({ line1, city, state, zip, type }: { line1: string; city: string; state: string; zip: string; type: string }) => {
-      if (!leadId || !line1) return;
+      if (!dealEntityId || !line1) return;
       const { error } = await supabase.from('entity_addresses').insert({
-        entity_id: leadId,
+        entity_id: dealEntityId,
         entity_type: 'deal',
         address_line_1: line1,
         city: city || null,
@@ -1448,6 +1458,7 @@ export default function UnderwritingExpandedView() {
             leadId={leadId!}
             lead={{
               id: lead.id,
+              entity_id: lead.entity_id,
               name: lead.name,
               email: lead.email,
               phone: lead.phone,

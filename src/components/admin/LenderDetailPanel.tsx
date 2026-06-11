@@ -12,6 +12,8 @@ import { formatPhoneNumber } from './InlineEditableFields';
 // ── Lender type ──
 export interface LenderProgram {
   id: string;
+  /** Canonical entities.id — entity_* child tables (files, followers) key off this. */
+  entity_id: string;
   lender_name: string;
   call_status: string | null;
   lender_type: string | null;

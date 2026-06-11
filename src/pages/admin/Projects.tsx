@@ -156,7 +156,9 @@ const Projects = () => {
     },
   });
 
-  // Fetch lead names for "Related To"
+  // Fetch lead names for "Related To". entity_projects.entity_id stores the
+  // canonical entities.id, so owning deals are matched via deals.entity_id and
+  // the map is keyed by that canonical id.
   const leadIds = useMemo(() => [...new Set(rawProjects.map(p => p.entity_id))], [rawProjects]);
   const { data: leadMap = {} } = useQuery({
     queryKey: ['project-lead-names', leadIds],
@@ -164,11 +166,11 @@ const Projects = () => {
       if (leadIds.length === 0) return {};
       const { data } = await supabase
         .from('deals')
-        .select('id, name, opportunity_name, company_name')
+        .select('id, entity_id, name, opportunity_name, company_name')
         .eq('pipeline', 'potential')
-        .in('id', leadIds);
+        .in('entity_id', leadIds);
       const map: Record<string, { name: string; opportunity_name: string | null; company_name: string | null }> = {};
-      for (const l of data ?? []) map[l.id] = l;
+      for (const l of data ?? []) map[l.entity_id] = l;
       return map;
     },
     enabled: leadIds.length > 0,

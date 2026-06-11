@@ -284,23 +284,27 @@ export const useCrmMutations = (table: CrmTable) => {
       let satelliteWarning = false;
       try {
         const entityTypeValue = ENTITY_TYPE_MAP[table];
-        const newId = (newDeal as { id: string }).id;
+        // entity_* child tables key off the canonical entities.id (deals carry
+        // it in entity_id; the insert trigger populates it on the new row).
+        const sourceEntityId = sourceRow.entity_id as string | undefined;
+        const newEntityId = (newDeal as { entity_id?: string }).entity_id;
+        if (!sourceEntityId || !newEntityId) throw new Error('Missing entity_id on source or new deal');
 
         const [emailsRes, phonesRes, addressesRes] = await Promise.all([
           supabase
             .from('entity_emails')
             .select('email, email_type, is_primary')
-            .eq('entity_id', sourceId)
+            .eq('entity_id', sourceEntityId)
             .eq('entity_type', entityTypeValue),
           supabase
             .from('entity_phones')
             .select('phone_number, phone_type, is_primary')
-            .eq('entity_id', sourceId)
+            .eq('entity_id', sourceEntityId)
             .eq('entity_type', entityTypeValue),
           supabase
             .from('entity_addresses')
             .select('address_line_1, address_line_2, address_type, city, state, zip_code, country, is_primary')
-            .eq('entity_id', sourceId)
+            .eq('entity_id', sourceEntityId)
             .eq('entity_type', entityTypeValue),
         ]);
 
@@ -310,19 +314,19 @@ export const useCrmMutations = (table: CrmTable) => {
 
         if (emailsRes.data && emailsRes.data.length > 0) {
           const { error } = await supabase.from('entity_emails').insert(
-            emailsRes.data.map((e) => ({ ...e, entity_id: newId, entity_type: entityTypeValue })),
+            emailsRes.data.map((e) => ({ ...e, entity_id: newEntityId, entity_type: entityTypeValue })),
           );
           if (error) throw error;
         }
         if (phonesRes.data && phonesRes.data.length > 0) {
           const { error } = await supabase.from('entity_phones').insert(
-            phonesRes.data.map((p) => ({ ...p, entity_id: newId, entity_type: entityTypeValue })),
+            phonesRes.data.map((p) => ({ ...p, entity_id: newEntityId, entity_type: entityTypeValue })),
           );
           if (error) throw error;
         }
         if (addressesRes.data && addressesRes.data.length > 0) {
           const { error } = await supabase.from('entity_addresses').insert(
-            addressesRes.data.map((a) => ({ ...a, entity_id: newId, entity_type: entityTypeValue })),
+            addressesRes.data.map((a) => ({ ...a, entity_id: newEntityId, entity_type: entityTypeValue })),
           );
           if (error) throw error;
         }

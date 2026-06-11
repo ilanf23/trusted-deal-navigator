@@ -28,6 +28,8 @@ import { CrmAvatar } from '@/components/admin/CrmAvatar';
 
 interface LenderRow {
   id: string;
+  /** Canonical entities.id — entity_* child tables key off this. Empty for unsaved rows. */
+  entity_id: string;
   lender_name: string;
   call_status: string;
   lender_type: string;
@@ -352,6 +354,7 @@ const DEFAULT_LENDER_FILTER_OPTIONS: SavedFilterOption[] = [
 
 const createEmptyRow = (): LenderRow => ({
   id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  entity_id: '',
   lender_name: '',
   call_status: '',
   lender_type: '',
@@ -379,6 +382,7 @@ const createEmptyRow = (): LenderRow => ({
 
 const lenderRowToProgram = (row: LenderRow): LenderProgram => ({
   id: row.id,
+  entity_id: row.entity_id,
   lender_name: row.lender_name,
   call_status: row.call_status || null,
   lender_type: row.lender_type || null,
@@ -431,6 +435,7 @@ const LenderPrograms = () => {
       if (error) throw error;
       return (data || []).map((item): LenderRow => ({
         id: item.id,
+        entity_id: item.entity_id,
         lender_name: item.lender_name || '',
         call_status: item.call_status || '',
         lender_type: item.lender_type || '',

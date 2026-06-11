@@ -31,6 +31,8 @@ export type LeadEntityType = 'potential' | 'underwriting' | 'lender_management';
 
 export interface LeadRelatedSidebarLead {
   id: string;
+  /** Canonical entities.id — entity_* child tables (projects, files) key off this. */
+  entity_id: string;
   name?: string | null;
   opportunity_name?: string | null;
   company_name: string | null;
@@ -401,6 +403,10 @@ export default function LeadRelatedSidebar({
   const [eventSaving, setEventSaving] = useState(false);
   const [eventDatePickerOpen, setEventDatePickerOpen] = useState(false);
 
+  // Canonical entities.id for this deal — entity_* child tables key off this,
+  // not the deal row's own id.
+  const leadEntityId = lead.entity_id;
+
   // ─── Canonical polymorphic query keys ──────────────────────────────────
   const contactsKey = ['lead-related', entityType, leadId, 'contacts'] as const;
   const tasksKey = ['person-tasks', leadId] as const; // kept for compat with existing task consumers
@@ -433,10 +439,10 @@ export default function LeadRelatedSidebar({
     queryKey: projectsKey,
     queryFn: async () => {
       const { data } = await supabase.from('entity_projects').select('*')
-        .eq('entity_id', leadId).eq('entity_type', 'deal').order('created_at', { ascending: false });
+        .eq('entity_id', leadEntityId).eq('entity_type', 'deal').order('created_at', { ascending: false });
       return (data ?? []) as LeadProject[];
     },
-    enabled: !!leadId,
+    enabled: !!leadEntityId,
   });
 
   // Project name suggestions pulled from all entities in `entity_projects`.
@@ -481,18 +487,18 @@ export default function LeadRelatedSidebar({
   // File count — shares the React Query cache with EntityFilesSection (same key
   // + select shape), so mounting EntityFilesSection below does not double-fetch.
   const { data: leadFiles = [] } = useQuery({
-    queryKey: ['entity-files', entityType, leadId],
+    queryKey: ['entity-files', 'deal', leadEntityId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('entity_files')
         .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', leadId)
+        .eq('entity_id', leadEntityId)
         .eq('entity_type', 'deal')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
-    enabled: !!leadId,
+    enabled: !!leadEntityId,
   });
 
   // Related people from same entity table — matched by company_name or business email domain
@@ -899,11 +905,11 @@ export default function LeadRelatedSidebar({
   // per-entity (one row = one project scoped to one entity), "linking" inserts
   // a new row carrying the suggested project's name and stage for this entity.
   const handleLinkExistingProject = useCallback(async (suggestion: { name: string; status: string | null; project_stage: string | null }) => {
-    if (!leadId) return;
+    if (!leadEntityId) return;
     setSavingProject(true);
     try {
       const { error } = await supabase.from('entity_projects').insert({
-        entity_id: leadId,
+        entity_id: leadEntityId,
         entity_type: 'deal',
         name: suggestion.name,
         status: suggestion.status ?? 'open',
@@ -921,7 +927,7 @@ export default function LeadRelatedSidebar({
     } finally {
       setSavingProject(false);
     }
-  }, [leadId, entityType, currentUserName, queryClient, projectsKey]);
+  }, [leadEntityId, entityType, currentUserName, queryClient, projectsKey]);
 
   /**
    * Delete a project from `entity_projects`. Each row in that table represents
@@ -1499,8 +1505,8 @@ export default function LeadRelatedSidebar({
               onAdd={() => setAddFilesOpen(true)}
             >
               <EntityFilesSection
-                entityId={leadId}
-                entityType={entityType}
+                entityId={leadEntityId}
+                entityType="deal"
                 entityName={lead.opportunity_name ?? lead.name ?? undefined}
                 companyName={lead.company_name ?? undefined}
                 hideHeader

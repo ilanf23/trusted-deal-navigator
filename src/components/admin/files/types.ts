@@ -5,6 +5,7 @@ export type EntityType =
   | 'people'
   | 'companies'
   | 'potential'
+  | 'deal'
   | 'lender_programs';
 
 export type FileSourceSystem = 'native' | 'dropbox' | 'google_sheets';

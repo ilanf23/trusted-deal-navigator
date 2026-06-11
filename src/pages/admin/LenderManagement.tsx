@@ -497,7 +497,7 @@ const LenderManagement = () => {
     }
     counts['my_open'] = leads.length;
     counts['open'] = leads.length;
-    counts['following'] = leads.filter((l) => followedLeadIds.has(l.id)).length;
+    counts['following'] = leads.filter((l) => followedLeadIds.has(l.entity_id)).length;
     counts['won'] = leads.filter(l => l.status === 'won' as any).length;
     counts['closed_2025'] = leads.filter(l => fakeClosedYear(l.id) === 2025).length;
     counts['closed_2026'] = leads.filter(l => fakeClosedYear(l.id) === 2026).length;
@@ -515,7 +515,7 @@ const LenderManagement = () => {
       } else if (activeFilter === 'won') {
         result = result.filter((l) => l.status === ('won' as LeadStatus));
       } else if (activeFilter === 'following') {
-        result = result.filter((l) => followedLeadIds.has(l.id));
+        result = result.filter((l) => followedLeadIds.has(l.entity_id));
       } else if (activeFilter === 'closed_2025') {
         result = result.filter((l) => fakeClosedYear(l.id) === 2025);
       } else if (activeFilter === 'closed_2026') {

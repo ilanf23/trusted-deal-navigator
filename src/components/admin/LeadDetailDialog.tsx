@@ -420,34 +420,47 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: !!lead && open,
   });
 
+  // Canonical entities.id for this deal — entity_* child tables key off this,
+  // not the deal row's own id. Fetched separately because the `lead` prop is a
+  // narrowed shape that doesn't carry entity_id.
+  const { data: leadEntityId = null } = useQuery({
+    queryKey: ['lead-entity-id', lead?.id],
+    queryFn: async () => {
+      if (!lead) return null;
+      const { data } = await supabase.from('deals').select('entity_id').eq('id', lead.id).maybeSingle();
+      return data?.entity_id ?? null;
+    },
+    enabled: !!lead && open,
+  });
+
   const { data: phones = [] } = useQuery({
     queryKey: ['lead-phones', lead?.id],
     queryFn: async () => {
-      if (!lead) return [];
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', lead.id);
+      if (!leadEntityId) return [];
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadEntityId);
       return (data || []) as LeadPhone[];
     },
-    enabled: !!lead && open,
+    enabled: !!lead && !!leadEntityId && open,
   });
 
   const { data: emails = [] } = useQuery({
     queryKey: ['lead-emails', lead?.id],
     queryFn: async () => {
-      if (!lead) return [];
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', lead.id);
+      if (!leadEntityId) return [];
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadEntityId);
       return (data || []) as LeadEmail[];
     },
-    enabled: !!lead && open,
+    enabled: !!lead && !!leadEntityId && open,
   });
 
   const { data: addresses = [] } = useQuery({
     queryKey: ['lead-addresses', lead?.id],
     queryFn: async () => {
-      if (!lead) return [];
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', lead.id);
+      if (!leadEntityId) return [];
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadEntityId);
       return (data || []) as LeadAddress[];
     },
-    enabled: !!lead && open,
+    enabled: !!lead && !!leadEntityId && open,
   });
 
   const { data: contacts = [] } = useQuery({
@@ -745,8 +758,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
   const addContactEmail = useMutation({
     mutationFn: async (email: string) => {
-      if (!lead) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: lead.id, entity_type: 'deal', email, email_type: newEmailType });
+      if (!lead || !leadEntityId) return;
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadEntityId, entity_type: 'deal', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -759,8 +772,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
   const addContactPhone = useMutation({
     mutationFn: async (phone: string) => {
-      if (!lead) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: lead.id, entity_type: 'deal', phone_number: phone, phone_type: newPhoneType });
+      if (!lead || !leadEntityId) return;
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadEntityId, entity_type: 'deal', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -795,9 +808,9 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
   const addContactAddress = useMutation({
     mutationFn: async () => {
-      if (!lead || !newAddressLine1.trim()) return;
+      if (!lead || !leadEntityId || !newAddressLine1.trim()) return;
       const { error } = await supabase.from('entity_addresses').insert({
-        entity_id: lead.id,
+        entity_id: leadEntityId,
         entity_type: 'deal',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
@@ -1875,7 +1888,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                   {/* Files Tab */}
                   <TabsContent value="files" className="m-0 p-4">
                     <EntityFilesSection
-                      entityId={lead.id}
+                      entityId={leadEntityId ?? ''}
                       entityType="deal"
                       entityName={lead.name}
                       companyName={lead.company_name}

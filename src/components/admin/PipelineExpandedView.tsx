@@ -329,6 +329,10 @@ export default function PipelineExpandedView() {
     enabled: !!leadId,
   });
 
+  // Canonical entities.id for this deal — entity_* child tables key off this,
+  // not the deal row's own id.
+  const dealEntityId = lead?.entity_id;
+
   const { data: teamMembers = [] } = useAssignableUsers();
 
   const teamMemberMap = useMemo(() => {
@@ -553,28 +557,28 @@ export default function PipelineExpandedView() {
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['pipeline-lead-emails', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', dealEntityId!).eq('entity_type', 'deal');
       return (data || []) as LeadEmail[];
     },
-    enabled: !!leadId,
+    enabled: !!dealEntityId,
   });
 
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['pipeline-lead-phones', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', dealEntityId!).eq('entity_type', 'deal');
       return (data || []) as LeadPhone[];
     },
-    enabled: !!leadId,
+    enabled: !!dealEntityId,
   });
 
   const { data: leadAddresses = [] } = useQuery({
     queryKey: ['pipeline-lead-addresses', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', leadId!).eq('entity_type', 'deal');
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', dealEntityId!).eq('entity_type', 'deal');
       return (data || []) as LeadAddress[];
     },
-    enabled: !!leadId,
+    enabled: !!dealEntityId,
   });
 
   // ── Gmail email queries ──
@@ -710,8 +714,8 @@ export default function PipelineExpandedView() {
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async ({ email, type }: { email: string; type: string }) => {
-      if (!leadId) return;
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: leadId, entity_type: 'deal', email, email_type: type });
+      if (!dealEntityId) return;
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: dealEntityId, entity_type: 'deal', email, email_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -733,8 +737,8 @@ export default function PipelineExpandedView() {
 
   const addPhoneMutation = useMutation({
     mutationFn: async ({ phone, type }: { phone: string; type: string }) => {
-      if (!leadId) return;
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: leadId, entity_type: 'deal', phone_number: phone, phone_type: type });
+      if (!dealEntityId) return;
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: dealEntityId, entity_type: 'deal', phone_number: phone, phone_type: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -756,9 +760,9 @@ export default function PipelineExpandedView() {
 
   const addAddressMutation = useMutation({
     mutationFn: async ({ line1, city, state, zip, type }: { line1: string; city: string; state: string; zip: string; type: string }) => {
-      if (!leadId || !line1) return;
+      if (!dealEntityId || !line1) return;
       const { error } = await supabase.from('entity_addresses').insert({
-        entity_id: leadId,
+        entity_id: dealEntityId,
         entity_type: 'deal',
         address_line_1: line1,
         city: city || null,
@@ -1325,6 +1329,7 @@ export default function PipelineExpandedView() {
             leadId={leadId!}
             lead={{
               id: lead.id,
+              entity_id: lead.entity_id,
               name: lead.name,
               email: lead.email,
               phone: lead.phone,

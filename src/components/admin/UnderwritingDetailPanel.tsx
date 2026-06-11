@@ -783,12 +783,12 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
 
   // Shares cache with EntityFilesSection — same query key, same select shape.
   const { data: files = [] } = useQuery({
-    queryKey: ['entity-files', 'underwriting', lead.id],
+    queryKey: ['entity-files', 'deal', lead.entity_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('entity_files')
         .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', lead.id)
+        .eq('entity_id', lead.entity_id)
         .eq('entity_type', 'deal')
         .order('created_at', { ascending: false });
       return data || [];
@@ -990,8 +990,8 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
         onAdd={() => setAddFilesOpen(true)}
       >
         <EntityFilesSection
-          entityId={lead.id}
-          entityType="underwriting"
+          entityId={lead.entity_id}
+          entityType="deal"
           entityName={lead.name}
           companyName={lead.company_name}
           hideHeader
@@ -1083,7 +1083,7 @@ export default function UnderwritingDetailPanel({
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['entity-emails', lead.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', lead.id).eq('entity_type', 'deal');
+      const { data } = await supabase.from('entity_emails').select('*').eq('entity_id', lead.entity_id).eq('entity_type', 'deal');
       return (data || []) as LeadEmail[];
     },
   });
@@ -1091,7 +1091,7 @@ export default function UnderwritingDetailPanel({
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['entity-phones', lead.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', lead.id).eq('entity_type', 'deal');
+      const { data } = await supabase.from('entity_phones').select('*').eq('entity_id', lead.entity_id).eq('entity_type', 'deal');
       return (data || []) as LeadPhone[];
     },
   });
@@ -1099,7 +1099,7 @@ export default function UnderwritingDetailPanel({
   const { data: leadAddresses = [] } = useQuery({
     queryKey: ['entity-addresses', lead.id],
     queryFn: async () => {
-      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', lead.id).eq('entity_type', 'deal');
+      const { data } = await supabase.from('entity_addresses').select('*').eq('entity_id', lead.entity_id).eq('entity_type', 'deal');
       return (data || []) as LeadAddress[];
     },
   });
@@ -1107,7 +1107,7 @@ export default function UnderwritingDetailPanel({
   // ── Satellite mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('entity_emails').insert({ entity_id: lead.id, entity_type: 'deal', email, email_type: newEmailType });
+      const { error } = await supabase.from('entity_emails').insert({ entity_id: lead.entity_id, entity_type: 'deal', email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1131,7 +1131,7 @@ export default function UnderwritingDetailPanel({
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('entity_phones').insert({ entity_id: lead.id, entity_type: 'deal', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('entity_phones').insert({ entity_id: lead.entity_id, entity_type: 'deal', phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1157,7 +1157,7 @@ export default function UnderwritingDetailPanel({
     mutationFn: async () => {
       if (!newAddressLine1.trim()) return;
       const { error } = await supabase.from('entity_addresses').insert({
-        entity_id: lead.id,
+        entity_id: lead.entity_id,
         entity_type: 'deal',
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,

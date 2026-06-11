@@ -67,6 +67,8 @@ export interface LeadAddress {
 // Intersection of fields the left column reads from `potential`, `underwriting`, `lender_management`.
 export interface ExpandedLeftColumnLead {
   id: string;
+  /** Canonical entities.id — entity_* child tables (followers, etc.) key off this. */
+  entity_id: string;
   name: string;
   opportunity_name?: string | null;
   title?: string | null;
@@ -200,13 +202,13 @@ export function ExpandedLeftColumn({
       const { data } = await supabase
         .from('entity_followers')
         .select('id')
-        .eq('entity_id', lead.id)
+        .eq('entity_id', lead.entity_id)
         .eq('entity_type', 'deal')
         .eq('user_id', teamMemberId!)
         .maybeSingle();
       return !!data;
     },
-    enabled: !!lead.id && !!teamMemberId,
+    enabled: !!lead.entity_id && !!teamMemberId,
   });
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
@@ -215,14 +217,14 @@ export function ExpandedLeftColumn({
         const { error } = await supabase
           .from('entity_followers')
           .delete()
-          .eq('entity_id', lead.id)
+          .eq('entity_id', lead.entity_id)
           .eq('entity_type', 'deal')
           .eq('user_id', teamMemberId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('entity_followers')
-          .insert({ entity_id: lead.id, entity_type: 'deal', user_id: teamMemberId });
+          .insert({ entity_id: lead.entity_id, entity_type: 'deal', user_id: teamMemberId });
         if (error) throw error;
       }
     },

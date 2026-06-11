@@ -180,14 +180,21 @@ export default function ProjectExpandedView() {
     enabled: !!projectId,
   });
 
+  // `project.entity_id` is the canonical entities.id of the owning record, so
+  // the deal is resolved via the deals table's own entity_id column
+  // (deals.entity_id = project.entity_id).
   const { data: lead } = useQuery({
     queryKey: ['project-lead', project?.entity_id],
     queryFn: async () => {
-      const { data } = await supabase.from('deals').select('*').eq('pipeline', 'potential').eq('id', project!.entity_id).single();
+      const { data } = await supabase.from('deals').select('*').eq('pipeline', 'potential').eq('entity_id', project!.entity_id).maybeSingle();
       return data;
     },
     enabled: !!project?.entity_id,
   });
+
+  // Owning deal's record id — needed for tables that still key off deal ids
+  // (activities, tasks, deal_contacts, deals updates).
+  const ownerDealId = lead?.id;
 
   const { data: teamMembers = [] } = useAssignableUsers();
   const teamMemberMap = useMemo(() => {
@@ -196,18 +203,18 @@ export default function ProjectExpandedView() {
     return m;
   }, [teamMembers]);
 
-  // Activities for this lead
+  // Activities for this lead — `activities.entity_id` still stores deal record ids.
   const { data: activities = [] } = useQuery({
     queryKey: ['lead-activities', project?.entity_id],
     queryFn: async () => {
       const { data } = await supabase
         .from('activities')
         .select('*')
-        .eq('entity_id', project!.entity_id)
+        .eq('entity_id', ownerDealId!)
         .order('created_at', { ascending: false });
       return data ?? [];
     },
-    enabled: !!project?.entity_id,
+    enabled: !!ownerDealId,
   });
 
   // Tasks for this lead (used in Board tab)
@@ -217,11 +224,11 @@ export default function ProjectExpandedView() {
       const { data } = await supabase
         .from('tasks')
         .select('*')
-        .eq('lead_id', project!.entity_id)
+        .eq('lead_id', ownerDealId!)
         .order('created_at', { ascending: false });
       return (data ?? []) as ProjectTask[];
     },
-    enabled: !!project?.entity_id,
+    enabled: !!ownerDealId,
   });
 
   // Contacts for this lead (legacy)
@@ -231,10 +238,10 @@ export default function ProjectExpandedView() {
       const { data } = await supabase
         .from('deal_contacts')
         .select('*')
-        .eq('deal_id', project!.entity_id);
+        .eq('deal_id', ownerDealId!);
       return data ?? [];
     },
-    enabled: !!project?.entity_id,
+    enabled: !!ownerDealId,
   });
 
   // Linked people (project_people junction)
@@ -449,8 +456,8 @@ export default function ProjectExpandedView() {
         .from('deals')
         .select('pipeline_id, pipelines:pipeline_id(name)')
         .eq('pipeline', 'potential')
-        .eq('id', project!.entity_id)
-        .single();
+        .eq('entity_id', project!.entity_id)
+        .maybeSingle();
       return data as { pipeline_id: string; pipelines: { name: string } | null } | null;
     },
     enabled: !!project?.entity_id,
@@ -502,10 +509,10 @@ export default function ProjectExpandedView() {
   // ── Log activity ──
 
   const handleLogActivity = useCallback(async () => {
-    if (!project?.entity_id || !noteContent.trim()) return;
+    if (!ownerDealId || !noteContent.trim()) return;
     setSavingNote(true);
     await supabase.from('activities').insert({
-      entity_id: project.entity_id,
+      entity_id: ownerDealId,
       entity_type: 'deal',
       activity_type: activityTab === 'note' ? 'note' : activityType,
       content: noteContent.trim(),
@@ -514,16 +521,16 @@ export default function ProjectExpandedView() {
     });
     setSavingNote(false);
     setNoteContent('');
-    queryClient.invalidateQueries({ queryKey: ['lead-activities', project.entity_id] });
+    queryClient.invalidateQueries({ queryKey: ['lead-activities', project?.entity_id] });
     toast.success(activityTab === 'note' ? 'Note saved' : 'Activity logged');
-  }, [project?.entity_id, noteContent, activityTab, activityType, teamMember, queryClient]);
+  }, [ownerDealId, project?.entity_id, noteContent, activityTab, activityType, teamMember, queryClient]);
 
   // ── Board: add task ──
 
   const handleAddBoardTask = useCallback(async (status: string) => {
-    if (!project?.entity_id || !newTaskTitle.trim()) return;
+    if (!ownerDealId || !newTaskTitle.trim()) return;
     const { data: created, error } = await supabase.from('tasks').insert({
-      lead_id: project.entity_id,
+      lead_id: ownerDealId,
       title: newTaskTitle.trim(),
       status: status,
       source: 'lead',
@@ -532,7 +539,7 @@ export default function ProjectExpandedView() {
     if (error) { toast.error('Failed to add task'); return; }
     setNewTaskTitle('');
     setAddingTaskCol(null);
-    queryClient.invalidateQueries({ queryKey: ['person-tasks', project.entity_id] });
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
     toast.success('Task added');
     if (created) {
       registerUndo({
@@ -544,7 +551,7 @@ export default function ProjectExpandedView() {
         },
       });
     }
-  }, [project?.entity_id, newTaskTitle, teamMember, queryClient, registerUndo]);
+  }, [ownerDealId, project?.entity_id, newTaskTitle, teamMember, queryClient, registerUndo]);
 
   // ── Board: toggle task ──
 
@@ -678,10 +685,10 @@ export default function ProjectExpandedView() {
 
   // ── Save task (Related sidebar) ──
   const handleSaveSidebarTask = useCallback(async () => {
-    if (!project?.entity_id || !newSidebarTaskTitle.trim()) return;
+    if (!ownerDealId || !newSidebarTaskTitle.trim()) return;
     setSavingTask(true);
     const { data: created, error } = await supabase.from('tasks').insert({
-      lead_id: project.entity_id,
+      lead_id: ownerDealId,
       title: newSidebarTaskTitle.trim(),
       status: 'todo',
       source: 'lead',
@@ -691,7 +698,7 @@ export default function ProjectExpandedView() {
     if (error) { toast.error('Failed to create task'); return; }
     toast.success('Task created');
     setNewSidebarTaskTitle(''); setAddingTask(false);
-    queryClient.invalidateQueries({ queryKey: ['person-tasks', project.entity_id] });
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.entity_id] });
     if (created) {
       registerUndo({
         label: `Created task "${newSidebarTaskTitle.trim()}"`,
@@ -702,31 +709,31 @@ export default function ProjectExpandedView() {
         },
       });
     }
-  }, [project?.entity_id, newSidebarTaskTitle, teamMember, queryClient, registerUndo]);
+  }, [ownerDealId, project?.entity_id, newSidebarTaskTitle, teamMember, queryClient, registerUndo]);
 
   // ── Link company (Related sidebar) — used by search result clicks & Enter ──
   const handleLinkCompany = useCallback(async (companyName: string) => {
-    if (!project?.entity_id || !companyName.trim()) return;
+    if (!ownerDealId || !companyName.trim()) return;
     setSavingCompany(true);
-    const { error } = await supabase.from('deals').update({ company_name: companyName.trim() }).eq('id', project.entity_id);
+    const { error } = await supabase.from('deals').update({ company_name: companyName.trim() }).eq('id', ownerDealId);
     setSavingCompany(false);
     if (error) { toast.error('Failed to update company'); return; }
     toast.success('Company linked');
     setCompanySearchQuery('');
     setAddingCompany(false);
-    queryClient.invalidateQueries({ queryKey: ['project-lead', project.entity_id] });
-  }, [project?.entity_id, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ['project-lead', project?.entity_id] });
+  }, [ownerDealId, project?.entity_id, queryClient]);
 
   // ── Remove company (Related sidebar) ──
   const handleRemoveCompany = useCallback(async () => {
-    if (!project?.entity_id) return;
+    if (!ownerDealId) return;
     setSavingCompany(true);
-    const { error } = await supabase.from('deals').update({ company_name: null }).eq('id', project.entity_id);
+    const { error } = await supabase.from('deals').update({ company_name: null }).eq('id', ownerDealId);
     setSavingCompany(false);
     if (error) { toast.error('Failed to remove company'); return; }
     toast.success('Company removed');
-    queryClient.invalidateQueries({ queryKey: ['project-lead', project.entity_id] });
-  }, [project?.entity_id, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ['project-lead', project?.entity_id] });
+  }, [ownerDealId, project?.entity_id, queryClient]);
 
   if (isLoading || !project) {
     return (

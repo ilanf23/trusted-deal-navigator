@@ -154,23 +154,6 @@ export default function LenderExpandedView() {
   // ── Delete confirmation ──
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // ── Files ──
-  const [addFilesOpen, setAddFilesOpen] = useState(false);
-  const { data: lenderFiles = [] } = useQuery({
-    queryKey: ['entity-files', 'lender_programs', lenderId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('entity_files')
-        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
-        .eq('entity_id', lenderId!)
-        .eq('entity_type', 'lender_programs')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!lenderId,
-  });
-
   // ── Lender query ──
   const { data: lender, isLoading } = useQuery({
     queryKey: ['lender-program-expanded', lenderId],
@@ -187,6 +170,27 @@ export default function LenderExpandedView() {
     enabled: !!lenderId,
   });
 
+  // Canonical entities.id for this lender program — entity_* child tables
+  // (files, followers) key off this, not the lender_programs row's own id.
+  const lenderEntityId = lender?.entity_id;
+
+  // ── Files ──
+  const [addFilesOpen, setAddFilesOpen] = useState(false);
+  const { data: lenderFiles = [] } = useQuery({
+    queryKey: ['entity-files', 'lender_programs', lenderEntityId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('entity_files')
+        .select('id, entity_id, entity_type, file_name, file_url, file_type, file_size, uploaded_by, source_system, created_at')
+        .eq('entity_id', lenderEntityId!)
+        .eq('entity_type', 'lender_programs')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!lenderEntityId,
+  });
+
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['lender-program-expanded', lenderId] });
     queryClient.invalidateQueries({ queryKey: ['lender-programs'] });
@@ -200,29 +204,29 @@ export default function LenderExpandedView() {
       const { data } = await supabase
         .from('entity_followers')
         .select('id')
-        .eq('entity_id', lenderId!)
+        .eq('entity_id', lenderEntityId!)
         .eq('entity_type', ENTITY_TYPE)
         .eq('user_id', teamMemberId!)
         .maybeSingle();
       return !!data;
     },
-    enabled: !!lenderId && !!teamMemberId,
+    enabled: !!lenderEntityId && !!teamMemberId,
   });
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
-      if (!teamMemberId || !lenderId) throw new Error('Missing user or lender');
+      if (!teamMemberId || !lenderEntityId) throw new Error('Missing user or lender');
       if (isFollowing) {
         const { error } = await supabase
           .from('entity_followers')
           .delete()
-          .eq('entity_id', lenderId)
+          .eq('entity_id', lenderEntityId)
           .eq('entity_type', ENTITY_TYPE)
           .eq('user_id', teamMemberId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('entity_followers')
-          .insert({ entity_id: lenderId, entity_type: ENTITY_TYPE, user_id: teamMemberId });
+          .insert({ entity_id: lenderEntityId, entity_type: ENTITY_TYPE, user_id: teamMemberId });
         if (error) throw error;
       }
     },
@@ -1161,9 +1165,9 @@ export default function LenderExpandedView() {
                 iconColor="text-orange-500"
                 onAdd={() => setAddFilesOpen(true)}
               >
-                {lenderId && (
+                {lenderEntityId && (
                   <EntityFilesSection
-                    entityId={lenderId}
+                    entityId={lenderEntityId}
                     entityType="lender_programs"
                     entityName={lender?.lender_name ?? undefined}
                     hideHeader
