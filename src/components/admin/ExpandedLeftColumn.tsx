@@ -36,8 +36,9 @@ export interface LeadEmail {
   id: string;
   related_id: string;
   related_type: string;
-  email: string;
-  email_type: string;
+  kind: string;
+  value: string;
+  label: string;
   is_primary: boolean;
 }
 
@@ -45,8 +46,9 @@ export interface LeadPhone {
   id: string;
   related_id: string;
   related_type: string;
-  phone_number: string;
-  phone_type: string;
+  kind: string;
+  value: string;
+  label: string;
   is_primary: boolean;
 }
 

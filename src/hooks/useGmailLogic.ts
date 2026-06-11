@@ -9,7 +9,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Attachment } from '@/components/admin/GmailComposeDialog';
 import { FolderType } from '@/components/admin/inbox/GmailSidebar';
 import { useGmailConnection } from '@/hooks/useGmailConnection';
-import { GmailEmail, ThreadMessage, extractSenderName, extractEmailAddress } from '@/components/gmail/gmailHelpers';
+import { GmailEmail, GmailLabel, ThreadMessage, extractSenderName, extractEmailAddress, isUserGmailLabel, buildLabelsById } from '@/components/gmail/gmailHelpers';
 import {
   mockExternalEmails,
   mockThreadMessages,
@@ -65,6 +65,18 @@ export function useGmailLogic(config?: CRMGmailConfig) {
   const draftEmails = (draftsData?.emails || []) as GmailEmail[];
   const gmailConnection = gmail.gmailConnection;
   const connectionLoading = gmail.connectionLoading;
+
+  // Gmail labels (mirrors the labels the user set up in Gmail)
+  const { data: rawLabels = [] } = gmail.useLabels();
+  const userLabels = useMemo(
+    () =>
+      (rawLabels as GmailLabel[])
+        .filter(isUserGmailLabel)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [rawLabels],
+  );
+  const labelsById = useMemo(() => buildLabelsById(userLabels), [userLabels]);
+  const [activeLabelId, setActiveLabelId] = useState<string | null>(null);
 
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -176,23 +188,25 @@ export function useGmailLogic(config?: CRMGmailConfig) {
   const { data: allLeads = [] } = useQuery({
     queryKey: ['gmail-all-leads'],
     queryFn: async () => {
-      // related_emails hangs off the canonical related row (people.related_id),
+      // related_contact_points hangs off the canonical related row (people.related_id),
       // so the embed goes through related. deal_contacts belongs to deals,
       // not people, so it cannot be embedded here.
       const { data } = await supabase
         .from('people')
         .select(`
           *,
-          related!people_related_id_fkey(related_emails(email, email_type)),
+          related!people_related_id_fkey(related_contact_points(kind, value, label)),
           lead_phones(id, phone_number, phone_type),
           lead_responses(*)
         `);
-      type EmbeddedEntityEmails = {
-        related?: { related_emails?: { email: string; email_type: string | null }[] } | null;
+      type EmbeddedEntityContactPoints = {
+        related?: { related_contact_points?: { kind: string; value: string; label: string | null }[] } | null;
       };
       return (data ?? []).map((p) => ({
         ...p,
-        related_emails: (p as EmbeddedEntityEmails).related?.related_emails ?? [],
+        related_emails: ((p as EmbeddedEntityContactPoints).related?.related_contact_points ?? [])
+          .filter((cp) => cp.kind === 'email')
+          .map((cp) => ({ email: cp.value, email_type: cp.label })),
       }));
     },
   });
@@ -316,15 +330,16 @@ export function useGmailLogic(config?: CRMGmailConfig) {
         .select('email')
         .not('email', 'is', null);
       const { data: relatedEmails } = await supabase
-        .from('related_emails')
-        .select('email');
+        .from('related_contact_points')
+        .select('value')
+        .eq('kind', 'email');
       const { data: relatedContacts } = await supabase
         .from('deal_contacts')
         .select('email')
         .not('email', 'is', null);
       const allEmailsSet = new Set<string>();
       people?.forEach(l => l.email && allEmailsSet.add(l.email.toLowerCase()));
-      relatedEmails?.forEach(e => e.email && allEmailsSet.add(e.email.toLowerCase()));
+      relatedEmails?.forEach(e => e.value && allEmailsSet.add(e.value.toLowerCase()));
       relatedContacts?.forEach(c => c.email && allEmailsSet.add(c.email.toLowerCase()));
       return Array.from(allEmailsSet);
     },
@@ -426,6 +441,11 @@ export function useGmailLogic(config?: CRMGmailConfig) {
       });
     }
 
+    // Filter by Gmail label (user-created labels only)
+    if (activeLabelId) {
+      result = result.filter(email => email.labels?.includes(activeLabelId));
+    }
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(email =>
@@ -437,12 +457,23 @@ export function useGmailLogic(config?: CRMGmailConfig) {
     }
 
     return result;
-  }, [allEmails, crmEmails, activeFolder, searchQuery, allLeads, sentEmails, draftEmails]);
+  }, [allEmails, crmEmails, activeFolder, searchQuery, allLeads, sentEmails, draftEmails, activeLabelId]);
 
-  // Reset page when folder or search changes
+  // Per-label counts (within the currently loaded inbox emails)
+  const labelCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allEmails.forEach(email => {
+      email.labels?.forEach(labelId => {
+        if (labelsById[labelId]) counts[labelId] = (counts[labelId] || 0) + 1;
+      });
+    });
+    return counts;
+  }, [allEmails, labelsById]);
+
+  // Reset page when folder, search, or label filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeFolder, searchQuery]);
+  }, [activeFolder, searchQuery, activeLabelId]);
 
   // Paginated emails
   const paginatedEmails = useMemo(() => {
@@ -875,6 +906,7 @@ export function useGmailLogic(config?: CRMGmailConfig) {
     await queryClient.invalidateQueries({ queryKey: [`${userKey}-gmail-emails`] });
     await queryClient.invalidateQueries({ queryKey: [`${userKey}-gmail-connection`] });
     await queryClient.invalidateQueries({ queryKey: [`${userKey}-gmail-count`] });
+    await queryClient.invalidateQueries({ queryKey: [`${userKey}-gmail-labels`] });
     await queryClient.invalidateQueries({ queryKey: ['crm-lead-emails'] });
     await queryClient.invalidateQueries({ queryKey: ['gmail-all-leads'] });
     await queryClient.refetchQueries({ queryKey: [`${userKey}-gmail-emails`] });
@@ -893,6 +925,10 @@ export function useGmailLogic(config?: CRMGmailConfig) {
 
     // Folders
     activeFolder, setActiveFolder, folderCounts,
+
+    // Gmail labels
+    userLabels, labelsById, labelCounts,
+    activeLabelId, setActiveLabelId,
 
     // Email data
     emailsLoading, filteredEmails, paginatedEmails,

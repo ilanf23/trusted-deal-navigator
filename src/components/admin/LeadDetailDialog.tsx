@@ -108,16 +108,16 @@ interface Lead {
 interface LeadPhone {
   id: string;
   related_id: string;
-  phone_number: string;
-  phone_type: string;
+  value: string;
+  label: string;
   is_primary: boolean;
 }
 
 interface LeadEmail {
   id: string;
   related_id: string;
-  email: string;
-  email_type: string;
+  value: string;
+  label: string;
   is_primary: boolean;
 }
 
@@ -438,7 +438,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-phones', lead?.id],
     queryFn: async () => {
       if (!leadEntityId) return [];
-      const { data } = await supabase.from('related_phones').select('*').eq('related_id', leadEntityId);
+      const { data } = await supabase.from('related_contact_points').select('*').eq('kind', 'phone').eq('related_id', leadEntityId);
       return (data || []) as LeadPhone[];
     },
     enabled: !!lead && !!leadEntityId && open,
@@ -448,7 +448,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-emails', lead?.id],
     queryFn: async () => {
       if (!leadEntityId) return [];
-      const { data } = await supabase.from('related_emails').select('*').eq('related_id', leadEntityId);
+      const { data } = await supabase.from('related_contact_points').select('*').eq('kind', 'email').eq('related_id', leadEntityId);
       return (data || []) as LeadEmail[];
     },
     enabled: !!lead && !!leadEntityId && open,
@@ -629,7 +629,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     if (!leadData) return [];
     const allEmails: string[] = [];
     if (leadData.email) allEmails.push(leadData.email.toLowerCase());
-    emails.forEach(e => allEmails.push(e.email.toLowerCase()));
+    emails.forEach(e => allEmails.push(e.value.toLowerCase()));
     return [...new Set(allEmails)];
   }, [currentLead, lead, emails]);
 
@@ -754,7 +754,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const addContactEmail = useMutation({
     mutationFn: async (email: string) => {
       if (!lead || !leadEntityId) return;
-      const { error } = await supabase.from('related_emails').insert({ related_id: leadEntityId, related_type: 'deal', email, email_type: newEmailType });
+      const { error } = await supabase.from('related_contact_points').insert({ related_id: leadEntityId, related_type: 'deal', kind: 'email', value: email, label: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -768,7 +768,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const addContactPhone = useMutation({
     mutationFn: async (phone: string) => {
       if (!lead || !leadEntityId) return;
-      const { error } = await supabase.from('related_phones').insert({ related_id: leadEntityId, related_type: 'deal', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('related_contact_points').insert({ related_id: leadEntityId, related_type: 'deal', kind: 'phone', value: phone, label: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -781,7 +781,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
   const deletePhone = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('related_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('related_contact_points').delete().eq('kind', 'phone').eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -792,7 +792,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
   const deleteEmail = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('related_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('related_contact_points').delete().eq('kind', 'email').eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -912,13 +912,13 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     },
   });
 
-  // Update phone in related_phones table
+  // Update phone in related_contact_points table
   const updatePhone = useMutation({
-    mutationFn: async ({ id, phone_number, phone_type }: { id: string; phone_number?: string; phone_type?: string }) => {
-      const updates: { phone_number?: string; phone_type?: string } = {};
-      if (phone_number !== undefined) updates.phone_number = phone_number;
-      if (phone_type !== undefined) updates.phone_type = phone_type;
-      const { error } = await supabase.from('related_phones').update(updates).eq('id', id);
+    mutationFn: async ({ id, value, label }: { id: string; value?: string; label?: string }) => {
+      const updates: { value?: string; label?: string } = {};
+      if (value !== undefined) updates.value = value;
+      if (label !== undefined) updates.label = label;
+      const { error } = await supabase.from('related_contact_points').update(updates).eq('kind', 'phone').eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -927,13 +927,13 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     },
   });
 
-  // Update email in related_emails table
+  // Update email in related_contact_points table
   const updateEmail = useMutation({
-    mutationFn: async ({ id, email, email_type }: { id: string; email?: string; email_type?: string }) => {
-      const updates: { email?: string; email_type?: string } = {};
-      if (email !== undefined) updates.email = email;
-      if (email_type !== undefined) updates.email_type = email_type;
-      const { error } = await supabase.from('related_emails').update(updates).eq('id', id);
+    mutationFn: async ({ id, value, label }: { id: string; value?: string; label?: string }) => {
+      const updates: { value?: string; label?: string } = {};
+      if (value !== undefined) updates.value = value;
+      if (label !== undefined) updates.label = label;
+      const { error } = await supabase.from('related_contact_points').update(updates).eq('kind', 'email').eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1174,7 +1174,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const currentStage = stages.find(s => s.status === lead.status);
 
   // Get all emails for contacts section
-  const allEmails = emails.length > 0 ? emails : (lead.email ? [{ id: 'legacy', email: lead.email, email_type: 'primary' }] : []);
+  const allEmails = emails.length > 0 ? emails : (lead.email ? [{ id: 'legacy', value: lead.email, label: 'primary' }] : []);
 
   // Calculate magic column values
   const daysInStage = differenceInDays(new Date(), new Date(lead.updated_at));
@@ -2346,10 +2346,10 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                       <div key={p.id} className="flex items-center justify-between py-1 group">
                         <div className="flex-1">
                           <FormattedPhoneInput
-                            value={p.phone_number}
-                            onSave={(newValue) => updatePhone.mutate({ id: p.id, phone_number: newValue })}
+                            value={p.value}
+                            onSave={(newValue) => updatePhone.mutate({ id: p.id, value: newValue })}
                           />
-                          <p className="text-xs text-muted-foreground capitalize">{p.phone_type}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{p.label}</p>
                         </div>
                         <Button 
                           variant="ghost" 
@@ -2430,17 +2430,17 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                       <div key={e.id} className="flex items-center justify-between py-1 group">
                         <div className="flex-1">
                           <Input
-                            defaultValue={e.email}
+                            defaultValue={e.value}
                             onBlur={(ev) => {
                               const newValue = ev.target.value.trim();
-                              if (newValue !== e.email && newValue) {
-                                updateEmail.mutate({ id: e.id, email: newValue });
+                              if (newValue !== e.value && newValue) {
+                                updateEmail.mutate({ id: e.id, value: newValue });
                               }
                             }}
                             className="h-7 text-sm border-0 border-b border-transparent hover:border-border focus:border-blue-600 rounded-none px-0 focus-visible:ring-0"
                             placeholder="Email address"
                           />
-                          <p className="text-xs text-muted-foreground capitalize">{e.email_type}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{e.label}</p>
                         </div>
                         <Button 
                           variant="ghost" 

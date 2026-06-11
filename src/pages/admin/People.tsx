@@ -99,6 +99,7 @@ interface Person {
   name: string;
   title: string | null;
   company_name: string | null;
+  company_id: string | null;
   email: string | null;
   phone: string | null;
   contact_type: string | null;
@@ -588,13 +589,40 @@ const People = () => {
 
   const createPersonMutation = useMutation({
     mutationFn: async (data: { name: string; title: string; company_name: string; email: string; phone: string; contact_type: string; known_as: string; clx_file_name: string; assigned_to: string; direct_phone: string; fax_phone: string }) => {
+      // Find-or-create a real company record for the entered business name so the
+      // person is relationally linked (people.company_id), not just free text.
+      const companyName = data.company_name.trim();
+      let companyId: string | null = null;
+      if (companyName) {
+        const { data: existing, error: matchError } = await supabase
+          .from('companies')
+          .select('id')
+          .ilike('company_name', companyName)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (matchError) throw matchError;
+        if (existing) {
+          companyId = existing.id;
+        } else {
+          const { data: created, error: createError } = await supabase
+            .from('companies')
+            .insert({ company_name: companyName, contact_type: data.contact_type })
+            .select('id')
+            .single();
+          if (createError) throw createError;
+          companyId = created.id;
+        }
+      }
+
       // Insert into people
       const { data: person, error } = await supabase
         .from('people')
         .insert({
           name: data.name,
           title: data.title || null,
-          company_name: data.company_name || null,
+          company_name: companyName || null,
+          company_id: companyId,
           email: data.email || null,
           phone: data.phone || null,
           contact_type: data.contact_type,
@@ -606,20 +634,21 @@ const People = () => {
         .single();
       if (error) throw error;
 
-      // Insert extra phone numbers into related_phones — keyed by the canonical
+      // Insert extra phone numbers into related_contact_points — keyed by the canonical
       // related.id (auto-populated on the inserted row by a DB trigger).
       const phonesToInsert = [
-        data.direct_phone ? { related_id: person.related_id, related_type: 'people', phone_number: data.direct_phone, phone_type: 'direct' } : null,
-        data.fax_phone ? { related_id: person.related_id, related_type: 'people', phone_number: data.fax_phone, phone_type: 'fax' } : null,
+        data.direct_phone ? { related_id: person.related_id, related_type: 'people', kind: 'phone', value: data.direct_phone, label: 'direct' } : null,
+        data.fax_phone ? { related_id: person.related_id, related_type: 'people', kind: 'phone', value: data.fax_phone, label: 'fax' } : null,
       ].filter(Boolean);
       if (phonesToInsert.length > 0) {
-        await supabase.from('related_phones').insert(phonesToInsert);
+        await supabase.from('related_contact_points').insert(phonesToInsert);
       }
 
       return person as Person;
     },
     onSuccess: (person) => {
       queryClient.invalidateQueries({ queryKey: ['people'] });
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
       setAddPersonOpen(false);
       setNewPerson({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: 'Prospect', known_as: '', clx_file_name: '', assigned_to: '', direct_phone: '', fax_phone: '' });
       toast.success(`"${person.name}" added as ${person.contact_type}`);
@@ -1030,7 +1059,14 @@ const People = () => {
 
   return (
     <EmployeeLayout>
-      <div className="system-font flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-background -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10">
+      {/* Height note: `h-full` can't bound this page — AdminLayout's
+          `max-w-[1800px] mx-auto` wrapper has auto height, so percentage
+          heights resolve to auto and the page grows past the viewport (making
+          the whole layout scroll instead of the table / detail panel).
+          Use the viewport height minus the AdminLayout top bar (h-14 / md:h-16)
+          so the internal flex layout, sticky table headers, and the detail
+          panel's own scrollbar all work as designed. */}
+      <div className="system-font flex flex-col h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)] min-h-0 overflow-hidden bg-white dark:bg-background -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10">
 
 
 
@@ -1392,7 +1428,11 @@ const People = () => {
                                   return (
                                     <td key={key} className={cellClass} style={cellStyle}>
                                       {person.company_name ? (
-                                        <span className="inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full">
+                                        <span
+                                          className={`inline-flex items-center gap-2 pl-0.5 pr-3 py-0.5 rounded-full bg-[#f1f3f4] dark:bg-muted max-w-full ${person.company_id ? 'cursor-pointer hover:bg-[#e4e7e9] dark:hover:bg-muted/70' : ''}`}
+                                          title={person.company_id ? 'Open company' : undefined}
+                                          onClick={person.company_id ? (e) => { e.stopPropagation(); navigate(`/admin/contacts/companies/expanded-view/${person.company_id}`); } : undefined}
+                                        >
                                           <div className="h-6 w-6 rounded-full bg-white dark:bg-card flex items-center justify-center shrink-0">
                                             <Building2 className="h-3 w-3 text-muted-foreground" />
                                           </div>
@@ -1547,7 +1587,7 @@ const People = () => {
 
           {/* ── Right Detail Panel (overlay) ── */}
           {selectedPerson && !filterPanelOpen && (
-            <div ref={detailPanelRef} className="absolute right-0 top-0 z-50">
+            <div ref={detailPanelRef} className="absolute right-0 top-0 bottom-0 z-50 flex">
               <PeopleDetailPanel
                 person={selectedPerson}
                 contactTypeConfig={contactTypeConfig}

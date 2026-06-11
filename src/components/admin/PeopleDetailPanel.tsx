@@ -43,6 +43,7 @@ interface Person {
   name: string;
   title: string | null;
   company_name: string | null;
+  company_id?: string | null;
   email: string | null;
   phone: string | null;
   contact_type: string | null;
@@ -60,10 +61,10 @@ interface Person {
 }
 
 interface PersonEmail {
-  id: string; related_id: string; email: string; email_type: string; is_primary: boolean;
+  id: string; related_id: string; value: string; label: string; is_primary: boolean;
 }
 interface PersonPhone {
-  id: string; related_id: string; phone_number: string; phone_type: string; is_primary: boolean;
+  id: string; related_id: string; value: string; label: string; is_primary: boolean;
 }
 interface PersonAddress {
   id: string; related_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean;
@@ -464,18 +465,18 @@ function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: s
 }
 
 // ── Contact Email Row ──
-function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; onDelete: (id: string) => void; onUpdate: (id: string, data: { email?: string; email_type?: string }) => void }) {
+function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; onDelete: (id: string) => void; onUpdate: (id: string, data: { value?: string; label?: string }) => void }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(entry.email);
-  const [draftType, setDraftType] = useState(entry.email_type);
+  const [draft, setDraft] = useState(entry.value);
+  const [draftType, setDraftType] = useState(entry.label);
 
-  useEffect(() => { setDraft(entry.email); setDraftType(entry.email_type); }, [entry.email, entry.email_type]);
+  useEffect(() => { setDraft(entry.value); setDraftType(entry.label); }, [entry.value, entry.label]);
 
   const save = () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
-    if (trimmed !== entry.email || draftType !== entry.email_type) {
-      onUpdate(entry.id, { email: trimmed, email_type: draftType });
+    if (trimmed !== entry.value || draftType !== entry.label) {
+      onUpdate(entry.id, { value: trimmed, label: draftType });
     }
     setEditing(false);
   };
@@ -491,9 +492,9 @@ function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; on
             <SelectItem value="personal" className="text-xs">Personal</SelectItem>
           </SelectContent>
         </Select>
-        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.email); setDraftType(entry.email_type); setEditing(false); } }} className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.value); setDraftType(entry.label); setEditing(false); } }} className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
         <button onClick={save} className="h-5 w-5 rounded flex items-center justify-center text-blue-600 hover:bg-blue-100 shrink-0"><Check className="h-3 w-3" /></button>
-        <button onClick={() => { setDraft(entry.email); setDraftType(entry.email_type); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
+        <button onClick={() => { setDraft(entry.value); setDraftType(entry.label); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
       </div>
     );
   }
@@ -501,8 +502,8 @@ function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; on
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group/row">
       <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.email_type}</span>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{entry.email}</span>
+      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.label}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{entry.value}</span>
       <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
         <Pencil className="h-3 w-3" />
       </button>
@@ -514,18 +515,18 @@ function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; on
 }
 
 // ── Contact Phone Row ──
-function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void; onUpdate: (id: string, data: { phone_number?: string; phone_type?: string }) => void }) {
+function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void; onUpdate: (id: string, data: { value?: string; label?: string }) => void }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(entry.phone_number);
-  const [draftType, setDraftType] = useState(entry.phone_type);
+  const [draft, setDraft] = useState(entry.value);
+  const [draftType, setDraftType] = useState(entry.label);
 
-  useEffect(() => { setDraft(entry.phone_number); setDraftType(entry.phone_type); }, [entry.phone_number, entry.phone_type]);
+  useEffect(() => { setDraft(entry.value); setDraftType(entry.label); }, [entry.value, entry.label]);
 
   const save = () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
-    if (trimmed !== entry.phone_number || draftType !== entry.phone_type) {
-      onUpdate(entry.id, { phone_number: trimmed, phone_type: draftType });
+    if (trimmed !== entry.value || draftType !== entry.label) {
+      onUpdate(entry.id, { value: trimmed, label: draftType });
     }
     setEditing(false);
   };
@@ -542,9 +543,9 @@ function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonP
             <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
           </SelectContent>
         </Select>
-        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.phone_number); setDraftType(entry.phone_type); setEditing(false); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.value); setDraftType(entry.label); setEditing(false); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
         <button onClick={save} className="h-5 w-5 rounded flex items-center justify-center text-blue-600 hover:bg-blue-100 shrink-0"><Check className="h-3 w-3" /></button>
-        <button onClick={() => { setDraft(entry.phone_number); setDraftType(entry.phone_type); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
+        <button onClick={() => { setDraft(entry.value); setDraftType(entry.label); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
       </div>
     );
   }
@@ -552,10 +553,10 @@ function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonP
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group/row">
       <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.phone_type}</span>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{formatPhoneNumber(entry.phone_number)}</span>
+      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.label}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{formatPhoneNumber(entry.value)}</span>
       {onCall && (
-        <button onClick={() => onCall(entry.phone_number)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
+        <button onClick={() => onCall(entry.value)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
           <PhoneCall className="h-3 w-3" />
         </button>
       )}
@@ -1189,7 +1190,7 @@ export default function PeopleDetailPanel({
   const { data: personEmails = [] } = useQuery({
     queryKey: ['person-emails', person.id],
     queryFn: async () => {
-      const { data } = await supabase.from('related_emails').select('*').eq('related_id', person.related_id).eq('related_type', 'people');
+      const { data } = await supabase.from('related_contact_points').select('*').eq('kind', 'email').eq('related_id', person.related_id).eq('related_type', 'people');
       return (data || []) as PersonEmail[];
     },
   });
@@ -1197,7 +1198,7 @@ export default function PeopleDetailPanel({
   const { data: personPhones = [] } = useQuery({
     queryKey: ['person-phones', person.id],
     queryFn: async () => {
-      const { data } = await supabase.from('related_phones').select('*').eq('related_id', person.related_id).eq('related_type', 'people');
+      const { data } = await supabase.from('related_contact_points').select('*').eq('kind', 'phone').eq('related_id', person.related_id).eq('related_type', 'people');
       return (data || []) as PersonPhone[];
     },
   });
@@ -1213,7 +1214,7 @@ export default function PeopleDetailPanel({
   // ── Satellite mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('related_emails').insert({ related_id: person.related_id, related_type: 'people', email, email_type: newEmailType });
+      const { error } = await supabase.from('related_contact_points').insert({ related_id: person.related_id, related_type: 'people', kind: 'email', value: email, label: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); setNewEmail(''); setShowAddEmail(false); toast.success('Email added'); },
@@ -1222,7 +1223,7 @@ export default function PeopleDetailPanel({
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('related_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('related_contact_points').delete().eq('kind', 'email').eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); toast.success('Email removed'); },
@@ -1231,7 +1232,7 @@ export default function PeopleDetailPanel({
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('related_phones').insert({ related_id: person.related_id, related_type: 'people', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('related_contact_points').insert({ related_id: person.related_id, related_type: 'people', kind: 'phone', value: phone, label: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); setNewPhone(''); setShowAddPhone(false); toast.success('Phone added'); },
@@ -1240,7 +1241,7 @@ export default function PeopleDetailPanel({
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('related_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('related_contact_points').delete().eq('kind', 'phone').eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); toast.success('Phone removed'); },
@@ -1279,8 +1280,8 @@ export default function PeopleDetailPanel({
   });
 
   const updateEmailMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { email?: string; email_type?: string } }) => {
-      const { error } = await supabase.from('related_emails').update(data).eq('id', id);
+    mutationFn: async ({ id, data }: { id: string; data: { value?: string; label?: string } }) => {
+      const { error } = await supabase.from('related_contact_points').update(data).eq('kind', 'email').eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); toast.success('Email updated'); },
@@ -1288,8 +1289,8 @@ export default function PeopleDetailPanel({
   });
 
   const updatePhoneMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { phone_number?: string; phone_type?: string } }) => {
-      const { error } = await supabase.from('related_phones').update(data).eq('id', id);
+    mutationFn: async ({ id, data }: { id: string; data: { value?: string; label?: string } }) => {
+      const { error } = await supabase.from('related_contact_points').update(data).eq('kind', 'phone').eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); toast.success('Phone updated'); },
@@ -1322,7 +1323,7 @@ export default function PeopleDetailPanel({
   }, [person, onPersonUpdate, queryClient]);
 
   return (
-    <aside className="shrink-0 w-[380px] border-l border-border/60 border-b-2 border-b-gray-300 dark:border-b-border bg-white dark:bg-card flex flex-col shadow-lg animate-in slide-in-from-right-5 duration-200">
+    <aside className="shrink-0 w-[380px] h-full min-h-0 border-l border-border/60 border-b-2 border-b-gray-300 dark:border-b-border bg-white dark:bg-card flex flex-col shadow-lg animate-in slide-in-from-right-5 duration-200">
       {/* ── Header ── */}
       <div className="shrink-0">
         {/* Top bar: X close + Follow/actions */}
@@ -1350,10 +1351,20 @@ export default function PeopleDetailPanel({
           <div className="flex items-center gap-3 mb-1">
             <CrmAvatar name={person.name} imageUrl={person.image_url} size="xl" />
             <div className="min-w-0 flex-1">
-              <h2 className="text-xl font-bold text-foreground truncate leading-tight">{person.name}</h2>
+              <h2
+                className={`text-xl font-bold text-foreground truncate leading-tight ${onExpand ? 'cursor-pointer hover:underline' : ''}`}
+                title={onExpand ? 'Open full record' : undefined}
+                onClick={onExpand}
+              >
+                {person.name}
+              </h2>
               <p className="text-sm text-muted-foreground mt-0.5">1 Contact</p>
               {person.company_name && (
-                <div className="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-full border border-border bg-white dark:bg-card">
+                <div
+                  className={`inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-full border border-border bg-white dark:bg-card ${person.company_id ? 'cursor-pointer hover:bg-muted/60 dark:hover:bg-muted' : ''}`}
+                  title={person.company_id ? 'Open company' : undefined}
+                  onClick={person.company_id ? () => navigate(`/admin/contacts/companies/expanded-view/${person.company_id}`) : undefined}
+                >
                   <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-xs font-medium text-foreground">{person.company_name}</span>
                 </div>
@@ -1383,7 +1394,7 @@ export default function PeopleDetailPanel({
 
       {/* ── Tab Content ── */}
       {activeTab === 'details' && (
-        <div>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="px-6 py-5 space-y-6">
 
             {/* Name */}
@@ -1507,13 +1518,13 @@ export default function PeopleDetailPanel({
       )}
 
       {activeTab === 'activity' && (
-        <div className="overflow-y-auto max-h-[400px] bg-[#eeedf3] dark:bg-violet-950/20">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-[#eeedf3] dark:bg-violet-950/20">
           <ActivityTabContent person={person} contactTypeConfig={contactTypeConfig} />
         </div>
       )}
 
       {activeTab === 'related' && (
-        <div className="overflow-y-auto max-h-[400px]">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <RelatedTabContent person={person} contactTypeConfig={contactTypeConfig} />
         </div>
       )}

@@ -292,13 +292,15 @@ export const useCrmMutations = (table: CrmTable) => {
 
         const [emailsRes, phonesRes, addressesRes] = await Promise.all([
           supabase
-            .from('related_emails')
-            .select('email, email_type, is_primary')
+            .from('related_contact_points')
+            .select('value, label, is_primary')
+            .eq('kind', 'email')
             .eq('related_id', sourceEntityId)
             .eq('related_type', relatedTypeValue),
           supabase
-            .from('related_phones')
-            .select('phone_number, phone_type, is_primary')
+            .from('related_contact_points')
+            .select('value, label, is_primary')
+            .eq('kind', 'phone')
             .eq('related_id', sourceEntityId)
             .eq('related_type', relatedTypeValue),
           supabase
@@ -313,14 +315,14 @@ export const useCrmMutations = (table: CrmTable) => {
         if (addressesRes.error) throw addressesRes.error;
 
         if (emailsRes.data && emailsRes.data.length > 0) {
-          const { error } = await supabase.from('related_emails').insert(
-            emailsRes.data.map((e) => ({ ...e, related_id: newEntityId, related_type: relatedTypeValue })),
+          const { error } = await supabase.from('related_contact_points').insert(
+            emailsRes.data.map((e) => ({ ...e, kind: 'email', related_id: newEntityId, related_type: relatedTypeValue })),
           );
           if (error) throw error;
         }
         if (phonesRes.data && phonesRes.data.length > 0) {
-          const { error } = await supabase.from('related_phones').insert(
-            phonesRes.data.map((p) => ({ ...p, related_id: newEntityId, related_type: relatedTypeValue })),
+          const { error } = await supabase.from('related_contact_points').insert(
+            phonesRes.data.map((p) => ({ ...p, kind: 'phone', related_id: newEntityId, related_type: relatedTypeValue })),
           );
           if (error) throw error;
         }

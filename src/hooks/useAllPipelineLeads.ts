@@ -65,27 +65,29 @@ export const useCompanies = () => {
       // Polymorphic lookups (no FK) — fetched in parallel
       const [phonesRes, emailsRes, dealsRes] = await Promise.all([
         supabase
-          .from('related_phones')
-          .select('related_id, phone_number, is_primary')
+          .from('related_contact_points')
+          .select('related_id, value, is_primary')
+          .eq('kind', 'phone')
           .eq('related_type', 'companies'),
         supabase
-          .from('related_emails')
-          .select('related_id, email, is_primary')
+          .from('related_contact_points')
+          .select('related_id, value, is_primary')
+          .eq('kind', 'email')
           .eq('related_type', 'companies'),
         supabase.from('deals').select('company_name').eq('pipeline', 'potential'),
       ]);
 
-      const phoneByCompany = new Map<string, { phone_number: string; is_primary: boolean | null }[]>();
+      const phoneByCompany = new Map<string, { value: string; is_primary: boolean | null }[]>();
       (phonesRes.data ?? []).forEach((r: any) => {
         const arr = phoneByCompany.get(r.related_id) ?? [];
-        arr.push({ phone_number: r.phone_number, is_primary: r.is_primary });
+        arr.push({ value: r.value, is_primary: r.is_primary });
         phoneByCompany.set(r.related_id, arr);
       });
 
-      const emailByCompany = new Map<string, { email: string; is_primary: boolean | null }[]>();
+      const emailByCompany = new Map<string, { value: string; is_primary: boolean | null }[]>();
       (emailsRes.data ?? []).forEach((r: any) => {
         const arr = emailByCompany.get(r.related_id) ?? [];
-        arr.push({ email: r.email, is_primary: r.is_primary });
+        arr.push({ value: r.value, is_primary: r.is_primary });
         emailByCompany.set(r.related_id, arr);
       });
 
@@ -96,14 +98,14 @@ export const useCompanies = () => {
       });
 
       return (companies ?? []).map((c: any) => {
-        // related_phones/related_emails maps are keyed by the canonical
+        // related_contact_points maps are keyed by the canonical
         // related.id, which is the company row's related_id (not its own id).
         const phones = phoneByCompany.get(c.related_id) ?? [];
         const emails = emailByCompany.get(c.related_id) ?? [];
         const primaryPhone =
-          phones.find((p) => p.is_primary)?.phone_number ?? phones[0]?.phone_number ?? null;
+          phones.find((p) => p.is_primary)?.value ?? phones[0]?.value ?? null;
         const primaryEmail =
-          emails.find((e) => e.is_primary)?.email ?? emails[0]?.email ?? null;
+          emails.find((e) => e.is_primary)?.value ?? emails[0]?.value ?? null;
         const emailDomain = primaryEmail ? primaryEmail.split('@')[1] ?? null : null;
 
         const primaryContact =

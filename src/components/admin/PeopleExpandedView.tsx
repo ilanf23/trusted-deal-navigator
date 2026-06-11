@@ -70,6 +70,7 @@ interface Person {
   name: string;
   title: string | null;
   company_name: string | null;
+  company_id: string | null;
   email: string | null;
   phone: string | null;
   contact_type: string | null;
@@ -106,16 +107,16 @@ interface Person {
 interface PersonEmail {
   id: string;
   related_id: string;
-  email: string;
-  email_type: string;
+  value: string;
+  label: string;
   is_primary: boolean;
 }
 
 interface PersonPhone {
   id: string;
   related_id: string;
-  phone_number: string;
-  phone_type: string;
+  value: string;
+  label: string;
   is_primary: boolean;
 }
 
@@ -784,19 +785,90 @@ function EditableRichTextField({
   );
 }
 
-// ── Contact Email Row ──
-function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; onDelete: (id: string) => void; onUpdate: (id: string, data: { email?: string; email_type?: string }) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(entry.email);
-  const [draftType, setDraftType] = useState(entry.email_type);
+// ── Primary Contact Row (edits the primary email/phone stored on the people record,
+//    rendered in the same list style as the additional related_contact_points rows) ──
+function PrimaryContactRow({
+  icon, value, field, personId, placeholder, onSaved, onCall, copyable, isPhone,
+}: {
+  icon: React.ReactNode; value: string; field: string;
+  personId: string; placeholder: string;
+  onSaved: (field: string, newValue: string) => void;
+  onCall?: (phone: string) => void;
+  copyable?: boolean;
+  isPhone?: boolean;
+}) {
+  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(personId, field, value, onSaved);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setDraft(entry.email); setDraftType(entry.email_type); }, [entry.email, entry.email_type]);
+  useEffect(() => {
+    if (editing) setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
+  }, [editing]);
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
+        <div className="text-blue-400 shrink-0">{icon}</div>
+        <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">Primary</span>
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
+          onBlur={save}
+          placeholder={placeholder}
+          disabled={saving}
+          className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
+        />
+        {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
+      </div>
+    );
+  }
+
+  const displayValue = isPhone && value ? formatPhoneNumber(value) : value;
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group/row">
+      <div className="text-muted-foreground shrink-0">{icon}</div>
+      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">Primary</span>
+      <span
+        className={`text-[13px] truncate flex-1 cursor-pointer ${value ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}
+        onClick={() => setEditing(true)}
+      >
+        {displayValue || placeholder}
+      </span>
+      {onCall && value && (
+        <button onClick={() => onCall(value)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
+          <PhoneCall className="h-3 w-3" />
+        </button>
+      )}
+      {copyable && value && (
+        <button
+          onClick={() => { navigator.clipboard.writeText(value); toast.success('Copied'); }}
+          className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-foreground hover:bg-muted opacity-0 group-hover/row:opacity-100 transition-all shrink-0"
+        >
+          <Copy className="h-3 w-3" />
+        </button>
+      )}
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
+        <Pencil className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+// ── Contact Email Row ──
+function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; onDelete: (id: string) => void; onUpdate: (id: string, data: { value?: string; label?: string }) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(entry.value);
+  const [draftType, setDraftType] = useState(entry.label);
+
+  useEffect(() => { setDraft(entry.value); setDraftType(entry.label); }, [entry.value, entry.label]);
 
   const save = () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
-    if (trimmed !== entry.email || draftType !== entry.email_type) {
-      onUpdate(entry.id, { email: trimmed, email_type: draftType });
+    if (trimmed !== entry.value || draftType !== entry.label) {
+      onUpdate(entry.id, { value: trimmed, label: draftType });
     }
     setEditing(false);
   };
@@ -812,9 +884,9 @@ function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; on
             <SelectItem value="personal" className="text-xs">Personal</SelectItem>
           </SelectContent>
         </Select>
-        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.email); setDraftType(entry.email_type); setEditing(false); } }} className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.value); setDraftType(entry.label); setEditing(false); } }} className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
         <button onClick={save} className="h-5 w-5 rounded flex items-center justify-center text-blue-600 hover:bg-blue-100 shrink-0"><Check className="h-3 w-3" /></button>
-        <button onClick={() => { setDraft(entry.email); setDraftType(entry.email_type); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
+        <button onClick={() => { setDraft(entry.value); setDraftType(entry.label); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
       </div>
     );
   }
@@ -822,8 +894,8 @@ function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; on
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group/row">
       <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.email_type}</span>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{entry.email}</span>
+      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.label}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{entry.value}</span>
       <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
         <Pencil className="h-3 w-3" />
       </button>
@@ -835,18 +907,18 @@ function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; on
 }
 
 // ── Contact Phone Row ──
-function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void; onUpdate: (id: string, data: { phone_number?: string; phone_type?: string }) => void }) {
+function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void; onUpdate: (id: string, data: { value?: string; label?: string }) => void }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(entry.phone_number);
-  const [draftType, setDraftType] = useState(entry.phone_type);
+  const [draft, setDraft] = useState(entry.value);
+  const [draftType, setDraftType] = useState(entry.label);
 
-  useEffect(() => { setDraft(entry.phone_number); setDraftType(entry.phone_type); }, [entry.phone_number, entry.phone_type]);
+  useEffect(() => { setDraft(entry.value); setDraftType(entry.label); }, [entry.value, entry.label]);
 
   const save = () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
-    if (trimmed !== entry.phone_number || draftType !== entry.phone_type) {
-      onUpdate(entry.id, { phone_number: trimmed, phone_type: draftType });
+    if (trimmed !== entry.value || draftType !== entry.label) {
+      onUpdate(entry.id, { value: trimmed, label: draftType });
     }
     setEditing(false);
   };
@@ -863,9 +935,9 @@ function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonP
             <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
           </SelectContent>
         </Select>
-        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.phone_number); setDraftType(entry.phone_type); setEditing(false); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.value); setDraftType(entry.label); setEditing(false); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
         <button onClick={save} className="h-5 w-5 rounded flex items-center justify-center text-blue-600 hover:bg-blue-100 shrink-0"><Check className="h-3 w-3" /></button>
-        <button onClick={() => { setDraft(entry.phone_number); setDraftType(entry.phone_type); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
+        <button onClick={() => { setDraft(entry.value); setDraftType(entry.label); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
       </div>
     );
   }
@@ -873,10 +945,10 @@ function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonP
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group/row">
       <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.phone_type}</span>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{formatPhoneNumber(entry.phone_number)}</span>
+      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.label}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{formatPhoneNumber(entry.value)}</span>
       {onCall && (
-        <button onClick={() => onCall(entry.phone_number)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
+        <button onClick={() => onCall(entry.value)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
           <PhoneCall className="h-3 w-3" />
         </button>
       )}
@@ -1213,6 +1285,7 @@ export default function PeopleExpandedView() {
   const [contactTypeDropdownOpen, setContactTypeDropdownOpen] = useState(false);
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false);
   const [visibilityDropdownOpen, setVisibilityDropdownOpen] = useState(false);
+  const [ownerDropdownOpen, setOwnerDropdownOpen] = useState(false);
   // Pipeline state removed — people are no longer connected to pipelines
   const [customContactTypes, setCustomContactTypes] = useState<CustomContactType[]>(loadCustomContactTypes);
   const [showCustomizeDialog, setShowCustomizeDialog] = useState(false);
@@ -1410,7 +1483,7 @@ export default function PeopleExpandedView() {
   const { data: personEmails = [] } = useQuery({
     queryKey: ['person-emails', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('related_emails').select('*').eq('related_id', personEntityId!).eq('related_type', 'people');
+      const { data } = await supabase.from('related_contact_points').select('*').eq('kind', 'email').eq('related_id', personEntityId!).eq('related_type', 'people');
       return (data || []) as PersonEmail[];
     },
     enabled: !!personEntityId,
@@ -1419,7 +1492,7 @@ export default function PeopleExpandedView() {
   const { data: personPhones = [] } = useQuery({
     queryKey: ['person-phones', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('related_phones').select('*').eq('related_id', personEntityId!).eq('related_type', 'people');
+      const { data } = await supabase.from('related_contact_points').select('*').eq('kind', 'phone').eq('related_id', personEntityId!).eq('related_type', 'people');
       return (data || []) as PersonPhone[];
     },
     enabled: !!personEntityId,
@@ -1839,7 +1912,7 @@ export default function PeopleExpandedView() {
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('related_emails').insert({ related_id: requireEntityId(person ?? {}, 'Person'), related_type: 'people', email, email_type: newEmailType });
+      const { error } = await supabase.from('related_contact_points').insert({ related_id: requireEntityId(person ?? {}, 'Person'), related_type: 'people', kind: 'email', value: email, label: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); setNewEmail(''); setShowAddEmail(false); toast.success('Email added'); },
@@ -1848,7 +1921,7 @@ export default function PeopleExpandedView() {
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('related_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('related_contact_points').delete().eq('kind', 'email').eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); toast.success('Email removed'); },
@@ -1857,7 +1930,7 @@ export default function PeopleExpandedView() {
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('related_phones').insert({ related_id: requireEntityId(person ?? {}, 'Person'), related_type: 'people', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('related_contact_points').insert({ related_id: requireEntityId(person ?? {}, 'Person'), related_type: 'people', kind: 'phone', value: phone, label: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); setNewPhone(''); setShowAddPhone(false); toast.success('Phone added'); },
@@ -1866,7 +1939,7 @@ export default function PeopleExpandedView() {
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('related_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('related_contact_points').delete().eq('kind', 'phone').eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); toast.success('Phone removed'); },
@@ -1905,8 +1978,8 @@ export default function PeopleExpandedView() {
   });
 
   const updateEmailMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { email?: string; email_type?: string } }) => {
-      const { error } = await supabase.from('related_emails').update(data).eq('id', id);
+    mutationFn: async ({ id, data }: { id: string; data: { value?: string; label?: string } }) => {
+      const { error } = await supabase.from('related_contact_points').update(data).eq('kind', 'email').eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); toast.success('Email updated'); },
@@ -1914,8 +1987,8 @@ export default function PeopleExpandedView() {
   });
 
   const updatePhoneMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { phone_number?: string; phone_type?: string } }) => {
-      const { error } = await supabase.from('related_phones').update(data).eq('id', id);
+    mutationFn: async ({ id, data }: { id: string; data: { value?: string; label?: string } }) => {
+      const { error } = await supabase.from('related_contact_points').update(data).eq('kind', 'phone').eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); toast.success('Phone updated'); },
@@ -1972,7 +2045,6 @@ export default function PeopleExpandedView() {
   const pendingTasks = tasks.filter(t => !t.completed_at);
   const completedTasks = tasks.filter(t => !!t.completed_at);
   const totalTasks = tasks.length;
-  const assignedName = person.assigned_to ? (teamMemberMap[person.assigned_to] ?? '\u2014') : '\u2014';
 
   function goBack() {
     navigate(-1);
@@ -1996,8 +2068,8 @@ export default function PeopleExpandedView() {
         {/* LEFT: Details — structured to match ExpandedLeftColumn (Pipeline). Plain div w/
             native overflow so long unbroken values don't push the column wider; Radix
             ScrollArea's table-display viewport doesn't constrain inner width. */}
-        <div className="w-full md:w-[255px] lg:w-[323px] xl:w-[408px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-y-auto overflow-x-hidden">
-          <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
+        <div className="w-full md:w-[255px] lg:w-[300px] xl:w-[340px] md:shrink-0 md:min-w-[204px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-y-auto overflow-x-hidden">
+          <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 py-6 space-y-6">
 
             {/* ── Close (X) ── */}
             <button
@@ -2024,7 +2096,22 @@ export default function PeopleExpandedView() {
                 <h2 className="text-xl font-semibold text-foreground break-words leading-tight">{person.name}</h2>
                 {(person.title || person.company_name) && (
                   <p className="text-sm text-muted-foreground mt-0.5 break-words">
-                    {[person.title, person.company_name].filter(Boolean).join(' at ')}
+                    {person.title}
+                    {person.title && person.company_name ? ' at ' : ''}
+                    {person.company_name && (
+                      person.company_id ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/admin/contacts/companies/expanded-view/${person.company_id}`)}
+                          className="text-primary hover:underline break-words text-left"
+                          title="Open company"
+                        >
+                          {person.company_name}
+                        </button>
+                      ) : (
+                        person.company_name
+                      )
+                    )}
                   </p>
                 )}
                 <div className="mt-2">
@@ -2164,29 +2251,66 @@ export default function PeopleExpandedView() {
               {/* Owner */}
               <div>
                 <span className="text-xs font-medium text-muted-foreground block mb-1">Owner</span>
-                {assignedName ? (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{assignedName}</span>
-                    <button
-                      onClick={async () => {
-                        await supabase.from('people').update({ assigned_to: null }).eq('id', person.id);
-                        handleFieldSaved('assigned_to', '');
-                      }}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <EditableField label="" value="" field="assigned_to" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Owner" noLabel />
-                )}
+                <div className="relative">
+                  <button
+                    onClick={() => setOwnerDropdownOpen(!ownerDropdownOpen)}
+                    className="flex items-center gap-2 w-full text-sm font-medium bg-transparent border-b border-border py-1.5 transition-colors hover:border-foreground/30"
+                  >
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    {person.assigned_to ? (
+                      <span className="text-blue-600 dark:text-blue-400">{teamMemberMap[person.assigned_to] ?? 'Unknown user'}</span>
+                    ) : (
+                      <span className="text-muted-foreground">Select owner</span>
+                    )}
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-auto" />
+                  </button>
+
+                  {ownerDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setOwnerDropdownOpen(false)} />
+                      <div className="absolute z-50 top-full left-0 mt-1.5 w-[280px] max-h-[320px] overflow-y-auto bg-popover border border-border rounded-xl shadow-lg">
+                        <div className="py-1">
+                          {teamMembers.map((m) => (
+                            <button
+                              key={m.id}
+                              onClick={async () => {
+                                const { error } = await supabase.from('people').update({ assigned_to: m.id }).eq('id', person.id);
+                                if (error) { toast.error('Failed to update owner'); return; }
+                                handleFieldSaved('assigned_to', m.id);
+                                setOwnerDropdownOpen(false);
+                              }}
+                              className={`flex items-center gap-3.5 w-full text-left px-4 py-3 text-sm transition-colors ${
+                                person.assigned_to === m.id ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400' : 'text-foreground hover:bg-muted/50'
+                              }`}
+                            >
+                              <User className="h-5 w-5 text-muted-foreground shrink-0" />
+                              <span className="font-medium">{m.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                        {person.assigned_to && (
+                          <div className="border-t border-border">
+                            <button
+                              onClick={async () => {
+                                const { error } = await supabase.from('people').update({ assigned_to: null }).eq('id', person.id);
+                                if (error) { toast.error('Failed to update owner'); return; }
+                                handleFieldSaved('assigned_to', '');
+                                setOwnerDropdownOpen(false);
+                              }}
+                              className="flex items-center gap-3.5 w-full text-left px-4 py-3 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
+                            >
+                              <X className="h-5 w-5 shrink-0" />
+                              <span className="font-medium">Remove owner</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
-              {/* Work Email */}
-              <EditableField label="Work Email" value={person.email ?? ''} field="email" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Email" copyable allowClear linkHref={person.email ? `mailto:${person.email}` : undefined} />
-
-              {/* Phone */}
-              <EditableField label="Phone" value={person.phone ?? ''} field="phone" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Phone" allowClear />
+              {/* Work Email / Phone moved into the consolidated Email / Phone sections below */}
 
               {/* LinkedIn */}
               <EditableField label="LinkedIn" value={person.linkedin ?? ''} field="linkedin" personId={person.id} onSaved={handleFieldSaved} placeholder="Add LinkedIn" allowClear linkHref={person.linkedin ? (person.linkedin.startsWith('http') ? person.linkedin : `https://${person.linkedin}`) : undefined} />
@@ -2258,16 +2382,25 @@ export default function PeopleExpandedView() {
               </div>
             </div>
 
-            {/* Email */}
+            {/* Email — primary + additional emails in one list, single add affordance */}
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Email</span>
               <div className="space-y-1">
+                <PrimaryContactRow
+                  icon={<AtSign className="h-3.5 w-3.5" />}
+                  value={person.email ?? ''}
+                  field="email"
+                  personId={person.id}
+                  placeholder="Add primary email"
+                  onSaved={handleFieldSaved}
+                  copyable
+                />
                 {personEmails.map((e) => (
                   <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} onUpdate={(id, data) => updateEmailMutation.mutate({ id, data })} />
                 ))}
                 {showAddEmail ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
-                    <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-950/20">
+                    <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0 ml-1" />
                     <Select value={newEmailType} onValueChange={setNewEmailType}>
                       <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -2275,7 +2408,9 @@ export default function PeopleExpandedView() {
                         <SelectItem value="personal" className="text-xs">Personal</SelectItem>
                       </SelectContent>
                     </Select>
-                    <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                    <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 min-w-0 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                    <button onClick={() => { if (newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); }} disabled={!newEmail.trim() || addEmailMutation.isPending} className="h-5 w-5 rounded flex items-center justify-center text-blue-600 hover:bg-blue-100 disabled:opacity-40 shrink-0"><Check className="h-3 w-3" /></button>
+                    <button onClick={() => { setShowAddEmail(false); setNewEmail(''); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
                   </div>
                 ) : (
                   <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Email</button>
@@ -2283,16 +2418,26 @@ export default function PeopleExpandedView() {
               </div>
             </div>
 
-            {/* Phone */}
+            {/* Phone — primary + additional phone numbers in one list, single add affordance */}
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Phone</span>
               <div className="space-y-1">
+                <PrimaryContactRow
+                  icon={<Phone className="h-3.5 w-3.5" />}
+                  value={person.phone ?? ''}
+                  field="phone"
+                  personId={person.id}
+                  placeholder="Add primary phone"
+                  onSaved={handleFieldSaved}
+                  onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}`)}
+                  isPhone
+                />
                 {personPhones.map((p) => (
                   <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}`)} onUpdate={(id, data) => updatePhoneMutation.mutate({ id, data })} />
                 ))}
                 {showAddPhone ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
-                    <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-950/20">
+                    <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0 ml-1" />
                     <Select value={newPhoneType} onValueChange={setNewPhoneType}>
                       <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -2301,7 +2446,9 @@ export default function PeopleExpandedView() {
                         <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
                       </SelectContent>
                     </Select>
-                    <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                    <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 min-w-0 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                    <button onClick={() => { if (newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); }} disabled={!newPhone.trim() || addPhoneMutation.isPending} className="h-5 w-5 rounded flex items-center justify-center text-blue-600 hover:bg-blue-100 disabled:opacity-40 shrink-0"><Check className="h-3 w-3" /></button>
+                    <button onClick={() => { setShowAddPhone(false); setNewPhone(''); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
                   </div>
                 ) : (
                   <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Phone</button>
@@ -2901,7 +3048,7 @@ export default function PeopleExpandedView() {
         {/* RIGHT: Related — same overflow pattern as the left column. Plain div w/ native
             overflow keeps the "+ Add file" button and other content inside the column;
             Radix ScrollArea's table-display viewport doesn't constrain inner width. */}
-        <div className="w-full md:w-[280px] lg:w-[310px] xl:w-[374px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-y-auto overflow-x-hidden">
+        <div className="w-full md:w-[260px] lg:w-[290px] xl:w-[320px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-y-auto overflow-x-hidden">
           <div>
             {/* Financial Summary */}
             <div className="px-4 md:px-5 xl:px-6 py-5 space-y-3">
@@ -3221,7 +3368,7 @@ export default function PeopleExpandedView() {
               <RelatedCallHistorySection
                 scopeKey={`person-${personId}`}
                 leadIds={[personId]}
-                phoneNumbers={[person?.phone, ...personPhones.map((p) => p.phone_number)]}
+                phoneNumbers={[person?.phone, ...personPhones.map((p) => p.value)]}
                 teamMembers={teamMembers}
               />
             )}

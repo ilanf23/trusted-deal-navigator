@@ -1500,37 +1500,40 @@ export type Database = {
           },
         ]
       }
-      related_emails: {
+      related_contact_points: {
         Row: {
           created_at: string
-          email: string
-          email_type: string | null
           related_id: string
           related_type: Database["public"]["Enums"]["related_type_enum"] | null
           id: string
           is_primary: boolean | null
+          kind: string
+          label: string | null
+          value: string
         }
         Insert: {
           created_at?: string
-          email: string
-          email_type?: string | null
           related_id: string
           related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_primary?: boolean | null
+          kind: string
+          label?: string | null
+          value: string
         }
         Update: {
           created_at?: string
-          email?: string
-          email_type?: string | null
           related_id?: string
           related_type?: Database["public"]["Enums"]["related_type_enum"] | null
           id?: string
           is_primary?: boolean | null
+          kind?: string
+          label?: string | null
+          value?: string
         }
         Relationships: [
           {
-            foreignKeyName: "related_emails_related_id_fkey"
+            foreignKeyName: "related_contact_points_related_id_fkey"
             columns: ["related_id"]
             isOneToOne: false
             referencedRelation: "related"
@@ -1623,77 +1626,6 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      related_orphans: {
-        Row: {
-          id: string
-          original_related_id: string
-          original_related_type: string | null
-          payload: Json
-          quarantined_at: string
-          reason: string
-          source_id: string
-          source_table: string
-        }
-        Insert: {
-          id?: string
-          original_related_id: string
-          original_related_type?: string | null
-          payload: Json
-          quarantined_at?: string
-          reason: string
-          source_id: string
-          source_table: string
-        }
-        Update: {
-          id?: string
-          original_related_id?: string
-          original_related_type?: string | null
-          payload?: Json
-          quarantined_at?: string
-          reason?: string
-          source_id?: string
-          source_table?: string
-        }
-        Relationships: []
-      }
-      related_phones: {
-        Row: {
-          created_at: string
-          related_id: string
-          related_type: Database["public"]["Enums"]["related_type_enum"] | null
-          id: string
-          is_primary: boolean | null
-          phone_number: string
-          phone_type: string | null
-        }
-        Insert: {
-          created_at?: string
-          related_id: string
-          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
-          id?: string
-          is_primary?: boolean | null
-          phone_number: string
-          phone_type?: string | null
-        }
-        Update: {
-          created_at?: string
-          related_id?: string
-          related_type?: Database["public"]["Enums"]["related_type_enum"] | null
-          id?: string
-          is_primary?: boolean | null
-          phone_number?: string
-          phone_type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "related_phones_related_id_fkey"
-            columns: ["related_id"]
-            isOneToOne: false
-            referencedRelation: "related"
             referencedColumns: ["id"]
           },
         ]

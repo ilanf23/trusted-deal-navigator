@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -118,8 +117,8 @@ export default function ProjectDetailPanel({
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['project-panel-lead-emails', project.related_id],
     queryFn: async () => {
-      const { data } = await supabase.from('related_emails').select('email').eq('related_id', project.related_id);
-      return (data || []) as { email: string }[];
+      const { data } = await supabase.from('related_contact_points').select('value').eq('kind', 'email').eq('related_id', project.related_id);
+      return (data || []) as { value: string }[];
     },
     enabled: !!project.related_id,
   });
@@ -127,7 +126,7 @@ export default function ProjectDetailPanel({
   const leadEmailAddresses = useMemo(() => {
     const allEmails: string[] = [];
     if (lead?.email) allEmails.push(lead.email.toLowerCase());
-    leadEmails.forEach(e => allEmails.push(e.email.toLowerCase()));
+    leadEmails.forEach(e => allEmails.push(e.value.toLowerCase()));
     return [...new Set(allEmails)];
   }, [lead, leadEmails]);
 
@@ -397,7 +396,7 @@ export default function ProjectDetailPanel({
   const subtitle = lead ? [lead.company_name, lead.opportunity_name || lead.name].filter(Boolean).join(' - ') : '';
 
   return (
-    <aside className="absolute top-0 right-0 z-30 w-[420px] border-l border-border/60 bg-white dark:bg-card flex flex-col shadow-xl max-h-full overflow-y-auto animate-in slide-in-from-right-5 duration-200">
+    <aside className="absolute top-0 right-0 z-30 w-[420px] h-full min-h-0 border-l border-border/60 bg-white dark:bg-card flex flex-col shadow-xl animate-in slide-in-from-right-5 duration-200">
       {/* ── Top bar ── */}
       <div className="shrink-0 flex items-center justify-between px-5 pt-4 pb-2">
         <button
@@ -444,7 +443,7 @@ export default function ProjectDetailPanel({
       </div>
 
       {/* ── Project identity ── */}
-      <div className="px-5 pb-3">
+      <div className="shrink-0 px-5 pb-3">
         <div className="flex items-start gap-3">
           <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
             <Briefcase className="h-6 w-6 text-gray-500 dark:text-gray-400" />
@@ -477,7 +476,10 @@ export default function ProjectDetailPanel({
       </div>
 
       {/* ── Tab content ── */}
-      <ScrollArea className="flex-1">
+      {/* Native overflow scroll (not Radix ScrollArea) — see src/components/admin/CLAUDE.md:
+          ScrollArea's viewport renders as display:table and never honors the flex height
+          constraint, so the panel content couldn't scroll. */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {/* ── DETAILS TAB ── */}
         {activeTab === 'details' && (
           <div className="px-5 py-5 space-y-5">
@@ -1011,7 +1013,7 @@ export default function ProjectDetailPanel({
             </div>
           </div>
         )}
-      </ScrollArea>
+      </div>
     </aside>
   );
 }

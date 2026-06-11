@@ -50,7 +50,7 @@ export interface LeadRelatedSidebarStageCfg {
 
 interface LeadEmailLite {
   id: string;
-  email: string;
+  value: string;
 }
 
 interface LeadContact {
@@ -510,7 +510,7 @@ export default function LeadRelatedSidebar({
       if (lead.company_name) {
         results.push(...await searchRelatedPeopleByCompany(relatedType, lead.company_name));
       }
-      const allEmails = [lead.email, ...leadEmails.map(e => e.email)].filter(Boolean) as string[];
+      const allEmails = [lead.email, ...leadEmails.map(e => e.value)].filter(Boolean) as string[];
       const domains = new Set<string>();
       for (const email of allEmails) {
         const domain = email.split('@')[1]?.toLowerCase();

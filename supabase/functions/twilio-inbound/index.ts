@@ -331,19 +331,23 @@ Deno.serve(async (req) => {
       if (fromNumber) {
         const normalized = fromNumber.replace(/\D/g, '').slice(-10);
         // Two-pass caller lookup:
-        //   1. related_phones — polymorphic, multi-number table. Preferred
-        //      because a contact can have several numbers (mobile/work/home).
-        //      related_id now points at the canonical related table, so we
-        //      embed related and read source_id (the actual people.id).
+        //   1. related_contact_points (kind='phone') — polymorphic, multi-value
+        //      table. Preferred because a contact can have several numbers
+        //      (mobile/work/home). related_id now points at the canonical
+        //      related table, so we embed related and read source_id (the
+        //      actual people.id). Note: the embedded related.kind (people/
+        //      companies/deal) is distinct from the contact point's own kind
+        //      column ('email'/'phone') filtered below.
         //   2. people.phone — direct column fallback, for contacts created
-        //      from the People UI without an related_phones row. people is the
+        //      from the People UI without a related_contact_points row. people is the
         //      source of truth for caller identity per product spec, so a
         //      direct match still resolves to a "real" caller.
         // First match wins; we don't need to disambiguate.
         const { data: phoneMatch } = await sb
-          .from('related_phones')
+          .from('related_contact_points')
           .select('related_id, related!inner(kind, source_id)')
-          .ilike('phone_number', `%${normalized}`)
+          .eq('kind', 'phone')
+          .ilike('value', `%${normalized}`)
           .eq('related_type', 'people')
           .limit(1)
           .maybeSingle();

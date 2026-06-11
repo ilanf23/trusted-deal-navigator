@@ -57,8 +57,8 @@ interface CallHistoryRow {
   user_id: string | null;
   pipeline: { name: string; company_name: string | null } | null;
   // Matched CRM contact resolved by the customer-side phone number against
-  // public.people (direct people.phone match first, related_phones polymorphic
-  // table second). Null when nothing matches — the UI falls back to the
+  // public.people (direct people.phone match first, related_contact_points
+  // polymorphic table second). Null when nothing matches — the UI falls back to the
   // pipeline name, then to the raw phone, then to "Unknown caller".
   contact: { id: string; name: string; company_name: string | null } | null;
   source: 'twilio' | 'communications';
@@ -351,11 +351,12 @@ Deno.serve(async (req) => {
     // place depending on how the contact was created:
     //   1. people.phone — direct column; populated when a contact was created
     //      from the People UI with a single phone field.
-    //   2. related_phones — polymorphic, multi-number table; populated when a
-    //      contact has multiple numbers (mobile/work/home) and from imports.
+    //   2. related_contact_points (kind='phone') — polymorphic, multi-value
+    //      table; populated when a contact has multiple numbers
+    //      (mobile/work/home) and from imports.
     // Both are matched on the LAST 10 DIGITS to ignore +1, parens, dashes,
     // spaces. people.phone wins ties — contacts created directly in the People
-    // UI should display "as themselves" even if a stale related_phones row
+    // UI should display "as themselves" even if a stale related_contact_points row
     // points the same number at another related.
     const lastTen = (raw: string): string => raw.replace(/\D/g, '').slice(-10);
 
@@ -394,7 +395,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Path 2: related_phones for any phone we still haven't resolved. Only
+      // Path 2: related_contact_points (kind='phone') for any phone we still
+      // haven't resolved. Only
       // pull rows whose related_type points at the people table (enum value is
       // 'people', not 'person'). Skipping the other related_type values
       // (companies, potential, underwriting, lender_management, pipeline)
@@ -405,18 +407,21 @@ Deno.serve(async (req) => {
         // Try last-10-digit ilike on each missing number. Single OR-clause is
         // fine for the bounded missing-set; PostgREST builds it server-side.
         const orClause = missing
-          .map((p) => `phone_number.ilike.%${p}`)
+          .map((p) => `value.ilike.%${p}`)
           .join(',');
-        // related_phones.related_id now points at the canonical related table;
-        // the actual people.id lives in related.source_id, so embed related
-        // via the FK and resolve through source_id.
+        // related_contact_points.related_id now points at the canonical related
+        // table; the actual people.id lives in related.source_id, so embed
+        // related via the FK and resolve through source_id. Note: the embedded
+        // related.kind (people/companies/deal) is distinct from the contact
+        // point's own kind column ('email'/'phone') filtered here.
         const { data: ephones, error: ephonesErr } = await supabase
-          .from('related_phones')
-          .select('related_id, related_type, phone_number, related!inner(kind, source_id)')
+          .from('related_contact_points')
+          .select('related_id, related_type, value, related!inner(kind, source_id)')
+          .eq('kind', 'phone')
           .eq('related_type', 'people')
           .or(orClause);
         if (ephonesErr) {
-          console.error('[twilio-call-history] related_phones lookup failed:', ephonesErr.message);
+          console.error('[twilio-call-history] related_contact_points lookup failed:', ephonesErr.message);
         } else if (ephones && ephones.length > 0) {
           // With !inner the embed types as an object, but handle array shape
           // defensively in case the client returns one.
@@ -445,8 +450,8 @@ Deno.serve(async (req) => {
               }
             }
           }
-          for (const e of ephones as Array<{ phone_number: string; related?: { source_id: string | null } | Array<{ source_id: string | null }> | null }>) {
-            const key = lastTen(e.phone_number);
+          for (const e of ephones as Array<{ value: string; related?: { source_id: string | null } | Array<{ source_id: string | null }> | null }>) {
+            const key = lastTen(e.value);
             if (key.length !== 10) continue;
             if (contactByLastTen.has(key)) continue;
             const sourceId = sourceIdOf(e);

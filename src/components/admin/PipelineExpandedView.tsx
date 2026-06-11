@@ -558,7 +558,7 @@ export default function PipelineExpandedView() {
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['pipeline-lead-emails', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('related_emails').select('*').eq('related_id', dealEntityId!).eq('related_type', 'deal');
+      const { data } = await supabase.from('related_contact_points').select('*').eq('kind', 'email').eq('related_id', dealEntityId!).eq('related_type', 'deal');
       return (data || []) as LeadEmail[];
     },
     enabled: !!dealEntityId,
@@ -567,7 +567,7 @@ export default function PipelineExpandedView() {
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['pipeline-lead-phones', leadId],
     queryFn: async () => {
-      const { data } = await supabase.from('related_phones').select('*').eq('related_id', dealEntityId!).eq('related_type', 'deal');
+      const { data } = await supabase.from('related_contact_points').select('*').eq('kind', 'phone').eq('related_id', dealEntityId!).eq('related_type', 'deal');
       return (data || []) as LeadPhone[];
     },
     enabled: !!dealEntityId,
@@ -596,7 +596,7 @@ export default function PipelineExpandedView() {
     if (!lead) return [];
     const allEmails: string[] = [];
     if (lead.email) allEmails.push(lead.email.toLowerCase());
-    leadEmails.forEach(e => allEmails.push(e.email.toLowerCase()));
+    leadEmails.forEach(e => allEmails.push(e.value.toLowerCase()));
     return [...new Set(allEmails)];
   }, [lead, leadEmails]);
 
@@ -710,7 +710,7 @@ export default function PipelineExpandedView() {
   const addEmailMutation = useMutation({
     mutationFn: async ({ email, type }: { email: string; type: string }) => {
       if (!dealEntityId) return;
-      const { error } = await supabase.from('related_emails').insert({ related_id: dealEntityId, related_type: 'deal', email, email_type: type });
+      const { error } = await supabase.from('related_contact_points').insert({ related_id: dealEntityId, related_type: 'deal', kind: 'email', value: email, label: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -721,7 +721,7 @@ export default function PipelineExpandedView() {
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('related_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('related_contact_points').delete().eq('kind', 'email').eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -733,7 +733,7 @@ export default function PipelineExpandedView() {
   const addPhoneMutation = useMutation({
     mutationFn: async ({ phone, type }: { phone: string; type: string }) => {
       if (!dealEntityId) return;
-      const { error } = await supabase.from('related_phones').insert({ related_id: dealEntityId, related_type: 'deal', phone_number: phone, phone_type: type });
+      const { error } = await supabase.from('related_contact_points').insert({ related_id: dealEntityId, related_type: 'deal', kind: 'phone', value: phone, label: type });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -744,7 +744,7 @@ export default function PipelineExpandedView() {
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('related_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('related_contact_points').delete().eq('kind', 'phone').eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => {

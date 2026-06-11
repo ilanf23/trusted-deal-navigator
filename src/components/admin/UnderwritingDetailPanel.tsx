@@ -33,8 +33,8 @@ import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fn
 type Lead = Database['public']['Tables']['deals']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
-interface LeadEmail { id: string; related_id: string; related_type: string; email: string; email_type: string; is_primary: boolean; }
-interface LeadPhone { id: string; related_id: string; related_type: string; phone_number: string; phone_type: string; is_primary: boolean; }
+interface LeadEmail { id: string; related_id: string; related_type: string; kind: string; value: string; label: string; is_primary: boolean; }
+interface LeadPhone { id: string; related_id: string; related_type: string; kind: string; value: string; label: string; is_primary: boolean; }
 interface LeadAddress { id: string; related_id: string; related_type: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean; }
 
 interface StageConfigEntry {
@@ -445,16 +445,16 @@ function ContactEmailRow({ entry, onDelete }: { entry: LeadEmail; onDelete: (id:
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
-        {entry.email_type}
+        {entry.label}
       </Badge>
       <button
-        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.email)}`); }}
+        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.value)}`); }}
         className="text-[13px] text-foreground font-medium truncate flex-1 text-left hover:underline hover:text-blue-600 transition-colors"
       >
-        {entry.email}
+        {entry.value}
       </button>
       <button
-        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.email)}`); }}
+        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.value)}`); }}
         className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
         title="Compose in Gmail"
       >
@@ -473,11 +473,11 @@ function ContactPhoneRow({ entry, onDelete, onCall }: { entry: LeadPhone; onDele
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
-        {entry.phone_type}
+        {entry.label}
       </Badge>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.phone_number)}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.value)}</span>
       {onCall && (
-        <button onClick={() => onCall(entry.phone_number)} title="Call this number" className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <button onClick={() => onCall(entry.value)} title="Call this number" className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           <PhoneCall className="h-3 w-3 text-green-600 hover:text-green-700" />
         </button>
       )}
@@ -1081,17 +1081,17 @@ export default function UnderwritingDetailPanel({
 
   // ── Satellite queries ──
   const { data: leadEmails = [] } = useQuery({
-    queryKey: ['related-emails', lead.id],
+    queryKey: ['related-contact-points', 'email', lead.id],
     queryFn: async () => {
-      const { data } = await supabase.from('related_emails').select('*').eq('related_id', lead.related_id).eq('related_type', 'deal');
+      const { data } = await supabase.from('related_contact_points').select('*').eq('kind', 'email').eq('related_id', lead.related_id).eq('related_type', 'deal');
       return (data || []) as LeadEmail[];
     },
   });
 
   const { data: leadPhones = [] } = useQuery({
-    queryKey: ['related-phones', lead.id],
+    queryKey: ['related-contact-points', 'phone', lead.id],
     queryFn: async () => {
-      const { data } = await supabase.from('related_phones').select('*').eq('related_id', lead.related_id).eq('related_type', 'deal');
+      const { data } = await supabase.from('related_contact_points').select('*').eq('kind', 'phone').eq('related_id', lead.related_id).eq('related_type', 'deal');
       return (data || []) as LeadPhone[];
     },
   });
@@ -1107,11 +1107,11 @@ export default function UnderwritingDetailPanel({
   // ── Satellite mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('related_emails').insert({ related_id: lead.related_id, related_type: 'deal', email, email_type: newEmailType });
+      const { error } = await supabase.from('related_contact_points').insert({ related_id: lead.related_id, related_type: 'deal', kind: 'email', value: email, label: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['related-emails', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['related-contact-points', 'email', lead.id] });
       setNewEmail('');
       setShowAddEmail(false);
       toast.success('Email added');
@@ -1120,22 +1120,22 @@ export default function UnderwritingDetailPanel({
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('related_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('related_contact_points').delete().eq('kind', 'email').eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['related-emails', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['related-contact-points', 'email', lead.id] });
       toast.success('Email removed');
     },
   });
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('related_phones').insert({ related_id: lead.related_id, related_type: 'deal', phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('related_contact_points').insert({ related_id: lead.related_id, related_type: 'deal', kind: 'phone', value: phone, label: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['related-phones', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['related-contact-points', 'phone', lead.id] });
       setNewPhone('');
       setShowAddPhone(false);
       toast.success('Phone added');
@@ -1144,11 +1144,11 @@ export default function UnderwritingDetailPanel({
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('related_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('related_contact_points').delete().eq('kind', 'phone').eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['related-phones', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['related-contact-points', 'phone', lead.id] });
       toast.success('Phone removed');
     },
   });
