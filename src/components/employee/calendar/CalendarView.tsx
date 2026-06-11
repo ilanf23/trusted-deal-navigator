@@ -64,6 +64,10 @@ export function CalendarView() {
   const calendarRef = useRef<FullCalendar>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
+  // The day highlighted in the mini calendar. Kept separate from currentDate,
+  // which tracks the main view's range start (first of month/week) via datesSet
+  // and would otherwise snap the mini-calendar selection back after every click.
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [calendarTitle, setCalendarTitle] = useState('');
 
@@ -164,6 +168,7 @@ export function CalendarView() {
   }, []);
 
   const handleToday = useCallback(() => {
+    setSelectedDate(new Date());
     const api = calendarRef.current?.getApi();
     if (api) {
       api.today();
@@ -185,6 +190,7 @@ export function CalendarView() {
   }, []);
 
   const handleDateSelect = useCallback((date: Date) => {
+    setSelectedDate(date);
     const api = calendarRef.current?.getApi();
     if (api) {
       api.gotoDate(date);
@@ -417,6 +423,7 @@ export function CalendarView() {
         <CalendarSidebar
           open={sidebarOpen}
           currentDate={currentDate}
+          selectedDate={selectedDate}
           onDateSelect={handleDateSelect}
           onCreateEvent={handleCreateEvent}
           filters={calendarFilters}

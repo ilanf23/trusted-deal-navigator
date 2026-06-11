@@ -1,7 +1,8 @@
 import { Mail, Loader2, Star } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { GmailEmail, extractSenderName, formatEmailDate } from './gmailHelpers';
+import { GmailEmail, GmailLabel, extractSenderName, formatEmailDate } from './gmailHelpers';
+import { GmailLabelChips } from './GmailLabelChips';
 
 interface GmailEmailListProps {
   emails: GmailEmail[];
@@ -12,6 +13,8 @@ interface GmailEmailListProps {
   renderEmailExtra?: (email: GmailEmail) => React.ReactNode;
   /** Optional custom row class resolver */
   rowClassName?: (email: GmailEmail) => string;
+  /** User-created Gmail labels keyed by id (for label chips) */
+  labelsById?: Record<string, GmailLabel>;
 }
 
 export function GmailEmailList({
@@ -21,6 +24,7 @@ export function GmailEmailList({
   onSelectEmail,
   renderEmailExtra,
   rowClassName,
+  labelsById,
 }: GmailEmailListProps) {
   if (loading) {
     return (
@@ -68,7 +72,12 @@ export function GmailEmailList({
                       {formatEmailDate(email.date)}
                     </span>
                   </div>
-                  <p className="text-sm truncate">{email.subject}</p>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {labelsById && (
+                      <GmailLabelChips labelIds={email.labels} labelsById={labelsById} max={3} />
+                    )}
+                    <p className="text-sm truncate">{email.subject}</p>
+                  </div>
                   <p className="text-xs text-muted-foreground truncate">
                     {email.snippet}
                   </p>

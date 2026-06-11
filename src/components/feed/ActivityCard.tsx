@@ -138,8 +138,8 @@ function StagePill({ label, tone }: { label: string; tone: 'from' | 'to' }) {
       className={cn(
         'inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold tracking-normal',
         tone === 'from'
-          ? 'bg-gray-100 text-gray-500 line-through decoration-gray-400'
-          : 'bg-purple-50 text-[#3b2778]'
+          ? 'bg-gray-100 dark:bg-muted text-gray-500 dark:text-muted-foreground line-through decoration-gray-400 dark:decoration-gray-500'
+          : 'bg-purple-50 dark:bg-purple-900/40 text-[#3b2778] dark:text-violet-300'
       )}
     >
       {label}
@@ -151,7 +151,7 @@ function StageChangePreview({ from, to }: { from: string; to: string }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <StagePill label={from} tone="from" />
-      <ArrowRight className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden="true" />
+      <ArrowRight className="w-3.5 h-3.5 text-gray-400 dark:text-muted-foreground shrink-0" aria-hidden="true" />
       <StagePill label={to} tone="to" />
     </div>
   );
@@ -169,9 +169,9 @@ function ActivityContent({ content }: { content: string }) {
   const hasChecklist = /\[[ xX]\]/.test(content);
   if (!hasChecklist) {
     if (/<[a-z][\s\S]*?>/i.test(content)) {
-      return <HtmlContent value={content} className="text-[14px] text-gray-600 leading-relaxed" />;
+      return <HtmlContent value={content} className="text-[14px] text-gray-600 dark:text-muted-foreground leading-relaxed" />;
     }
-    return <span className="text-[14px] text-gray-600 leading-relaxed">{content}</span>;
+    return <span className="text-[14px] text-gray-600 dark:text-muted-foreground leading-relaxed">{content}</span>;
   }
 
   const plain = content
@@ -185,7 +185,7 @@ function ActivityContent({ content }: { content: string }) {
 
   return (
     <div className="space-y-1">
-      {title && <span className="font-medium text-gray-700 text-sm">{title}</span>}
+      {title && <span className="font-medium text-gray-700 dark:text-gray-300 text-sm">{title}</span>}
       {items.map((item, i) => {
         const checked = /^\[[xX]\]/.test(item);
         const text = item.replace(/^\[[ xX]\]\s*/, '');
@@ -194,9 +194,9 @@ function ActivityContent({ content }: { content: string }) {
             {checked ? (
               <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
             ) : (
-              <Square className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+              <Square className="w-3.5 h-3.5 text-gray-300 dark:text-gray-600 shrink-0" />
             )}
-            <span className={cn('text-xs', checked && 'line-through text-gray-400')}>
+            <span className={cn('text-xs', checked && 'line-through text-gray-400 dark:text-gray-500')}>
               {text}
             </span>
           </div>
@@ -210,10 +210,10 @@ function EmailContentPreview({ subject, content, isExpanded }: { subject?: strin
   return (
     <div>
       {subject && (
-        <p className="text-[14px] font-semibold text-gray-900 mb-1 tracking-normal">{subject}</p>
+        <p className="text-[14px] font-semibold text-gray-900 dark:text-foreground mb-1 tracking-normal">{subject}</p>
       )}
       {content && (
-        <p className={cn('text-[14px] text-gray-600 leading-relaxed tracking-normal', !isExpanded && 'line-clamp-2')}>
+        <p className={cn('text-[14px] text-gray-600 dark:text-muted-foreground leading-relaxed tracking-normal', !isExpanded && 'line-clamp-2')}>
           {content}
         </p>
       )}
@@ -249,12 +249,12 @@ function ActivityAvatar({
 }) {
   return (
     <div className="relative w-10 h-10 shrink-0">
-      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-sm font-semibold">
+      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-muted flex items-center justify-center text-gray-600 dark:text-muted-foreground text-sm font-semibold">
         {actorInitial}
       </div>
       <div
         className={cn(
-          'absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-white',
+          'absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-card',
           typeBg
         )}
         aria-hidden="true"
@@ -286,15 +286,15 @@ function ActivityHeader({
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-[14px] font-semibold text-gray-900 tracking-normal">{actorName}</span>
-          <span className="text-[14px] font-normal text-gray-500 tracking-normal">
+          <span className="text-[14px] font-semibold text-gray-900 dark:text-foreground tracking-normal">{actorName}</span>
+          <span className="text-[14px] font-normal text-gray-500 dark:text-muted-foreground tracking-normal">
             {isEmail ? (
               <>
                 emailed{' '}
                 <button
                   type="button"
                   onClick={onContactClick}
-                  className="inline-flex items-baseline gap-1 align-baseline text-[#3b2778] font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-sm"
+                  className="inline-flex items-baseline gap-1 align-baseline text-[#3b2778] dark:text-violet-300 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-sm"
                   role="link"
                   aria-label={`View ${leadName}`}
                 >
@@ -315,7 +315,7 @@ function ActivityHeader({
           </span>
         </div>
       </div>
-      <span className="text-[12px] font-normal text-gray-500 tracking-normal tabular-nums shrink-0 whitespace-nowrap pt-0.5">
+      <span className="text-[12px] font-normal text-gray-500 dark:text-muted-foreground tracking-normal tabular-nums shrink-0 whitespace-nowrap pt-0.5">
         {timestamp}
       </span>
     </div>
@@ -347,14 +347,14 @@ function ActivityContact({
       <button
         type="button"
         onClick={onClick}
-        className="text-[14px] font-medium text-[#3b2778] hover:underline truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-sm"
+        className="text-[14px] font-medium text-[#3b2778] dark:text-violet-300 hover:underline truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-sm"
         role="link"
         aria-label={`View ${leadName}`}
       >
         {leadName}
       </button>
       {leadCompany && (
-        <span className="text-[13px] text-gray-400 truncate tracking-normal">— {leadCompany}</span>
+        <span className="text-[13px] text-gray-400 dark:text-muted-foreground truncate tracking-normal">— {leadCompany}</span>
       )}
     </div>
   );
@@ -374,7 +374,7 @@ function CallStatusLine({ direction, subType }: { direction?: string; subType?: 
   return (
     <div className="flex items-center gap-2">
       <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', dotClass)} aria-hidden="true" />
-      <span className="text-[12px] text-gray-500 tracking-normal">{label}</span>
+      <span className="text-[12px] text-gray-500 dark:text-muted-foreground tracking-normal">{label}</span>
     </div>
   );
 }
@@ -396,7 +396,7 @@ function PrimaryActionButton({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className="inline-flex items-center gap-1.5 h-8 px-3.5 text-[12px] font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-full transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+      className="inline-flex items-center gap-1.5 h-8 px-3.5 text-[12px] font-medium text-white bg-gray-900 hover:bg-gray-800 dark:text-gray-900 dark:bg-gray-100 dark:hover:bg-white rounded-full transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
     >
       <Icon className="w-3.5 h-3.5" />
       {label}
@@ -421,7 +421,7 @@ function SecondaryActionButton({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className="inline-flex items-center gap-1.5 h-8 px-3.5 text-[12px] font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 rounded-full transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+      className="inline-flex items-center gap-1.5 h-8 px-3.5 text-[12px] font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent border border-gray-200 dark:border-border hover:bg-gray-50 dark:hover:bg-muted hover:border-gray-300 dark:hover:border-gray-600 rounded-full transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
     >
       <Icon className="w-3.5 h-3.5" />
       {label}
@@ -536,10 +536,10 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead: _onViewLead 
     <div
       onClick={onToggle}
       className={cn(
-        'bg-white rounded-2xl border p-4 mb-2 cursor-pointer transition-shadow duration-150',
+        'bg-white dark:bg-card rounded-2xl border p-4 mb-2 cursor-pointer transition-shadow duration-150',
         isExpanded
-          ? 'border-gray-200 shadow-md ring-1 ring-purple-100'
-          : 'border-gray-200 hover:shadow-sm hover:bg-gray-50/50'
+          ? 'border-gray-200 dark:border-border shadow-md ring-1 ring-purple-100 dark:ring-purple-900/40'
+          : 'border-gray-200 dark:border-border hover:shadow-sm hover:bg-gray-50/50 dark:hover:bg-muted/30'
       )}
     >
       <div className="flex gap-3">
@@ -570,7 +570,7 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead: _onViewLead 
 
             {/* CC count — subtle inline for emails */}
             {isEmail && ccList.length > 0 && (
-              <div className="flex items-center gap-1.5 text-[12px] text-gray-500">
+              <div className="flex items-center gap-1.5 text-[12px] text-gray-500 dark:text-muted-foreground">
                 <span className="font-medium">CC:</span>
                 <span className="truncate">{ccList.map(c => c.name).join(', ')}</span>
               </div>
@@ -646,14 +646,14 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead: _onViewLead 
                   className={cn(
                     'inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2',
                     showComments
-                      ? 'bg-purple-50 text-[#3b2778]'
-                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                      ? 'bg-purple-50 text-[#3b2778] dark:bg-purple-900/40 dark:text-violet-300'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-gray-300'
                   )}
                 >
                   <MessageSquare className="w-4 h-4" />
                 </button>
                 {comments.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 flex items-center justify-center rounded-full bg-[#3b2778] text-white text-[9px] font-bold ring-2 ring-white">
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 flex items-center justify-center rounded-full bg-[#3b2778] dark:bg-violet-500 text-white text-[9px] font-bold ring-2 ring-white dark:ring-card">
                     {comments.length}
                   </span>
                 )}
@@ -667,8 +667,8 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead: _onViewLead 
                   className={cn(
                     'inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2',
                     showEmojiPicker
-                      ? 'bg-amber-50 text-amber-600'
-                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                      ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-gray-300'
                   )}
                 >
                   <SmilePlus className="w-4 h-4" />
@@ -677,7 +677,7 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead: _onViewLead 
                   <div
                     role="listbox"
                     aria-label="Choose a reaction"
-                    className="absolute right-0 top-full mt-2 min-w-[200px] bg-white rounded-xl border border-gray-200 shadow-lg z-50 p-3 animate-in fade-in-0 duration-150"
+                    className="absolute right-0 top-full mt-2 min-w-[200px] bg-white dark:bg-popover rounded-xl border border-gray-200 dark:border-border shadow-lg z-50 p-3 animate-in fade-in-0 duration-150"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="grid grid-cols-4 gap-2">
@@ -688,7 +688,7 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead: _onViewLead 
                           aria-label={emoji.key}
                           aria-selected="false"
                           onClick={() => handleEmojiClick(emoji.key)}
-                          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors text-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-muted transition-colors text-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
                         >
                           {emoji.char}
                         </button>
@@ -711,8 +711,8 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead: _onViewLead 
                   className={cn(
                     'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2',
                     r.reactedByMe
-                      ? 'bg-purple-50 border-purple-200 text-[#3b2778]'
-                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                      ? 'bg-purple-50 border-purple-200 text-[#3b2778] dark:bg-purple-900/40 dark:border-purple-800 dark:text-violet-300'
+                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-transparent dark:border-border dark:text-gray-300 dark:hover:bg-muted'
                   )}
                   title={r.users.join(', ')}
                   aria-label={`${r.count} ${r.emoji} reaction${r.count > 1 ? 's' : ''}`}
@@ -777,10 +777,10 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead: _onViewLead 
 function MetaRow({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-2.5 min-w-0">
-      <Icon className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" aria-hidden="true" />
+      <Icon className="w-3.5 h-3.5 text-gray-400 dark:text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">{label}</div>
-        <div className="text-[13px] text-gray-800 tracking-normal break-words">{children}</div>
+        <div className="text-[11px] font-medium text-gray-400 dark:text-muted-foreground uppercase tracking-wide">{label}</div>
+        <div className="text-[13px] text-gray-800 dark:text-foreground tracking-normal break-words">{children}</div>
       </div>
     </div>
   );
@@ -808,7 +808,7 @@ function ExpandedDetails({
   const directionLabel = direction ? (direction === 'outbound' ? 'Outgoing' : 'Incoming') : null;
 
   return (
-    <div className="border-t border-gray-100 pt-3 mt-1 space-y-3" onClick={(e) => e.stopPropagation()}>
+    <div className="border-t border-gray-100 dark:border-border pt-3 mt-1 space-y-3" onClick={(e) => e.stopPropagation()}>
       {/* Metadata grid */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-3">
         <MetaRow icon={Clock} label="When">
@@ -844,7 +844,7 @@ function ExpandedDetails({
             <a
               href={`tel:${activity.phoneNumber}`}
               onClick={(e) => e.stopPropagation()}
-              className="text-[#3b2778] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-sm"
+              className="text-[#3b2778] dark:text-violet-300 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-sm"
             >
               {activity.phoneNumber}
             </a>
@@ -861,8 +861,8 @@ function ExpandedDetails({
       {/* Stage badge */}
       {activity.stage && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Stage</span>
-          <span className="inline-flex items-center px-2.5 py-1 bg-purple-50 text-[#3b2778] rounded-full text-[11px] font-semibold">
+          <span className="text-[11px] font-medium text-gray-400 dark:text-muted-foreground uppercase tracking-wide">Stage</span>
+          <span className="inline-flex items-center px-2.5 py-1 bg-purple-50 text-[#3b2778] dark:bg-purple-900/40 dark:text-violet-300 rounded-full text-[11px] font-semibold">
             {activity.stage}
           </span>
         </div>
@@ -871,7 +871,7 @@ function ExpandedDetails({
       {/* CC recipients (full list with avatars) */}
       {isEmail && ccList.length > 0 && (
         <div className="space-y-2">
-          <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">CC ({ccList.length})</span>
+          <span className="text-[11px] font-medium text-gray-400 dark:text-muted-foreground uppercase tracking-wide">CC ({ccList.length})</span>
           <div className="flex flex-col gap-1.5">
             {ccList.map((cc, i) => {
               const initial = cc.name.charAt(0).toUpperCase() || '?';
@@ -887,8 +887,8 @@ function ExpandedDetails({
                     {initial}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-medium text-gray-800 truncate tracking-normal">{cc.name}</div>
-                    <div className="text-[11px] text-gray-500 truncate tracking-normal">{cc.email}</div>
+                    <div className="text-[13px] font-medium text-gray-800 dark:text-foreground truncate tracking-normal">{cc.name}</div>
+                    <div className="text-[11px] text-gray-500 dark:text-muted-foreground truncate tracking-normal">{cc.email}</div>
                   </div>
                 </div>
               );
@@ -903,7 +903,7 @@ function ExpandedDetails({
           <button
             type="button"
             onClick={onViewLead}
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#3b2778] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-sm"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#3b2778] dark:text-violet-300 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-sm"
             aria-label={`Open full record for ${activity.leadName}`}
           >
             Open full record
@@ -937,7 +937,7 @@ function CommentSection({
   currentUserInitial: string;
 }) {
   return (
-    <div className="border-t border-gray-100 pt-3 mt-1 space-y-3">
+    <div className="border-t border-gray-100 dark:border-border pt-3 mt-1 space-y-3">
       {commentsLoading ? (
         <div className="flex items-center justify-center py-3">
           <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
@@ -953,17 +953,17 @@ function CommentSection({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-semibold text-gray-900 tracking-normal">{c.created_by || 'Team'}</span>
-                    <span className="text-[11px] text-gray-500 tracking-normal">{formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
+                    <span className="text-[13px] font-semibold text-gray-900 dark:text-foreground tracking-normal">{c.created_by || 'Team'}</span>
+                    <span className="text-[11px] text-gray-500 dark:text-muted-foreground tracking-normal">{formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
                   </div>
-                  <p className="text-[13px] text-gray-600 mt-0.5 leading-relaxed tracking-normal">{c.content}</p>
+                  <p className="text-[13px] text-gray-600 dark:text-muted-foreground mt-0.5 leading-relaxed tracking-normal">{c.content}</p>
                 </div>
               </div>
             );
           })}
         </div>
       ) : (
-        <p className="text-[12px] text-gray-500 italic tracking-normal">No comments yet</p>
+        <p className="text-[12px] text-gray-500 dark:text-muted-foreground italic tracking-normal">No comments yet</p>
       )}
 
       <div className="flex items-center gap-2.5">
@@ -978,7 +978,7 @@ function CommentSection({
             onKeyDown={(e) => { if (e.key === 'Enter') onSubmit(); }}
             placeholder="Add a comment..."
             aria-label="Add a comment"
-            className="w-full h-8 pl-3 pr-9 text-[13px] bg-gray-50 border border-gray-200 rounded-full text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 focus:border-transparent tracking-normal"
+            className="w-full h-8 pl-3 pr-9 text-[13px] bg-gray-50 dark:bg-muted border border-gray-200 dark:border-border rounded-full text-gray-800 dark:text-foreground placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 focus:border-transparent tracking-normal"
           />
           {commentText.trim() && (
             <button

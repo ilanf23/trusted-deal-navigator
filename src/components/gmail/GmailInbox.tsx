@@ -7,7 +7,7 @@ import { useGmailConnection } from '@/hooks/useGmailConnection';
 import { GmailConnectScreen } from './GmailConnectScreen';
 import { GmailEmailList } from './GmailEmailList';
 import { GmailEmailDetail } from './GmailEmailDetail';
-import { GmailEmail, extractEmailAddress, extractSenderName } from './gmailHelpers';
+import { GmailEmail, extractEmailAddress, extractSenderName, isUserGmailLabel, buildLabelsById } from './gmailHelpers';
 
 export type BasicFolder = 'inbox' | 'starred' | 'sent' | 'drafts';
 
@@ -79,6 +79,13 @@ export function GmailInbox({ config }: GmailInboxProps) {
   const { data: emailsData, isLoading: emailsLoading, refetch: refetchEmails } = gmail.useEmails(folderQuery);
   const emails = emailsData?.emails || [];
   const needsReauth = emailsData?.needsAuth === true;
+
+  // User-created Gmail labels (names + colors, as configured in Gmail)
+  const { data: rawLabels = [] } = gmail.useLabels();
+  const labelsById = useMemo(
+    () => buildLabelsById(rawLabels.filter(isUserGmailLabel)),
+    [rawLabels],
+  );
 
   // Folder counts
   const { data: inboxCount = 0 } = gmail.useFolderCount('in:inbox', activeFolder !== 'inbox');
@@ -266,6 +273,7 @@ export function GmailInbox({ config }: GmailInboxProps) {
               onBack={() => setSelectedEmail(null)}
               onReply={handleReply}
               onForward={handleForward}
+              labelsById={labelsById}
               sidePanel={renderDetailSidePanel?.(selectedEmail)}
               belowBody={renderDetailBelowBody?.(selectedEmail, {
                 onReply: () => handleReply(selectedEmail),
@@ -278,6 +286,7 @@ export function GmailInbox({ config }: GmailInboxProps) {
               searchQuery={searchQuery}
               onSelectEmail={setSelectedEmail}
               renderEmailExtra={renderEmailExtra}
+              labelsById={labelsById}
             />
           )}
         </div>

@@ -73,8 +73,7 @@ import {
 } from '@/components/admin/pipeline/kanban';
 import { toast } from 'sonner';
 import { differenceInDays, parseISO, format } from 'date-fns';
-import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
-import { usePipelineStages } from '@/hooks/usePipelineStages';
+import { useSystemPipelineStages } from '@/hooks/usePipelineStages';
 import { usePipelineDeals, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
 import { useCrmMutations } from '@/hooks/usePipelineMutations';
 import { AddOpportunityDialog } from '@/components/admin/AddOpportunityDialog';
@@ -329,14 +328,14 @@ const Pipeline = () => {
     {
       table: 'pipelines',
       access: 'read',
-      usage: 'Looks up the "Potential" system pipeline record to drive stages.',
-      via: 'src/hooks/useSystemPipelineByName.ts',
+      usage: 'Inner-joined when loading stages to scope them to the "Potential" system pipeline.',
+      via: 'src/hooks/usePipelineStages.ts (useSystemPipelineStages)',
     },
     {
       table: 'pipeline_stages',
       access: 'read',
       usage: 'Ordered column definitions for the kanban board.',
-      via: 'src/hooks/usePipelineStages.ts',
+      via: 'src/hooks/usePipelineStages.ts (useSystemPipelineStages)',
     },
     {
       table: 'users',
@@ -396,9 +395,9 @@ const Pipeline = () => {
   const isNonDefaultSort = sortField !== 'last_activity_at' || sortDir !== 'desc';
   const sortFieldLabel = SORT_FIELD_OPTIONS.find(o => o.value === sortField)?.label ?? sortField;
 
-  // Pipeline data from DB
-  const { data: pipeline } = useSystemPipelineByName('Potential');
-  const { data: stages = [] } = usePipelineStages(pipeline?.id);
+  // Pipeline data from DB — stages resolved by pipeline name in one query
+  // (no sequential pipeline-lookup → stages waterfall on first load).
+  const { data: stages = [] } = useSystemPipelineStages('Potential');
   const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = usePipelineDeals();
   const { moveLeadToStage, removeLeadFromPipeline, bulkRemoveLeadsFromPipeline } = useCrmMutations('potential');
   const dynamicStageConfig = useMemo(() => buildStageConfig(stages), [stages]);

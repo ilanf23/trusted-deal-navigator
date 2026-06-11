@@ -60,7 +60,7 @@ const FeedLeftPanel = ({
     <div
       className={cn(
         'px-5 py-6 flex flex-col h-full overflow-hidden',
-        isSheet ? 'w-full bg-white' : 'w-[280px] min-w-[280px] bg-[#f3f4f6] border-r border-gray-200'
+        isSheet ? 'w-full bg-white dark:bg-background' : 'w-[280px] min-w-[280px] bg-[#f3f4f6] dark:bg-background border-r border-gray-200 dark:border-border'
       )}
     >
       {/* Welcome heading */}
@@ -95,7 +95,7 @@ const FeedLeftPanel = ({
               'w-10 h-10 aspect-square shrink-0 border-2 font-semibold text-xs leading-none flex items-center justify-center transition-all',
               selectedTeamMembers.has(member.name)
                 ? 'border-violet-500 text-white bg-violet-500'
-                : 'border-slate-300 text-slate-600 bg-white hover:border-violet-400 hover:text-violet-600'
+                : 'border-slate-300 text-slate-600 bg-white dark:border-slate-600 dark:text-slate-300 dark:bg-card hover:border-violet-400 hover:text-violet-600 dark:hover:text-violet-400'
             )}
             title={member.name}
             aria-label={member.name}
@@ -112,7 +112,7 @@ const FeedLeftPanel = ({
           placeholder="Search Filters"
           value={filterSearch}
           onChange={(e) => setFilterSearch(e.target.value)}
-          className="w-full h-10 pl-3 pr-3 text-sm bg-slate-50 border border-slate-200 rounded-lg text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-300 focus:border-violet-300"
+          className="w-full h-10 pl-3 pr-3 text-sm bg-slate-50 dark:bg-card border border-slate-200 dark:border-border rounded-lg text-slate-700 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-300 focus:border-violet-300 dark:focus:ring-violet-700 dark:focus:border-violet-700"
         />
       </div>
 
@@ -122,8 +122,8 @@ const FeedLeftPanel = ({
         className={cn(
           'w-full text-left mt-3 transition-colors',
           selectedFilters.size === 0
-            ? 'px-3 py-2 rounded-lg bg-violet-200 text-violet-900 font-medium text-sm'
-            : 'px-3 py-1.5 text-sm text-slate-600 cursor-pointer hover:text-slate-900 rounded-lg'
+            ? 'px-3 py-2 rounded-lg bg-violet-200 text-violet-900 dark:bg-violet-900/40 dark:text-violet-200 font-medium text-sm'
+            : 'px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 cursor-pointer hover:text-slate-900 dark:hover:text-slate-100 rounded-lg'
         )}
       >
         All
@@ -138,8 +138,8 @@ const FeedLeftPanel = ({
             className={cn(
               'w-full text-left transition-colors',
               selectedFilters.has(filter)
-                ? 'px-3 py-2 rounded-lg bg-violet-200 text-violet-900 font-medium text-sm'
-                : 'px-3 py-1.5 text-sm text-slate-600 cursor-pointer hover:text-slate-900 rounded-lg'
+                ? 'px-3 py-2 rounded-lg bg-violet-200 text-violet-900 dark:bg-violet-900/40 dark:text-violet-200 font-medium text-sm'
+                : 'px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 cursor-pointer hover:text-slate-900 dark:hover:text-slate-100 rounded-lg'
             )}
           >
             {filter}

@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowLeft, ChevronDown, Reply, ReplyAll, Forward, ListTodo, User, Users, Paperclip, FileText, FileImage, File, Download, Loader2 } from 'lucide-react';
 import InlineReplyBox from '@/components/admin/inbox/InlineReplyBox';
 import { GmailEmail, ThreadMessage, extractSenderName, extractEmailAddress, toRenderableHtml } from '@/components/gmail/gmailHelpers';
+import { GmailLabelChips } from '@/components/gmail/GmailLabelChips';
 import { mockThreadMessages } from '@/components/gmail/GmailFeatures';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -297,7 +298,16 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
         </div>
         <ScrollArea className="flex-1">
           <div className="p-6">
-            <h1 className="text-xl font-semibold mb-4 leading-tight">{selectedEmail.subject}</h1>
+            <div className="flex items-start gap-2 mb-4 flex-wrap">
+              <h1 className="text-xl font-semibold leading-tight">{selectedEmail.subject}</h1>
+              {/* Gmail labels (user-created, mirrors Gmail) */}
+              <GmailLabelChips
+                labelIds={selectedEmail.labels}
+                labelsById={logic.labelsById}
+                max={5}
+                className="mt-1.5"
+              />
+            </div>
 
             {/* CRM Label Badge */}
             {crm.type === 'lead' && crm.stageName && (

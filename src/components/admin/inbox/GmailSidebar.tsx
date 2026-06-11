@@ -13,6 +13,9 @@ import {
   Trash2,
   AlertCircle,
 } from 'lucide-react';
+import { GmailLabel } from '@/components/gmail/gmailHelpers';
+
+const DEFAULT_LABEL_DOT = '#9aa0a6';
 
 export type FolderType =
   | 'inbox'
@@ -37,6 +40,14 @@ interface GmailSidebarProps {
     internal?: number;
     followup?: number;
   };
+  /** User-created Gmail labels (names + colors as set up in Gmail) */
+  labels?: GmailLabel[];
+  /** Currently active label filter (null = no label filter) */
+  activeLabelId?: string | null;
+  /** Toggle the label filter. Called with null when clearing. */
+  onLabelSelect?: (labelId: string | null) => void;
+  /** Email count per label id (within loaded emails) */
+  labelCounts?: Record<string, number>;
 }
 
 export function GmailSidebar({
@@ -44,6 +55,10 @@ export function GmailSidebar({
   onFolderChange,
   onComposeClick,
   counts = {},
+  labels = [],
+  activeLabelId = null,
+  onLabelSelect,
+  labelCounts = {},
 }: GmailSidebarProps) {
   const folderButton = (
     folder: FolderType,
@@ -120,6 +135,43 @@ export function GmailSidebar({
           {folderButton('external', 'Borrowers', <Building className="w-4 h-4" />, counts.external)}
           {folderButton('internal', 'Internal', <Users className="w-4 h-4" />, counts.internal)}
           {folderButton('followup', '7-Day Follow Up', <CalendarClock className="w-4 h-4 text-amber-500" />, counts.followup, 'warning')}
+
+          {/* Gmail labels (user-created, mirrors Gmail) */}
+          {onLabelSelect && labels.length > 0 && (
+            <>
+              <div className="h-px bg-slate-200 dark:bg-slate-700 my-3" />
+              <div className="px-3.5 mt-4 mb-2 text-[11px] uppercase tracking-wide text-slate-400 font-medium">
+                Labels
+              </div>
+              {labels.map((label) => {
+                const isActive = activeLabelId === label.id;
+                const count = labelCounts[label.id];
+                return (
+                  <button
+                    key={label.id}
+                    onClick={() => onLabelSelect(isActive ? null : label.id)}
+                    className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-lg text-sm transition-colors duration-150 ${
+                      isActive
+                        ? 'bg-primary/10 text-primary font-semibold border-l-2 border-primary pl-3'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-muted/60 hover:text-slate-900 dark:hover:text-slate-100'
+                    }`}
+                    title={label.name}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full flex-shrink-0 border border-black/10"
+                      style={{ backgroundColor: label.color?.backgroundColor || DEFAULT_LABEL_DOT }}
+                    />
+                    <span className="flex-1 text-left truncate">{label.name}</span>
+                    {count !== undefined && count > 0 && (
+                      <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-muted-foreground bg-muted rounded-full">
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </>
+          )}
 
           <div className="h-px bg-slate-200 dark:bg-slate-700 my-3" />
 

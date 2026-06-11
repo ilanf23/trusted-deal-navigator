@@ -397,6 +397,8 @@ export default function LenderFilterPanel({
         <button
           type="button"
           onClick={onClose}
+          title="Close filters"
+          aria-label="Close filters"
           className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
         >
           <X className="h-4 w-4 text-gray-500 dark:text-gray-400" />

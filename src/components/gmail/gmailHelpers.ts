@@ -19,6 +19,27 @@ export interface GmailEmail {
   attachments?: { id: string; name: string; type: string; size: number; messageId: string }[];
 }
 
+// ── Gmail labels (users.labels.list) ───────────────────────────────
+export interface GmailLabel {
+  id: string;
+  name: string;
+  /** 'system' = INBOX/UNREAD/CATEGORY_* etc.; 'user' = user-created label */
+  type?: 'system' | 'user';
+  /** Colors as set in Gmail settings (hex). Absent when the label uses the default color. */
+  color?: { textColor?: string; backgroundColor?: string } | null;
+  labelListVisibility?: string;
+  messageListVisibility?: string;
+}
+
+/** Keep only user-created labels (skips INBOX, UNREAD, CATEGORY_*, STARRED, ...). */
+export const isUserGmailLabel = (label: GmailLabel) => label.type === 'user';
+
+export const buildLabelsById = (labels: GmailLabel[]): Record<string, GmailLabel> =>
+  labels.reduce<Record<string, GmailLabel>>((acc, label) => {
+    acc[label.id] = label;
+    return acc;
+  }, {});
+
 export interface ThreadMessage {
   id: string;
   from: string;

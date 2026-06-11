@@ -2,6 +2,13 @@ import { createContext, useContext, useState, useCallback, useRef, useEffect, Re
 import { toast } from 'sonner';
 
 const UNDO_TIMEOUT_MS = 60000;
+// How long the bottom-right undo toast stays visible. Deliberately decoupled
+// from UNDO_TIMEOUT_MS: the action remains undoable via the header Undo button
+// for the full window, but the toast auto-dismisses like any other toast.
+// (Reusing UNDO_TIMEOUT_MS as the toast duration made the toast sit on screen
+// for a full minute — and sonner restarts the timer whenever the same toast id
+// is re-published, so it effectively never disappeared.)
+const UNDO_TOAST_DURATION_MS = 5000;
 const UNDO_TOAST_ID = 'undo-toast';
 
 interface UndoAction {
@@ -72,7 +79,7 @@ export const UndoProvider = ({ children }: { children: ReactNode }) => {
     toast.dismiss(UNDO_TOAST_ID);
     toast(action.label, {
       id: UNDO_TOAST_ID,
-      duration: UNDO_TIMEOUT_MS,
+      duration: UNDO_TOAST_DURATION_MS,
       action: {
         label: 'Undo',
         onClick: () => {
@@ -91,6 +98,8 @@ export const UndoProvider = ({ children }: { children: ReactNode }) => {
         }
         return prev;
       });
+      // Safety net: make sure the undo toast can never outlive the undo window.
+      toast.dismiss(UNDO_TOAST_ID);
       timeoutRef.current = null;
     }, UNDO_TIMEOUT_MS);
   }, [doExecuteUndo]);

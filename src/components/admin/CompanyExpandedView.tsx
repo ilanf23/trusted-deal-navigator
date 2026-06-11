@@ -761,19 +761,31 @@ export default function CompanyExpandedView() {
     return map;
   }, [teamMembers]);
 
-  // Related people (people table where company_name matches)
+  // Related people — primarily via the relational FK (people.company_id), with a
+  // fallback match on the legacy free-text company_name for unlinked records.
   const { data: relatedPeople = [] } = useQuery({
-    queryKey: ['company-related-people', company?.company_name],
+    queryKey: ['company-related-people', company?.id, company?.company_name],
     queryFn: async () => {
-      if (!company?.company_name) return [];
-      const { data } = await supabase
-        .from('people')
-        .select('id, name, title, email, phone')
-        .eq('company_name', company.company_name)
-        .order('name');
-      return data ?? [];
+      if (!company?.id) return [];
+      const [byId, byName] = await Promise.all([
+        supabase
+          .from('people')
+          .select('id, name, title, email, phone')
+          .eq('company_id', company.id)
+          .order('name'),
+        company.company_name
+          ? supabase
+              .from('people')
+              .select('id, name, title, email, phone')
+              .is('company_id', null)
+              .eq('company_name', company.company_name)
+              .order('name')
+          : Promise.resolve({ data: [] as { id: string; name: string; title: string | null; email: string | null; phone: string | null }[] }),
+      ]);
+      const merged = [...(byId.data ?? []), ...(byName.data ?? [])];
+      return merged.sort((a, b) => a.name.localeCompare(b.name));
     },
-    enabled: !!company?.company_name,
+    enabled: !!company?.id,
   });
 
   // Related deals (pipeline table where company_name matches)

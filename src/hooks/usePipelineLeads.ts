@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { PipelineDeal, UnderwritingDeal, LenderManagementDeal } from '@/integrations/supabase/types';
+import type { Database, PipelineDeal, UnderwritingDeal, LenderManagementDeal } from '@/integrations/supabase/types';
 
 interface StageInfo {
   id: string;
@@ -32,17 +32,36 @@ function groupByStage<T extends { _stageId: string }>(items: T[]) {
   return grouped;
 }
 
+// Columns actually consumed by the Potential board/table (Potential.tsx),
+// kanban cards, search/filters and the right-hand PipelineDetailPanel.
+// Deliberately excludes heavy unused columns (history, about, description,
+// custom_fields jsonb, questionnaire/ratewatch/sheets/volume-log fields, …)
+// so the first page load transfers far less data per row.
+// If you render a new deals column on the Potential page, add it here.
+const POTENTIAL_BOARD_COLUMNS = [
+  'id', 'name', 'email', 'phone', 'company_name', 'status', 'stage_id',
+  'source', 'notes', 'assigned_to', 'known_as', 'title', 'contact_type',
+  'tags', 'website', 'linkedin', 'last_activity_at', 'flagged_for_weekly',
+  'uw_number', 'client_other_lenders', 'deal_value', 'bank_relationships',
+  'opportunity_name', 'clx_file_name', 'created_at', 'updated_at',
+  'related_id', 'lender_name', 'pipeline',
+].join(', ');
+
+type DealRow = Database['public']['Tables']['deals']['Row'];
+
 export const usePipelineDeals = () => {
   const query = useQuery({
     queryKey: ['potential-deals'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
-        .select('*, stage:pipeline_stages(*)')
+        .select(`${POTENTIAL_BOARD_COLUMNS}, stage:pipeline_stages(id, name, position, color, pipeline_id)`)
         .eq('pipeline', 'potential')
         .order('updated_at', { ascending: false });
       if (error) throw error;
-      return data;
+      // Cast keeps the downstream shape identical to before the column
+      // narrowing; un-selected columns are simply absent at runtime.
+      return (data ?? []) as unknown as Array<DealRow & { stage: StageInfo | null }>;
     },
   });
 

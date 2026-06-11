@@ -5,11 +5,13 @@ import { Reply, Forward } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   GmailEmail,
+  GmailLabel,
   extractSenderName,
   extractEmailAddress,
   toRenderableHtml,
   formatEmailDate,
 } from './gmailHelpers';
+import { GmailLabelChips } from './GmailLabelChips';
 
 interface GmailEmailDetailProps {
   email: GmailEmail;
@@ -22,6 +24,8 @@ interface GmailEmailDetailProps {
   belowBody?: React.ReactNode;
   /** Optional slot rendered between action bar and email body */
   aboveBody?: React.ReactNode;
+  /** User-created Gmail labels keyed by id (for label chips) */
+  labelsById?: Record<string, GmailLabel>;
 }
 
 export function GmailEmailDetail({
@@ -32,6 +36,7 @@ export function GmailEmailDetail({
   sidePanel,
   belowBody,
   aboveBody,
+  labelsById,
 }: GmailEmailDetailProps) {
   return (
     <div className="h-full flex">
@@ -61,7 +66,17 @@ export function GmailEmailDetail({
         <ScrollArea className="flex-1">
           <div className="p-6 space-y-4">
             {/* Subject */}
-            <h2 className="text-xl font-semibold">{email.subject}</h2>
+            <div className="flex items-start gap-2 flex-wrap">
+              <h2 className="text-xl font-semibold">{email.subject}</h2>
+              {labelsById && (
+                <GmailLabelChips
+                  labelIds={email.labels}
+                  labelsById={labelsById}
+                  max={5}
+                  className="mt-1.5"
+                />
+              )}
+            </div>
 
             {/* Sender info */}
             <div className="flex items-start gap-3">

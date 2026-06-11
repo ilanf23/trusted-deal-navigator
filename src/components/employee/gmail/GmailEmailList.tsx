@@ -5,6 +5,7 @@ import { Loader2, ArrowRight, ArrowDown, Building, Clock, MessageSquare, Star, M
 import { useHiddenThreads } from '@/hooks/useHiddenThreads';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { GmailEmail, extractSenderName } from '@/components/gmail/gmailHelpers';
+import { GmailLabelChips } from '@/components/gmail/GmailLabelChips';
 import { getNextStepSuggestion } from '@/components/gmail/GmailFeatures';
 import { format, formatDistanceToNow } from 'date-fns';
 import { appendSignature } from '@/lib/email-signature';
@@ -39,6 +40,7 @@ export function GmailEmailList({ logic }: GmailEmailListProps) {
     setTaskInitialTitle,
     setTaskInitialDescription,
     setTaskInitialLeadId,
+    labelsById,
   } = logic;
 
   const { teamMember } = useTeamMember();
@@ -142,9 +144,12 @@ export function GmailEmailList({ logic }: GmailEmailListProps) {
                       {format(new Date(email.date), 'MMM d')}
                     </span>
                   </div>
-                  <p className={`truncate text-sm ${!isRead ? 'font-medium' : ''}`}>
-                    {email.subject}
-                  </p>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <GmailLabelChips labelIds={email.labels} labelsById={labelsById} max={3} />
+                    <p className={`truncate text-sm ${!isRead ? 'font-medium' : ''}`}>
+                      {email.subject}
+                    </p>
+                  </div>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                     {email.snippet}
                   </p>

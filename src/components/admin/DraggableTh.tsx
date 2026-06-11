@@ -61,7 +61,11 @@ const DraggableTh = ({
   if (!visible) return null;
 
   const labelSpan = (
-    <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
+    // min-w-0 + overflow-hidden: the span is a flex item, so without min-w-0 it
+    // refuses to shrink below its content width and long labels overflow the
+    // fixed-width th, overlapping the neighboring column header. Clipping here
+    // lets truncating children (span.truncate) show an ellipsis instead.
+    <span className="inline-flex min-w-0 items-center gap-1.5 overflow-hidden text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
       {children}
     </span>
   );

@@ -141,11 +141,11 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
   const visibleMeetings = upcomingMeetings.filter((m) => !dismissedIds.includes(m.id));
 
   return (
-    <div className={isSheet ? "bg-[#f7f7f8] h-full overflow-y-auto" : "w-[280px] min-w-[280px] 2xl:w-[300px] 2xl:min-w-[300px] bg-[#f7f7f8] border-l border-gray-200 h-full overflow-y-auto hidden xl:block"}>
+    <div className={isSheet ? "bg-[#f7f7f8] dark:bg-background h-full overflow-y-auto" : "w-[280px] min-w-[280px] 2xl:w-[300px] 2xl:min-w-[300px] bg-[#f7f7f8] dark:bg-background border-l border-gray-200 dark:border-border h-full overflow-y-auto hidden xl:block"}>
       <div className="p-5 space-y-6">
 
         {/* ── Date header ── */}
-        <div className="text-[13px] text-gray-500 font-medium">
+        <div className="text-[13px] text-gray-500 dark:text-muted-foreground font-medium">
           {getCurrentDateHeader()}
         </div>
 
@@ -153,7 +153,7 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
            SECTION 1: Keep Things Moving
            ══════════════════════════════════ */}
         <div>
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
+          <p className="text-[11px] font-semibold text-gray-400 dark:text-muted-foreground uppercase tracking-widest mb-4">
             Keep things moving
           </p>
 
@@ -170,11 +170,11 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
               return (
                 <div
                   key={meeting.id}
-                  className="bg-white rounded-xl p-4 shadow-sm relative group border border-gray-100"
+                  className="bg-white dark:bg-card rounded-xl p-4 shadow-sm relative group border border-gray-100 dark:border-border"
                 >
                   <button
                     onClick={(e) => dismiss(meeting.id, e)}
-                    className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -187,7 +187,7 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
                         <div
                           key={i}
                           className={cn(
-                            'w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white',
+                            'w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white dark:ring-card',
                             attendeeColors[i % attendeeColors.length]
                           )}
                         >
@@ -196,11 +196,11 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
                       ))}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-gray-800 leading-tight">
+                      <p className="text-[13px] font-semibold text-gray-800 dark:text-foreground leading-tight">
                         Upcoming Meeting
                       </p>
                       {attendeeNames.length > 0 && (
-                        <p className="text-[11px] text-gray-400 leading-tight mt-0.5">
+                        <p className="text-[11px] text-gray-400 dark:text-muted-foreground leading-tight mt-0.5">
                           with {attendeeNames[0]}{extraCount > 0 ? ` +${extraCount} more` : ''}
                         </p>
                       )}
@@ -208,7 +208,7 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
                   </div>
 
                   {/* Description */}
-                  <p className="text-[12px] text-gray-500 mb-3 leading-relaxed">
+                  <p className="text-[12px] text-gray-500 dark:text-muted-foreground mb-3 leading-relaxed">
                     You have a meeting {formatMeetingTime(meeting.start_time)}. Prepare for your meeting now.
                   </p>
 
@@ -219,7 +219,7 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
                       const meetingDate = format(new Date(meeting.start_time), 'yyyy-MM-dd');
                       navigate(`${basePath}/calendar?date=${meetingDate}&eventId=${meeting.id}`);
                     }}
-                    className="px-4 py-1.5 text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors tracking-wide"
+                    className="px-4 py-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-transparent border border-gray-200 dark:border-border rounded-lg hover:bg-gray-50 dark:hover:bg-muted transition-colors tracking-wide"
                   >
                     Prepare
                   </button>
@@ -233,11 +233,11 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
               return (
                 <div
                   key={task.id}
-                  className="bg-white rounded-xl p-4 shadow-sm relative group border border-gray-100"
+                  className="bg-white dark:bg-card rounded-xl p-4 shadow-sm relative group border border-gray-100 dark:border-border"
                 >
                   <button
                     onClick={(e) => dismiss(task.id, e)}
-                    className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -246,20 +246,20 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
                   <div className="flex items-center gap-3 mb-2">
                     <div className={cn(
                       'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0',
-                      due.urgent ? 'bg-red-50' : 'bg-amber-50'
+                      due.urgent ? 'bg-red-50 dark:bg-red-900/30' : 'bg-amber-50 dark:bg-amber-900/30'
                     )}>
                       <CheckSquare className={cn(
                         'w-3.5 h-3.5',
                         due.urgent ? 'text-red-500' : 'text-amber-500'
                       )} />
                     </div>
-                    <p className="text-[13px] font-semibold text-gray-800 leading-tight">
+                    <p className="text-[13px] font-semibold text-gray-800 dark:text-foreground leading-tight">
                       You have a task {due.text}!
                     </p>
                   </div>
 
                   {/* Task title */}
-                  <p className="text-[12px] text-gray-500 mb-3 leading-relaxed">
+                  <p className="text-[12px] text-gray-500 dark:text-muted-foreground mb-3 leading-relaxed">
                     "{task.title}" is {due.text}!
                   </p>
 
@@ -269,7 +269,7 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
                       e.stopPropagation();
                       navigate(getTaskRoute(task));
                     }}
-                    className="px-4 py-1.5 text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors tracking-wide"
+                    className="px-4 py-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-transparent border border-gray-200 dark:border-border rounded-lg hover:bg-gray-50 dark:hover:bg-muted transition-colors tracking-wide"
                   >
                     Get on it
                   </button>
@@ -279,7 +279,7 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
 
             {/* Empty state */}
             {visibleMeetings.length === 0 && visibleTasks.length === 0 && (
-              <p className="text-[12px] text-gray-400 italic py-2">
+              <p className="text-[12px] text-gray-400 dark:text-muted-foreground italic py-2">
                 No upcoming tasks or meetings — nice work.
               </p>
             )}
@@ -292,7 +292,7 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
            ══════════════════════════════════ */}
         {pipelineStats && (
           <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
+            <p className="text-[11px] font-semibold text-gray-400 dark:text-muted-foreground uppercase tracking-widest mb-4">
               Pipeline pulse
             </p>
 
@@ -300,48 +300,48 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
               {/* Active Deals */}
               <button
                 onClick={() => navigate(`${basePath}/pipeline`)}
-                className="w-full bg-white rounded-xl px-4 py-3 border border-gray-100 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                className="w-full bg-white dark:bg-card rounded-xl px-4 py-3 border border-gray-100 dark:border-border flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-muted transition-colors text-left"
               >
-                <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
                   <TrendingUp className="w-4 h-4 text-purple-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[20px] font-bold text-gray-800 leading-none">
+                  <p className="text-[20px] font-bold text-gray-800 dark:text-foreground leading-none">
                     {pipelineStats.activeDeals}
                   </p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">Active deals</p>
+                  <p className="text-[11px] text-gray-400 dark:text-muted-foreground mt-0.5">Active deals</p>
                 </div>
               </button>
 
               {/* Open Tasks */}
               <button
                 onClick={() => navigate(`${basePath}/tasks`)}
-                className="w-full bg-white rounded-xl px-4 py-3 border border-gray-100 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                className="w-full bg-white dark:bg-card rounded-xl px-4 py-3 border border-gray-100 dark:border-border flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-muted transition-colors text-left"
               >
-                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
                   <CheckSquare className="w-4 h-4 text-amber-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[20px] font-bold text-gray-800 leading-none">
+                  <p className="text-[20px] font-bold text-gray-800 dark:text-foreground leading-none">
                     {pipelineStats.openTasks}
                   </p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">Open tasks</p>
+                  <p className="text-[11px] text-gray-400 dark:text-muted-foreground mt-0.5">Open tasks</p>
                 </div>
               </button>
 
               {/* Week Activity */}
               <button
                 onClick={() => navigate(`${basePath}/pipeline/feed`)}
-                className="w-full bg-white rounded-xl px-4 py-3 border border-gray-100 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                className="w-full bg-white dark:bg-card rounded-xl px-4 py-3 border border-gray-100 dark:border-border flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-muted transition-colors text-left"
               >
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
                   <Mail className="w-4 h-4 text-emerald-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[20px] font-bold text-gray-800 leading-none">
+                  <p className="text-[20px] font-bold text-gray-800 dark:text-foreground leading-none">
                     {pipelineStats.weekActivity}
                   </p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">Touchpoints this week</p>
+                  <p className="text-[11px] text-gray-400 dark:text-muted-foreground mt-0.5">Touchpoints this week</p>
                 </div>
               </button>
             </div>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -15,7 +16,10 @@ import {
 
 interface CalendarSidebarProps {
   open: boolean;
+  /** Start of the main calendar's visible range — keeps the mini month in sync. */
   currentDate: Date;
+  /** The specific day highlighted in the mini calendar. */
+  selectedDate: Date;
   onDateSelect: (date: Date) => void;
   onCreateEvent: () => void;
   filters: CalendarFilter[];
@@ -32,6 +36,7 @@ interface CalendarSidebarProps {
 export function CalendarSidebar({
   open,
   currentDate,
+  selectedDate,
   onDateSelect,
   onCreateEvent,
   filters,
@@ -44,6 +49,13 @@ export function CalendarSidebar({
   onSyncToGoogle,
   onImportFromGoogle,
 }: CalendarSidebarProps) {
+  // Displayed month is locally navigable via the mini calendar's arrows, but
+  // follows the main calendar whenever its visible range changes.
+  const [month, setMonth] = useState<Date>(currentDate);
+  useEffect(() => {
+    setMonth(currentDate);
+  }, [currentDate]);
+
   return (
     <div
       className={cn(
@@ -63,8 +75,12 @@ export function CalendarSidebar({
 
         <Calendar
           mode="single"
-          selected={currentDate}
-          onSelect={(date) => date && onDateSelect(date)}
+          selected={selectedDate}
+          month={month}
+          onMonthChange={setMonth}
+          // onDayClick (not onSelect) so re-clicking the already-selected day
+          // still navigates the main calendar instead of firing undefined.
+          onDayClick={(date) => onDateSelect(date)}
           className="p-0 [&_.rdp-month]:space-y-2"
           classNames={{
             months: 'flex flex-col',
@@ -75,11 +91,13 @@ export function CalendarSidebar({
             nav_button_previous: 'absolute left-0',
             nav_button_next: 'absolute right-0',
             table: 'w-full border-collapse',
-            head_row: 'flex',
-            head_cell: 'text-muted-foreground rounded-md w-8 font-normal text-[0.65rem]',
-            row: 'flex w-full mt-1',
-            cell: 'h-8 w-8 text-center text-xs p-0 relative',
-            day: 'h-8 w-8 p-0 font-normal rounded-full hover:bg-accent inline-flex items-center justify-center',
+            head_row: 'flex w-full',
+            head_cell: 'text-muted-foreground rounded-md flex-1 font-normal text-[0.65rem]',
+            row: 'flex w-full',
+            // Cells flex to fill the row and the day button fills the whole
+            // cell, so the entire grid square is clickable — not just the digit.
+            cell: 'flex-1 h-9 text-center text-xs p-0 relative',
+            day: 'h-full w-full p-0 font-normal rounded-full hover:bg-accent inline-flex items-center justify-center',
             day_selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
             day_today: 'bg-accent text-accent-foreground font-semibold',
             day_outside: 'text-muted-foreground opacity-40',

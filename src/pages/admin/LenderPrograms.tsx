@@ -95,19 +95,21 @@ const LENDER_COLUMN_HEADERS: Record<ColumnKey, ColumnHeaderDef> = {
   states:         { icon: MapPin,       label: 'States' },
 };
 
+// Min widths sized so header labels (icon + grip + sort menu ≈ 104px overhead)
+// stay readable — narrow values made the fixed-layout headers overlap.
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   lender_name: 240,
-  call_status: 80,
-  last_contact: 110,
-  location: 140,
+  call_status: 150,
+  last_contact: 175,
+  location: 160,
   looking_for: 400,
   contact_name: 150,
-  phone: 140,
+  phone: 150,
   email: 200,
-  lender_type: 150,
-  loan_types: 180,
-  loan_size_text: 140,
-  states: 120,
+  lender_type: 185,
+  loan_types: 185,
+  loan_size_text: 160,
+  states: 150,
 };
 
 const COLUMN_SORT_OPTIONS: Record<string, { label: string; field: SortField; dir: SortDir }[]> = {
@@ -499,6 +501,7 @@ const LenderPrograms = () => {
   const [selectedLenderIds, setSelectedLenderIds] = useState<Set<string>>(new Set());
   const [selectedLender, setSelectedLender] = useState<LenderProgram | null>(null);
   const detailPanelRef = useRef<HTMLDivElement>(null);
+  const filterPanelRef = useRef<HTMLDivElement>(null);
 
   const toggleLenderSelection = (lenderId: string) => {
     setSelectedLenderIds(prev => {
@@ -539,6 +542,18 @@ const LenderPrograms = () => {
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [colMenuOpen, selectedLender, filterPanelOpen]);
+
+  // Close filter panel on outside click (X button and Escape also close it)
+  useEffect(() => {
+    if (!filterPanelOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (filterPanelRef.current && !filterPanelRef.current.contains(e.target as Node)) {
+        setFilterPanelOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [filterPanelOpen]);
 
   // Close detail panel on outside click
   useEffect(() => {
@@ -1285,7 +1300,8 @@ const LenderPrograms = () => {
                                 className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                               />
                             </div>
-                            <Building2 className="h-4 w-4" /> Institution
+                            <Building2 className="h-4 w-4 shrink-0" />
+                            <span className="min-w-0 truncate" title="Institution">Institution</span>
                           </>
                         ),
                       })}
@@ -1296,7 +1312,12 @@ const LenderPrograms = () => {
                           reactKey: key,
                           colKey: key,
                           className: 'sticky top-0 z-10',
-                          children: (<><Icon className="h-4 w-4" /> {def.label}</>),
+                          children: (
+                            <>
+                              <Icon className="h-4 w-4 shrink-0" />
+                              <span className="min-w-0 truncate" title={def.label}>{def.label}</span>
+                            </>
+                          ),
                         });
                       })}
                       <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
@@ -1546,16 +1567,18 @@ const LenderPrograms = () => {
           )}
 
           {filterPanelOpen && !selectedLender && (
-            <LenderFilterPanel
-              institutions={filterPanelOptions.institutions}
-              contacts={filterPanelOptions.contacts}
-              lenderTypes={filterPanelOptions.lenderTypes}
-              loanTypes={filterPanelOptions.loanTypes}
-              states={filterPanelOptions.states}
-              loanSizes={filterPanelOptions.loanSizes}
-              onSave={handleSaveCustomFilter}
-              onClose={() => setFilterPanelOpen(false)}
-            />
+            <div ref={filterPanelRef} className="shrink-0">
+              <LenderFilterPanel
+                institutions={filterPanelOptions.institutions}
+                contacts={filterPanelOptions.contacts}
+                lenderTypes={filterPanelOptions.lenderTypes}
+                loanTypes={filterPanelOptions.loanTypes}
+                states={filterPanelOptions.states}
+                loanSizes={filterPanelOptions.loanSizes}
+                onSave={handleSaveCustomFilter}
+                onClose={() => setFilterPanelOpen(false)}
+              />
+            </div>
           )}
         </div>
       </div>

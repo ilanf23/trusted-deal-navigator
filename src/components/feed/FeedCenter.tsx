@@ -63,7 +63,7 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
   return (
     <div className="flex-1 min-w-0 bg-transparent flex flex-col h-full relative">
       {/* Top bar with tabs — Copper style */}
-      <div className="border-b border-gray-200 px-4 sm:px-6">
+      <div className="border-b border-gray-200 dark:border-border px-4 sm:px-6">
         {/* Mobile filter buttons */}
         <div className="flex items-center gap-2 pt-3 xl:hidden">
           {onToggleLeftPanel && (
@@ -86,13 +86,13 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
             className={cn(
               'relative px-4 py-3 text-sm font-medium transition-colors',
               activeTab === 'following'
-                ? 'text-gray-900'
-                : 'text-gray-400 hover:text-gray-600'
+                ? 'text-gray-900 dark:text-foreground'
+                : 'text-gray-400 hover:text-gray-600 dark:text-muted-foreground dark:hover:text-foreground'
             )}
           >
             Following
             {activeTab === 'following' && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900" />
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 dark:bg-foreground" />
             )}
           </button>
           <button
@@ -100,13 +100,13 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
             className={cn(
               'relative px-4 py-3 text-sm font-medium transition-colors',
               activeTab === 'all'
-                ? 'text-gray-900'
-                : 'text-gray-400 hover:text-gray-600'
+                ? 'text-gray-900 dark:text-foreground'
+                : 'text-gray-400 hover:text-gray-600 dark:text-muted-foreground dark:hover:text-foreground'
             )}
           >
             All
             {activeTab === 'all' && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900" />
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-900 dark:bg-foreground" />
             )}
           </button>
         </div>
@@ -121,10 +121,10 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center px-8">
-              <p className="text-gray-800 font-semibold text-lg mb-1.5">
+              <p className="text-gray-800 dark:text-foreground font-semibold text-lg mb-1.5">
                 No activities to show
               </p>
-              <p className="text-gray-400 text-sm max-w-md mb-8 leading-relaxed">
+              <p className="text-gray-400 dark:text-muted-foreground text-sm max-w-md mb-8 leading-relaxed">
                 When there's activity, it will appear here automatically.
               </p>
               <img
@@ -137,7 +137,7 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
             groups.map((group) => (
               <div key={group.label}>
                 {/* Date group header — Copper style */}
-                <h4 className="text-[13px] font-medium text-gray-500 mb-3 mt-6 first:mt-0 py-2">
+                <h4 className="text-[13px] font-medium text-gray-500 dark:text-muted-foreground mb-3 mt-6 first:mt-0 py-2">
                   {group.label}
                 </h4>
                 <div>

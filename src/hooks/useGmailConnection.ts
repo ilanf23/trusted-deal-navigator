@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { GmailEmail, getGmailCallbackUrl } from '@/components/gmail/gmailHelpers';
+import { GmailEmail, GmailLabel, getGmailCallbackUrl } from '@/components/gmail/gmailHelpers';
 import { getGoogleIntegrationStatus } from '@/lib/googleAuth';
 
 type FolderQuery = string; // Gmail search query string e.g. 'in:inbox'
@@ -146,6 +146,30 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
       staleTime: 60000,
     });
 
+  // ── Gmail labels (names + colors, as configured in Gmail) ───────
+  const useLabels = (enabled = true) =>
+    useQuery({
+      queryKey: [`${userKey}-gmail-labels`],
+      queryFn: async (): Promise<GmailLabel[]> => {
+        if (!gmailConnection) return [];
+        const session = await getSession();
+        if (!session) return [];
+
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/gmail-mailbox?action=labels`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          if (data.needsAuth) return [];
+          throw new Error(data.error || 'Failed to fetch labels');
+        }
+        return (data.labels || []) as GmailLabel[];
+      },
+      enabled: !!gmailConnection && enabled,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // labels change rarely
+    });
+
   // ── Send email ───────────────────────────────────────────────────
   const sendEmailMutation = useMutation({
     mutationFn: async (payload: {
@@ -241,6 +265,7 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
     // Data helpers
     useEmails,
     useFolderCount,
+    useLabels,
     sendEmailMutation,
 
     // Utils

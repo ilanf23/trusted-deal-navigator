@@ -8,6 +8,34 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
+async function googleApiError(
+  response: Response,
+  fallback: string,
+): Promise<{ message: string; reason?: string }> {
+  const text = await response.text();
+  try {
+    const payload = JSON.parse(text);
+    const reason = payload?.error?.details?.find(
+      (detail: { reason?: string }) => detail.reason,
+    )?.reason || payload?.error?.errors?.[0]?.reason;
+    const googleMessage = payload?.error?.message;
+
+    if (
+      reason === 'SERVICE_DISABLED' ||
+      reason === 'accessNotConfigured'
+    ) {
+      return {
+        reason,
+        message: 'Google Drive API is disabled for this app. Enable Drive API in Google Cloud project 284694698081, wait a few minutes, then refresh.',
+      };
+    }
+
+    return { reason, message: googleMessage || fallback };
+  } catch {
+    return { message: fallback };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -83,11 +111,14 @@ Deno.serve(async (req) => {
       );
 
       if (!driveResponse.ok) {
-        const error = await driveResponse.text();
-        console.error('Drive API error:', error);
+        const googleError = await googleApiError(
+          driveResponse,
+          'Failed to list spreadsheets',
+        );
+        console.error('Drive API error:', googleError);
         return new Response(
-          JSON.stringify({ error: 'Failed to list spreadsheets' }),
-          { status: 500, headers: corsHeaders }
+          JSON.stringify({ error: googleError.message, reason: googleError.reason }),
+          { status: driveResponse.status, headers: corsHeaders }
         );
       }
 

@@ -33,7 +33,6 @@ interface TaskTableViewProps {
   onOpenDetail: (task: Task) => void;
   selectedTasks: Set<string>;
   onToggleSelect: (id: string) => void;
-  fadingTasks?: Set<string>;
   onComposeEmail?: (leadId: string | null, template?: string) => void | Promise<void>;
 }
 
@@ -90,7 +89,6 @@ export const TaskTableView = ({
   onOpenDetail,
   selectedTasks,
   onToggleSelect,
-  fadingTasks = new Set(),
 }: TaskTableViewProps) => {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
@@ -383,7 +381,6 @@ export const TaskTableView = ({
           ) : (
             pagedTasks.map((task) => {
               const isBulkSelected = selectedTasks.has(task.id);
-              const isFading = fadingTasks.has(task.id);
 
               const stickyBg = isBulkSelected
                 ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
@@ -394,13 +391,11 @@ export const TaskTableView = ({
                   key={task.id}
                   onClick={() => onOpenDetail(task)}
                   className={`cursor-pointer transition-all duration-300 group ${
-                    isFading
-                      ? 'opacity-0 scale-95 translate-x-4'
-                      : isBulkSelected
-                        ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
-                        : task.is_completed
-                          ? 'opacity-50 bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
-                          : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
+                    isBulkSelected
+                      ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
+                      : task.is_completed
+                        ? 'opacity-50 bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
+                        : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                   }`}
                 >
                   {/* Task Name + Checkbox (sticky). Always renders a 2-line content area

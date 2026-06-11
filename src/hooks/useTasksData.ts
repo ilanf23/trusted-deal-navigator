@@ -93,6 +93,19 @@ export const useTasksData = (teamMemberId?: string | null) => {
       
       return { currentTask, updates, skipUndo };
     },
+    // Optimistically apply the update so UI feedback (e.g. checking a task
+    // complete) is instant instead of waiting for the DB round-trip + refetch.
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', teamMemberId] });
+      const previousTasks = queryClient.getQueryData<Task[]>(['tasks', teamMemberId]);
+      if (previousTasks) {
+        queryClient.setQueryData<Task[]>(
+          ['tasks', teamMemberId],
+          previousTasks.map(t => (t.id === id ? { ...t, ...updates } : t)),
+        );
+      }
+      return { previousTasks };
+    },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['tasks', teamMemberId] });
       queryClient.invalidateQueries({ queryKey: ['task-activities'] });
@@ -122,7 +135,13 @@ export const useTasksData = (teamMemberId?: string | null) => {
         });
       }
     },
-    onError: () => toast.error('Failed to update task'),
+    onError: (_err, _vars, context) => {
+      // Roll back the optimistic update.
+      if (context?.previousTasks) {
+        queryClient.setQueryData(['tasks', teamMemberId], context.previousTasks);
+      }
+      toast.error('Failed to update task');
+    },
   });
 
   const deleteTask = useMutation({

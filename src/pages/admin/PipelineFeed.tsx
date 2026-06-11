@@ -164,7 +164,7 @@ const PipelineFeed = () => {
 
   return (
     <EmployeeLayout>
-      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full bg-[#f3f4f6]">
+      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full bg-[#f3f4f6] dark:bg-background">
         {/* Mobile Sheet drawer for left panel */}
         <Sheet open={leftPanelOpen} onOpenChange={setLeftPanelOpen}>
           <SheetContent side="left" className="p-0 w-[280px] border-r-0">

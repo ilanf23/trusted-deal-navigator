@@ -14,6 +14,19 @@ interface Sheet {
   title: string;
 }
 
+const getFunctionError = async (error: unknown, fallback: string) => {
+  const context = (error as { context?: Response })?.context;
+  if (context) {
+    try {
+      const payload = await context.clone().json();
+      if (payload?.error) return payload.error as string;
+    } catch {
+      // Use the fallback below.
+    }
+  }
+  return error instanceof Error && error.message ? error.message : fallback;
+};
+
 export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [connectedEmail, setConnectedEmail] = useState<string | null>(null);
@@ -127,14 +140,16 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
         body: { action: 'listSpreadsheets', teamMemberName }
       });
 
-      if (response.error) throw response.error;
+      if (response.error) {
+        throw new Error(await getFunctionError(response.error, 'Failed to list spreadsheets'));
+      }
       if (response.data?.error) throw new Error(response.data.error);
 
       setSpreadsheets(response.data.spreadsheets || []);
       return response.data.spreadsheets || [];
     } catch (error) {
       console.error('Error listing spreadsheets:', error);
-      toast.error('Failed to list spreadsheets');
+      toast.error(error instanceof Error ? error.message : 'Failed to list spreadsheets');
       return [];
     }
   };

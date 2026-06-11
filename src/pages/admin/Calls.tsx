@@ -1008,7 +1008,8 @@ const Calls = () => {
 
                   const segmentBase =
                     'h-7 px-2.5 text-xs font-medium rounded-[5px] transition-colors inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1';
-                  const segmentActive = 'bg-background text-foreground shadow-sm';
+                  const segmentActive =
+                    'bg-[#3b2778] text-white shadow-sm dark:bg-[#a78bfa] dark:text-[#2d1d5e]';
                   const segmentIdle =
                     'text-muted-foreground hover:text-foreground';
 

@@ -159,8 +159,53 @@ export const TaskWorkspace = ({
     }
   }, [searchParams, setSearchParams, addTask]);
 
-  const [fadingTasks, setFadingTasks] = useState<Set<string>>(new Set());
-  const [hiddenTasks, setHiddenTasks] = useState<Set<string>>(new Set());
+  // Tasks completed within the last few seconds. During this grace period a
+  // just-checked task stays exactly where it is (checked + struck-through)
+  // instead of instantly jumping to the completed section — so a misclick can
+  // simply be unchecked in place. After the grace period it moves as usual.
+  const COMPLETION_GRACE_MS = 4000;
+  const [recentlyCompleted, setRecentlyCompleted] = useState<Set<string>>(new Set());
+  const graceTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const clearGraceTimer = useCallback((id: string) => {
+    const timer = graceTimersRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      graceTimersRef.current.delete(id);
+    }
+  }, []);
+
+  const removeFromGrace = useCallback((id: string) => {
+    clearGraceTimer(id);
+    setRecentlyCompleted(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, [clearGraceTimer]);
+
+  const startGracePeriod = useCallback((id: string) => {
+    clearGraceTimer(id);
+    setRecentlyCompleted(prev => new Set(prev).add(id));
+    const timer = setTimeout(() => {
+      graceTimersRef.current.delete(id);
+      setRecentlyCompleted(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, COMPLETION_GRACE_MS);
+    graceTimersRef.current.set(id, timer);
+  }, [clearGraceTimer]);
+
+  useEffect(() => {
+    const timers = graceTimersRef.current;
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
 
   // Merge active filter criteria + live search + optional scope criteria.
   const mergedCriteria = useMemo<TaskFilterCriteria>(() => {
@@ -170,11 +215,21 @@ export const TaskWorkspace = ({
   }, [activeFilter, searchTerm, scopeCriteria]);
 
   const filteredTasks = useMemo(() => {
-    const visible = applyTaskFilter(tasks, mergedCriteria, { currentUserId: teamMember?.id });
-    const result = visible.filter(t => !hiddenTasks.has(t.id));
-    return [...result].sort((a, b) => {
-      const aCompleted = a.is_completed || a.status === 'done';
-      const bCompleted = b.is_completed || b.status === 'done';
+    // Tasks in the completion grace period are filtered/sorted as if still
+    // incomplete, so they hold their position (with completed styling) instead
+    // of instantly dropping out of the list or re-sorting to the bottom.
+    const forFilter = tasks.map(t =>
+      recentlyCompleted.has(t.id)
+        ? { ...t, is_completed: false, status: t.status === 'done' ? 'todo' : t.status }
+        : t,
+    );
+    const visibleIds = new Set(
+      applyTaskFilter(forFilter, mergedCriteria, { currentUserId: teamMember?.id }).map(t => t.id),
+    );
+    const visible = tasks.filter(t => visibleIds.has(t.id));
+    return [...visible].sort((a, b) => {
+      const aCompleted = (a.is_completed || a.status === 'done') && !recentlyCompleted.has(a.id);
+      const bCompleted = (b.is_completed || b.status === 'done') && !recentlyCompleted.has(b.id);
       if (aCompleted && !bCompleted) return 1;
       if (!aCompleted && bCompleted) return -1;
       if (!a.due_date && !b.due_date) return 0;
@@ -182,7 +237,7 @@ export const TaskWorkspace = ({
       if (!b.due_date) return -1;
       return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
     });
-  }, [tasks, mergedCriteria, teamMember?.id, hiddenTasks]);
+  }, [tasks, mergedCriteria, teamMember?.id, recentlyCompleted]);
 
   const handleUpdateTask = (id: string, updates: Partial<Task>) => {
     const enhancedUpdates = { ...updates };
@@ -194,30 +249,24 @@ export const TaskWorkspace = ({
     updateTask.mutate({ id, updates: enhancedUpdates });
 
     if (enhancedUpdates.is_completed === true || enhancedUpdates.status === 'done') {
-      setFadingTasks(prev => new Set(prev).add(id));
-      setTimeout(() => {
-        setFadingTasks(prev => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-        setHiddenTasks(prev => new Set(prev).add(id));
-      }, 1500);
+      // Keep the task in place for a few seconds so a misclick can be undone
+      // by simply unchecking it.
+      startGracePeriod(id);
     }
 
     if (enhancedUpdates.is_completed === false || (enhancedUpdates.status && enhancedUpdates.status !== 'done')) {
-      setHiddenTasks(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-      setFadingTasks(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      // Unchecked (possibly within the grace period) — it's incomplete again,
+      // so drop any pending grace bookkeeping and leave it where it is.
+      removeFromGrace(id);
     }
   };
+
+  // Hold just-completed tasks out of the completed section while they're
+  // still shown in place in the main list.
+  const completedSectionTasks = useMemo(
+    () => tasks.filter(t => !recentlyCompleted.has(t.id)),
+    [tasks, recentlyCompleted],
+  );
 
   const handleDeleteTask = (id: string) => deleteTask.mutate(id);
   const handleAddTask = (task: Partial<Task>) => addTask.mutate(task);
@@ -438,12 +487,11 @@ export const TaskWorkspace = ({
               onOpenDetail={handleSetSelectedTask}
               selectedTasks={selectedTasks}
               onToggleSelect={toggleTaskSelection}
-              fadingTasks={fadingTasks}
               onComposeEmail={handleComposeEmail}
             />
 
             <CompletedTasksSection
-              tasks={tasks}
+              tasks={completedSectionTasks}
               onUpdateTask={handleUpdateTask}
               onDeleteTask={handleDeleteTask}
               onOpenDetail={handleSetSelectedTask}

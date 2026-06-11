@@ -97,6 +97,13 @@ export function GmailCRMView({ userKey, callbackPrefix, returnPath }: GmailCRMVi
             setComposeOpen(true);
           }}
           counts={logic.folderCounts}
+          labels={logic.userLabels}
+          activeLabelId={logic.activeLabelId}
+          onLabelSelect={(labelId) => {
+            logic.setActiveLabelId(labelId);
+            setSelectedEmailId(null);
+          }}
+          labelCounts={logic.labelCounts}
         />
 
         {/* Main Content */}
