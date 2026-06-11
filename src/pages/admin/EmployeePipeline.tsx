@@ -946,13 +946,16 @@ const EmployeePipeline = () => {
         registerUndo({
           label,
           execute: async () => {
-            // Restore the deleted leads
+            // Restore the deleted leads. The deal's entities row was removed
+            // on delete, so strip the stale entity_id and let the insert
+            // trigger mint a fresh one (the Insert type still lists entity_id
+            // as required, hence the cast).
             const { error: restoreError } = await supabase
               .from('deals')
-              .insert(deletedLeads.map(lead => ({
+              .insert(deletedLeads.map(({ entity_id: _entityId, ...lead }) => ({
                 ...lead,
                 updated_at: new Date().toISOString(),
-              })));
+              })) as Database['public']['Tables']['deals']['Insert'][]);
 
             if (restoreError) throw restoreError;
 

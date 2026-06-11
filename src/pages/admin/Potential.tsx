@@ -759,7 +759,13 @@ const Pipeline = () => {
         registerUndo({
           label: `Removed ${ids.length} lead(s) from pipeline`,
           execute: async () => {
-            const { error: e } = await supabase.from('deals').insert(deletedRecords);
+            // The deal's entities row was removed on delete, so strip the stale
+            // entity_id and let the insert trigger mint a fresh one (the Insert
+            // type still lists entity_id as required, hence the cast).
+            const restoreRows = deletedRecords.map(({ entity_id: _entityId, ...rest }) => rest);
+            const { error: e } = await supabase
+              .from('deals')
+              .insert(restoreRows as Database['public']['Tables']['deals']['Insert'][]);
             if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['potential-deals'] });
           },

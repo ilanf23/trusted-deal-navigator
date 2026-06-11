@@ -167,9 +167,17 @@ export async function undoChange(
       .eq("id", target_id);
     if (deleteErr) throw new Error(`Undo failed: ${deleteErr.message}`);
   } else if (operation === "delete" && old_values) {
+    // Entity-backed tables (people/companies/deals/lender_programs) drop their
+    // entities row when deleted, so a captured entity_id is stale — strip it
+    // and let the insert trigger mint a fresh one.
+    const { entity_id: _staleEntityId, ...restorable } = old_values as Record<string, unknown>;
+    const ENTITY_BACKED_TABLES = ["people", "companies", "deals", "lender_programs"];
+    const insertValues = ENTITY_BACKED_TABLES.includes(target_table)
+      ? restorable
+      : old_values;
     const { error: insertErr } = await supabase
       .from(target_table)
-      .insert({ id: target_id, ...old_values });
+      .insert({ id: target_id, ...insertValues });
     if (insertErr) throw new Error(`Undo failed: ${insertErr.message}`);
   }
 
