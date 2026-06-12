@@ -232,7 +232,6 @@ Deno.serve(async (req) => {
                   synced_at: new Date().toISOString(),
                   sync_status: 'synced',
                   appointment_type: 'imported',
-                  user_name: null,
                   user_id: userIdToTeamMemberId[connection.user_id] || null,
                 });
               totalImported++;
@@ -434,7 +433,6 @@ Deno.serve(async (req) => {
               synced_at: new Date().toISOString(),
               sync_status: 'synced',
               appointment_type: 'imported',
-              user_name: null,
               user_id: teamMemberId,
             });
           imported++;

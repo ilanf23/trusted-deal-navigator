@@ -209,7 +209,7 @@ export default function ProjectExpandedView() {
     queryFn: async () => {
       const { data } = await supabase
         .from('activities')
-        .select('*')
+        .select('*, created_by_user:users!activities_created_by_fkey(name)')
         .eq('related_id', ownerDealId!)
         .order('created_at', { ascending: false });
       return data ?? [];
@@ -517,7 +517,7 @@ export default function ProjectExpandedView() {
       activity_type: activityTab === 'note' ? 'note' : activityType,
       content: noteContent.trim(),
       title: activityTab === 'note' ? 'Note' : activityType.replace(/_/g, ' '),
-      created_by: teamMember?.name ?? null,
+      created_by: teamMember?.id ?? null,
     });
     setSavingNote(false);
     setNoteContent('');
@@ -534,7 +534,7 @@ export default function ProjectExpandedView() {
       title: newTaskTitle.trim(),
       status: status,
       source: 'lead',
-      created_by: teamMember?.name ?? null,
+      created_by: teamMember?.id ?? null,
     }).select('id').single();
     if (error) { toast.error('Failed to add task'); return; }
     setNewTaskTitle('');
@@ -692,7 +692,7 @@ export default function ProjectExpandedView() {
       title: newSidebarTaskTitle.trim(),
       status: 'todo',
       source: 'lead',
-      created_by: teamMember?.name ?? null,
+      created_by: teamMember?.id ?? null,
     }).select('id').single();
     setSavingTask(false);
     if (error) { toast.error('Failed to create task'); return; }
@@ -1266,9 +1266,9 @@ export default function ProjectExpandedView() {
                     <div key={act.id} className="rounded-lg bg-card border border-border p-4 hover:border-blue-100 dark:hover:border-blue-900 transition-colors">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="h-7 w-7 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-bold">
-                          {(act.created_by?.[0] ?? '?').toUpperCase()}
+                          {(act.created_by_user?.name?.[0] ?? '?').toUpperCase()}
                         </div>
-                        <span className="text-xs font-semibold text-foreground">{act.created_by ?? 'System'}</span>
+                        <span className="text-xs font-semibold text-foreground">{act.created_by_user?.name ?? 'System'}</span>
                         <span className="text-[10px] text-muted-foreground ml-auto">
                           {format(parseISO(act.created_at), 'MMM d, yyyy h:mm a')}
                         </span>

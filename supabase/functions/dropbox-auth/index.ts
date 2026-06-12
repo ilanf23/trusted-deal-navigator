@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     const body = await req.json();
-    const { action, code, redirectUri, teamMemberName, stateUserId } = body;
+    const { action, code, redirectUri, stateUserId } = body;
 
     // Only exchangeCode is public (popup may not have session).
     // All other actions require authentication.
@@ -215,7 +215,6 @@ Deno.serve(async (req) => {
         .from('dropbox_connections')
         .insert({
           user_id: userId,
-          connected_by: teamMemberName,
           email: accountEmail,
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token,
@@ -265,7 +264,7 @@ Deno.serve(async (req) => {
     if (action === 'getStatus') {
       const { data, error } = await supabaseAdmin
         .from('dropbox_connections')
-        .select('email, connected_by, last_sync_at')
+        .select('email, last_sync_at, user:users!dropbox_connections_user_id_fkey(name)')
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -288,7 +287,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           connected: true,
           email: data.email,
-          connectedBy: data.connected_by,
+          connectedBy: data.user?.name ?? null,
           lastSyncAt: data.last_sync_at,
         }),
         { headers: corsHeaders }

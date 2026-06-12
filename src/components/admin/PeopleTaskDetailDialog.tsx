@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import {
   CalendarIcon,
   Clock,
@@ -127,6 +128,7 @@ export const PeopleTaskDetailDialog = ({
   relatedType = 'deal',
 }: PeopleTaskDetailDialogProps) => {
   const queryClient = useQueryClient();
+  const { teamMember } = useTeamMember();
   const isEditMode = !!task;
 
   // Form state
@@ -188,7 +190,7 @@ export const PeopleTaskDetailDialog = ({
         priority: priority === 'none' ? null : priority,
         status: 'todo',
         source: 'lead',
-        created_by: currentUserName || null,
+        created_by: teamMember?.id ?? null,
       });
       if (error) throw error;
     },

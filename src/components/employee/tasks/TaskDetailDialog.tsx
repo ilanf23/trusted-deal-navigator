@@ -918,12 +918,12 @@ export const TaskDetailDialog = ({
                     <div key={activity.id} className="flex gap-3">
                       <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-background">
                         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white text-xs font-medium">
-                          {(activity.created_by || 'U').substring(0, 2).toUpperCase()}
+                          {(activity.user?.name || 'U').substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 bg-muted/40 rounded-xl p-4">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-sm">{activity.created_by}</span>
+                          <span className="font-medium text-sm">{activity.user?.name ?? 'System'}</span>
                           <span className="text-xs text-muted-foreground">
                             {format(parseISO(activity.created_at), 'MMM d, h:mm a')}
                           </span>
@@ -968,7 +968,7 @@ export const TaskDetailDialog = ({
                   </div>
                   <div className="flex-1 pt-1">
                     <p className="text-sm">
-                      <span className="font-medium">{activity.created_by}</span>
+                      <span className="font-medium">{activity.user?.name ?? 'System'}</span>
                       <span className="text-muted-foreground">
                         {activity.activity_type === 'comment' && ' added a comment'}
                         {activity.activity_type === 'status_change' && (

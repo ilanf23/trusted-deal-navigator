@@ -1545,9 +1545,10 @@ export default function PeopleExpandedView() {
       activity_type: 'type_change',
       title: 'Contact type changed',
       content: JSON.stringify({ from: previousType, to: newType }),
+      created_by: teamMember?.id ?? null,
     });
     queryClient.invalidateQueries({ queryKey: ['person-activities', personId] });
-  }, [personId, person?.contact_type, queryClient, registerUndo]);
+  }, [personId, person?.contact_type, queryClient, registerUndo, teamMember]);
 
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
@@ -1573,6 +1574,7 @@ export default function PeopleExpandedView() {
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
+      created_by: teamMember?.id ?? null,
     });
     setSavingActivity(false);
     if (error) {
@@ -1586,7 +1588,7 @@ export default function PeopleExpandedView() {
     else setNoteContent('');
     queryClient.invalidateQueries({ queryKey: ['person-activities', personId] });
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
-  }, [personId, activityTab, activityType, activityNote, noteContent, queryClient]);
+  }, [personId, activityTab, activityType, activityNote, noteContent, queryClient, teamMember]);
 
   // ── Send email ──
   const handleSendEmail = useCallback(async () => {
@@ -1615,6 +1617,7 @@ export default function PeopleExpandedView() {
           activity_type: 'email',
           title: `Email: ${emailSubject || '(No Subject)'}`,
           content: emailBody,
+          created_by: teamMember?.id ?? null,
         });
         await supabase.from('people').update({ last_activity_at: new Date().toISOString() }).eq('id', personId);
         queryClient.invalidateQueries({ queryKey: ['person-activities', personId] });
@@ -1625,7 +1628,7 @@ export default function PeopleExpandedView() {
     } finally {
       setSendingEmail(false);
     }
-  }, [person, personId, emailSubject, emailBody, sendingEmail, gmail.sendEmailMutation, queryClient]);
+  }, [person, personId, emailSubject, emailBody, sendingEmail, gmail.sendEmailMutation, queryClient, teamMember]);
 
   // ── Save task inline (Enter key) ──
   const handleSaveTask = useCallback(async () => {
@@ -1681,7 +1684,7 @@ export default function PeopleExpandedView() {
       activity_id: activityId,
       lead_id: personId,
       content: text,
-      created_by: teamMember?.name ?? null,
+      created_by: teamMember?.id ?? null,
     });
     setSavingComment(null);
     if (error) {
@@ -1714,7 +1717,7 @@ export default function PeopleExpandedView() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('appointments')
-        .select('*')
+        .select('*, user:users!appointments_user_id_fkey(name)')
         .eq('lead_id', personId!)
         .order('start_time', { ascending: false });
       if (error) throw error;
@@ -1722,7 +1725,7 @@ export default function PeopleExpandedView() {
         id: string; title: string; description: string | null;
         start_time: string; end_time: string | null;
         appointment_type: string | null; lead_id: string | null;
-        user_name: string | null; created_at: string;
+        user: { name: string | null } | null; created_at: string;
       }>;
     },
     enabled: !!personId,
@@ -1753,7 +1756,6 @@ export default function PeopleExpandedView() {
       lead_id: personId,
       appointment_type: newEventType,
       user_id: teamMember.id,
-      user_name: teamMember.name ?? null,
     }).select('id').single();
     setSavingEvent(false);
     if (error) {
@@ -1792,7 +1794,7 @@ export default function PeopleExpandedView() {
         status: suggestion.status ?? 'open',
         project_stage: suggestion.project_stage ?? 'open',
         visibility: 'everyone',
-        created_by: teamMember?.name || null,
+        created_by: teamMember?.id ?? null,
       });
       if (error) throw error;
       toast.success('Project linked');
@@ -1834,7 +1836,7 @@ export default function PeopleExpandedView() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('activity_comments')
-        .select('*')
+        .select('*, created_by_user:users!activity_comments_created_by_fkey(name)')
         .eq('lead_id', personId!)
         .order('created_at', { ascending: true });
       if (error) throw error;
@@ -2996,11 +2998,11 @@ export default function PeopleExpandedView() {
                                 {comments.map((c: any) => (
                                   <div key={c.id} className="flex gap-2">
                                     <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
-                                      {(c.created_by ?? '?')[0]?.toUpperCase()}
+                                      {(c.created_by_user?.name ?? '?')[0]?.toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-[11px] font-medium text-foreground">{c.created_by ?? 'Unknown'}</span>
+                                        <span className="text-[11px] font-medium text-foreground">{c.created_by_user?.name ?? 'Unknown'}</span>
                                         <span className="text-[10px] text-muted-foreground">{formatShortDate(c.created_at)}</span>
                                       </div>
                                       <p className="text-xs text-muted-foreground">{c.content}</p>

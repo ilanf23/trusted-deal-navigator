@@ -23,7 +23,7 @@ const IlanTeamEvanBugs = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bug_reports')
-        .select('*')
+        .select('*, submitted_by_user:users!bug_reports_submitted_by_fkey(name)')
         .eq('submitted_by_email', TEAM_EMAILS.EVAN)
         .order('created_at', { ascending: false });
 
@@ -101,7 +101,7 @@ const IlanTeamEvanBugs = () => {
                       </div>
                       <div className="flex items-center gap-1">
                         <User className="h-3 w-3" />
-                        {bug.submitted_by || 'Unknown'}
+                        {bug.submitted_by_user?.name ?? bug.submitted_by_email?.split('@')[0] ?? 'Unknown'}
                       </div>
                       {bug.page_url && (
                         <Button

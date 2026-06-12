@@ -143,7 +143,7 @@ export function useLeadEmailCompose({ leadId, tableName, onSent }: UseLeadEmailC
             activity_type: 'email',
             title: subject,
             content: plainBody,
-            created_by: teamMember?.name ?? 'System',
+            created_by: teamMember?.id ?? null,
           });
 
           // Nudge the deal row so sort-by-recent-activity reflects the send.
@@ -178,7 +178,7 @@ export function useLeadEmailCompose({ leadId, tableName, onSent }: UseLeadEmailC
         setSending(false);
       }
     },
-    [to, subject, body, leadId, tableName, teamMember?.name, queryClient, closeCompose, onSent],
+    [to, subject, body, leadId, tableName, teamMember?.id, queryClient, closeCompose, onSent],
   );
 
   return {

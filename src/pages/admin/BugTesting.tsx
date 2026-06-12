@@ -26,6 +26,7 @@ interface BugReport {
   status: string | null;
   submitted_by: string | null;
   submitted_by_email: string | null;
+  submitted_by_user?: { name: string | null } | null;
   page_url: string | null;
   browser_info: string | null;
   created_at: string;
@@ -54,7 +55,7 @@ const BugTesting = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bug_reports')
-        .select('*')
+        .select('*, submitted_by_user:users!bug_reports_submitted_by_fkey(name)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as BugReport[];
@@ -68,7 +69,7 @@ const BugTesting = () => {
         description: bug.description,
         priority: bug.priority,
         page_url: bug.page_url,
-        submitted_by: user?.email?.split('@')[0] || 'Unknown',
+        submitted_by: user?.id ?? null,
         submitted_by_email: user?.email,
         browser_info: navigator.userAgent,
       });
@@ -255,10 +256,10 @@ const BugTesting = () => {
                         <div className="flex items-center gap-2">
                           <Avatar className="h-5 w-5">
                             <AvatarFallback className="text-[8px] bg-primary/10">
-                              {(bug.submitted_by || 'U').substring(0, 2).toUpperCase()}
+                              {(bug.submitted_by_user?.name ?? bug.submitted_by_email?.split('@')[0] ?? 'U').substring(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{bug.submitted_by || 'Unknown'}</span>
+                          <span>{bug.submitted_by_user?.name ?? bug.submitted_by_email?.split('@')[0] ?? 'Unknown'}</span>
                         </div>
                         <span>•</span>
                         <span>{format(parseISO(bug.created_at), 'MMM d, h:mm a')}</span>

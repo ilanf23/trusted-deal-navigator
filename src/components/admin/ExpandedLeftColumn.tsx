@@ -287,7 +287,7 @@ export function ExpandedLeftColumn({
         activity_type: 'note',
         title: noteTitle,
         content: `${payload.reason} — ${payload.notes}`,
-        created_by: teamMember?.name ?? 'System',
+        created_by: teamMember?.id ?? null,
       });
     }
 

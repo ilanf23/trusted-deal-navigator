@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -409,10 +409,10 @@ export default function LeadRelatedSidebar({
   const leadEntityId = lead.related_id;
 
   // ─── Canonical polymorphic query keys ──────────────────────────────────
-  const contactsKey = ['lead-related', relatedType, leadId, 'contacts'] as const;
-  const tasksKey = ['person-tasks', leadId] as const; // kept for compat with existing task consumers
-  const projectsKey = ['lead-related', relatedType, leadId, 'projects'] as const;
-  const appointmentsKey = ['lead-related', relatedType, leadId, 'appointments'] as const;
+  const contactsKey = useMemo(() => ['lead-related', relatedType, leadId, 'contacts'] as const, [relatedType, leadId]);
+  const tasksKey = useMemo(() => ['person-tasks', leadId] as const, [leadId]); // kept for compat with existing task consumers
+  const projectsKey = useMemo(() => ['lead-related', relatedType, leadId, 'projects'] as const, [relatedType, leadId]);
+  const appointmentsKey = useMemo(() => ['lead-related', relatedType, leadId, 'appointments'] as const, [relatedType, leadId]);
 
   // ─── Queries ───────────────────────────────────────────────────────────
 
@@ -778,7 +778,6 @@ export default function LeadRelatedSidebar({
       end_time: endTime,
       appointment_type: eventType,
       user_id: teamMember?.id ?? null,
-      user_name: teamMember?.name ?? null,
     }).select('id').single();
     setEventSaving(false);
     if (error) {
@@ -800,7 +799,7 @@ export default function LeadRelatedSidebar({
         queryClient.invalidateQueries({ queryKey: appointmentsKey })
       );
     }
-  }, [leadId, eventTitle, eventDate, eventTime, eventEndTime, eventType, eventDescription, queryClient, appointmentsKey]);
+  }, [leadId, eventTitle, eventDate, eventTime, eventEndTime, eventType, eventDescription, queryClient, appointmentsKey, teamMember?.id]);
 
   const handleDeleteEvent = useCallback(async (eventId: string) => {
     const { error } = await supabase.from('appointments').delete().eq('id', eventId);
@@ -916,7 +915,7 @@ export default function LeadRelatedSidebar({
         status: suggestion.status ?? 'open',
         project_stage: suggestion.project_stage ?? 'open',
         visibility: 'everyone',
-        created_by: currentUserName || null,
+        created_by: teamMember?.id ?? null,
       });
       if (error) throw error;
       toast.success('Project linked');
@@ -928,7 +927,7 @@ export default function LeadRelatedSidebar({
     } finally {
       setSavingProject(false);
     }
-  }, [leadEntityId, relatedType, currentUserName, queryClient, projectsKey]);
+  }, [leadEntityId, relatedType, teamMember?.id, queryClient, projectsKey]);
 
   /**
    * Delete a project from `related_projects`. Each row in that table represents

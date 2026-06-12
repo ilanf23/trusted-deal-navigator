@@ -199,7 +199,7 @@ export default function ProjectDetailPanel({
     queryFn: async () => {
       const { data } = await supabase
         .from('activities')
-        .select('*')
+        .select('*, created_by_user:users!activities_created_by_fkey(name)')
         .eq('related_id', ownerDealId!)
         .order('created_at', { ascending: false });
       return data ?? [];
@@ -372,6 +372,7 @@ export default function ProjectDetailPanel({
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
+      created_by: teamMember?.id ?? null,
     });
     setSavingActivity(false);
     if (error) { toast.error('Failed to save activity'); return; }
@@ -379,7 +380,7 @@ export default function ProjectDetailPanel({
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote(''); else setNoteContent('');
     queryClient.invalidateQueries({ queryKey: ['project-panel-activities', project.related_id] });
-  }, [ownerDealId, project.related_id, activityTab, activityType, activityNote, noteContent, queryClient]);
+  }, [ownerDealId, project.related_id, activityTab, activityType, activityNote, noteContent, teamMember, queryClient]);
 
   // Merge activities + email threads into timeline
   const timelineItems = useMemo(() => {
@@ -809,9 +810,9 @@ export default function ProjectDetailPanel({
                     <div key={act.id} className="rounded-xl bg-card border border-border p-3 hover:border-blue-100 dark:hover:border-blue-900 transition-colors">
                       <div className="flex items-center gap-2 mb-1.5">
                         <div className="h-7 w-7 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                          {(act.created_by?.[0] ?? '?').toUpperCase()}
+                          {(act.created_by_user?.name?.[0] ?? '?').toUpperCase()}
                         </div>
-                        <span className="text-xs font-semibold text-foreground">{act.created_by ?? 'System'}</span>
+                        <span className="text-xs font-semibold text-foreground">{act.created_by_user?.name ?? 'System'}</span>
                         <span className="text-[10px] text-muted-foreground ml-auto">
                           {format(parseISO(act.created_at), 'MMM d, h:mm a')}
                         </span>

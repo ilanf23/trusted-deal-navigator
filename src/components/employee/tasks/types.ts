@@ -48,7 +48,9 @@ export interface TaskActivity {
   content: string | null;
   old_value: string | null;
   new_value: string | null;
-  created_by: string | null;
+  user_id: string | null;
+  /** Joined from users via task_activities_user_id_fkey; null = system entry */
+  user?: { name: string | null } | null;
   mentioned_users: string[] | null;
   created_at: string;
 }

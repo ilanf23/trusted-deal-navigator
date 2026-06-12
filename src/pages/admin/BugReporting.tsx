@@ -36,7 +36,7 @@ const BugReporting = () => {
         description: bug.description,
         priority: bug.priority,
         page_url: bug.page_url || null,
-        submitted_by: user?.email?.split('@')[0] || 'Unknown',
+        submitted_by: user?.id ?? null,
         submitted_by_email: user?.email,
         browser_info: navigator.userAgent,
       });

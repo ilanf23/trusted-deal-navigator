@@ -82,12 +82,12 @@ export const useTasksData = (teamMemberId?: string | null) => {
       
       // Log activity for status changes
       if (logActivity && updates.status) {
+        // System entries leave user_id unset; display resolves null user to 'System'.
         await supabase.from('task_activities').insert({
           task_id: id,
           activity_type: 'status_change',
           old_value: currentTask?.status || '',
           new_value: updates.status,
-          created_by: 'System',
         });
       }
       
@@ -199,7 +199,6 @@ export const useTasksData = (teamMemberId?: string | null) => {
         task_id: taskId,
         activity_type: 'comment',
         content,
-        created_by: 'System',
       }).select().single();
       if (error) throw error;
       return data;
@@ -241,7 +240,7 @@ export const useTaskActivities = (taskId: string | null) => {
       if (!taskId) return [];
       const { data, error } = await supabase
         .from('task_activities')
-        .select('*')
+        .select('*, user:users!task_activities_user_id_fkey(name)')
         .eq('task_id', taskId)
         .order('created_at', { ascending: false });
       if (error) throw error;

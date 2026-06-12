@@ -160,7 +160,7 @@ export function AddFileDialog({
           file_url: filePath,
           file_type: file.type || null,
           file_size: file.size,
-          uploaded_by: teamMember?.name ?? 'Admin',
+          uploaded_by: teamMember?.id ?? null,
           source_system: 'native',
         });
 
@@ -223,7 +223,7 @@ export function AddFileDialog({
       file_url: path,
       file_type: 'dropbox',
       file_size: entry.size ?? null,
-      uploaded_by: teamMember?.name ?? 'Admin',
+      uploaded_by: teamMember?.id ?? null,
       source_system: 'dropbox',
     });
     setSavingLink(null);
@@ -246,7 +246,7 @@ export function AddFileDialog({
       file_url: entry.id,
       file_type: 'google_sheets',
       file_size: null,
-      uploaded_by: teamMember?.name ?? 'Admin',
+      uploaded_by: teamMember?.id ?? null,
       source_system: 'google_sheets',
     });
     setSavingLink(null);

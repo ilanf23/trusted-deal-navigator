@@ -18,6 +18,7 @@ export interface RelatedFile {
   file_url: string;
   file_type: string | null;
   file_size: number | null;
+  /** users.id of the uploader (FK to users) */
   uploaded_by: string | null;
   source_system: string;
   created_at: string;

@@ -218,7 +218,6 @@ ${transcript ? callSummary : 'No transcript available - call was not recorded or
         task_id: task.id,
         activity_type: 'created',
         content: `Auto-generated from call with ${leadName}`,
-        created_by: 'System',
       });
     }
 

@@ -30,7 +30,7 @@
 | activity_type      | text                     | No          | No       | -              |
 | title              | text                     | No          | Yes      | -              |
 | content            | text                     | No          | Yes      | -              |
-| created_by         | text                     | No          | Yes      | -              |
+| created_by         | uuid                     | No          | Yes      | users          |
 | created_at         | timestamp with time zone | No          | No       | -              |
 | related_type        | USER-DEFINED             | No          | Yes      | -              |
 | copper_activity_id | text                     | No          | Yes      | -              |
@@ -44,7 +44,7 @@
 | activity_id | uuid                     | No          | No       | activities     |
 | lead_id     | uuid                     | No          | No       | -              |
 | content     | text                     | No          | No       | -              |
-| created_by  | text                     | No          | Yes      | -              |
+| created_by  | uuid                     | No          | Yes      | users          |
 | created_at  | timestamp with time zone | No          | No       | -              |
 | related_type | USER-DEFINED             | No          | Yes      | -              |
 
@@ -77,7 +77,6 @@
 | google_calendar_id | text                     | No          | Yes      | -              |
 | synced_at          | timestamp with time zone | No          | Yes      | -              |
 | sync_status        | text                     | No          | Yes      | -              |
-| user_name          | text                     | No          | Yes      | -              |
 | user_id            | uuid                     | No          | Yes      | users          |
 | related_type        | USER-DEFINED             | No          | Yes      | -              |
 
@@ -90,7 +89,7 @@
 | description        | text                     | No          | Yes      | -              |
 | priority           | text                     | No          | Yes      | -              |
 | status             | text                     | No          | Yes      | -              |
-| submitted_by       | text                     | No          | Yes      | -              |
+| submitted_by       | uuid                     | No          | Yes      | users          |
 | submitted_by_email | text                     | No          | Yes      | -              |
 | screenshot_url     | text                     | No          | Yes      | -              |
 | page_url           | text                     | No          | Yes      | -              |
@@ -266,7 +265,7 @@
 | lead_id        | uuid                     | No          | No       | -              |
 | milestone_name | text                     | No          | No       | -              |
 | completed      | boolean                  | No          | No       | -              |
-| completed_by   | text                     | No          | Yes      | -              |
+| completed_by   | uuid                     | No          | Yes      | users          |
 | completed_at   | timestamp with time zone | No          | Yes      | -              |
 | notes          | text                     | No          | Yes      | -              |
 | position       | integer                  | No          | No       | -              |
@@ -294,7 +293,7 @@
 | description | text                     | No          | Yes      | -              |
 | due_date    | timestamp with time zone | No          | Yes      | -              |
 | resolved_at | timestamp with time zone | No          | Yes      | -              |
-| resolved_by | text                     | No          | Yes      | -              |
+| resolved_by | uuid                     | No          | Yes      | users          |
 | created_at  | timestamp with time zone | No          | No       | -              |
 | updated_at  | timestamp with time zone | No          | No       | -              |
 | related_type | USER-DEFINED             | No          | Yes      | -              |
@@ -390,8 +389,7 @@
 | Column Name   | Data Type                | Primary Key | Nullable | Foreign Key To |
 | ------------- | ------------------------ | ----------- | -------- | -------------- |
 | id            | uuid                     | Yes         | No       | -              |
-| user_id       | uuid                     | No          | No       | -              |
-| connected_by  | text                     | No          | Yes      | -              |
+| user_id       | uuid                     | No          | No       | users          |
 | email         | text                     | No          | No       | -              |
 | access_token  | text                     | No          | No       | -              |
 | refresh_token | text                     | No          | No       | -              |
@@ -511,7 +509,7 @@
 | file_url       | text                     | No          | No       | -              |
 | file_type      | text                     | No          | Yes      | -              |
 | file_size      | bigint                   | No          | Yes      | -              |
-| uploaded_by    | text                     | No          | Yes      | -              |
+| uploaded_by    | uuid                     | No          | Yes      | users          |
 | created_at     | timestamp with time zone | No          | No       | -              |
 | related_type    | USER-DEFINED             | No          | Yes      | -              |
 | copper_file_id | text                     | No          | Yes      | -              |
@@ -546,7 +544,7 @@
 | bank_relationships | text                     | No          | Yes      | -              |
 | waiting_on         | text                     | No          | Yes      | -              |
 | related_to         | text                     | No          | Yes      | -              |
-| created_by         | text                     | No          | Yes      | -              |
+| created_by         | uuid                     | No          | Yes      | users          |
 | created_at         | timestamp with time zone | No          | No       | -              |
 | updated_at         | timestamp with time zone | No          | No       | -              |
 | related_type        | USER-DEFINED             | No          | Yes      | -              |
@@ -558,8 +556,7 @@
 | id          | uuid                     | Yes         | No       | -              |
 | activity_id | text                     | No          | No       | -              |
 | emoji       | text                     | No          | No       | -              |
-| user_id     | uuid                     | No          | No       | -              |
-| user_name   | text                     | No          | Yes      | -              |
+| user_id     | uuid                     | No          | No       | users          |
 | created_at  | timestamp with time zone | No          | No       | -              |
 
 ## Table: `google_connections`
@@ -567,7 +564,7 @@
 | Column Name                | Data Type                | Primary Key | Nullable | Foreign Key To |
 | -------------------------- | ------------------------ | ----------- | -------- | -------------- |
 | id                         | uuid                     | Yes         | No       | -              |
-| user_id                    | uuid                     | No          | No       | -              |
+| user_id                    | uuid                     | No          | No       | users          |
 | email                      | character varying        | No          | No       | -              |
 | access_token               | text                     | No          | No       | -              |
 | refresh_token              | text                     | No          | No       | -              |
@@ -882,7 +879,6 @@
 | content         | text                     | No          | Yes      | -              |
 | old_value       | text                     | No          | Yes      | -              |
 | new_value       | text                     | No          | Yes      | -              |
-| created_by      | text                     | No          | Yes      | -              |
 | mentioned_users | ARRAY                    | No          | Yes      | -              |
 | created_at      | timestamp with time zone | No          | No       | -              |
 | user_id         | uuid                     | No          | Yes      | users          |
@@ -922,7 +918,7 @@
 | task_type       | text                     | No          | Yes      | -              |
 | user_id         | uuid                     | No          | Yes      | users          |
 | completed_at    | timestamp with time zone | No          | Yes      | -              |
-| created_by      | text                     | No          | Yes      | -              |
+| created_by      | uuid                     | No          | Yes      | users          |
 | related_type     | USER-DEFINED             | No          | Yes      | -              |
 | copper_task_id  | text                     | No          | Yes      | -              |
 | source_system   | text                     | No          | No       | -              |
@@ -964,7 +960,7 @@
 | header_row     | jsonb                    | No          | Yes      | -              |
 | last_pull_at   | timestamp with time zone | No          | Yes      | -              |
 | last_push_at   | timestamp with time zone | No          | Yes      | -              |
-| created_by     | uuid                     | No          | Yes      | -              |
+| created_by     | uuid                     | No          | Yes      | users          |
 | created_at     | timestamp with time zone | No          | Yes      | -              |
 | updated_at     | timestamp with time zone | No          | Yes      | -              |
 

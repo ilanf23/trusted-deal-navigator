@@ -116,7 +116,15 @@ export type Database = {
           source_system?: string
           title?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "activities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       activity_comments: {
         Row: {
@@ -152,6 +160,13 @@ export type Database = {
             columns: ["activity_id"]
             isOneToOne: false
             referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_comments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -211,7 +226,6 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string | null
-          user_name: string | null
         }
         Insert: {
           appointment_type?: string | null
@@ -229,7 +243,6 @@ export type Database = {
           title: string
           updated_at?: string
           user_id?: string | null
-          user_name?: string | null
         }
         Update: {
           appointment_type?: string | null
@@ -247,7 +260,6 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string | null
-          user_name?: string | null
         }
         Relationships: [
           {
@@ -315,6 +327,13 @@ export type Database = {
           {
             foreignKeyName: "bug_reports_assigned_to_id_fkey"
             columns: ["assigned_to_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bug_reports_submitted_by_fkey"
+            columns: ["submitted_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -834,7 +853,15 @@ export type Database = {
           position?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "deal_milestones_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deal_people: {
         Row: {
@@ -912,7 +939,15 @@ export type Database = {
           resolved_by?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "deal_waiting_on_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deals: {
         Row: {
@@ -1192,7 +1227,6 @@ export type Database = {
         Row: {
           access_token: string
           account_id: string | null
-          connected_by: string | null
           created_at: string | null
           cursor: string | null
           email: string
@@ -1206,7 +1240,6 @@ export type Database = {
         Insert: {
           access_token: string
           account_id?: string | null
-          connected_by?: string | null
           created_at?: string | null
           cursor?: string | null
           email: string
@@ -1220,7 +1253,6 @@ export type Database = {
         Update: {
           access_token?: string
           account_id?: string | null
-          connected_by?: string | null
           created_at?: string | null
           cursor?: string | null
           email?: string
@@ -1231,7 +1263,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dropbox_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dropbox_files: {
         Row: {
@@ -1589,6 +1629,13 @@ export type Database = {
             referencedRelation: "related"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "related_files_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       related_followers: {
@@ -1709,6 +1756,13 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "related_projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       feed_reactions: {
@@ -1718,7 +1772,6 @@ export type Database = {
           emoji: string
           id: string
           user_id: string
-          user_name: string | null
         }
         Insert: {
           activity_id: string
@@ -1726,7 +1779,6 @@ export type Database = {
           emoji: string
           id?: string
           user_id: string
-          user_name?: string | null
         }
         Update: {
           activity_id?: string
@@ -1734,9 +1786,16 @@ export type Database = {
           emoji?: string
           id?: string
           user_id?: string
-          user_name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "feed_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       google_connections: {
         Row: {
@@ -1793,7 +1852,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "google_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hidden_email_threads: {
         Row: {
@@ -2685,7 +2752,6 @@ export type Database = {
           activity_type: string
           content: string | null
           created_at: string
-          created_by: string | null
           id: string
           mentioned_users: string[] | null
           new_value: string | null
@@ -2697,7 +2763,6 @@ export type Database = {
           activity_type: string
           content?: string | null
           created_at?: string
-          created_by?: string | null
           id?: string
           mentioned_users?: string[] | null
           new_value?: string | null
@@ -2709,7 +2774,6 @@ export type Database = {
           activity_type?: string
           content?: string | null
           created_at?: string
-          created_by?: string | null
           id?: string
           mentioned_users?: string[] | null
           new_value?: string | null
@@ -2860,6 +2924,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tasks_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -2974,7 +3045,15 @@ export type Database = {
           spreadsheet_id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "volume_log_sync_config_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

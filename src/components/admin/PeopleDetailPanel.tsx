@@ -682,7 +682,7 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
     queryFn: async () => {
       const { data } = await supabase
         .from('activities')
-        .select('id, activity_type, title, content, created_at, created_by')
+        .select('id, activity_type, title, content, created_at, created_by_user:users!activities_created_by_fkey(name)')
         .eq('related_id', person.id)
         .eq('related_type', 'people')
         .order('created_at', { ascending: false });
@@ -715,7 +715,7 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
       activity_type: activityTab === 'log' ? activityType : 'note',
       title: activityTab === 'log' ? activityType.replace(/_/g, ' ') : 'Note',
       content: noteContent.trim(),
-      created_by: teamMember?.name ?? 'Unknown',
+      created_by: teamMember?.id ?? null,
     });
     setSavingNote(false);
     if (error) { toast.error('Failed to save'); return; }
@@ -744,7 +744,7 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
       items.push({ id: c.id, type: c.communication_type, title: `${dirLabel} ${typeLabel}`, content: c.content, createdAt: c.created_at, source: 'communication', direction: c.direction, durationSeconds: c.duration_seconds });
     }
     for (const a of activities) {
-      items.push({ id: a.id, type: a.activity_type, title: a.title ?? a.activity_type, content: a.content, createdAt: a.created_at, createdBy: (a as any).created_by, source: 'activity' });
+      items.push({ id: a.id, type: a.activity_type, title: a.title ?? a.activity_type, content: a.content, createdAt: a.created_at, createdBy: (a as any).created_by_user?.name ?? null, source: 'activity' });
     }
     items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return items;

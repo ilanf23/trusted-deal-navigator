@@ -500,7 +500,7 @@ export default function UnderwritingExpandedView() {
       activity_id: activityId,
       lead_id: leadId,
       content: text,
-      created_by: teamMember?.name ?? null,
+      created_by: teamMember?.id ?? null,
     });
     setSavingComment(null);
     if (error) {
@@ -543,6 +543,7 @@ export default function UnderwritingExpandedView() {
       .update({
         completed: !currentlyCompleted,
         completed_at: !currentlyCompleted ? new Date().toISOString() : null,
+        completed_by: !currentlyCompleted ? (teamMember?.id ?? null) : null,
       })
       .eq('id', milestoneId);
     if (error) {
@@ -550,7 +551,7 @@ export default function UnderwritingExpandedView() {
       return;
     }
     queryClient.invalidateQueries({ queryKey: ['underwriting-milestones', leadId] });
-  }, [leadId, queryClient]);
+  }, [leadId, queryClient, teamMember]);
 
   // ── Save waiting on (Related sidebar) ──
   const handleSaveWaitingOn = useCallback(async () => {
@@ -577,7 +578,7 @@ export default function UnderwritingExpandedView() {
   const handleResolveWaitingOn = useCallback(async (itemId: string) => {
     const { error } = await supabase
       .from('deal_waiting_on')
-      .update({ resolved_at: new Date().toISOString() })
+      .update({ resolved_at: new Date().toISOString(), resolved_by: teamMember?.id ?? null })
       .eq('id', itemId);
     if (error) {
       toast.error('Failed to resolve item');
@@ -585,7 +586,7 @@ export default function UnderwritingExpandedView() {
     }
     toast.success('Resolved');
     queryClient.invalidateQueries({ queryKey: ['underwriting-waiting-on', leadId] });
-  }, [leadId, queryClient]);
+  }, [leadId, queryClient, teamMember]);
 
   // NOTE: File upload / delete, plus contacts / tasks / projects / files / appointments queries
   // and related-people / people-search / companies-search have all moved into <LeadRelatedSidebar>.
@@ -643,7 +644,7 @@ export default function UnderwritingExpandedView() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('activity_comments')
-        .select('*')
+        .select('*, created_by_user:users!activity_comments_created_by_fkey(name)')
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: true });
       if (error) throw error;
@@ -763,17 +764,16 @@ export default function UnderwritingExpandedView() {
     // Pass 1: filter by team member
     let memberFiltered = timelineItems;
     if (selectedTimelineMembers.size > 0) {
-      const selectedNames = new Set<string>();
       const selectedEmails = new Set<string>();
       for (const m of teamMembers) {
         if (selectedTimelineMembers.has(m.id)) {
-          if (m.name) selectedNames.add(m.name);
           if (m.email) selectedEmails.add(m.email.toLowerCase());
         }
       }
       memberFiltered = timelineItems.filter((item) => {
         if (item.type === 'activity') {
-          return !!item.data.created_by && selectedNames.has(item.data.created_by);
+          // created_by is a uuid FK to users.id — compare against selected member ids
+          return !!item.data.created_by && selectedTimelineMembers.has(item.data.created_by);
         }
         const thread = item.data;
         return (thread.messages ?? []).some((msg: { from?: string }) => {
@@ -1388,11 +1388,11 @@ export default function UnderwritingExpandedView() {
                                 {comments.map((c) => (
                                   <div key={c.id} className="flex gap-2">
                                     <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
-                                      {(c.created_by ?? '?')[0]?.toUpperCase()}
+                                      {(c.created_by_user?.name ?? '?')[0]?.toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-[11px] font-medium text-foreground">{c.created_by ?? 'Unknown'}</span>
+                                        <span className="text-[11px] font-medium text-foreground">{c.created_by_user?.name ?? 'Unknown'}</span>
                                         <span className="text-[10px] text-muted-foreground">{formatShortDate(c.created_at)}</span>
                                       </div>
                                       <p className="text-xs text-muted-foreground">{c.content}</p>

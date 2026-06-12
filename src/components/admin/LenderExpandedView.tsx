@@ -262,7 +262,7 @@ export default function LenderExpandedView() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('activity_comments')
-        .select('*')
+        .select('*, created_by_user:users!activity_comments_created_by_fkey(name)')
         .eq('lead_id', lenderId!)
         .order('created_at', { ascending: true });
       if (error) throw error;
@@ -369,17 +369,16 @@ export default function LenderExpandedView() {
   const filteredTimelineItems = useMemo(() => {
     let memberFiltered = timelineItems;
     if (selectedTimelineMembers.size > 0) {
-      const selectedNames = new Set<string>();
       const selectedEmails = new Set<string>();
       for (const m of teamMembers) {
         if (selectedTimelineMembers.has(m.id)) {
-          if (m.name) selectedNames.add(m.name);
           if (m.email) selectedEmails.add(m.email.toLowerCase());
         }
       }
       memberFiltered = timelineItems.filter((item) => {
         if (item.type === 'activity') {
-          return !!item.data.created_by && selectedNames.has(item.data.created_by);
+          // created_by is a uuid FK to users.id — compare against selected member ids
+          return !!item.data.created_by && selectedTimelineMembers.has(item.data.created_by);
         }
         const thread = item.data;
         return (thread.messages ?? []).some((msg: { from?: string }) => {
@@ -430,7 +429,7 @@ export default function LenderExpandedView() {
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
-      created_by: teamMember?.name ?? null,
+      created_by: teamMember?.id ?? null,
     });
     setSavingActivity(false);
     if (error) {
@@ -452,7 +451,7 @@ export default function LenderExpandedView() {
       activity_id: activityId,
       lead_id: lenderId,
       content: text,
-      created_by: teamMember?.name ?? null,
+      created_by: teamMember?.id ?? null,
     });
     setSavingComment(null);
     if (error) {
@@ -1047,11 +1046,11 @@ export default function LenderExpandedView() {
                                   {comments.map((c: any) => (
                                     <div key={c.id} className="flex gap-2">
                                       <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
-                                        {(c.created_by ?? '?')[0]?.toUpperCase()}
+                                        {(c.created_by_user?.name ?? '?')[0]?.toUpperCase()}
                                       </div>
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-1.5">
-                                          <span className="text-[11px] font-medium text-foreground">{c.created_by ?? 'Unknown'}</span>
+                                          <span className="text-[11px] font-medium text-foreground">{c.created_by_user?.name ?? 'Unknown'}</span>
                                           <span className="text-[10px] text-muted-foreground">{formatShortDate(c.created_at)}</span>
                                         </div>
                                         <p className="text-xs text-muted-foreground">{c.content}</p>

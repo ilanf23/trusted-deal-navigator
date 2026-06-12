@@ -18,7 +18,7 @@ interface FeedReactionRow {
   activity_id: string;
   emoji: string;
   user_id: string;
-  user_name: string | null;
+  user: { name: string | null } | null;
   created_at: string;
 }
 
@@ -81,7 +81,7 @@ export function useFeedReactions(activityId: string) {
 
       const { data, error } = await supabase
         .from('feed_reactions')
-        .select('*')
+        .select('*, user:users!feed_reactions_user_id_fkey(name)')
         .eq('activity_id', activityId);
       if (error) throw error;
 
@@ -92,7 +92,7 @@ export function useFeedReactions(activityId: string) {
         const existing = map.get(row.emoji) || { count: 0, reactedByMe: false, users: [] };
         existing.count++;
         if (row.user_id === myId) existing.reactedByMe = true;
-        if (row.user_name) existing.users.push(row.user_name);
+        if (row.user?.name) existing.users.push(row.user.name);
         map.set(row.emoji, existing);
       }
 
@@ -109,7 +109,6 @@ export function useFeedReactions(activityId: string) {
 
 export function useToggleFeedReaction() {
   const queryClient = useQueryClient();
-  const { teamMember } = useTeamMember();
 
   return useMutation({
     mutationFn: async ({ activityId, emoji }: { activityId: string; emoji: string }) => {
@@ -138,7 +137,6 @@ export function useToggleFeedReaction() {
             activity_id: activityId,
             emoji,
             user_id: user.id,
-            user_name: teamMember?.name ?? null,
           });
         if (error) throw error;
       }

@@ -37,7 +37,7 @@ const FloatingBugReport = () => {
         description: bug.description,
         priority: bug.priority,
         page_url: bug.page_url || window.location.href,
-        submitted_by: user?.email?.split('@')[0] || 'Unknown',
+        submitted_by: user?.id ?? null,
         submitted_by_email: user?.email,
         browser_info: navigator.userAgent,
       });

@@ -12,6 +12,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { useUndo } from '@/contexts/UndoContext';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { CalendarIcon, User, Trash2, FolderOpen, X, ChevronDown } from 'lucide-react';
 
 // ── Types ──
@@ -76,6 +77,7 @@ interface ProjectDetailDialogProps {
   leadId: string;
   leadName: string;
   teamMembers: { id: string; name: string }[];
+  /** @deprecated created_by now stores the user's id via useTeamMember; prop kept for caller compatibility. */
   currentUserName?: string | null;
   onSaved: () => void;
   /** Pre-fills the Name field in create mode. Used by autocomplete pickers. */
@@ -83,10 +85,11 @@ interface ProjectDetailDialogProps {
 }
 
 export default function ProjectDetailDialog({
-  project, open, onClose, leadId, leadName, teamMembers, currentUserName, onSaved, initialName,
+  project, open, onClose, leadId, leadName, teamMembers, onSaved, initialName,
 }: ProjectDetailDialogProps) {
   const queryClient = useQueryClient();
   const { registerUndo } = useUndo();
+  const { teamMember } = useTeamMember();
   const isEditMode = !!project;
 
   // Form state
@@ -193,7 +196,7 @@ export default function ProjectDetailDialog({
         clx_file_name: clxFileName.trim() || null,
         bank_relationships: bankRelationships.trim() || null,
         waiting_on: waitingOn.trim() || null,
-        created_by: currentUserName || null,
+        created_by: teamMember?.id ?? null,
       }).select('id').single();
       if (error) throw error;
       return data;
