@@ -15,6 +15,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# FUSE hidden files (leftover from cloud sync tools)
+.fuse_hidden*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
