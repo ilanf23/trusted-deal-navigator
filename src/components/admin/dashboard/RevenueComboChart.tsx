@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
-  ComposedChart,
-  Bar,
+  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -69,6 +68,7 @@ const LIGHT_COLORS = {
   grid: '#e5e7eb',
   axis: '#9ca3af',
   refLine: '#e879797a',
+  surface: '#ffffff',
 };
 
 const DARK_COLORS = {
@@ -79,6 +79,7 @@ const DARK_COLORS = {
   grid: '#334155',
   axis: '#94a3b8',
   refLine: '#f87171aa',
+  surface: '#0f172a',
 };
 
 function useChartColors() {
@@ -247,9 +248,10 @@ export function RevenueComboChart({
     }));
   }, [data, showTarget, showPrevious]);
 
-  const handleBarClick = useCallback(
-    (_: unknown, index: number) => {
-      if (onPeriodClick && filteredData[index]) {
+  const handleChartClick = useCallback(
+    (state: { activeTooltipIndex?: number } | null) => {
+      const index = state?.activeTooltipIndex;
+      if (onPeriodClick && index != null && filteredData[index]) {
         onPeriodClick(filteredData[index].label, index);
       }
     },
@@ -435,9 +437,11 @@ export function RevenueComboChart({
             </div>
           ) : filteredData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
+              <LineChart
                 data={filteredData}
                 margin={{ top: 12, right: 24, left: 4, bottom: 8 }}
+                onClick={handleChartClick}
+                style={onPeriodClick ? { cursor: 'pointer' } : undefined}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -446,6 +450,7 @@ export function RevenueComboChart({
                 />
                 <XAxis
                   dataKey="label"
+                  padding={{ left: 30, right: 30 }}
                   axisLine={{ stroke: COLORS.grid, strokeWidth: 1 }}
                   tickLine={false}
                   tick={{ fontSize: 11, fill: COLORS.axis }}
@@ -460,7 +465,10 @@ export function RevenueComboChart({
                   tickCount={5}
                   width={55}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip
+                  content={<CustomTooltip />}
+                  cursor={{ stroke: COLORS.axis, strokeDasharray: '3 3' }}
+                />
                 <Legend content={<CompactLegend />} />
 
                 {quarterlyTargets.map((qt) => (
@@ -479,17 +487,6 @@ export function RevenueComboChart({
                   />
                 ))}
 
-                <Bar
-                  yAxisId="left"
-                  dataKey="revenue"
-                  name="Period Revenue"
-                  fill={COLORS.bar}
-                  opacity={0.7}
-                  radius={[3, 3, 0, 0]}
-                  onClick={handleBarClick}
-                  cursor={onPeriodClick ? 'pointer' : undefined}
-                />
-
                 {showPrevious && hasPrevious && (
                   <Line
                     yAxisId="left"
@@ -500,7 +497,7 @@ export function RevenueComboChart({
                     strokeWidth={1.5}
                     strokeDasharray="5 3"
                     dot={false}
-                    activeDot={{ r: 4, fill: COLORS.previous, stroke: '#fff', strokeWidth: 2 }}
+                    activeDot={{ r: 4, fill: COLORS.previous, stroke: COLORS.surface, strokeWidth: 2 }}
                   />
                 )}
 
@@ -514,9 +511,20 @@ export function RevenueComboChart({
                     strokeWidth={1.5}
                     strokeDasharray="4 4"
                     dot={false}
-                    activeDot={{ r: 4, fill: COLORS.target, stroke: '#fff', strokeWidth: 2 }}
+                    activeDot={{ r: 4, fill: COLORS.target, stroke: COLORS.surface, strokeWidth: 2 }}
                   />
                 )}
+
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="revenue"
+                  name="Period Revenue"
+                  stroke={COLORS.bar}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: COLORS.surface, stroke: COLORS.bar, strokeWidth: 2 }}
+                  activeDot={{ r: 8, fill: COLORS.bar, stroke: COLORS.surface, strokeWidth: 2 }}
+                />
 
                 <Line
                   yAxisId="left"
@@ -525,10 +533,10 @@ export function RevenueComboChart({
                   name="Cumulative"
                   stroke={COLORS.cumulative}
                   strokeWidth={2.25}
-                  dot={{ r: 3, fill: COLORS.cumulative, stroke: '#fff', strokeWidth: 1 }}
-                  activeDot={{ r: 5, fill: COLORS.cumulative, stroke: '#fff', strokeWidth: 2 }}
+                  dot={{ r: 3, fill: COLORS.surface, stroke: COLORS.cumulative, strokeWidth: 2 }}
+                  activeDot={{ r: 8, fill: COLORS.cumulative, stroke: COLORS.surface, strokeWidth: 2 }}
                 />
-              </ComposedChart>
+              </LineChart>
             </ResponsiveContainer>
           ) : (
             <div className="flex items-center justify-center h-full text-sm text-muted-foreground">

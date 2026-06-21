@@ -2,10 +2,11 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  RevenueLineChart,
-  type LineChartDataPoint,
-} from '@/components/employee/dashboard/RevenueLineChart';
-import type { TimeRange, Scope } from '@/components/admin/dashboard/RevenueComboChart';
+  RevenueComboChart,
+  type ComboChartDataPoint,
+  type TimeRange,
+  type Scope,
+} from '@/components/admin/dashboard/RevenueComboChart';
 import { getDealRevenue } from '@/components/admin/dashboard/useDashboardData';
 import {
   format,
@@ -61,7 +62,7 @@ const RevenueChart = ({ evanId, className, annualGoal = 1_500_000 }: RevenueChar
     return Array.from(sources).sort();
   }, [revenueData]);
 
-  const chartData = useMemo((): LineChartDataPoint[] => {
+  const chartData = useMemo((): ComboChartDataPoint[] => {
     if (!revenueData) return [];
 
     const now = new Date();
@@ -141,16 +142,16 @@ const RevenueChart = ({ evanId, className, annualGoal = 1_500_000 }: RevenueChar
       );
 
       return {
-        date: bStart,
-        cumulative,
-        goal,
         label: format(bStart, labelFmt),
+        revenue,
+        cumulative,
+        target: goal,
       };
     });
   }, [revenueData, timeRange, scope, evanId, selectedSources, annualGoal]);
 
   return (
-    <RevenueLineChart
+    <RevenueComboChart
       data={chartData}
       isLoading={isLoading}
       timeRange={timeRange}
@@ -160,7 +161,7 @@ const RevenueChart = ({ evanId, className, annualGoal = 1_500_000 }: RevenueChar
       sources={allSources}
       selectedSources={selectedSources}
       onSourcesChange={setSelectedSources}
-      annualGoal={annualGoal}
+      description="Period revenue with cumulative trend vs. annual pace"
       className={className}
     />
   );
