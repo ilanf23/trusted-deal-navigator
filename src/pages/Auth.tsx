@@ -14,9 +14,13 @@ import logo from '@/assets/logo.png';
 import { z } from 'zod';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { supabase } from '@/integrations/supabase/client';
+import { strongPasswordSchema } from '@/lib/password';
+import PasswordStrengthMeter from '@/components/auth/PasswordStrengthMeter';
 
 const emailSchema = z.string().email('Please enter a valid email address');
-const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
+// Login authenticates an EXISTING password — only require that one was entered,
+// so users whose password predates the strong-password policy aren't locked out.
+const loginPasswordSchema = z.string().min(1, 'Password is required');
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -36,7 +40,7 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
-  const [signupRole, setSignupRole] = useState<'client' | 'partner' | 'admin' | 'super_admin'>('client');
+  const [signupRole, setSignupRole] = useState<'client' | 'partner'>('client');
 
   // Redirect if already logged in
   useEffect(() => {
@@ -75,7 +79,7 @@ const Auth = () => {
 
     try {
       emailSchema.parse(loginEmail);
-      passwordSchema.parse(loginPassword);
+      loginPasswordSchema.parse(loginPassword);
     } catch (err) {
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
@@ -105,7 +109,7 @@ const Auth = () => {
 
     try {
       emailSchema.parse(signupEmail);
-      passwordSchema.parse(signupPassword);
+      strongPasswordSchema.parse(signupPassword);
     } catch (err) {
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
@@ -160,8 +164,8 @@ const Auth = () => {
         </Button>
       </div>
       <div className="min-h-screen flex items-center justify-center pt-28 pb-8">
-      <div className="flex gap-6 items-start w-full max-w-4xl">
-      <Card className="w-full max-w-md shrink-0">
+      <div className="flex justify-center w-full">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
@@ -256,26 +260,6 @@ const Auth = () => {
                       <span className="font-medium text-sm">Partner</span>
                       <span className="text-xs text-muted-foreground text-center">Refer deals & earn</span>
                     </Label>
-                    <Label
-                      htmlFor="role-admin"
-                      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-3 cursor-pointer transition-colors ${
-                        signupRole === 'admin' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50'
-                      }`}
-                    >
-                      <RadioGroupItem value="admin" id="role-admin" className="sr-only" />
-                      <span className="font-medium text-sm">Admin</span>
-                      <span className="text-xs text-muted-foreground text-center">Team member</span>
-                    </Label>
-                    <Label
-                      htmlFor="role-super-admin"
-                      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-3 cursor-pointer transition-colors ${
-                        signupRole === 'super_admin' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50'
-                      }`}
-                    >
-                      <RadioGroupItem value="super_admin" id="role-super-admin" className="sr-only" />
-                      <span className="font-medium text-sm">Super Admin</span>
-                      <span className="text-xs text-muted-foreground text-center">Owner access</span>
-                    </Label>
                   </RadioGroup>
                 </div>
                 <div className="space-y-2">
@@ -301,6 +285,7 @@ const Auth = () => {
                     required
                     disabled={isLoading}
                   />
+                  <PasswordStrengthMeter password={signupPassword} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-confirm-password">Confirm Password</Label>
@@ -327,37 +312,6 @@ const Auth = () => {
               </form>
             </TabsContent>
           </Tabs>
-        </CardContent>
-      </Card>
-
-      {/* Dev Credentials Reference */}
-      <Card className="flex-1 min-w-0">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Dev Accounts</CardTitle>
-          <CardDescription>Quick reference for testing</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left pb-2 font-medium text-muted-foreground">User</th>
-                <th className="text-left pb-2 font-medium text-muted-foreground">Email</th>
-                <th className="text-left pb-2 font-medium text-muted-foreground">Password</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              <tr>
-                <td className="py-2.5 font-medium">Evan <span className="text-xs text-muted-foreground">Sales Rep</span></td>
-                <td className="py-2.5 text-muted-foreground">evan@commerciallendingx.com</td>
-                <td className="py-2.5 font-mono text-xs">BaileyDoo916!</td>
-              </tr>
-              <tr>
-                <td className="py-2.5 font-medium">Sergey <span className="text-xs text-muted-foreground">Sales Rep</span></td>
-                <td className="py-2.5 text-muted-foreground">sergey@mabbly.com</td>
-                <td className="py-2.5 font-mono text-xs">1234567890</td>
-              </tr>
-            </tbody>
-          </table>
         </CardContent>
       </Card>
 
