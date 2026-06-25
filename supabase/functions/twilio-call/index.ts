@@ -58,6 +58,15 @@ Deno.serve(async (req) => {
       formattedPhone = '+' + formattedPhone;
     }
 
+    // Validate E.164 format before hitting Twilio (rejects garbage/short/over-length input)
+    const e164Regex = /^\+[1-9]\d{7,14}$/;
+    if (!e164Regex.test(formattedPhone)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid phone number format. Use E.164 format.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log(`Initiating call to ${formattedPhone}`);
 
     // Create TwiML URL for the call - simple dial

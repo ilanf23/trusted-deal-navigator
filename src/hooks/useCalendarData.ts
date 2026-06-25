@@ -101,6 +101,8 @@ export function useCalendarData(viewMode: ViewMode, currentDate: Date) {
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Only trust messages from our own origin (the OAuth callback page).
+      if (event.origin !== window.location.origin) return;
       if (event.data?.type === 'GOOGLE_CONNECTED') {
         setCalendarStatus({ connected: true, email: event.data.email });
         setIsConnecting(false);

@@ -25,7 +25,9 @@ export default function GoogleCallback() {
       }) => {
         if (window.opener) {
           try {
-            window.opener.postMessage(data, '*');
+            // Target our own origin only — the opener is same-origin with this
+            // callback, so a wildcard target would needlessly leak the payload.
+            window.opener.postMessage(data, window.location.origin);
           } catch {
             // Ignore cross-origin errors
           }

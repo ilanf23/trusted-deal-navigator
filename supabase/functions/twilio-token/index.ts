@@ -85,17 +85,11 @@ Deno.serve(async (req) => {
     const apiKeySecret = Deno.env.get('TWILIO_API_KEY_SECRET');
     const twimlAppSid = Deno.env.get('TWILIO_TWIML_APP_SID');
 
-    const maskId = (v: string | null | undefined) =>
-      v ? `${v.slice(0, 6)}…${v.slice(-4)}` : null;
-
     console.log('Twilio config check:', {
       hasAccountSid: !!accountSid,
       hasApiKeySid: !!apiKeySid,
       hasApiKeySecret: !!apiKeySecret,
       hasTwimlAppSid: !!twimlAppSid,
-      accountSid: maskId(accountSid),
-      apiKeySid: maskId(apiKeySid),
-      twimlAppSid: maskId(twimlAppSid),
     });
 
     if (!accountSid || !apiKeySid || !apiKeySecret || !twimlAppSid) {
@@ -152,7 +146,7 @@ Deno.serve(async (req) => {
     
     console.log('[twilio-token] Authorized admin user:', userId, 'identity:', identity);
     
-    console.log('Creating access token for identity:', identity, 'with TwiML App:', twimlAppSid);
+    console.log('Creating access token for identity:', identity);
     
     const accessToken = await createTwilioAccessToken(
       accountSid,

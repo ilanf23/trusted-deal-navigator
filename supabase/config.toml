@@ -98,3 +98,11 @@ verify_jwt = false
 
 [functions.sheets-watch-webhook]
 verify_jwt = false
+
+# Password policy. Governs the local dev stack; the hosted project's policy must
+# be set in the Supabase Dashboard (Authentication -> Sign In / Providers ->
+# Password): minimum length 8, require lower/upper/digits/symbols, and enable
+# leaked-password protection. `npm run deploy` does NOT push these auth settings.
+[auth]
+minimum_password_length = 8
+password_requirements = "lower_upper_letters_digits_symbols"

@@ -68,6 +68,8 @@ export function useDropboxConnection(): DropboxConnectionState {
   // Listen for OAuth callback messages
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Only trust messages from our own origin (the OAuth callback page).
+      if (event.origin !== window.location.origin) return;
       if (event.data?.type === 'DROPBOX_CONNECTED') {
         setIsConnected(true);
         setConnectedEmail(event.data.email);

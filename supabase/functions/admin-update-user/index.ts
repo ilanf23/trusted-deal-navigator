@@ -25,6 +25,7 @@ Deno.serve(async (req) => {
 
     const authResult = await requireAdmin(req, supabaseAdmin, { corsHeaders })
     if (!authResult.ok) return authResult.response
+    const { auth } = authResult
 
     const { user_id, email, password } = await req.json()
 
@@ -32,6 +33,40 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'user_id is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!email && !password) {
+      return new Response(
+        JSON.stringify({ error: 'Nothing to update: provide email and/or password' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Look up the target user to enforce founder-level protection before any write.
+    const { data: targetRow, error: targetError } = await supabaseAdmin
+      .from('users')
+      .select('user_id, email, app_role, is_owner')
+      .eq('user_id', user_id)
+      .maybeSingle()
+
+    if (targetError) {
+      return errorResponse('admin-update-user', targetError, { corsHeaders, status: 400 })
+    }
+
+    if (!targetRow) {
+      return new Response(
+        JSON.stringify({ error: 'User not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Founder-level targets (is_owner or super_admin) may only be modified by founders.
+    const targetIsFounder = targetRow.is_owner === true || targetRow.app_role === 'super_admin'
+    if (targetIsFounder && !auth.isFounder) {
+      return new Response(
+        JSON.stringify({ error: 'Only founders can update founder accounts.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

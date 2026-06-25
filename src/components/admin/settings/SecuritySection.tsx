@@ -5,10 +5,12 @@ import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Loader2, Mail, Lock, Eye, EyeOff, Check, X, Info } from 'lucide-react';
+import { Loader2, Mail, Lock, Eye, EyeOff, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { strongPasswordSchema } from '@/lib/password';
+import PasswordStrengthMeter from '@/components/auth/PasswordStrengthMeter';
 import {
   Form,
   FormField,
@@ -31,7 +33,7 @@ type EmailFormValues = z.infer<typeof emailSchema>;
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, 'Current password is required'),
-    newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    newPassword: strongPasswordSchema,
     confirmPassword: z.string().min(1, 'Please confirm your new password'),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -40,42 +42,6 @@ const passwordSchema = z
   });
 
 type PasswordFormValues = z.infer<typeof passwordSchema>;
-
-// --- Password Strength ---
-
-interface StrengthRule {
-  label: string;
-  test: (pw: string) => boolean;
-}
-
-const strengthRules: StrengthRule[] = [
-  { label: 'At least 8 characters', test: (pw) => pw.length >= 8 },
-  { label: 'Uppercase letter', test: (pw) => /[A-Z]/.test(pw) },
-  { label: 'Lowercase letter', test: (pw) => /[a-z]/.test(pw) },
-  { label: 'Number', test: (pw) => /\d/.test(pw) },
-  { label: 'Special character', test: (pw) => /[^A-Za-z0-9]/.test(pw) },
-];
-
-const getStrength = (pw: string) => {
-  const passed = strengthRules.filter((r) => r.test(pw)).length;
-  return Math.round((passed / strengthRules.length) * 100);
-};
-
-const getStrengthLabel = (strength: number) => {
-  if (strength <= 20) return 'Very weak';
-  if (strength <= 40) return 'Weak';
-  if (strength <= 60) return 'Fair';
-  if (strength <= 80) return 'Good';
-  return 'Strong';
-};
-
-const getStrengthColor = (strength: number) => {
-  if (strength <= 20) return '#ef4444';
-  if (strength <= 40) return '#f97316';
-  if (strength <= 60) return '#eab308';
-  if (strength <= 80) return '#3b82f6';
-  return '#22c55e';
-};
 
 const SecuritySection = () => {
   const { user } = useAuth();
@@ -182,7 +148,6 @@ const PasswordChangeForm = ({ lastPasswordChange }: { lastPasswordChange?: strin
   });
 
   const newPassword = form.watch('newPassword');
-  const strength = getStrength(newPassword);
 
   const onSubmit = async (values: PasswordFormValues) => {
     // Verify current password by attempting to sign in
@@ -265,36 +230,7 @@ const PasswordChangeForm = ({ lastPasswordChange }: { lastPasswordChange?: strin
                 <FormMessage />
 
                 {/* Strength indicator */}
-                {newPassword.length > 0 && (
-                  <div className="space-y-2 pt-1">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 flex-1 rounded-full bg-secondary overflow-hidden">
-                        <div
-                          className="h-full transition-all rounded-full"
-                          style={{ width: `${strength}%`, backgroundColor: getStrengthColor(strength) }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground w-20 text-right">{getStrengthLabel(strength)}</span>
-                    </div>
-                    <ul className="space-y-1">
-                      {strengthRules.map((rule) => {
-                        const passed = rule.test(newPassword);
-                        return (
-                          <li key={rule.label} className="flex items-center gap-1.5 text-xs">
-                            {passed ? (
-                              <Check className="h-3 w-3 text-green-600" />
-                            ) : (
-                              <X className="h-3 w-3 text-muted-foreground" />
-                            )}
-                            <span className={passed ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}>
-                              {rule.label}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
+                <PasswordStrengthMeter password={newPassword} />
               </FormItem>
             )}
           />
