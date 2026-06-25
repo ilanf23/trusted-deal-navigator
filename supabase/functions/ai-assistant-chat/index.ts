@@ -7,6 +7,7 @@ import { LLM_PROVIDER, LLM_API_KEY_ENV } from '../_shared/llmConfig.ts';
 import { buildReadSdkTools, type ReadToolContext } from '../_shared/aiAgent/readTools.ts';
 import { resolveModel, DEFAULT_MODEL } from '../_shared/aiAgent/provider.ts';
 import { logAiAudit } from '../_shared/aiAgent/audit.ts';
+import { errorResponse } from '../_shared/responses.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -153,10 +154,7 @@ Today: ${new Date().toISOString().split('T')[0]}`;
     try {
       model = await resolveModel(DEFAULT_MODEL, { openrouterKey: LLM_API_KEY });
     } catch (e) {
-      return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse('ai-assistant-chat', e, { corsHeaders, status: 400, clientMessage: 'AI provider configuration error' });
     }
 
     // streamText runs the read-tool loop server-side (up to 5 steps) and streams
@@ -174,7 +172,6 @@ Today: ${new Date().toISOString().split('T')[0]}`;
 
     return result.toTextStreamResponse({ headers: corsHeaders });
   } catch (error) {
-    console.error('ai-assistant-chat error:', error);
     try {
       const { serviceClient } = getRequestClients(req);
       await logAiAudit({
@@ -191,9 +188,6 @@ Today: ${new Date().toISOString().split('T')[0]}`;
         errorMessage: error instanceof Error ? error.message : String(error),
       });
     } catch { /* never fail the response on audit error */ }
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return errorResponse('ai-assistant-chat', error, { corsHeaders });
   }
 });

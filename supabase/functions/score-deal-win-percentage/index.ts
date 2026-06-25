@@ -12,6 +12,7 @@ import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { getProviderKey } from "../_shared/userIntegrations.ts";
 import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_PROVIDER, LLM_API_KEY_ENV, llmHeaders } from "../_shared/llmConfig.ts";
+import { errorResponse } from "../_shared/responses.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -634,12 +635,6 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
-    console.error("score-deal-win-percentage error:", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return errorResponse('score-deal-win-percentage', error, { corsHeaders });
   }
 });

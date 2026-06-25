@@ -4,6 +4,7 @@ import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { getUserFromRequest } from "../_shared/auth.ts";
 import { getProviderKey } from "../_shared/userIntegrations.ts";
 import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_PROVIDER, LLM_API_KEY_ENV, llmHeaders } from "../_shared/llmConfig.ts";
+import { errorResponse } from "../_shared/responses.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -263,13 +264,6 @@ When asked to write an email, format your response like this:
       }
     );
   } catch (error) {
-    console.error("Error in AI chat:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return errorResponse('ai-email-chat', error, { corsHeaders });
   }
 });

@@ -8,6 +8,7 @@ import { executeAction } from '../_shared/aiAgent/executor.ts';
 import { buildAgentSdkTools } from '../_shared/aiAgent/tools.ts';
 import { resolveModel, DEFAULT_MODEL } from '../_shared/aiAgent/provider.ts';
 import { logAiAudit } from '../_shared/aiAgent/audit.ts';
+import { errorResponse } from '../_shared/responses.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -187,7 +188,7 @@ ${contextStr}`;
             stopWhen: stepCountIs(5),
             onError: ({ error }) => {
               console.error("ai-assistant-agent streamText error:", error);
-              send({ type: "error", content: error instanceof Error ? error.message : String(error) });
+              send({ type: "error", content: 'An unexpected error occurred' });
             },
           });
 
@@ -219,7 +220,8 @@ ${contextStr}`;
           send({ type: "batch_complete", batchId, totalChanges });
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         } catch (err: any) {
-          send({ type: "error", content: err.message });
+          console.error('[ai-assistant-agent] stream error:', err);
+          send({ type: "error", content: 'An unexpected error occurred' });
           try {
             await logAiAudit({
               serviceClient,
@@ -243,7 +245,6 @@ ${contextStr}`;
       headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
     });
   } catch (error) {
-    console.error('ai-assistant-agent error:', error);
     try {
       const { serviceClient } = getRequestClients(req);
       await logAiAudit({
@@ -257,9 +258,6 @@ ${contextStr}`;
         errorMessage: error instanceof Error ? error.message : String(error),
       });
     } catch { /* never fail the response on audit error */ }
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return errorResponse('ai-assistant-agent', error, { corsHeaders });
   }
 });

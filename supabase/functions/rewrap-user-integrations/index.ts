@@ -1,6 +1,7 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { requireAdmin } from '../_shared/auth.ts';
+import { errorResponse } from '../_shared/responses.ts';
 import {
   bytesToPgBytea,
   getKekForVersion,
@@ -83,11 +84,9 @@ Deno.serve(async (req) => {
       fromKek = parseHexKey(getKekForVersion(fromVersion));
       toKek = parseHexKey(getKekForVersion(toVersion));
     } catch (err) {
-      return new Response(JSON.stringify({
-        error: err instanceof Error ? err.message : 'KEK lookup failed',
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      return errorResponse('rewrap-user-integrations', err, {
+        corsHeaders,
+        clientMessage: 'KEK lookup failed',
       });
     }
 

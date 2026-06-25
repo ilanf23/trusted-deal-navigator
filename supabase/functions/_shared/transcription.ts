@@ -249,7 +249,8 @@ export async function transcribeCommunication(
       .maybeSingle();
 
     if (error) {
-      const msg = `Communication lookup failed: ${error.message}`;
+      console.error('[transcription] communication lookup failed:', error);
+      const msg = 'Communication lookup failed';
       await recordTranscriptionFailure(supabase, communicationId, msg);
       return { ok: false, error: msg };
     }
@@ -321,14 +322,16 @@ export async function transcribeCommunication(
       .eq('id', comm.id);
 
     if (updateErr) {
-      const msg = `Failed to persist transcript: ${updateErr.message}`;
+      console.error('[transcription] failed to persist transcript:', updateErr);
+      const msg = 'Failed to persist transcript';
       await recordTranscriptionFailure(supabase, communicationId, msg);
       return { ok: false, error: msg };
     }
 
     return { ok: true, transcript };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    console.error('[transcription] unexpected error:', err);
+    const message = 'Transcription failed';
     await recordTranscriptionFailure(supabase, communicationId, message);
     return { ok: false, error: message };
   }

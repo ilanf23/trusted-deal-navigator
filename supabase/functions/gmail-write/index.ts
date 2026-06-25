@@ -8,6 +8,7 @@ import {
   trashMessage,
   encodeBase64Url,
 } from '../_shared/gmail/api.ts';
+import { errorResponse } from '../_shared/responses.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -135,10 +136,10 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (sendErr: any) {
-        console.error(`[${flowId}] Send failed:`, sendErr.message);
+        console.error(`[gmail-write] Send failed (flowId=${flowId}):`, sendErr);
         return new Response(
           JSON.stringify({
-            error: sendErr.message,
+            error: 'Failed to send email',
             flowId,
           }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -225,11 +226,6 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('gmail-write error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return errorResponse('gmail-write', error, { corsHeaders });
   }
 });

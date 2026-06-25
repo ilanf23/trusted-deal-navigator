@@ -1,6 +1,7 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { requireAdmin } from '../_shared/auth.ts';
+import { errorResponse } from '../_shared/responses.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -535,10 +536,11 @@ Deno.serve(async (req) => {
           const result = await handleIncrementalSync(connection, supabaseAdmin);
           results.push({ userId: connection.user_id, success: true, ...result });
         } catch (error) {
+          console.error('[dropbox-sync] incremental sync failed for', connection.user_id, error);
           results.push({
             userId: connection.user_id,
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: 'Sync failed',
           });
         }
       }
@@ -561,11 +563,6 @@ Deno.serve(async (req) => {
       { status: 400, headers: corsHeaders },
     );
   } catch (error) {
-    console.error('Error in dropbox-sync:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: corsHeaders },
-    );
+    return errorResponse('dropbox-sync', error, { corsHeaders });
   }
 });

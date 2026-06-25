@@ -2,6 +2,7 @@ import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { getValidGoogleAccessToken } from "../_shared/googleToken.ts";
 import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_API_KEY_ENV, llmHeaders } from "../_shared/llmConfig.ts";
+import { errorResponse } from "../_shared/responses.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -288,13 +289,6 @@ ${followUpEmailContent}`;
       }
     );
   } catch (error) {
-    console.error("Error in call-to-lead-automation:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    return errorResponse('call-to-lead-automation', error, { corsHeaders });
   }
 });

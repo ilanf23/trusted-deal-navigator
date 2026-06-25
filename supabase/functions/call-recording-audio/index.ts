@@ -1,6 +1,7 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
+import { errorResponse } from '../_shared/responses.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,10 +91,7 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (commErr) {
-    return new Response(JSON.stringify({ error: 'Lookup failed', detail: commErr.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return errorResponse('call-recording-audio', commErr, { corsHeaders, clientMessage: 'Lookup failed' });
   }
   if (!comm || comm.communication_type !== 'call' || !comm.recording_url) {
     return new Response(JSON.stringify({ error: 'No recording available' }), {

@@ -1,6 +1,7 @@
 import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_API_KEY_ENV, llmHeaders } from "../_shared/llmConfig.ts";
+import { errorResponse } from "../_shared/responses.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -410,12 +411,6 @@ ${actionInstructions}`
     });
 
   } catch (error) {
-    console.error("Lead AI assistant error:", error);
-    return new Response(JSON.stringify({
-      error: error instanceof Error ? error.message : "Unknown error"
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return errorResponse('lead-ai-assistant', error, { corsHeaders });
   }
 });

@@ -2,6 +2,7 @@ import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { requireAdmin } from '../_shared/auth.ts';
 import { transcribeCommunication } from '../_shared/transcription.ts';
+import { errorResponse } from '../_shared/responses.ts';
 
 declare const EdgeRuntime: { waitUntil: (p: Promise<unknown>) => void } | undefined;
 
@@ -291,13 +292,7 @@ Deno.serve(async (req) => {
       // which is the exact UX the user reported. Surface the error so the
       // client sees it and can refresh; do NOT pretend everything succeeded.
       console.error('[twilio-call-history] communications enrichment failed:', commError.message);
-      return new Response(
-        JSON.stringify({
-          error: 'Failed to enrich call history',
-          detail: commError.message,
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      return errorResponse('twilio-call-history', commError, { corsHeaders, clientMessage: 'Failed to enrich call history' });
     }
 
     type CommRow = {
@@ -540,10 +535,6 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[twilio-call-history] unhandled error:', error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Internal error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return errorResponse('twilio-call-history', error, { corsHeaders });
   }
 });

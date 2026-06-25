@@ -1,6 +1,7 @@
 import { createClient } from '../_shared/supabase.ts'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
 import { requireAdmin } from '../_shared/auth.ts'
+import { errorResponse } from '../_shared/responses.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,11 +45,7 @@ Deno.serve(async (req) => {
     )
 
     if (error) {
-      console.error('Error updating user:', error)
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('admin-update-user', error, { corsHeaders, status: 400 })
     }
 
     if (email) {

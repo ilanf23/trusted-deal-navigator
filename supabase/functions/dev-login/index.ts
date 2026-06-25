@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { enforceRateLimit } from '../_shared/rateLimit.ts'
+import { errorResponse } from '../_shared/responses.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,11 +46,7 @@ Deno.serve(async (req) => {
         .order('name', { ascending: true })
 
       if (error) {
-        console.error('dev-login: error fetching users', error)
-        return new Response(
-          JSON.stringify({ error: error.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return errorResponse('dev-login', error, { corsHeaders })
       }
 
       return new Response(
@@ -78,11 +75,8 @@ Deno.serve(async (req) => {
       })
 
       if (error) {
-        console.error('dev-login: error generating link for', email, error)
-        return new Response(
-          JSON.stringify({ error: error.message }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        console.error('dev-login: error generating link for', email)
+        return errorResponse('dev-login', error, { corsHeaders, status: 400 })
       }
 
       return new Response(

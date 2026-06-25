@@ -3,6 +3,7 @@ import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { getUserFromRequest } from '../_shared/auth.ts';
 import { executeAction, undoChange, redoChange } from '../_shared/aiAgent/executor.ts';
 import { logAiAudit } from '../_shared/aiAgent/audit.ts';
+import { errorResponse } from '../_shared/responses.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -206,7 +207,6 @@ Deno.serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error) {
-    console.error('ai-assistant-actions error:', error);
     try {
       const { serviceClient } = getRequestClients(req);
       await logAiAudit({
@@ -218,9 +218,6 @@ Deno.serve(async (req) => {
         errorMessage: error instanceof Error ? error.message : String(error),
       });
     } catch { /* never fail the response on audit error */ }
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return errorResponse('ai-assistant-actions', error, { corsHeaders });
   }
 });

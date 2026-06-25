@@ -1,6 +1,7 @@
 import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { requireAdmin } from '../_shared/auth.ts';
+import { errorResponse } from '../_shared/responses.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -89,14 +90,7 @@ Deno.serve(async (req) => {
     const twilioData: TwilioResponse = await twilioResponse.json();
 
     if (!twilioResponse.ok) {
-      console.error('Twilio error:', twilioData);
-      return new Response(
-        JSON.stringify({ 
-          error: twilioData.error_message || 'Failed to send SMS',
-          details: twilioData 
-        }),
-        { status: twilioResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('twilio-sms', twilioData, { corsHeaders, status: twilioResponse.status, clientMessage: 'Failed to send SMS' });
     }
 
     console.log('SMS sent successfully:', twilioData.sid);
@@ -141,11 +135,6 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in twilio-sms function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return errorResponse('twilio-sms', error, { corsHeaders });
   }
 });

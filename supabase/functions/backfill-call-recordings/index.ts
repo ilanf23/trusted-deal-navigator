@@ -2,6 +2,7 @@ import { createClient } from '../_shared/supabase.ts';
 import { enforceRateLimit } from '../_shared/rateLimit.ts';
 import { requireAdmin } from '../_shared/auth.ts';
 import { transcribeCommunication } from '../_shared/transcription.ts';
+import { errorResponse } from '../_shared/responses.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -126,10 +127,7 @@ Deno.serve(async (req) => {
       .eq('id', body.communicationId)
       .maybeSingle();
     if (error) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to load communication', detail: error.message }),
-        { status: 500, headers: corsHeaders },
-      );
+      return errorResponse('backfill-call-recordings', error, { corsHeaders, clientMessage: 'Failed to load communication' });
     }
     if (!data) {
       return new Response(JSON.stringify({ error: 'communication not found' }), {
@@ -145,10 +143,7 @@ Deno.serve(async (req) => {
       .eq('call_sid', body.callSid)
       .maybeSingle();
     if (error) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to load communication by call_sid', detail: error.message }),
-        { status: 500, headers: corsHeaders },
-      );
+      return errorResponse('backfill-call-recordings', error, { corsHeaders, clientMessage: 'Failed to load communication by call_sid' });
     }
     if (!data) {
       return new Response(JSON.stringify({ error: 'no communication for that call_sid' }), {
@@ -172,10 +167,7 @@ Deno.serve(async (req) => {
       .not('call_sid', 'is', null)
       .or(orClauses.join(','));
     if (error) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch communications', detail: error.message }),
-        { status: 500, headers: corsHeaders },
-      );
+      return errorResponse('backfill-call-recordings', error, { corsHeaders, clientMessage: 'Failed to fetch communications' });
     }
     candidates = (data ?? []) as CommRow[];
   }
@@ -268,11 +260,12 @@ Deno.serve(async (req) => {
 
         if (updateError) {
           errorCount++;
+          console.error('[backfill-call-recordings] update failed for', row.id, updateError);
           results.push({
             id: row.id,
             call_sid: row.call_sid,
             action: 'error',
-            error: updateError.message,
+            error: 'Update failed',
           });
           continue;
         }
@@ -313,11 +306,12 @@ Deno.serve(async (req) => {
       }
     } catch (err) {
       errorCount++;
+      console.error('[backfill-call-recordings] processing failed for', row.id, err);
       results.push({
         id: row.id,
         call_sid: row.call_sid,
         action: 'error',
-        error: err instanceof Error ? err.message : String(err),
+        error: 'Processing failed',
       });
     }
   }
