@@ -21,15 +21,9 @@ import PartnerRouteLayout from "./components/partner/PartnerRouteLayout";
 import PageSkeleton from "@/components/admin/PageSkeleton";
 
 // Public pages — kept eager (small, often entry points)
-import Index from "./pages/Index";
-import HowItWorks from "./pages/HowItWorks";
-import Contact from "./pages/Contact";
-import Transactions from "./pages/Transactions";
-import BankServices from "./pages/BankServices";
-import BusinessAcquisition from "./pages/solutions/BusinessAcquisition";
-import CommercialRealEstate from "./pages/solutions/CommercialRealEstate";
-import WorkingCapital from "./pages/solutions/WorkingCapital";
-import NotFound from "./pages/NotFound";
+// NOTE: Marketing pages (Index, HowItWorks, Contact, Transactions, BankServices,
+// solutions/*) remain in the repo but are intentionally no longer imported/routed.
+// The app now opens directly to the auth screen (SaaS portal entry).
 import Auth from "./pages/Auth";
 import Questionnaire from "./pages/Questionnaire";
 import RateWatchQuestionnaire from "./pages/RateWatchQuestionnaire";
@@ -123,15 +117,19 @@ const App = () => (
               <CallProvider>
               <Suspense fallback={<PageSkeleton />}>
               <Routes>
-              <Route path="/" element={<PublicLayout><Index /></PublicLayout>} />
-              <Route path="/how-it-works" element={<PublicLayout><HowItWorks /></PublicLayout>} />
-              <Route path="/contact" element={<PublicLayout><Contact /></PublicLayout>} />
-              <Route path="/transactions" element={<PublicLayout><Transactions /></PublicLayout>} />
-              <Route path="/bank-services" element={<PublicLayout><BankServices /></PublicLayout>} />
-              <Route path="/solutions/business-acquisition" element={<PublicLayout><BusinessAcquisition /></PublicLayout>} />
-              <Route path="/solutions/commercial-real-estate" element={<PublicLayout><CommercialRealEstate /></PublicLayout>} />
-              <Route path="/solutions/working-capital" element={<PublicLayout><WorkingCapital /></PublicLayout>} />
-              <Route path="/auth" element={<PublicLayout><Auth /></PublicLayout>} />
+              {/* SaaS entry: root opens directly to the auth screen.
+                  Auth wraps itself in PublicLayout, so no route-level wrapper. */}
+              <Route path="/" element={<Auth />} />
+              <Route path="/auth" element={<Auth />} />
+
+              {/* Old marketing URLs now redirect to the auth screen */}
+              <Route path="/how-it-works" element={<Navigate to="/auth" replace />} />
+              <Route path="/contact" element={<Navigate to="/auth" replace />} />
+              <Route path="/transactions" element={<Navigate to="/auth" replace />} />
+              <Route path="/bank-services" element={<Navigate to="/auth" replace />} />
+              <Route path="/solutions/*" element={<Navigate to="/auth" replace />} />
+
+              {/* Tokenized borrower/ratewatch forms remain public (operational flows) */}
               <Route path="/questionnaire/:token" element={<PublicLayout><Questionnaire /></PublicLayout>} />
               <Route path="/ratewatch/:token" element={<PublicLayout><RateWatchQuestionnaire /></PublicLayout>} />
 
@@ -249,7 +247,9 @@ const App = () => (
                 <Route path="/partner/commissions" element={<PartnerCommissions />} />
                 <Route path="/partner/profile" element={<PartnerProfilePage />} />
               </Route>
-              <Route path="*" element={<NotFound />} />
+              {/* Unknown URLs fall through to the auth screen, which redirects
+                  authenticated users to their proper dashboard. */}
+              <Route path="*" element={<Navigate to="/auth" replace />} />
               </Routes>
               </Suspense>
               <IncomingCallPopup />

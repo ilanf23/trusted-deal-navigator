@@ -152,16 +152,9 @@ const Auth = () => {
   return (
     <PublicLayout>
     <div className="min-h-screen relative bg-gradient-to-br from-primary/5 via-background to-accent/5 px-4">
-      {/* Top bar with logo and back button */}
+      {/* Top bar with logo */}
       <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
         <img src={logo} alt="Commercial Lending X" className="h-36" />
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => navigate('/')}
-        >
-          ← Back to Website
-        </Button>
       </div>
       <div className="min-h-screen flex items-center justify-center pt-28 pb-8">
       <div className="flex justify-center w-full">
