@@ -14,7 +14,8 @@ export interface WrappedDekPayload {
   dek_auth_tag: string;
 }
 
-export interface StoredEncryptedSecret extends EncryptedPayload, WrappedDekPayload {
+export interface StoredEncryptedSecret
+  extends EncryptedPayload, WrappedDekPayload {
   key_version: number;
 }
 
@@ -30,17 +31,21 @@ const textDecoder = new TextDecoder();
 export function getKekForVersion(version = 1): string {
   const key = Deno.env.get(`SECRETS_KEK_V${version}`);
   if (!key) {
-    throw new Error(`Missing KEK environment variable: SECRETS_KEK_V${version}`);
+    throw new Error(
+      `Missing KEK environment variable: SECRETS_KEK_V${version}`,
+    );
   }
   return key;
 }
 
 function stripHexPrefix(hex: string): string {
-  return hex.startsWith('\\x') ? hex.slice(2) : hex;
+  return hex.startsWith("\\x") ? hex.slice(2) : hex;
 }
 
 export function bytesToPgBytea(input: Uint8Array): string {
-  const hex = Array.from(input).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  const hex = Array.from(input).map((byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
   return `\\x${hex}`;
 }
 
@@ -48,7 +53,7 @@ export function pgByteaToBytes(input: string | Uint8Array): Uint8Array {
   if (input instanceof Uint8Array) return input;
   const normalized = stripHexPrefix(input);
   if (normalized.length % 2 !== 0) {
-    throw new Error('Invalid bytea hex value');
+    throw new Error("Invalid bytea hex value");
   }
 
   const bytes = new Uint8Array(normalized.length / 2);
@@ -61,11 +66,11 @@ export function pgByteaToBytes(input: string | Uint8Array): Uint8Array {
 export function parseHexKey(hexKey: string): Uint8Array {
   const normalized = stripHexPrefix(hexKey.trim());
   if (!/^[0-9a-fA-F]+$/.test(normalized)) {
-    throw new Error('KEK must be a hex-encoded value');
+    throw new Error("KEK must be a hex-encoded value");
   }
   const bytes = pgByteaToBytes(normalized);
   if (bytes.byteLength !== DEK_LENGTH_BYTES) {
-    throw new Error('KEK must be 32 bytes (64 hex chars)');
+    throw new Error("KEK must be 32 bytes (64 hex chars)");
   }
   return bytes;
 }
@@ -76,21 +81,28 @@ export function generateDEK(): Uint8Array {
 
 async function importAesKey(keyBytes: Uint8Array): Promise<CryptoKey> {
   return crypto.subtle.importKey(
-    'raw',
-    keyBytes,
-    { name: 'AES-GCM' },
+    "raw",
+    keyBytes as unknown as BufferSource,
+    { name: "AES-GCM" },
     false,
-    ['encrypt', 'decrypt'],
+    ["encrypt", "decrypt"],
   );
 }
 
-async function encryptBytes(plaintext: Uint8Array, keyBytes: Uint8Array): Promise<RawEncryptedPayload> {
+async function encryptBytes(
+  plaintext: Uint8Array,
+  keyBytes: Uint8Array,
+): Promise<RawEncryptedPayload> {
   const iv = crypto.getRandomValues(new Uint8Array(AES_GCM_IV_LENGTH));
   const key = await importAesKey(keyBytes);
   const encryptedBuffer = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv, tagLength: AES_GCM_TAG_LENGTH_BITS },
+    {
+      name: "AES-GCM",
+      iv: iv as unknown as BufferSource,
+      tagLength: AES_GCM_TAG_LENGTH_BITS,
+    },
     key,
-    plaintext,
+    plaintext as unknown as BufferSource,
   );
 
   const encrypted = new Uint8Array(encryptedBuffer);
@@ -113,15 +125,22 @@ async function decryptBytes(
   combined.set(authTag, ciphertext.length);
 
   const plainBuffer = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv, tagLength: AES_GCM_TAG_LENGTH_BITS },
+    {
+      name: "AES-GCM",
+      iv: iv as unknown as BufferSource,
+      tagLength: AES_GCM_TAG_LENGTH_BITS,
+    },
     key,
-    combined,
+    combined as unknown as BufferSource,
   );
 
   return new Uint8Array(plainBuffer);
 }
 
-export async function encryptWithKey(plaintext: string, key: Uint8Array): Promise<RawEncryptedPayload> {
+export async function encryptWithKey(
+  plaintext: string,
+  key: Uint8Array,
+): Promise<RawEncryptedPayload> {
   return encryptBytes(textEncoder.encode(plaintext), key);
 }
 
@@ -135,7 +154,10 @@ export async function decryptWithKey(
   return textDecoder.decode(bytes);
 }
 
-export async function wrapDEK(dek: Uint8Array, kek: Uint8Array): Promise<WrappedDekPayload> {
+export async function wrapDEK(
+  dek: Uint8Array,
+  kek: Uint8Array,
+): Promise<WrappedDekPayload> {
   const wrapped = await encryptBytes(dek, kek);
   return {
     encrypted_dek: bytesToPgBytea(wrapped.ciphertext),

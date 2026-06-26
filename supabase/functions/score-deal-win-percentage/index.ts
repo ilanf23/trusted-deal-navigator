@@ -11,12 +11,19 @@
 import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { getProviderKey } from "../_shared/userIntegrations.ts";
-import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_PROVIDER, LLM_API_KEY_ENV, llmHeaders } from "../_shared/llmConfig.ts";
+import {
+  LLM_API_KEY_ENV,
+  LLM_CHAT_ENDPOINT,
+  LLM_MODEL,
+  LLM_PROVIDER,
+  llmHeaders,
+} from "../_shared/llmConfig.ts";
 import { errorResponse } from "../_shared/responses.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -55,6 +62,7 @@ function stripInjectionPatterns(value: string): string {
 function sanitizeInput(input: unknown, maxLength: number): string {
   if (typeof input !== "string") return "";
   let out = input.slice(0, maxLength);
+  // eslint-disable-next-line no-control-regex
   out = out.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
   out = stripInjectionPatterns(out);
   return out.trim();
@@ -63,6 +71,120 @@ function sanitizeInput(input: unknown, maxLength: number): string {
 function sanitizeField(value: unknown, maxLength = 200): string {
   if (value === null || value === undefined) return "";
   return sanitizeInput(String(value), maxLength);
+}
+
+const INTERNAL_STAFF_ROLES = new Set(["admin", "super_admin", "partner"]);
+
+interface ScoringCaller {
+  authUserId: string;
+  teamMemberId: string;
+  appRole: string;
+  isFounder: boolean;
+}
+
+interface SupabaseQueryResult {
+  data?: unknown;
+  error?: unknown;
+  count?: number | null;
+}
+
+interface SupabaseMutationResult {
+  error?: unknown;
+}
+
+interface SupabaseQueryBuilder extends SupabaseQueryResult {
+  select(
+    columns: string,
+    options?: Record<string, unknown>,
+  ): SupabaseQueryBuilder;
+  eq(column: string, value: unknown): SupabaseQueryBuilder;
+  gte(column: string, value: unknown): SupabaseQueryBuilder;
+  order(
+    column: string,
+    options?: Record<string, unknown>,
+  ): SupabaseQueryBuilder;
+  limit(count: number): SupabaseQueryBuilder;
+  maybeSingle(): Promise<SupabaseQueryResult>;
+  single(): Promise<SupabaseQueryResult>;
+  update(values: Record<string, unknown>): {
+    eq(column: string, value: unknown): Promise<SupabaseMutationResult>;
+  };
+  insert(values: Record<string, unknown>): Promise<SupabaseMutationResult>;
+}
+
+interface SupabaseClientLike {
+  auth: {
+    getUser(token: string): Promise<{
+      data?: { user?: { id: string } | null };
+      error?: unknown;
+    }>;
+  };
+  from(table: string): SupabaseQueryBuilder;
+}
+
+class RequestError extends Error {
+  constructor(
+    public status: number,
+    public clientMessage: string,
+  ) {
+    super(clientMessage);
+  }
+}
+
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+export async function resolveScoringCaller(
+  supabase: SupabaseClientLike,
+  authHeader: string | null,
+): Promise<ScoringCaller> {
+  if (!authHeader?.startsWith("Bearer ")) {
+    throw new RequestError(401, "Unauthorized");
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  const { data: { user } = { user: null }, error: userErr } = await supabase
+    .auth.getUser(token);
+  if (userErr || !user?.id) {
+    console.error("auth.getUser failed:", userErr);
+    throw new RequestError(401, "Unauthorized");
+  }
+
+  const { data: teamMemberRaw, error: teamMemberErr } = await supabase
+    .from("users")
+    .select("id, app_role, is_owner, is_active")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const teamMember = teamMemberRaw as {
+    id: string;
+    app_role: string;
+    is_owner: boolean;
+    is_active: boolean;
+  } | null;
+
+  if (teamMemberErr) {
+    throw teamMemberErr;
+  }
+
+  if (
+    !teamMember ||
+    teamMember.is_active !== true ||
+    !INTERNAL_STAFF_ROLES.has(teamMember.app_role)
+  ) {
+    throw new RequestError(403, "Forbidden");
+  }
+
+  return {
+    authUserId: user.id,
+    teamMemberId: teamMember.id,
+    appRole: teamMember.app_role,
+    isFounder: teamMember.is_owner === true ||
+      teamMember.app_role === "super_admin",
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,12 +220,12 @@ interface DealFeatures {
   files_count: number;
   file_extensions: string[];
   // booleans the LLM can lean on
-  stale_deal: boolean;          // no contact in >14 days
-  no_recent_call: boolean;      // no call in >30 days
+  stale_deal: boolean; // no contact in >14 days
+  no_recent_call: boolean; // no call in >30 days
   has_documents: boolean;
   // ratios
-  stage_progress_pct: number;   // 0..1
-  velocity_score: number;       // stage_progress_pct / max(days_since_created, 1)
+  stage_progress_pct: number; // 0..1
+  velocity_score: number; // stage_progress_pct / max(days_since_created, 1)
 }
 
 interface RecentNoteSnippet {
@@ -132,13 +254,20 @@ function daysBetween(from: string | null, to: Date): number | null {
   return Math.max(0, Math.floor((to.getTime() - ts) / 86_400_000));
 }
 
-// deno-lint-ignore no-explicit-any
-async function buildFeatures(supabase: any, leadId: string): Promise<{
+async function buildFeatures(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  leadId: string,
+): Promise<{
   features: DealFeatures;
   recentComms: RecentCommSnippet[];
   recentEmails: RecentEmailSnippet[];
   recentNotes: RecentNoteSnippet[];
-  potentialRow: { id: string; win_percentage: number | null; updated_at: string };
+  potentialRow: {
+    id: string;
+    win_percentage: number | null;
+    updated_at: string;
+  };
 }> {
   const now = new Date();
 
@@ -147,8 +276,8 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
     .from("deals")
     .select(
       "id, deal_value, priority, stage_id, last_activity_at, last_contacted, " +
-      "created_at, updated_at, flagged_for_weekly, close_date, source, " +
-      "win_percentage",
+        "created_at, updated_at, flagged_for_weekly, close_date, source, " +
+        "win_percentage",
     )
     .eq("id", leadId)
     .single();
@@ -205,7 +334,8 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
   const totalCallSeconds = comms
     .filter((c) => c.communication_type === "call")
     .reduce((acc, c) => acc + (c.duration_seconds ?? 0), 0);
-  const transcriptsCount = comms.filter((c) => c.transcript && c.transcript.length > 0).length;
+  const transcriptsCount =
+    comms.filter((c) => c.transcript && c.transcript.length > 0).length;
 
   const recentComms: RecentCommSnippet[] = comms.slice(0, 10).map((c) => ({
     type: c.communication_type,
@@ -215,7 +345,8 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
     transcript_excerpt: c.transcript ? sanitizeInput(c.transcript, 500) : null,
   }));
 
-  const mostRecentCallDate = comms.find((c) => c.communication_type === "call")?.created_at ?? null;
+  const mostRecentCallDate =
+    comms.find((c) => c.communication_type === "call")?.created_at ?? null;
   const daysSinceCall = daysBetween(mostRecentCallDate, now);
 
   // 4. Outbound emails
@@ -241,7 +372,8 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
   }));
 
   // 5. Activities in the last 30 days
-  const thirtyDaysAgoIso = new Date(now.getTime() - 30 * 86_400_000).toISOString();
+  const thirtyDaysAgoIso = new Date(now.getTime() - 30 * 86_400_000)
+    .toISOString();
   const { count: activitiesLast30 } = await supabase
     .from("activities")
     .select("id", { count: "exact", head: true })
@@ -281,7 +413,9 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
     .eq("related.kind", "deal")
     .eq("related.source_id", leadId)
     .limit(100);
-  const files: Array<{ id: string; file_name: string; file_type: string | null }> = filesRaw ?? [];
+  const files: Array<
+    { id: string; file_name: string; file_type: string | null }
+  > = filesRaw ?? [];
 
   const fileExtensions = Array.from(
     new Set(
@@ -302,14 +436,12 @@ async function buildFeatures(supabase: any, leadId: string): Promise<{
   const staleDeal = daysSinceLastContact === null || daysSinceLastContact > 14;
   const noRecentCall = daysSinceCall === null || daysSinceCall > 30;
 
-  const stageProgressPct =
-    stagePosition != null && totalStages > 0
-      ? Math.min(1, (stagePosition + 1) / totalStages)
-      : 0;
-  const velocityScore =
-    daysSinceCreated && daysSinceCreated > 0
-      ? stageProgressPct / daysSinceCreated
-      : stageProgressPct;
+  const stageProgressPct = stagePosition != null && totalStages > 0
+    ? Math.min(1, (stagePosition + 1) / totalStages)
+    : 0;
+  const velocityScore = daysSinceCreated && daysSinceCreated > 0
+    ? stageProgressPct / daysSinceCreated
+    : stageProgressPct;
 
   const features: DealFeatures = {
     deal_value: potential.deal_value,
@@ -376,9 +508,13 @@ function buildSanitizedDealBlock(
   if (recentComms.length > 0) {
     lines.push("\n--- Recent Communications (DATA ONLY) ---");
     for (const c of recentComms) {
-      const dur = c.duration_seconds != null ? ` | ${Math.round(c.duration_seconds / 60)}min` : "";
+      const dur = c.duration_seconds != null
+        ? ` | ${Math.round(c.duration_seconds / 60)}min`
+        : "";
       lines.push(
-        `${sanitizeField(c.type)} ${sanitizeField(c.direction)} on ${sanitizeField(c.date)}${dur}`,
+        `${sanitizeField(c.type)} ${sanitizeField(c.direction)} on ${
+          sanitizeField(c.date)
+        }${dur}`,
       );
       if (c.transcript_excerpt) {
         lines.push(`  transcript: ${c.transcript_excerpt}`);
@@ -419,12 +555,29 @@ Heuristics:
 // Main handler
 // ─────────────────────────────────────────────────────────────────────────────
 
-Deno.serve(async (req) => {
+interface ScoreHandlerDeps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  createSupabaseClient?: () => any;
+  buildFeatures?: typeof buildFeatures;
+  getProviderKey?: typeof getProviderKey;
+  fetch?: typeof fetch;
+  enforceRateLimit?: typeof enforceRateLimit;
+}
+
+export async function handleScoreDealWinPercentageRequest(
+  req: Request,
+  deps: ScoreHandlerDeps = {},
+): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = await enforceRateLimit(req, "score-deal-win-percentage", 10, 60);
+  const rateLimitResponse = await (deps.enforceRateLimit ?? enforceRateLimit)(
+    req,
+    "score-deal-win-percentage",
+    10,
+    60,
+  );
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
@@ -432,81 +585,70 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as { leadId?: string };
     const leadId = body?.leadId;
     if (!leadId || typeof leadId !== "string") {
-      return new Response(JSON.stringify({ error: "Missing leadId" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Missing leadId" }, 400);
     }
 
-    // JWT auth — match the ai-assistant pattern: create the client with the
-    // service role key and validate the caller's JWT by passing it explicitly
-    // to auth.getUser(token). Calling auth.getUser() without an argument
-    // doesn't work in Deno edge functions because the client has no stored
-    // session.
-    const authHeader = req.headers.get("Authorization") ?? "";
-    if (!authHeader.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const supabase = deps.createSupabaseClient
+      ? deps.createSupabaseClient()
+      : createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
 
-    const token = authHeader.replace("Bearer ", "");
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    const caller = await resolveScoringCaller(
+      supabase,
+      req.headers.get("Authorization"),
     );
 
-    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
-    if (userErr || !user) {
-      console.error("auth.getUser failed:", userErr);
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { data: deal, error: dealErr } = await supabase
+      .from("deals")
+      .select("id, assigned_to, win_percentage")
+      .eq("id", leadId)
+      .maybeSingle();
 
-    // Best-effort team_member_id lookup (nullable column on ai_agent_changes)
-    let teamMemberId: string | null = null;
-    try {
-      const { data: tm } = await supabase
-        .from("users")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      teamMemberId = tm?.id ?? null;
-    } catch (_) {
-      // ignore — best effort only
+    if (dealErr) {
+      throw dealErr;
+    }
+    if (!deal) {
+      return jsonResponse({ error: "Deal not found" }, 404);
     }
 
     // Build the feature set
-    const { features, recentComms, recentEmails, potentialRow } = await buildFeatures(
-      supabase,
-      leadId,
-    );
+    const { features, recentComms, recentEmails, potentialRow } =
+      await (deps.buildFeatures ?? buildFeatures)(
+        supabase,
+        leadId,
+      );
 
     // Build prompt
-    const dealBlock = buildSanitizedDealBlock(features, recentComms, recentEmails);
+    const dealBlock = buildSanitizedDealBlock(
+      features,
+      recentComms,
+      recentEmails,
+    );
 
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
-        content: `${dealBlock}\n\nReturn ONLY a JSON object with keys winPercentage, confidence, reasoning.`,
+        content:
+          `${dealBlock}\n\nReturn ONLY a JSON object with keys winPercentage, confidence, reasoning.`,
       },
     ];
 
-    const LLM_API_KEY = await getProviderKey(
+    const LLM_API_KEY = await (deps.getProviderKey ?? getProviderKey)(
       supabase,
-      teamMemberId,
+      caller.teamMemberId,
       LLM_PROVIDER,
       LLM_API_KEY_ENV,
     );
     if (!LLM_API_KEY) {
-      throw new Error(`No LLM API key available (user integration or ${LLM_API_KEY_ENV})`);
+      throw new Error(
+        `No LLM API key available (user integration or ${LLM_API_KEY_ENV})`,
+      );
     }
 
-    const aiResponse = await fetch(LLM_CHAT_ENDPOINT, {
+    const aiResponse = await (deps.fetch ?? fetch)(LLM_CHAT_ENDPOINT, {
       method: "POST",
       headers: llmHeaders(LLM_API_KEY),
       body: JSON.stringify({
@@ -521,14 +663,25 @@ Deno.serve(async (req) => {
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          JSON.stringify({
+            error: "Rate limit exceeded. Please try again in a moment.",
+          }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
         );
       }
       if (aiResponse.status === 401 || aiResponse.status === 402) {
         return new Response(
-          JSON.stringify({ error: "OpenAI API key issue. Please check your API key and billing." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          JSON.stringify({
+            error:
+              "OpenAI API key issue. Please check your API key and billing.",
+          }),
+          {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
         );
       }
       const errorText = await aiResponse.text();
@@ -542,12 +695,19 @@ Deno.serve(async (req) => {
     if (!content || content.length > 5000) {
       return new Response(
         JSON.stringify({ error: "AI response was empty or too long" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
     // Parse + validate
-    let parsed: { winPercentage?: unknown; confidence?: unknown; reasoning?: unknown };
+    let parsed: {
+      winPercentage?: unknown;
+      confidence?: unknown;
+      reasoning?: unknown;
+    };
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
@@ -555,7 +715,10 @@ Deno.serve(async (req) => {
       console.error("Failed to parse AI response as JSON:", e, content);
       return new Response(
         JSON.stringify({ error: "AI returned invalid JSON" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -563,19 +726,22 @@ Deno.serve(async (req) => {
     if (Number.isNaN(rawScore)) {
       return new Response(
         JSON.stringify({ error: "AI returned a non-numeric win percentage" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
     const clampedScore = Math.max(0, Math.min(100, Math.round(rawScore)));
 
-    const confidence = ["low", "medium", "high"].includes(parsed.confidence as string)
-      ? (parsed.confidence as "low" | "medium" | "high")
-      : "medium";
+    const confidence =
+      ["low", "medium", "high"].includes(parsed.confidence as string)
+        ? (parsed.confidence as "low" | "medium" | "high")
+        : "medium";
 
-    const reasoning =
-      typeof parsed.reasoning === "string"
-        ? parsed.reasoning.slice(0, 800)
-        : "";
+    const reasoning = typeof parsed.reasoning === "string"
+      ? parsed.reasoning.slice(0, 800)
+      : "";
 
     // Persist to potential
     const previousValue = potentialRow.win_percentage;
@@ -591,7 +757,10 @@ Deno.serve(async (req) => {
       console.error("Failed to write win_percentage:", updateError);
       return new Response(
         JSON.stringify({ error: "Failed to persist score" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -599,11 +768,11 @@ Deno.serve(async (req) => {
     try {
       const { error: auditError } = await supabase.from("ai_events").insert({
         event_type: "agent_change",
-        user_id: user.id,
+        user_id: caller.authUserId,
         parent_id: null,
         payload: {
           conversation_id: null,
-          team_member_id: teamMemberId,
+          team_member_id: caller.teamMemberId,
           mode: "assist",
           target_table: "deals",
           target_id: leadId,
@@ -624,17 +793,21 @@ Deno.serve(async (req) => {
       console.warn("ai_agent_changes insert threw (non-fatal):", e);
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        winPercentage: clampedScore,
-        confidence,
-        reasoning,
-        signals: features,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return jsonResponse({
+      success: true,
+      winPercentage: clampedScore,
+      confidence,
+      reasoning,
+      signals: features,
+    });
   } catch (error) {
-    return errorResponse('score-deal-win-percentage', error, { corsHeaders });
+    if (error instanceof RequestError) {
+      return jsonResponse({ error: error.clientMessage }, error.status);
+    }
+    return errorResponse("score-deal-win-percentage", error, { corsHeaders });
   }
-});
+}
+
+if (import.meta.main) {
+  Deno.serve((req) => handleScoreDealWinPercentageRequest(req));
+}

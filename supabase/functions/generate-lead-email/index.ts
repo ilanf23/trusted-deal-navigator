@@ -1,12 +1,74 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "../_shared/supabase.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { requireAdmin } from "../_shared/auth.ts";
 import { LLM_CHAT_ENDPOINT, LLM_MODEL, LLM_API_KEY_ENV, llmHeaders } from "../_shared/llmConfig.ts";
 import { errorResponse } from "../_shared/responses.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+type LeadContext = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  notes?: string;
+  loanAmount?: number;
+  loanType?: string;
+  fundingPurpose?: string;
+  fundingTimeline?: string;
+  lastEmailSubject?: string;
+  lastEmailSnippet?: string;
+};
+
+type LeadEmailRequest = {
+  leadId?: string;
+  emailType?: string;
+  leadContext?: LeadContext;
+  currentStage?: string;
+};
+
+type LeadRecord = {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  company_name?: string | null;
+  notes?: string | null;
+  status?: string | null;
+  source?: string | null;
+};
+
+type QuestionnaireRecord = {
+  loan_amount?: number | null;
+  loan_type?: string | null;
+  funding_purpose?: string | null;
+  funding_timeline?: string | null;
+  purpose_of_loan?: string | null;
+  business_type?: string | null;
+  business_description?: string | null;
+  annual_revenue?: string | number | null;
+  year_business_founded?: string | number | null;
+  borrower_credit_score?: string | number | null;
+  current_estimated_value?: number | null;
+  current_loan_balance?: number | null;
+  current_loan_rate?: string | number | null;
+  desired_interest_rate?: string | number | null;
+  desired_term?: string | null;
+  city?: string | null;
+  state?: string | null;
+};
+
+type RateWatchRecord = {
+  current_rate: number;
+  target_rate: number;
+  loan_type?: string | null;
+  loan_amount?: number | null;
+  enrolled_at: string;
+  last_contacted_at?: string | null;
+  notes?: string | null;
 };
 
 Deno.serve(async (req) => {
@@ -18,26 +80,29 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
-    const { leadId, emailType, leadContext: providedContext, currentStage } = await req.json();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const authResult = await requireAdmin(req, supabase, { corsHeaders });
+    if (!authResult.ok) return authResult.response;
+
+    const { leadId, emailType, leadContext: providedContext, currentStage } =
+      await req.json() as LeadEmailRequest;
     
     const LLM_API_KEY = Deno.env.get(LLM_API_KEY_ENV);
     if (!LLM_API_KEY) {
       throw new Error(`${LLM_API_KEY_ENV} is not configured`);
     }
 
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    let lead: any = null;
-    let questionnaire: any = null;
-    let rateWatch: any = null;
+    let lead: LeadRecord | null = null;
+    let questionnaire: QuestionnaireRecord | null = null;
+    let rateWatch: RateWatchRecord | null = null;
 
     // If leadContext is provided directly (from move_forward), use it
     if (providedContext) {
       lead = {
-        name: providedContext.name,
+        name: providedContext.name || "there",
         email: providedContext.email,
         phone: providedContext.phone,
         company_name: providedContext.company,
@@ -65,7 +130,7 @@ Deno.serve(async (req) => {
         });
       }
       
-      lead = fetchedLead;
+      lead = fetchedLead as LeadRecord;
 
       // Fetch questionnaire responses
       const { data: responses } = await supabase
@@ -75,7 +140,7 @@ Deno.serve(async (req) => {
         .order("submitted_at", { ascending: false })
         .limit(1);
 
-      questionnaire = responses?.[0] || null;
+      questionnaire = (responses?.[0] as QuestionnaireRecord | undefined) || null;
 
       // Fetch rate watch data
       const { data: rateWatchData } = await supabase
@@ -85,7 +150,7 @@ Deno.serve(async (req) => {
         .eq("is_active", true)
         .single();
       
-      rateWatch = rateWatchData;
+      rateWatch = rateWatchData as RateWatchRecord | null;
     } else {
       return new Response(JSON.stringify({ error: "Lead ID or context is required" }), {
         status: 400,
@@ -159,7 +224,7 @@ Questionnaire Responses:
     }
 
     // Determine email type and prompt
-    let systemPrompt = `You are a professional commercial lending consultant at Commercial Lending X. Write compelling, personalized emails that build relationships and drive action. Be warm but professional. Keep emails concise (under 200 words). Always include a clear call-to-action. Start with "Subject: " followed by the subject line, then a blank line, then the email body. IMPORTANT: Never use em dashes (—) in your writing. Use commas, periods, or regular hyphens instead.${templatesContext}`;
+    const systemPrompt = `You are a professional commercial lending consultant at Commercial Lending X. Write compelling, personalized emails that build relationships and drive action. Be warm but professional. Keep emails concise (under 200 words). Always include a clear call-to-action. Start with "Subject: " followed by the subject line, then a blank line, then the email body. IMPORTANT: Never use em dashes (—) in your writing. Use commas, periods, or regular hyphens instead.${templatesContext}`;
 
     let userPrompt = "";
 
