@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, AlertCircle } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { z } from 'zod';
@@ -40,7 +39,6 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
-  const [signupRole, setSignupRole] = useState<'client' | 'partner'>('client');
 
   // Redirect if already logged in
   useEffect(() => {
@@ -124,7 +122,9 @@ const Auth = () => {
       return;
     }
 
-    const { error: signUpError } = await signUp(signupEmail, signupPassword, { signup_role: signupRole });
+    // Only an admin portal exists today, so every new account is provisioned as
+    // admin server-side by the handle_new_user() trigger — no role choice here.
+    const { error: signUpError } = await signUp(signupEmail, signupPassword);
 
     if (signUpError) {
       if (signUpError.message.includes('already registered')) {
@@ -226,35 +226,6 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4 mt-4">
-                <div className="space-y-3">
-                  <Label>I am signing up as</Label>
-                  <RadioGroup
-                    value={signupRole}
-                    onValueChange={(v) => setSignupRole(v as typeof signupRole)}
-                    className="grid grid-cols-2 gap-3"
-                  >
-                    <Label
-                      htmlFor="role-borrower"
-                      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-3 cursor-pointer transition-colors ${
-                        signupRole === 'client' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50'
-                      }`}
-                    >
-                      <RadioGroupItem value="client" id="role-borrower" className="sr-only" />
-                      <span className="font-medium text-sm">Borrower</span>
-                      <span className="text-xs text-muted-foreground text-center">Looking for financing</span>
-                    </Label>
-                    <Label
-                      htmlFor="role-partner"
-                      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-3 cursor-pointer transition-colors ${
-                        signupRole === 'partner' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50'
-                      }`}
-                    >
-                      <RadioGroupItem value="partner" id="role-partner" className="sr-only" />
-                      <span className="font-medium text-sm">Partner</span>
-                      <span className="text-xs text-muted-foreground text-center">Refer deals & earn</span>
-                    </Label>
-                  </RadioGroup>
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input
